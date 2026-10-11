@@ -19,6 +19,112 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"clip_comments": {
+                  Row: {
+                    "body": string,"clip_id": string,"created_at": string,"id": string,"nick": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"clip_id": string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"clip_id"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clip_comments_clip_id_fkey"
+      columns: ["clip_id"]
+isOneToOne: false
+      referencedRelation: "clips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clip_comments_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clip_likes": {
+                  Row: {
+                    "clip_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clip_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "clip_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clip_likes_clip_id_fkey"
+      columns: ["clip_id"]
+isOneToOne: false
+      referencedRelation: "clips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clip_respects": {
+                  Row: {
+                    "clip_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clip_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "clip_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clip_respects_clip_id_fkey"
+      columns: ["clip_id"]
+isOneToOne: false
+      referencedRelation: "clips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clip_views": {
+                  Row: {
+                    "clip_id": string,"user_id": string,"viewed_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clip_id": string,"user_id"?: string,"viewed_at"?: string
+                  }
+                  Update: {
+                    "clip_id"?: string,"user_id"?: string,"viewed_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clip_views_clip_id_fkey"
+      columns: ["clip_id"]
+isOneToOne: false
+      referencedRelation: "clips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clips": {
+                  Row: {
+                    "caption": string,"comments_count": number,"created_at": string,"expires_at": string,"id": string,"kind": string,"likes_count": number,"media_path": string,"nick": string,"once": boolean,"respects_count": number,"tags": string,"team_id": string,"user_id": string,"views_count": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "caption"?: string,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind": string,"likes_count"?: number,"media_path": string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                  }
+                  Update: {
+                    "caption"?: string,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clips_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fixture_details": {
                   Row: {
                     "events": NonNullable<Json>,"fixture_id": number,"lineups": NonNullable<Json>,"updated_at": string
@@ -191,7 +297,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "club_of_api":
+            "clip_seen":
+{ Args: { "p_clip": string }; Returns: boolean
+                           },
+"club_of_api":
 { Args: { "p_api_id": number }; Returns: string
                            },
 "match_room_open":
