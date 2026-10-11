@@ -44,7 +44,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
     }
     start(async () => {
       const r = await (kind === 'like' ? toggleLikeAction : toggleRespectAction)({ clipId: clip.id, on })
-      if (!r.data || 'error' in r.data) {
+      if (!r.data?.ok) {
         // roll back the optimistic change
         if (kind === 'like') {
           setLiked(!on)
@@ -53,7 +53,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
           setRespected(!on)
           setRespects((n) => n - (on ? 1 : -1))
         }
-        setNote(r.data && 'error' in r.data ? r.data.error : 'לא הצלחנו לשמור')
+        setNote(r.data?.error ?? 'לא הצלחנו לשמור')
       }
     })
   }
@@ -73,7 +73,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
             onClick={() =>
               start(async () => {
                 const r = await deleteClipAction({ clipId: clip.id })
-                if (r.data && 'ok' in r.data) onRemoved(clip.id)
+                if (r.data?.ok) onRemoved(clip.id)
                 else setNote('המחיקה נכשלה')
               })
             }
@@ -100,8 +100,8 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
             onClick={() =>
               start(async () => {
                 const r = await openOnceClipAction({ clipId: clip.id })
-                if (r.data && 'url' in r.data) setUrl(r.data.url)
-                else setNote(r.data && 'error' in r.data ? r.data.error : 'לא הצלחנו לפתוח')
+                if (r.data?.url) setUrl(r.data.url)
+                else setNote(r.data?.error ?? 'לא הצלחנו לפתוח')
               })
             }
             className="flex flex-col items-center gap-2 rounded-lg border border-line px-6 py-4 text-sm"
@@ -182,12 +182,12 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
                 if (!body) return
                 start(async () => {
                   const r = await addCommentAction({ clipId: clip.id, body })
-                  if (r.data && 'comment' in r.data) {
-                    const c = r.data.comment
+                  const c = r.data?.comment
+                  if (c) {
                     setComments((cur) => [...(cur ?? []), c])
                     setCommentCount((n) => n + 1)
                     setDraft('')
-                  } else setNote(r.data && 'error' in r.data ? r.data.error : 'התגובה לא נשלחה')
+                  } else setNote(r.data?.error ?? 'התגובה לא נשלחה')
                 })
               }}
             >

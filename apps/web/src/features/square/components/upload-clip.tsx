@@ -52,11 +52,11 @@ export function UploadClip({ meId }: { meId: string }) {
         .upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false })
       if (upErr) return setError('ההעלאה נכשלה. נסה שוב')
       const r = await createClipAction({ path, kind: media.kind, caption, tags, once })
-      if (r.data && 'ok' in r.data) {
+      if (r.data?.ok) {
         reset()
         router.refresh()
       } else {
-        setError(r.data && 'error' in r.data ? r.data.error : 'הפרסום נכשל. נסה שוב')
+        setError(r.data?.error ?? 'הפרסום נכשל. נסה שוב')
       }
     })
   }
