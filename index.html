@@ -2268,6 +2268,7 @@ function sendReport(){
   var note=(($('#rnote')||{}).value||'').trim(),blk=$('#rblock'),doBlock=!!(blk&&blk.checked);
   var rp=RP;RP=null;
   REPORTS.push({kind:rp.kind,id:rp.id,reason:RSN[idx],note:note,t:Date.now()});
+  if(rp.kind==='clip'&&String(rp.id).indexOf('fc_')===0)cloudReport('clip',String(rp.id).slice(3),RSN[idx],note);
   store.set('reports',JSON.stringify(REPORTS.slice(-50)));
   if(rp.kind==='msg'){
     HIDM[rp.id]=1;
@@ -2917,6 +2918,7 @@ function seedClips(){
   CLIPS.sort(function(a,b){return b.t-a.t});
   lsArr('clips').forEach(function(c){if(c&&c.id){c.comments=c.comments||[];CLIPS.unshift(c)}});
   CLIKE=lsObj('clike');CRESP=lsObj('cresp');
+  if(typeof SQC!=='undefined'&&SQC&&SQC.on)sqMerge(true);
 }
 function clipVisible(c){return c.owner==='me'||(!HIDPH[c.id]&&BLOCKED.indexOf(c.owner)<0)}
 function derbyTeams(){var s={};MATCHES.forEach(function(m){if(m.tag&&m.tag.indexOf('דרבי')>=0){s[m.h]=1;s[m.a]=1}});return s}
@@ -2928,16 +2930,16 @@ function clipById(id){for(var i=0;i<CLIPS.length;i++)if(CLIPS[i].id===id)return 
 function saveClips(){return lsSet('clips',CLIPS.filter(function(c){return c.owner==='me'&&!c.video}).slice(0,6).map(function(c){return {id:c.id,owner:'me',tid:c.tid,img:c.img,cap:c.cap,tags:c.tags,likes:c.likes,resp:c.resp,comments:c.comments,t:c.t}}))}
 function kfmt(n){return n>=10000?(Math.round(n/100)/10)+'K':num(n)}
 function clipHTML(c){
-  var own=c.owner==='me',f=own?null:fanById(c.owner),t=T[c.tid],nm=own?nick:(f?f.nick:'אוהד'),lk=!!CLIKE[c.id],rs=!!CRESP[c.id];
+  var own=c.owner==='me',f=own||c.cloud?null:fanById(c.owner),t=T[c.tid],nm=own?nick:(c.cloud?c.nick:(f?f.nick:'אוהד')),lk=!!CLIKE[c.id],rs=!!CRESP[c.id];
   var media=c.video?'<video class="clip-m" src="'+c.video+'" playsinline loop muted preload="metadata"></video>':'<img class="clip-m" src="'+c.img+'" alt="'+esc(c.cap)+'" loading="lazy">';
   var ch=CHANTS&&c.tid===fav.id&&CHANTS.length?CHANTS[0].title:'שירי היציע';
   return '<article class="clip" data-cid="'+c.id+'" style="--tc:'+t.bg+';--tr:'+t.ring+'">'+
     '<div class="clip-bg" style="background-image:url(&quot;'+(c.video?'':c.img)+'&quot;)" aria-hidden="true"></div>'+media+'<div class="clip-shade" aria-hidden="true"></div>'+
     '<div class="clip-rail">'+
-      '<span class="clip-av">'+avCore(own?{me:true}:{fan:f},46,true,true)+'</span>'+
-      '<button class="cr'+(lk?' on':'')+'" data-act="sqlike" data-c="'+c.id+'" aria-pressed="'+lk+'" aria-label="לייק"><i>'+ic.heart+'</i><span>'+kfmt(c.likes+(lk?1:0))+'</span></button>'+
-      '<button class="cr" data-act="sqcm" data-c="'+c.id+'" aria-label="תגובות"><i>'+icCm+'</i><span>'+c.comments.length+'</span></button>'+
-      (c.tid!==fav.id?'<button class="cr resp'+(rs?' on':'')+'" data-act="sqresp" data-c="'+c.id+'" aria-pressed="'+rs+'" aria-label="כבוד מאוהד יריב"><i>🤝</i><span>'+kfmt(c.resp+(rs?1:0))+'</span></button>':'<span class="cr dim" title="כבוד נותנים רק אוהדי קבוצות אחרות"><i>🤝</i><span>'+kfmt(c.resp)+'</span></span>')+
+      '<span class="clip-av">'+avCore(own?{me:true}:(c.cloud?{nick:c.nick,tid:c.tid}:{fan:f}),46,true,true)+'</span>'+
+      '<button class="cr'+(lk?' on':'')+'" data-act="sqlike" data-c="'+c.id+'" aria-pressed="'+lk+'" aria-label="לייק"><i>'+ic.heart+'</i><span>'+kfmt(c.likes+(lk&&!c.cloud?1:0))+'</span></button>'+
+      '<button class="cr" data-act="sqcm" data-c="'+c.id+'" aria-label="תגובות"><i>'+icCm+'</i><span>'+(c.cloud?c.ncm:c.comments.length)+'</span></button>'+
+      (c.tid!==fav.id?'<button class="cr resp'+(rs?' on':'')+'" data-act="sqresp" data-c="'+c.id+'" aria-pressed="'+rs+'" aria-label="כבוד מאוהד יריב"><i>🤝</i><span>'+kfmt(c.resp+(rs&&!c.cloud?1:0))+'</span></button>':'<span class="cr dim" title="כבוד נותנים רק אוהדי קבוצות אחרות"><i>🤝</i><span>'+kfmt(c.resp)+'</span></span>')+
       '<button class="cr" data-act="sqshare" data-c="'+c.id+'" aria-label="שיתוף"><i>'+svg('<path d="M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6v1"/>',22)+'</i><span>שיתוף</span></button>'+
       (own?'<button class="cr" data-act="sqdel" data-c="'+c.id+'" aria-label="מחיקה"><i>🗑️</i><span>מחיקה</span></button>':'<button class="cr" data-act="sqrep" data-c="'+c.id+'" aria-label="דיווח"><i>⚑</i><span>דיווח</span></button>')+
     '</div>'+
@@ -2975,6 +2977,7 @@ function sqObserve(){
 function sqLike(id,force){
   var c=clipById(id);if(!c)return;
   if(force&&CLIKE[id])return;
+  if(c.cloud){sqCloudLike(c,view.querySelector('.clip[data-cid="'+id+'"] [data-act="sqlike"]'));return}
   if(CLIKE[id])delete CLIKE[id];else CLIKE[id]=1;lsSet('clike',CLIKE);
   var b=view.querySelector('.clip[data-cid="'+id+'"] [data-act="sqlike"]');
   if(b){b.classList.toggle('on',!!CLIKE[id]);b.setAttribute('aria-pressed',String(!!CLIKE[id]));b.querySelector('span').textContent=kfmt(c.likes+(CLIKE[id]?1:0));if(CLIKE[id]){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}}
@@ -2984,27 +2987,29 @@ function sqBurst(el,x,y){
   s.style.left=(x-r.left)+'px';s.style.top=(y-r.top)+'px';s.style.setProperty('--rot',(Math.random()*40-20)+'deg');
   el.appendChild(s);setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s)},900);
 }
-function sqComments(id){
+function sqComments(id,local){
   var c=clipById(id);if(!c)return;
+  if(c.cloud&&!local){sqCloudComments(c,function(){sqComments(id,1)});return}
   openSheet('<div class="tm" style="font-size:24px">💬 '+c.comments.length+' תגובות</div><p style="font-size:13px">בכיכר כותבים אוהדים מכל הקבוצות. מתווכחים על כדורגל, לא על אנשים.</p>'+
     '<div class="sqc-l">'+(c.comments.length?c.comments.map(function(x){
-      var mine=x.fid==='me',f=mine?null:fanById(x.fid),t=mine?fav:(f?T[f.team]:fav);
-      return '<div class="sqc">'+(mine?avCore({me:true},32,true):avCore({fan:f},32,true))+'<div><b>'+esc(mine?nick:(f?f.nick:'אוהד'))+' <span class="sqc-t" style="--tc:'+t.bg+'">'+t.short+'</span></b><p>'+esc(x.text)+'</p><small>'+timeAgo(x.t)+'</small></div></div>';
+      var mine=x.fid==='me',f=mine||x.nick?null:fanById(x.fid),t=mine?fav:(x.tid&&T[x.tid]?T[x.tid]:(f?T[f.team]:fav));
+      return '<div class="sqc">'+(mine?avCore({me:true},32,true):(x.nick?avCore({nick:x.nick,tid:x.tid},32,true):avCore({fan:f},32,true)))+'<div><b>'+esc(mine?nick:(x.nick||(f?f.nick:'אוהד')))+' <span class="sqc-t" style="--tc:'+t.bg+'">'+t.short+'</span></b><p>'+esc(x.text)+'</p><small>'+timeAgo(x.t)+'</small></div></div>';
     }).join(''):'<div class="empty"><div>עוד אין תגובות</div></div>')+'</div>'+
     '<form class="inrow" id="sqcform" data-c="'+id+'"><input id="sqcin" maxlength="150" placeholder="תגובה בתור אוהד '+esc(fav.short)+'" autocomplete="off" aria-label="תגובה"><button class="send" type="submit" aria-label="שליחה">'+ic.send+'</button></form>');
 }
 function openSqUp(){
   SQUP={img:null,video:null};
   openSheet('<div class="tm" style="font-size:30px">העלאה לכיכר</div><p>מה שמעלים לכיכר רואים כל אוהדי הליגה המאומתים, מכל הקבוצות.</p>'+
-    '<label class="abtn" for="sqfile" style="cursor:pointer" id="sqfl">📷 בחירת תמונה או סרטון</label><input id="sqfile" type="file" accept="image/*,video/*" hidden>'+
+    '<label class="abtn" for="sqfile" style="cursor:pointer" id="sqfl">'+(sqCloud()?'📷 בחירת תמונה':'📷 בחירת תמונה או סרטון')+'</label><input id="sqfile" type="file" accept="'+(sqCloud()?'image/*':'image/*,video/*')+'" hidden>'+
     '<div class="vimg" id="sqprev" hidden></div>'+
     '<label class="fld">כיתוב<input id="sqcap" maxlength="120" placeholder="מה רואים כאן?" autocomplete="off"></label>'+
     '<label class="fld">תגיות (אופציונלי)<input id="sqtags" maxlength="60" placeholder="#תפאורה #משחק_חוץ" autocomplete="off"></label>'+
-    '<p style="font-size:12.5px">בלי קללות, בלי השפלה של אוהדי היריבה ובלי פרצופים של ילדים בלי אישור. תוכן כזה יורד מהכיכר.'+(persist?'':'')+' בהדגמה סרטון נשמר רק עד סגירת הדף.</p>'+
+    '<p style="font-size:12.5px">בלי קללות, בלי השפלה של אוהדי היריבה ובלי פרצופים של ילדים בלי אישור. תוכן כזה יורד מהכיכר.'+(sqCloud()?' בשלב הזה מעלים לכיכר רק תמונות.':' בהדגמה סרטון נשמר רק עד סגירת הדף.')+'</p>'+
     '<button class="abtn primary" data-act="sqpub" id="sqpub" disabled>פרסום בכיכר</button><button class="abtn" data-act="close">ביטול</button>');
 }
 function publishSq(){
   if(!SQUP||(!SQUP.img&&!SQUP.video))return;
+  if(sqCloud()&&SQUP.img){sqCloudPublish(SQUP.img,(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,(($('#sqtags')||{}).value||'').trim());SQUP=null;closeSheet();SQF='all';view.dataset.sq='';render();view.scrollTop=0;return}
   var c={id:'cl'+Date.now(),owner:'me',tid:fav.id,img:SQUP.img||'',video:SQUP.video||'',cap:(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,tags:(($('#sqtags')||{}).value||'').trim(),likes:0,resp:0,comments:[],t:Date.now()};
   CLIPS.unshift(c);if(!c.video&&!saveClips()){c.img=c.img}
   SQUP=null;closeSheet();SQF='all';view.dataset.sq='';render();view.scrollTop=0;
@@ -3025,6 +3030,7 @@ function sqAct(a,b){
   if(a==='sqf'){SQF=b.dataset.f;view.dataset.sq='';render();view.scrollTop=0;return true}
   if(a==='sqtop'){view.scrollTo({top:0,behavior:'smooth'});return true}
   if(a==='sqlike'){sqLike(id);return true}
+  if(a==='sqresp'&&c&&c.cloud){sqCloudResp(c,b);return true}
   if(a==='sqresp'&&c){
     if(CRESP[id])delete CRESP[id];else CRESP[id]=1;lsSet('cresp',CRESP);
     b.classList.toggle('on',!!CRESP[id]);b.setAttribute('aria-pressed',String(!!CRESP[id]));b.querySelector('span').textContent=kfmt(c.resp+(CRESP[id]?1:0));
@@ -3038,6 +3044,7 @@ function sqAct(a,b){
     toast('בגרסה האמיתית: שיתוף לוואטסאפ ולאינסטגרם');return true;
   }
   if(a==='sqrep'&&c){openReport('clip',c.id,c.owner);return true}
+  if(a==='sqdel'&&c&&c.cloud){sqCloudDelete(c);return true}
   if(a==='sqdel'&&c){CLIPS=CLIPS.filter(function(x){return x.id!==id});saveClips();view.dataset.sq='';render();toast('ההעלאה נמחקה מהכיכר');return true}
   if(a==='sqnew'){openSqUp();return true}
   if(a==='sqpub'){publishSq();return true}
@@ -3057,13 +3064,15 @@ sheetEl.addEventListener('submit',function(e){
   if(e.target.id!=='sqcform')return;
   var id=e.target.dataset.c,c=clipById(id),inp=$('#sqcin'),v=((inp&&inp.value)||'').trim().slice(0,150);
   if(!c||!v)return;
-  c.comments.push({fid:'me',text:v,t:Date.now()});if(c.owner==='me'&&!c.video)saveClips();
-  sqComments(id);var b=view.querySelector('.clip[data-cid="'+id+'"] [data-act="sqcm"] span');if(b)b.textContent=c.comments.length;
+  if(c.cloud)sqCloudComment(c,v);
+  else{c.comments.push({fid:'me',text:v,t:Date.now()});if(c.owner==='me'&&!c.video)saveClips()}
+  sqComments(id,1);var b=view.querySelector('.clip[data-cid="'+id+'"] [data-act="sqcm"] span');if(b)b.textContent=c.cloud?c.ncm:c.comments.length;
   var ni=$('#sqcin');if(ni)ni.focus();
 });
 sheetEl.addEventListener('change',function(e){
   var t=e.target;if(t.id!=='sqfile'||!t.files||!t.files[0]||!SQUP)return;
   var fl=t.files[0],pv=$('#sqprev');
+  if(/^video\//.test(fl.type)&&sqCloud()){toast('בשלב הזה מעלים לכיכר רק תמונות');return}
   if(/^video\//.test(fl.type)){
     if(fl.size>60*1024*1024){toast('הסרטון גדול מדי (עד 60MB)');return}
     SQUP.video=URL.createObjectURL(fl);SQUP.img=null;
@@ -3521,7 +3530,7 @@ function cloudInit(){
 function cloudUser(u){
   CLOUD.user=u||null;
   if(!u){
-    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();
+    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();
     // an old demo "Google" account on the live site: send it through the real sign-in
     if(who==='חשבון Google'||/^Google · /.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
     return;
@@ -3568,7 +3577,8 @@ function cloudSaveProfile(){
 function cloudNickSoon(){if(!CLOUD.saved)return;clearTimeout(CLOUD.nickT);CLOUD.nickT=setTimeout(cloudSaveProfile,900)}
 function cloudDetach(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}CLOUD.live=false}
 function cloudAttach(){
-  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();return}
+  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();sqCloudDetach();return}
+  sqCloudAttach();
   if(CLOUD.live===fav.id)return;
   cloudDetach();
   var F=CLOUD.fb.F,team=fav.id;
@@ -3598,8 +3608,107 @@ function cloudSend(text){
     .catch(function(e){console.warn(e);toast('ההודעה לא נשלחה')});
 }
 function cloudSignOut(){
-  cloudDetach();CLOUD.prof=null;CLOUD.saved=false;
+  cloudDetach();sqCloudDetach();CLOUD.prof=null;CLOUD.saved=false;
   if(CLOUD.fb&&CLOUD.user)CLOUD.fb.Au.signOut(CLOUD.fb.auth);
+}
+
+/* ---------- cloud square: real shared feed for the whole league ---------- */
+var SQC={unsub:null,list:[],on:false,cm:{}};
+function sqCloud(){return !!(CLOUD.saved&&CLOUD.user)}
+function sqCloudAttach(){
+  if(!sqCloud()||SQC.unsub)return;
+  var F=CLOUD.fb.F,q=F.query(F.collection(CLOUD.fb.db,'clips'),F.orderBy('t','desc'),F.limit(40));
+  SQC.on=true;
+  SQC.unsub=F.onSnapshot(q,function(s){
+    var me=CLOUD.user&&CLOUD.user.uid,prev={};SQC.list.forEach(function(c){prev[c.id]=c});
+    SQC.list=s.docs.map(function(d){
+      var v=d.data({serverTimestamps:'estimate'});
+      return {id:'fc_'+d.id,fid:d.id,cloud:true,owner:v.uid===me?'me':'u:'+v.uid,nick:String(v.nick||'אוהד'),tid:v.tid,img:String(v.img||''),video:'',
+        cap:String(v.cap||''),tags:String(v.tags||''),likes:v.likes||0,resp:v.resp||0,ncm:v.ncm||0,comments:prev['fc_'+d.id]?prev['fc_'+d.id].comments:[],t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()};
+    }).filter(function(c){return T[c.tid]&&/^data:image\//.test(c.img)});
+    sqMerge();
+  },function(e){console.warn('square',e)});
+}
+function sqCloudDetach(){if(SQC.unsub){SQC.unsub();SQC.unsub=null}if(SQC.on){SQC.on=false;SQC.list=[];sqMerge()}}
+function sqMerge(silent){
+  // real posts first, then the labelled sample posts; local demo uploads are dropped once the real feed is on
+  var rest=CLIPS.filter(function(c){return !c.cloud&&!(SQC.on&&c.owner==='me')});
+  CLIPS=SQC.list.concat(rest);
+  if(silent||ui.tab!=='square'||cur)return;
+  var before=view.dataset.sq;render();
+  if(view.dataset.sq===before)sqCounts();
+}
+function sqCounts(){
+  CLIPS.forEach(function(c){
+    if(!c.cloud)return;
+    var el=view.querySelector('.clip[data-cid="'+c.id+'"]');if(!el)return;
+    var a=el.querySelector('[data-act="sqlike"] span'),b=el.querySelector('[data-act="sqcm"] span'),r=el.querySelector('.resp span,.cr.dim span');
+    if(a)a.textContent=kfmt(c.likes);if(b)b.textContent=c.ncm;if(r)r.textContent=kfmt(c.resp);
+  });
+}
+function sqToggle(c,kind,on){
+  var F=CLOUD.fb.F,db=CLOUD.fb.db,ref=F.doc(db,'clips',c.fid),sub=F.doc(db,'clips',c.fid,kind,CLOUD.user.uid),bt=F.writeBatch(db),field=kind==='likes'?'likes':'resp';
+  if(on)bt.set(sub,{t:F.serverTimestamp()});else bt.delete(sub);
+  var u={};u[field]=F.increment(on?1:-1);bt.update(ref,u);
+  return bt.commit();
+}
+function sqCloudLike(c,b){
+  var on=!CLIKE[c.id];
+  if(on)CLIKE[c.id]=1;else delete CLIKE[c.id];lsSet('clike',CLIKE);
+  sqPaint(b,on,c.likes+(on?1:-1));
+  sqToggle(c,'likes',on).catch(function(){
+    // most likely already liked (or unliked) from another device: keep the server's count
+    if(on)CLIKE[c.id]=1;else delete CLIKE[c.id];lsSet('clike',CLIKE);sqPaint(b,on,c.likes);
+  });
+}
+function sqCloudResp(c,b){
+  var on=!CRESP[c.id];
+  if(on)CRESP[c.id]=1;else delete CRESP[c.id];lsSet('cresp',CRESP);
+  sqPaint(b,on,c.resp+(on?1:-1));if(on)toast('🤝 נתת כבוד לאוהדי '+T[c.tid].short);
+  sqToggle(c,'resp',on).catch(function(){sqPaint(b,on,c.resp)});
+}
+function sqPaint(b,on,n){
+  if(!b)return;
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));b.querySelector('span').textContent=kfmt(Math.max(0,n));
+  if(on){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
+}
+function sqCloudComments(c,cb){
+  var F=CLOUD.fb.F;
+  F.getDocs(F.query(F.collection(CLOUD.fb.db,'clips',c.fid,'cm'),F.orderBy('t','asc'),F.limit(100))).then(function(s){
+    var me=CLOUD.user.uid;
+    c.comments=s.docs.map(function(d){var v=d.data({serverTimestamps:'estimate'});return {fid:v.uid===me?'me':null,nick:String(v.nick||'אוהד'),tid:v.tid,text:String(v.text||''),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()}}).filter(function(x){return T[x.tid]});
+    c.ncm=Math.max(c.ncm,c.comments.length);cb();
+  }).catch(function(e){console.warn(e);toast('לא הצלחנו לטעון תגובות')});
+}
+function sqCloudComment(c,text){
+  var F=CLOUD.fb.F,db=CLOUD.fb.db,bt=F.writeBatch(db);
+  bt.set(F.doc(F.collection(db,'clips',c.fid,'cm')),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),tid:fav.id,text:text,t:F.serverTimestamp()});
+  bt.update(F.doc(db,'clips',c.fid),{ncm:F.increment(1)});
+  c.comments.push({fid:'me',text:text,t:Date.now()});c.ncm++;
+  return bt.commit().catch(function(e){console.warn(e);toast('התגובה לא נשלחה')});
+}
+function sqFitImg(url,cb){
+  // a Firestore document holds up to 1MB, so keep each photo well under that
+  if(url.length<=650000){cb(url);return}
+  shrink(url,720,function(u2){if(u2.length<=650000){cb(u2);return}shrink(u2,560,function(u3){cb(u3.length<=650000?u3:null)})});
+}
+function sqCloudPublish(img,cap,tags){
+  var F=CLOUD.fb.F;
+  sqFitImg(img,function(u){
+    if(!u){toast('התמונה גדולה מדי. נסה תמונה אחרת');return}
+    F.addDoc(F.collection(CLOUD.fb.db,'clips'),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),tid:fav.id,img:u,cap:cap.slice(0,120),tags:tags.slice(0,60),t:F.serverTimestamp(),likes:0,resp:0,ncm:0})
+      .then(function(){toast('עלה לכיכר. כל אוהדי הליגה רואים')})
+      .catch(function(e){console.warn(e);toast('ההעלאה נכשלה. נסה שוב')});
+  });
+}
+function sqCloudDelete(c){
+  var F=CLOUD.fb.F;
+  F.deleteDoc(F.doc(CLOUD.fb.db,'clips',c.fid)).then(function(){toast('ההעלאה נמחקה מהכיכר')}).catch(function(){toast('המחיקה נכשלה')});
+}
+function cloudReport(kind,ref,reason,note){
+  if(!sqCloud())return;
+  var F=CLOUD.fb.F;
+  F.addDoc(F.collection(CLOUD.fb.db,'reports'),{uid:CLOUD.user.uid,kind:kind,ref:String(ref),reason:String(reason).slice(0,60),note:String(note||'').slice(0,120),t:F.serverTimestamp()}).catch(function(e){console.warn(e)});
 }
 
 /* ---------- live simulation ---------- */

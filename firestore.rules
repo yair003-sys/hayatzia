@@ -33,5 +33,78 @@ service cloud.firestore {
         && request.resource.data.t == request.time;
       allow update, delete: if false;
     }
+
+    // The square: one shared feed for the whole league.
+    match /clips/{cid} {
+      function clipPath() { return /databases/$(database)/documents/clips/$(cid); }
+      function mark(kind) { return /databases/$(database)/documents/clips/$(cid)/$(kind)/$(request.auth.uid); }
+      function onlyChanged(f) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly([f]); }
+      function bump(f, d) { return request.resource.data[f] == resource.data[f] + d; }
+      function toggled(f, kind) {
+        return (bump(f, 1) && existsAfter(mark(kind)) && !exists(mark(kind)))
+            || (bump(f, -1) && !existsAfter(mark(kind)) && exists(mark(kind)));
+      }
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.tid == myTeam()
+        && validNick(request.resource.data.nick)
+        && request.resource.data.img is string
+        && request.resource.data.img.size() < 700000
+        && request.resource.data.img.matches('data:image/jpeg;base64,.*')
+        && request.resource.data.cap is string && request.resource.data.cap.size() <= 120
+        && request.resource.data.tags is string && request.resource.data.tags.size() <= 60
+        && request.resource.data.t == request.time
+        && request.resource.data.likes == 0 && request.resource.data.resp == 0 && request.resource.data.ncm == 0;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && (
+        (onlyChanged('likes') && toggled('likes', 'likes'))
+        || (onlyChanged('resp') && myTeam() != resource.data.tid && toggled('resp', 'resp'))
+        || (onlyChanged('ncm') && bump('ncm', 1))
+      );
+
+      // one like and one "respect" per fan, kept in step with the counters above
+      match /likes/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['t'])
+          && getAfter(clipPath()).data.likes == get(clipPath()).data.likes + 1;
+        allow delete: if signedIn() && request.auth.uid == uid
+          && getAfter(clipPath()).data.likes == get(clipPath()).data.likes - 1;
+      }
+      match /resp/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['t'])
+          && getAfter(clipPath()).data.resp == get(clipPath()).data.resp + 1;
+        allow delete: if signedIn() && request.auth.uid == uid
+          && getAfter(clipPath()).data.resp == get(clipPath()).data.resp - 1;
+      }
+      match /cm/{mid} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['uid','nick','tid','text','t'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.tid == myTeam()
+          && validNick(request.resource.data.nick)
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 150
+          && request.resource.data.t == request.time;
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    // Reports go to the moderators only. Nobody can read them from the app.
+    match /reports/{rid} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','kind','ref','reason','note','t'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind is string && request.resource.data.kind.size() <= 20
+        && request.resource.data.ref is string && request.resource.data.ref.size() <= 100
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 60
+        && request.resource.data.note is string && request.resource.data.note.size() <= 120
+        && request.resource.data.t == request.time;
+      allow read, update, delete: if false;
+    }
   }
 }
