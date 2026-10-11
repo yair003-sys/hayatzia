@@ -1,0 +1,35 @@
+name: web-cleanup (expired Square posts)
+
+# Hourly: deletes Square posts past their 24 hours (files in Storage + rows) in staging and production.
+# Uses each GitHub environment's SUPABASE_URL + SUPABASE_SECRET_KEY, like web-ingest.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [staging, production]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Remove expired posts in ${{ matrix.env }}
+        working-directory: apps/web
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: ./scripts/ci-step.sh "cleanup ${{ matrix.env }}" node scripts/cleanup-clips.ts
