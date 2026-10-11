@@ -9,7 +9,7 @@ DEPS=(
   clsx@latest tailwind-merge@latest class-variance-authority@latest lucide-react@latest
 )
 DEV=(
-  typescript@latest @types/node@22 @types/react@latest @types/react-dom@latest
+  typescript@6 @types/node@22 @types/react@latest @types/react-dom@latest
   tailwindcss@latest @tailwindcss/postcss@latest
   eslint@9 eslint-config-next@16.4 prettier@latest prettier-plugin-tailwindcss@latest
   vitest@latest @vitejs/plugin-react@latest vite-tsconfig-paths@latest jsdom@latest
