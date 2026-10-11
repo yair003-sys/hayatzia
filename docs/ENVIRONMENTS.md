@@ -22,6 +22,17 @@ Owner's standing rule: **local and test data never touch production.**
 
 Set them in Vercel per environment (Production / Preview / Development). Production values exist **only** in Vercel's Production scope and in the GitHub `production` environment. `.env.local` is git-ignored; `.env.example` lists names only.
 
+## Vercel project
+- Team "hayaziha" (Hobby), project `hayatzia`, root directory `apps/web`, Git: `yair003-sys/hayatzia` (`main` → production, any other branch → preview).
+- Production URL: https://hayatzia-flame.vercel.app. Previews: `hayatzia-*-hayaziha.vercel.app`.
+- Function region: `fra1` (Frankfurt, next to the database).
+- Env vars set: Production → `NEXT_PUBLIC_APP_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://loaqhisfhafjbrmtygrp.supabase.co`; Preview + Development → `preview`, `https://yblzcgetkfbdwsfogkqp.supabase.co`. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is pasted by the owner per environment (Claude never types keys). Until a key exists, the app runs without sign-in.
+
+## Supabase Auth URLs
+- Production: Site URL `https://hayatzia-flame.vercel.app`; redirect allow-list `https://hayatzia-flame.vercel.app/auth/callback`.
+- Staging: redirect allow-list `https://hayatzia-*-hayaziha.vercel.app/**` (preview deployments only).
+- Google provider: pending (OAuth client in Google Cloud; owner pastes client ID + secret into each project).
+
 ## Supabase projects
 - Organization: "yair003-sys's Orghayatzia" (free plan), owner signs in with GitHub.
 - Both projects: region eu-central-1 (closest to Israel), Data API on, **new tables not auto-exposed** (grants are explicit in migrations), **automatic RLS on new tables**.
