@@ -44,6 +44,13 @@ jobs:
           git diff --cached --quiet || git commit -m "עדכון נתוני ליגה"
           git push
 
+  # New app: copy the fresh data into Supabase (staging + production).
+  ingest:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/web-ingest.yml
+    secrets: inherit
+
   deploy:
     needs: update
     if: always() && (github.event_name == 'push' || needs.update.outputs.changed == 'true')

@@ -39,6 +39,18 @@ export const leagueSchema = z.object({
   have: z.array(z.number()).default([]),
 })
 
+/** One match's events and lineups (legacy data/fx/<id>.json, Postgres fixture_details). */
+export type FixtureDetail = {
+  ev: { m: number; x: number; team: number; p: string; as: string; type: string; det: string }[]
+  lu: {
+    team: number
+    f: string
+    coach: string
+    xi: { n: number | null; p: string; pos: string; g: string | null }[]
+    sub: { n: number | null; p: string; pos: string }[]
+  }[]
+}
+
 export type Fixture = z.infer<typeof fixtureSchema>
 export type StandingRow = z.infer<typeof standingRowSchema>
 export type League = z.infer<typeof leagueSchema>

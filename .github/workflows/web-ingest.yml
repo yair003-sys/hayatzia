@@ -1,0 +1,52 @@
+name: web-ingest (league data → Supabase)
+
+# Copies data/league.json + data/fx/*.json into Postgres.
+# Called by the legacy update workflow whenever the data changed; can also be run by hand.
+# Each target is a GitHub environment holding its own SUPABASE_URL (variable) and SUPABASE_SECRET_KEY (secret),
+# so the production key is only ever visible to the production job.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'staging, production or both'
+        default: both
+        type: choice
+        options: [both, staging, production]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [staging, production]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    steps:
+      - name: Skip if not selected
+        id: pick
+        run: |
+          t="${{ inputs.target || 'both' }}"
+          if [ "$t" = "both" ] || [ "$t" = "${{ matrix.env }}" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v5
+        if: steps.pick.outputs.go == 'true'
+        with:
+          ref: main
+      - uses: actions/setup-node@v5
+        if: steps.pick.outputs.go == 'true'
+        with:
+          node-version: 24
+      - name: Upsert into ${{ matrix.env }}
+        if: steps.pick.outputs.go == 'true'
+        working-directory: apps/web
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: ./scripts/ci-step.sh "ingest ${{ matrix.env }}" node scripts/ingest-league.ts

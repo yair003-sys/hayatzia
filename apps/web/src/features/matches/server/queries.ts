@@ -1,9 +1,13 @@
 import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
-import { leagueSchema, type League } from '../schema'
+import { createPublicClient } from '@/lib/supabase/public'
+import { fromRows, type ApiTeamRow, type FixtureRow, type StandingDbRow } from '../ingest/rows'
+import { leagueSchema, type FixtureDetail, type League } from '../schema'
 
-// Read-only public sports data published by the legacy ingest every 10 minutes.
-// Moves to Postgres (fixtures/standings tables) later in P1; callers won't change.
+export type { FixtureDetail } from '../schema'
+
+// Source of truth: Postgres (filled by scripts/ingest-league.ts after every legacy update).
+// Fallback until cutover: the legacy JSON, used when Supabase isn't configured (CI, local) or has no data yet.
 const LEAGUE_URL = 'https://yair003-sys.github.io/hayatzia/data/league.json'
 const FIXTURE_URL = (id: number) => `https://yair003-sys.github.io/hayatzia/data/fx/${id}.json`
 
@@ -11,6 +15,67 @@ export async function getLeague(): Promise<League | null> {
   'use cache'
   cacheLife('minutes')
   cacheTag('league')
+  return (await leagueFromDb()) ?? (await leagueFromLegacyJson())
+}
+
+export async function getFixtureDetail(id: number): Promise<FixtureDetail | null> {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag('league', `fixture-${id}`)
+  return (await detailFromDb(id)) ?? (await detailFromLegacyJson(id))
+}
+
+async function leagueFromDb(): Promise<League | null> {
+  const db = createPublicClient()
+  if (!db) return null
+  try {
+    const latest = await db.from('fixtures').select('season').order('season', { ascending: false }).limit(1)
+    const season = (latest.data as { season: number }[] | null)?.[0]?.season
+    if (latest.error || season === undefined) return null
+
+    const [teams, fixtures, standings, details] = await Promise.all([
+      db.from('api_teams').select('api_id,name,logo'),
+      db
+        .from('fixtures')
+        .select(
+          'id,league_id,season,round,kickoff_at,status,elapsed,home_api_id,away_api_id,home_goals,away_goals,venue',
+        )
+        .eq('season', season)
+        .order('kickoff_at'),
+      db.from('standings').select('*').eq('season', season),
+      db.from('fixture_details').select('fixture_id,fixtures!inner(season)').eq('fixtures.season', season),
+    ])
+    if (teams.error || fixtures.error || standings.error || details.error) return null
+
+    return fromRows({
+      apiTeams: teams.data as ApiTeamRow[],
+      fixtures: fixtures.data as FixtureRow[],
+      standings: standings.data as StandingDbRow[],
+      detailIds: (details.data as { fixture_id: number }[]).map((d) => d.fixture_id),
+    })
+  } catch {
+    return null
+  }
+}
+
+async function detailFromDb(id: number): Promise<FixtureDetail | null> {
+  const db = createPublicClient()
+  if (!db) return null
+  try {
+    const { data, error } = await db
+      .from('fixture_details')
+      .select('events,lineups')
+      .eq('fixture_id', id)
+      .maybeSingle()
+    if (error || !data) return null
+    const row = data as { events: FixtureDetail['ev']; lineups: FixtureDetail['lu'] }
+    return { ev: row.events, lu: row.lineups }
+  } catch {
+    return null
+  }
+}
+
+async function leagueFromLegacyJson(): Promise<League | null> {
   try {
     const res = await fetch(LEAGUE_URL)
     if (!res.ok) return null
@@ -21,21 +86,7 @@ export async function getLeague(): Promise<League | null> {
   }
 }
 
-export type FixtureDetail = {
-  ev: { m: number; x: number; team: number; p: string; as: string; type: string; det: string }[]
-  lu: {
-    team: number
-    f: string
-    coach: string
-    xi: { n: number | null; p: string; pos: string; g: string | null }[]
-    sub: { n: number | null; p: string; pos: string }[]
-  }[]
-}
-
-export async function getFixtureDetail(id: number): Promise<FixtureDetail | null> {
-  'use cache'
-  cacheLife('minutes')
-  cacheTag('league', `fixture-${id}`)
+async function detailFromLegacyJson(id: number): Promise<FixtureDetail | null> {
   try {
     const res = await fetch(FIXTURE_URL(id))
     if (!res.ok) return null
