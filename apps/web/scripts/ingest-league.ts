@@ -15,6 +15,10 @@ if (!URL_BASE || !KEY) {
   console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY')
   process.exit(1)
 }
+if (!/^[\x21-\x7e]+$/.test(KEY)) {
+  console.error('SUPABASE_SECRET_KEY looks masked or has spaces (e.g. "•••"): copy the full key after revealing it')
+  process.exit(1)
+}
 
 const headers = { apikey: KEY, 'Content-Type': 'application/json' }
 
