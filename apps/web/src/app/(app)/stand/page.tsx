@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { ChevronLeft, Images, MessageCircle, Star, type LucideIcon } from 'lucide-react'
+import { CalendarDays, Car, ChevronLeft, Images, MessageCircle, ShoppingBag, Star, type LucideIcon } from 'lucide-react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 
@@ -16,6 +16,9 @@ export default function Page() {
       <StandCard href="/stand/chat" icon={MessageCircle} title="צ׳אט הקבוצה" badge="פתוח תמיד" text="רק אוהדי הקבוצה שלך. בזמן אמת." />
       <StandCard href="/stand/players" icon={Star} title="דירוג שחקנים" text="דרג את השחקנים וקרא מה האוהדים חושבים." />
       <StandCard href="/stand/photos" icon={Images} title="תמונות מהיציע" text="רגעים מהמגרש. רק אוהדי הקבוצה רואים." />
+      <StandCard href="/stand/trips" icon={Car} title="נוסעים למשחק" text="טרמפים ושותפים לדרך למשחקי הקבוצה." />
+      <StandCard href="/stand/events" icon={CalendarDays} title="אירועים" text="הקרנות, צעדות ומפגשי אוהדים." />
+      <StandCard href="/stand/market" icon={ShoppingBag} title="שוק אוהדים" text="חולצות, צעיפים ומזכרות. בלי כרטיסים." />
 
     </section>
   )
@@ -38,7 +41,7 @@ async function StandHeader() {
 }
 
 function StandCard(props: {
-  href: '/stand/chat' | '/stand/players' | '/stand/photos'
+  href: '/stand/chat' | '/stand/players' | '/stand/photos' | '/stand/trips' | '/stand/events' | '/stand/market'
   icon: LucideIcon
   title: string
   text: string
