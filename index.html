@@ -3552,12 +3552,31 @@ chat.addEventListener('submit',function(e){
 /* ---------- cloud: real Google sign-in + shared team chat (Firebase, only on the live site) ---------- */
 var FBCFG={apiKey:'AIzaSyAZWVU6v44FkxBWRPBybf9AkL2s1cU7AEY',authDomain:'hayatzia-2b0ff.firebaseapp.com',projectId:'hayatzia-2b0ff',storageBucket:'hayatzia-2b0ff.firebasestorage.app',messagingSenderId:'547854343175',appId:'1:547854343175:web:0756c61e7fb5f02c1a1ea2'};
 var FBU='https://www.gstatic.com/firebasejs/10.12.2/';
-function cloudWanted(){return /\.github\.io$/.test(location.hostname)||/[?&]cloud=1/.test(location.search)}
+// Environments are kept strictly apart:
+//  prod  - only the real site (yair003-sys.github.io) ever talks to the production Firebase project
+//  local - localhost with ?emu=1 talks only to the Firebase emulators on this machine, under a 'demo-' project id
+//          (Firebase never connects a 'demo-' project to real cloud services, so local data cannot leak into production)
+//  off   - anywhere else (the artifact preview, files, other hosts): no server at all, demo data only
+var ENV=(function(){
+  var h=location.hostname;
+  if(h==='yair003-sys.github.io')return 'prod';
+  if((h==='localhost'||h==='127.0.0.1')&&/[?&]emu=1/.test(location.search))return 'local';
+  return 'off';
+})();
+var FBLOCAL={apiKey:'demo-key',authDomain:'demo-hayatzia.firebaseapp.com',projectId:'demo-hayatzia',appId:'demo-app'};
+function cloudWanted(){return ENV!=='off'}
 function cloudInit(){
   if(!cloudWanted())return;
   Promise.all([import(FBU+'firebase-app.js'),import(FBU+'firebase-auth.js'),import(FBU+'firebase-firestore.js')]).then(function(m){
-    var app=m[0].initializeApp(FBCFG);
+    var app=m[0].initializeApp(ENV==='prod'?FBCFG:FBLOCAL);
     CLOUD.fb={Au:m[1],F:m[2],auth:m[1].getAuth(app),db:m[2].getFirestore(app)};
+    if(ENV==='local'){
+      m[1].connectAuthEmulator(CLOUD.fb.auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      m[2].connectFirestoreEmulator(CLOUD.fb.db,'127.0.0.1',8080);
+      var tag=document.createElement('div');tag.textContent='סביבת בדיקות מקומית · לא פרודקשן';
+      tag.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#F5B700;color:#000;font:700 12px/22px Heebo,sans-serif;text-align:center;pointer-events:none';
+      document.body.appendChild(tag);
+    }
     CLOUD.ok=true;
     if(!authEl.hidden&&AUTH.step==='welcome')renderAuth();
     m[1].onAuthStateChanged(CLOUD.fb.auth,cloudUser);
