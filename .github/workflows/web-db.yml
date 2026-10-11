@@ -1,0 +1,54 @@
+name: web-db (migrations + security tests)
+
+# Applies every migration to a fresh local Postgres (Supabase CLI, never the real projects),
+# runs the pgTAP security tests in apps/web/supabase/tests, and regenerates the TypeScript types
+# of the database (committed back when they change).
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/supabase/**', '.github/workflows/web-db.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: web-db
+  cancel-in-progress: false
+
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local database (applies all migrations)
+        run: ./scripts/ci-step.sh "db start" supabase db start
+      - name: Security tests (pgTAP)
+        run: ./scripts/ci-step.sh "db test" supabase test db
+      - name: Generate database types
+        run: ./scripts/ci-step.sh "gen types" bash -c 'supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts'
+      - name: Commit types if they changed
+        id: commit
+        run: |
+          if git diff --quiet -- src/lib/supabase/database.types.ts && git ls-files --error-unmatch src/lib/supabase/database.types.ts >/dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git config user.name "hayatzia-bot"
+          git config user.email "hayatzia-bot@users.noreply.github.com"
+          git add src/lib/supabase/database.types.ts
+          git commit -m "web: עדכון סוגי מסד הנתונים (אוטומטי)"
+          git pull --rebase origin main
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Re-run web CI on the new types
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run web-ci.yml --ref main

@@ -1,0 +1,6 @@
+# Local Supabase (CLI) used by CI to apply every migration from scratch and run the database tests.
+# Never linked to the real projects: deploying migrations stays staging first, then production (docs/ENVIRONMENTS.md).
+project_id = "hayatzia-local"
+
+[db]
+major_version = 17
