@@ -1695,7 +1695,7 @@ function seedPosts(){
     }
   });
 }
-function allPosts(){return MY_POSTS.concat(OTHERS)}
+function allPosts(){return (typeof TPC!=='undefined'&&TPC?TPC.list:[]).concat(MY_POSTS,OTHERS)}
 function postById(id){var a=allPosts();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null}
 function visible(p){
   if(p.owner==='me')return true;
@@ -1707,8 +1707,8 @@ function visible(p){
 }
 function byTime(a,b){return b.t-a.t}
 function feedIds(){return allPosts().filter(function(p){return visible(p)&&(p.owner!=='me'||p.aud==='team')}).sort(byTime).map(function(p){return p.id})}
-function mineIds(){return MY_POSTS.slice().sort(byTime).map(function(p){return p.id})}
-function fanPostIds(fid){return OTHERS.filter(function(p){return p.owner===fid&&visible(p)}).sort(byTime).map(function(p){return p.id})}
+function mineIds(){return allPosts().filter(function(p){return p.owner==='me'}).sort(byTime).map(function(p){return p.id})}
+function fanPostIds(fid){return allPosts().filter(function(p){return p.owner===fid&&visible(p)}).sort(byTime).map(function(p){return p.id})}
 function idsFor(list){
   if(list==='feed')return feedIds();
   if(list==='mine')return mineIds();
@@ -1718,7 +1718,7 @@ function idsFor(list){
 function cellsHTML(ids,list,max){
   return ids.slice(0,max||99).map(function(id){
     var p=postById(id);if(!p)return '';
-    var f=p.owner==='me'?null:fanById(p.owner),who2=p.owner==='me'?nick:(f?f.nick:''),n=p.likes+(LIKED[p.id]?1:0);
+    var f=p.owner==='me'?null:fanById(p.owner),who2=p.owner==='me'?nick:(f?f.nick:''),n=p.likes+(LIKED[p.id]&&!p.cloud?1:0);
     return '<button class="cell" data-act="viewp" data-pid="'+id+'" data-list="'+list+'" aria-label="תמונה של '+esc(who2)+'"><img src="'+p.img+'" alt="'+esc(p.cap||'תמונה מהיציע')+'" loading="lazy"><span class="ov"><span>'+esc(who2)+'</span><span>♥ '+n+'</span></span></button>';
   }).join('');
 }
@@ -1736,11 +1736,12 @@ function timeAgo(t){
 function audLabels(){return {team:'אוהדי '+fav.short,chat:'מי ששוחחתי איתו',me:'רק אני'}}
 function viewerHTML(p){
   var own=p.owner==='me',f=own?null:fanById(p.owner),t=T[p.tid],nm=own?nick:(f?f.nick:'אוהד');
-  var liked=!!LIKED[p.id],n=p.likes+(liked?1:0),multi=VW.ids.length>1;
+  var liked=!!LIKED[p.id],n=p.likes+(liked&&!p.cloud?1:0),multi=VW.ids.length>1;
   var h='<div class="vhead">'+avCore(own?{me:true}:{fan:f},40)+'<div><b>'+esc(nm)+'</b><span>'+timeAgo(p.t)+(p.sample?' · תמונה לדוגמה':'')+'</span></div>'+(own?'':'<button class="x" data-act="viewfan" data-fan="'+p.owner+'">כרטיס</button>')+'<button class="x" data-act="close">סגירה</button></div>';
   h+='<div class="vimg"><img src="'+p.img+'" alt="'+esc(p.cap||'תמונה מהיציע')+'">'+(multi?'<button class="vnav prev" data-act="prev" aria-label="הקודמת">'+ic.back+'</button><button class="vnav next" data-act="next" aria-label="הבאה">'+ic.fwd+'</button>':'')+'</div>';
-  h+='<div class="vact"><button class="lk'+(liked?' on':'')+'" data-act="like" aria-pressed="'+liked+'" aria-label="לייק">'+ic.heart+'<span>'+n+'</span></button><span>'+p.comments.length+' תגובות</span></div>';
-  if(own)h+='<div class="vact"><button class="btn sm line" data-act="cycleaud">קהל: '+audLabels()[p.aud]+' · שינוי</button></div>';
+  h+='<div class="vact"><button class="lk'+(liked?' on':'')+'" data-act="like" aria-pressed="'+liked+'" aria-label="לייק">'+ic.heart+'<span>'+n+'</span></button><span>'+tpCm(p)+' תגובות</span></div>';
+  if(own&&p.cloud)h+='<div class="vact"><span class="btn sm line">קהל: אוהדי '+fav.short+' · שמור בשרת</span></div>';
+  else if(own)h+='<div class="vact"><button class="btn sm line" data-act="cycleaud">קהל: '+audLabels()[p.aud]+' · שינוי</button></div>';
   if(p.cap)h+='<div class="vcap"><b>'+esc(nm)+'</b> '+esc(p.cap)+'</div>';
   if(p.comments.length)h+='<div class="cms">'+p.comments.map(function(c){return '<div><b>'+esc(c.nick)+'</b> '+esc(c.text)+' <span class="t">'+timeAgo(c.t)+'</span></div>'}).join('')+'</div>';
   h+='<form class="inrow" id="cform"><input id="cin" maxlength="120" placeholder="הוסף תגובה" autocomplete="off" aria-label="תגובה"><button class="send" type="submit" aria-label="שליחת תגובה">'+ic.send+'</button></form>';
@@ -1753,6 +1754,7 @@ function showViewer(keep){
   if(!p){closeSheet();VW=null;return}
   var old=sheetEl.querySelector('.sheet-in'),y=old&&keep?old.scrollTop:0;
   openSheet(viewerHTML(p));
+  if(p.cloud&&!p.cmLoaded)tpLoadCm(p,function(){if(VW&&VW.ids[VW.i]===p.id){var ci=$('#cin');if(!(ci&&(ci.value||document.activeElement===ci)))showViewer(true)}});
   var cur2=sheetEl.querySelector('.sheet-in');if(cur2)cur2.scrollTop=y;
 }
 function openViewer(ids,i){VW={ids:ids,i:i,confirm:false};showViewer(false)}
@@ -1774,10 +1776,10 @@ function svBars(){
   return SV.ids.map(function(_,k){return '<i class="'+(k<SV.i?'done':(k===SV.i?'on':''))+'"><b style="animation-duration:'+SDUR+'ms"></b></i>'}).join('');
 }
 function svFoot(p){
-  var liked=!!LIKED[p.id],n=p.likes+(liked?1:0);
+  var liked=!!LIKED[p.id],n=p.likes+(liked&&!p.cloud?1:0);
   return (p.cap?'<div class="sv-cap">'+esc(p.cap)+'</div>':'')+
     '<div class="sv-act"><button class="sv-pill'+(liked?' on':'')+'" data-s="like" aria-pressed="'+liked+'" aria-label="לייק">'+ic.heart+'<span>'+n+'</span></button>'+
-    '<button class="sv-pill" data-s="cm">'+icCm+'<span>'+(p.comments.length?p.comments.length+' תגובות':'תגובה')+'</span></button>'+
+    '<button class="sv-pill" data-s="cm">'+icCm+'<span>'+(tpCm(p)?tpCm(p)+' תגובות':'תגובה')+'</span></button>'+
     '<span class="sv-cnt" dir="ltr">'+(SV.i+1)+' / '+SV.ids.length+'</span></div>';
 }
 function showStory(dir){
@@ -1829,6 +1831,7 @@ storyEl.addEventListener('click',function(e){
   if(a==='close'){closeStory();return}
   if(a==='next'){svGo(1);return}
   if(a==='prev'){svGo(-1);return}
+  if(a==='like'&&p&&p.cloud){var wasOn=!LIKED[p.id];tpLike(p,function(){if(SV&&SV.ids[SV.i]===p.id){storyEl.querySelector('.sv-foot').innerHTML=svFoot(p);if(wasOn&&LIKED[p.id]){var hh=storyEl.querySelector('[data-s="like"]');if(hh)hh.classList.add('pop')}}});return}
   if(a==='like'&&p){
     if(LIKED[p.id])delete LIKED[p.id];else LIKED[p.id]=1;store.set('liked',JSON.stringify(LIKED));
     storyEl.querySelector('.sv-foot').innerHTML=svFoot(p);
@@ -1884,7 +1887,7 @@ function openUpload(){
       opt('team','אוהדי '+fav.short,'כל האוהדים המאומתים של הקבוצה')+
       opt('chat','מי ששוחחתי איתו','רק אוהדים שיש לי איתם שיחה')+
       opt('me','רק אני','שמורה בכרטיס שלי, לא מוצגת לאף אחד')+'</div>'+
-    '<p style="font-size:13px">התמונה נדחסת, ופרטי המצלמה והמיקום נמחקים ממנה בהעלאה.'+(persist?'':' בדפדפן הזה התמונות נשמרות רק עד סגירת הדף.')+'</p>'+
+    '<p style="font-size:13px">התמונה נדחסת, ופרטי המצלמה והמיקום נמחקים ממנה בהעלאה.'+(tpCloud()?' תמונה לאוהדי '+fav.short+' נשמרת בשרת. האפשרויות האחרות נשמרות רק במכשיר הזה.':(persist?'':' בדפדפן הזה התמונות נשמרות רק עד סגירת הדף.'))+'</p>'+
     '<button class="abtn primary" id="pub" data-act="publish" disabled>פרסום</button><button class="abtn" data-act="close">ביטול</button>');
 }
 function processImage(file,ok,fail){
@@ -1907,6 +1910,7 @@ function processImage(file,ok,fail){
 }
 function publish(){
   if(!UP||!UP.img)return;
+  if(tpCloud()&&UP.aud==='team'){tpPublish(UP.img,UP.cap.trim());PRIV.photoAud='team';savePriv();UP=null;closeSheet();render();return}
   var p={id:'p'+Date.now(),owner:'me',tid:fav.id,cap:UP.cap.trim(),aud:UP.aud,t:Date.now(),img:UP.img,likes:0,comments:[]};
   MY_POSTS.unshift(p);idbPut(p);
   PRIV.photoAud=UP.aud;savePriv();
@@ -1939,6 +1943,7 @@ function photoAct(a,b){
   if(a==='viewp'){var ids=idsFor(b.dataset.list);openViewer(ids,Math.max(0,ids.indexOf(b.dataset.pid)));return true}
   if(!VW)return false;
   var p=postById(VW.ids[VW.i]);
+  if(a==='like'&&p&&p.cloud){tpLike(p,function(){if(VW)showViewer(true)});return true}
   if(a==='like'&&p){if(LIKED[p.id])delete LIKED[p.id];else LIKED[p.id]=1;store.set('liked',JSON.stringify(LIKED));showViewer(true);return true}
   if(a==='prev'){VW.i=(VW.i-1+VW.ids.length)%VW.ids.length;VW.confirm=false;showViewer(false);return true}
   if(a==='next'){VW.i=(VW.i+1)%VW.ids.length;VW.confirm=false;showViewer(false);return true}
@@ -1946,6 +1951,7 @@ function photoAct(a,b){
   if(a==='delpost'){VW.confirm=true;showViewer(true);return true}
   if(a==='delcancel'){VW.confirm=false;showViewer(true);return true}
   if(a==='delpost2'&&p&&p.owner==='me'){
+    if(p.cloud){tpDelete(p);TPC.list=TPC.list.filter(function(x){return x.id!==p.id})}
     MY_POSTS=MY_POSTS.filter(function(x){return x.id!==p.id});idbDel(p.id);
     VW.ids.splice(VW.i,1);VW.confirm=false;
     if(!VW.ids.length){closeSheet();VW=null}else{VW.i=Math.min(VW.i,VW.ids.length-1);showViewer(false)}
@@ -1976,8 +1982,8 @@ sheetEl.addEventListener('submit',function(e){
   if(e.target.id!=='cform'||!VW)return;
   var inp=$('#cin'),v=(inp.value||'').trim().slice(0,120);if(!v)return;
   var p=postById(VW.ids[VW.i]);if(!p)return;
-  p.comments.push({nick:nick,text:v,t:Date.now(),me:true});
-  if(p.owner==='me')idbPut(p);
+  if(p.cloud)tpComment(p,v);
+  else{p.comments.push({nick:nick,text:v,t:Date.now(),me:true});if(p.owner==='me')idbPut(p)}
   showViewer(true);
   var ni=$('#cin');if(ni)ni.focus();
 });
@@ -2268,6 +2274,7 @@ function sendReport(){
   var note=(($('#rnote')||{}).value||'').trim(),blk=$('#rblock'),doBlock=!!(blk&&blk.checked);
   var rp=RP;RP=null;
   REPORTS.push({kind:rp.kind,id:rp.id,reason:RSN[idx],note:note,t:Date.now()});
+  if(rp.kind==='photo'&&String(rp.id).indexOf('tp_')===0)cloudReport('photo',fav.id+'/'+String(rp.id).slice(3),RSN[idx],note);
   if(rp.kind==='clip'&&String(rp.id).indexOf('fc_')===0)cloudReport('clip',String(rp.id).slice(3),RSN[idx],note);
   store.set('reports',JSON.stringify(REPORTS.slice(-50)));
   if(rp.kind==='msg'){
@@ -2352,11 +2359,12 @@ function pBase(p){
   return {avg:avg,cnt:cnt,dist:dist.map(function(d){return d/s}),r:r};
 }
 function pStats(p){
+  if(prCloud())return prCloudStats(p);
   var b=pBase(p),m=PR[p.id],cnt=b.cnt+(m?1:0),avg=(b.avg*b.cnt+(m?m.s:0))/cnt;
   return {avg:avg,cnt:cnt,dist:b.dist,mine:m||null};
 }
 function tier(a){return a>=4.2?'gold':(a>=3.4?'silver':'bronze')}
-function fmtR(a){return (Math.round(a*10)/10).toFixed(1)}
+function fmtR(a){if(!a)return '–';return (Math.round(a*10)/10).toFixed(1)}
 function kit(t,n){
   return '<svg class="pc-kit" viewBox="0 0 48 44" aria-hidden="true"><path d="M16 3l-12 6 4 10 5-2v24h22V17l5 2 4-10-12-6c-1 4-4 6-8 6s-7-2-8-6z" fill="'+t.bg+'" stroke="'+t.ring+'" stroke-width="2" stroke-linejoin="round"/><text x="24" y="31" text-anchor="middle" font-family="Rubik,Heebo,sans-serif" font-weight="800" font-size="13" fill="'+t.ring+'">'+n+'</text></svg>';
 }
@@ -2376,7 +2384,7 @@ function squadHTML(){
   h+='<div class="pitch"><div class="pitch-lines" aria-hidden="true"><i class="pl-mid"></i><i class="pl-c"></i><i class="pl-box t"></i><i class="pl-box b"></i><i class="pl-six t"></i><i class="pl-six b"></i></div>'+
     '<span class="pitch-tag"><bdi dir="ltr">4-3-3</bdi> · לדוגמה</span>'+sq.xi.map(function(p){return pCard(p)}).join('')+'</div>';
   h+='<div class="bench-h"><span>ספסל</span><small>גוללים הצידה · לחיצה על שחקן לדירוג</small></div><div class="bench">'+allPlayers(sq).filter(function(p){return sq.xi.indexOf(p)<0}).map(function(p){return pCard(p)}).join('')+'</div>';
-  h+='<div class="note">הדירוג הוא ממוצע של אוהדי '+fav.short+' המאומתים בלבד. הסגל לפי FotMob, ההרכב הוא דוגמה, ומספרי הדירוג של שאר האוהדים מדומים בהדגמה.</div>';
+  h+='<div class="note">'+(prCloud()?'הדירוג הוא ממוצע אמיתי של אוהדי '+fav.short+' המחוברים. כל אוהד מדרג כל שחקן פעם אחת ויכול לעדכן. הסגל לפי FotMob וההרכב הוא דוגמה.':'הדירוג הוא ממוצע של אוהדי '+fav.short+' המאומתים בלבד. הסגל לפי FotMob, ההרכב הוא דוגמה, ומספרי הדירוג של שאר האוהדים מדומים בהדגמה.')+'</div>';
   PBUMP=null;
   return h;
 }
@@ -2387,11 +2395,12 @@ function starsHTML(v,act){
 }
 var RLBL=['','חלש','בינוני','סביר','טוב','מצוין'];
 function playerSheetHTML(p){
-  var s=pStats(p),b=pBase(p),r=b.r,L=okFans(),m=s.mine,rv=[];
-  var k=2+Math.floor(r()*2);
+  var s=pStats(p),b=pBase(p),r=b.r,L=okFans(),m=s.mine,rv=[],cl=prCloud();
+  var k=cl?0:2+Math.floor(r()*2);
+  if(cl)rv=(PRC.rv[p.id]||[]).map(function(x){return {nick:x.nick,s:x.s,txt:x.txt,t:x.t,real:1}});
   for(var i=0;i<k&&L.length;i++){var f=L[Math.floor(r()*L.length)],sc=Math.max(1,Math.min(5,Math.round(b.avg+(r()-0.5)*2)));rv.push({f:f,s:sc,txt:pick(r,RVTXT[sc-1]),t:Date.now()-Math.floor((0.2+r()*6)*86400000)})}
   var h='<div class="ps-top">'+pCard(p,true)+'<div class="ps-id"><span class="prev-l">'+POSHE[p.pos]+(p.n?' · מספר '+p.n:'')+(p.inj?' · פצוע':'')+'</span><b class="ps-nm">'+esc(p.nm)+'</b>'+
-    '<div class="ps-avg"><b>'+fmtR(s.avg)+'</b><span>'+starRow(s.avg)+'<small>'+num(s.cnt)+' דירוגים</small></span></div></div><button class="ps-x" data-act="close" aria-label="סגירה">סגירה</button></div>';
+    '<div class="ps-avg"><b>'+fmtR(s.avg)+'</b><span>'+starRow(s.avg)+'<small>'+(s.cnt?num(s.cnt)+' דירוגים':'עוד אין דירוגים')+'</small></span></div></div><button class="ps-x" data-act="close" aria-label="סגירה">סגירה</button></div>';
   h+='<div class="ps-dist">'+[5,4,3,2,1].map(function(c){var w=Math.round(s.dist[c-1]*100);return '<div><span>'+c+'</span><i><b style="width:'+w+'%"></b></i><small>'+w+'%</small></div>'}).join('')+'</div>';
   h+='<form class="ps-form" id="pform"><div class="prev-l">'+(m?'הדירוג שלך':'מה הדירוג שלך?')+'</div>'+starsHTML(PCUR.v,'prate')+'<div class="ps-lbl" id="plbl">'+(PCUR.v?RLBL[PCUR.v]:'לחץ על כוכב')+'</div>'+
     '<label class="fld">חוות דעת (אופציונלי)<textarea id="ptxt" maxlength="200" rows="3" placeholder="מה דעתך על '+esc(p.sh)+' העונה?">'+esc(PCUR.txt)+'</textarea></label>'+
@@ -2399,7 +2408,8 @@ function playerSheetHTML(p){
     (m?'<button class="abtn" type="button" data-act="pdel">מחיקת הדירוג שלי</button>':'')+'</form>';
   h+='<div class="ps-rv"><div class="prev-l">מה אוהדים אחרים כתבו</div>'+
     (m&&m.txt?'<div class="rv me"><div class="rv-h">'+avCore({me:true},28)+'<b>'+esc(nick)+'</b><span class="rv-s">'+m.s+'★</span><small>'+timeAgo(m.t)+'</small></div><p>'+esc(m.txt)+'</p></div>':'')+
-    rv.map(function(x){return '<div class="rv"><div class="rv-h">'+avCore({fan:x.f},28)+'<b>'+esc(x.f.nick)+'</b><span class="rv-s">'+x.s+'★</span><small>'+timeAgo(x.t)+' · לדוגמה</small></div><p>'+esc(x.txt)+'</p></div>'}).join('')+'</div>';
+    rv.map(function(x){return '<div class="rv"><div class="rv-h">'+(x.real?avCore({nick:x.nick,tid:fav.id},28):avCore({fan:x.f},28))+'<b>'+esc(x.real?x.nick:x.f.nick)+'</b><span class="rv-s">'+x.s+'★</span><small>'+timeAgo(x.t)+(x.real?'':' · לדוגמה')+'</small></div><p>'+esc(x.txt)+'</p></div>'}).join('')+
+    (cl&&!rv.length&&!(m&&m.txt)?'<div class="empty"><div>עוד אין חוות דעת. תהיה הראשון לכתוב</div></div>':'')+'</div>';
   return h;
 }
 function starRow(a){
@@ -2407,8 +2417,9 @@ function starRow(a){
   for(var i=1;i<=5;i++){var f=Math.max(0,Math.min(1,a-(i-1)));h+='<i style="--f:'+Math.round(f*100)+'%"></i>'}
   return h+'</span>';
 }
-function openPlayer(id){
+function openPlayer(id,synced){
   var p=playerById(id);if(!p)return;
+  if(prCloud()&&!synced){prCloudLoad(id,function(){openPlayer(id,1)});return}
   var m=PR[p.id];PCUR={id:id,v:m?m.s:0,txt:m?m.txt||'':''};
   openSheet(playerSheetHTML(p));
   var si=sheetEl.querySelector('.sheet-in');if(si)si.classList.add('ps');
@@ -2436,13 +2447,16 @@ function squadAct(a,b){
     var s=$('#psub');if(s)s.disabled=false;
     return true;
   }
+  if(a==='pdel'&&prCloud()&&PR[PCUR.id]){var dId=PCUR.id,dOld=PR[dId];prCloudWrite(dId,dOld.s,0,'').catch(function(e){console.warn(e);PR[dId]=dOld;savePR();prPaint();toast('המחיקה נכשלה')})}
   if(a==='pdel'){delete PR[PCUR.id];savePR();PBUMP=PCUR.id;openPlayer(PCUR.id);render();toast('הדירוג שלך נמחק');return true}
   return false;
 }
 function submitPlayer(){
   if(!PCUR||!PCUR.v)return;
   var t=($('#ptxt')||{}).value||'';
+  var pOld=PR[PCUR.id]||null,pId=PCUR.id;
   PR[PCUR.id]={s:PCUR.v,txt:t.trim().slice(0,200),t:Date.now()};savePR();
+  if(prCloud())prCloudWrite(pId,pOld?pOld.s:0,PR[pId].s,PR[pId].txt).catch(function(e){console.warn(e);if(pOld)PR[pId]=pOld;else delete PR[pId];savePR();prPaint();toast('הדירוג לא נשמר בשרת')});
   PBUMP=PCUR.id;var id=PCUR.id;PCUR=null;closeSheet();render();
   var p=playerById(id);toast('הדירוג של '+(p?p.sh:'השחקן')+' נשמר: '+PR[id].s+'★');
 }
@@ -3530,7 +3544,7 @@ function cloudInit(){
 function cloudUser(u){
   CLOUD.user=u||null;
   if(!u){
-    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();
+    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();
     // an old demo "Google" account on the live site: send it through the real sign-in
     if(who==='חשבון Google'||/^Google · /.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
     return;
@@ -3577,8 +3591,8 @@ function cloudSaveProfile(){
 function cloudNickSoon(){if(!CLOUD.saved)return;clearTimeout(CLOUD.nickT);CLOUD.nickT=setTimeout(cloudSaveProfile,900)}
 function cloudDetach(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}CLOUD.live=false}
 function cloudAttach(){
-  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();sqCloudDetach();return}
-  sqCloudAttach();
+  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();return}
+  sqCloudAttach();prCloudAttach();tpAttach();
   if(CLOUD.live===fav.id)return;
   cloudDetach();
   var F=CLOUD.fb.F,team=fav.id;
@@ -3608,7 +3622,7 @@ function cloudSend(text){
     .catch(function(e){console.warn(e);toast('ההודעה לא נשלחה')});
 }
 function cloudSignOut(){
-  cloudDetach();sqCloudDetach();CLOUD.prof=null;CLOUD.saved=false;
+  cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();CLOUD.prof=null;CLOUD.saved=false;
   if(CLOUD.fb&&CLOUD.user)CLOUD.fb.Au.signOut(CLOUD.fb.auth);
 }
 
@@ -3710,6 +3724,128 @@ function cloudReport(kind,ref,reason,note){
   var F=CLOUD.fb.F;
   F.addDoc(F.collection(CLOUD.fb.db,'reports'),{uid:CLOUD.user.uid,kind:kind,ref:String(ref),reason:String(reason).slice(0,60),note:String(note||'').slice(0,120),t:F.serverTimestamp()}).catch(function(e){console.warn(e)});
 }
+
+/* ---------- cloud player ratings: real averages from the team's fans ---------- */
+var PRC={unsub:null,team:null,agg:{},rv:{}};
+function prCloud(){return !!(CLOUD.saved&&CLOUD.user&&fav&&CLOUD.prof&&CLOUD.prof.team===fav.id)}
+function prCloudAttach(){
+  if(!prCloud()){prCloudDetach();return}
+  if(PRC.team===fav.id&&PRC.unsub)return;
+  prCloudDetach();
+  var F=CLOUD.fb.F,team=fav.id;PRC.team=team;
+  PRC.unsub=F.onSnapshot(F.collection(CLOUD.fb.db,'teams',team,'ratings'),function(s){
+    if(PRC.team!==team)return;
+    var a={};s.docs.forEach(function(d){a[d.id]=d.data()});PRC.agg=a;
+    if(ui.tab==='stand'&&!cur)prPaint();
+  },function(e){console.warn('ratings',e)});
+  // the fan's own ratings live on the server (so they follow him between devices); local demo ratings are replaced
+  var sq=squadOf(fav);if(!sq)return;
+  var mine={},left=allPlayers(sq).length;
+  allPlayers(sq).forEach(function(p){
+    F.getDoc(F.doc(CLOUD.fb.db,'teams',team,'ratings',p.id,'by',CLOUD.user.uid)).then(function(d){
+      if(d.exists()){var v=d.data();mine[p.id]={s:v.s,txt:v.txt||'',t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()}}
+    }).catch(function(){}).then(function(){if(--left===0&&PRC.team===team){PR=mine;savePR();if(ui.tab==='stand'&&!cur)prPaint()}});
+  });
+}
+function prCloudDetach(){if(PRC.unsub){PRC.unsub();PRC.unsub=null}PRC.team=null;PRC.agg={};PRC.rv={}}
+function prCloudStats(p){
+  var g=PRC.agg[p.id]||{},cnt=g.cnt||0,dist=[1,2,3,4,5].map(function(k){return cnt?(g['d'+k]||0)/cnt:0});
+  return {avg:cnt?(g.sum||0)/cnt:0,cnt:cnt,dist:dist,mine:PR[p.id]||null};
+}
+function prPaths(pid){
+  var F=CLOUD.fb.F,db=CLOUD.fb.db;
+  return {agg:F.doc(db,'teams',fav.id,'ratings',pid),by:F.doc(db,'teams',fav.id,'ratings',pid,'by',CLOUD.user.uid)};
+}
+// one batch keeps the fan's own rating and the team average in step
+function prCloudWrite(pid,old,s,txt){
+  var F=CLOUD.fb.F,P=prPaths(pid),bt=F.writeBatch(CLOUD.fb.db),u={};
+  if(s){bt.set(P.by,{s:s,txt:txt,nick:String(nick||'אוהד').slice(0,20),t:F.serverTimestamp()})}else bt.delete(P.by);
+  if(old!==s){
+    u.sum=F.increment(s-old);u.cnt=F.increment((s?1:0)-(old?1:0));
+    if(old)u['d'+old]=F.increment(-1);
+    if(s)u['d'+s]=F.increment(1);
+    bt.set(P.agg,u,{merge:true});
+  }
+  return bt.commit();
+}
+// sync the fan's own rating (it may come from another device) and load the latest written reviews
+function prCloudLoad(pid,cb){
+  var F=CLOUD.fb.F,P=prPaths(pid),done=0,fin=function(){if(++done===2)cb()};
+  F.getDoc(P.by).then(function(d){
+    if(d.exists()){var v=d.data();PR[pid]={s:v.s,txt:v.txt||'',t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()}}else delete PR[pid];
+    savePR();
+  }).catch(function(e){console.warn(e)}).then(fin);
+  F.getDocs(F.query(F.collection(CLOUD.fb.db,'teams',fav.id,'ratings',pid,'by'),F.orderBy('t','desc'),F.limit(25))).then(function(s){
+    var me=CLOUD.user.uid;
+    PRC.rv[pid]=s.docs.filter(function(d){return d.id!==me&&d.data().txt}).slice(0,8).map(function(d){var v=d.data();return {nick:String(v.nick||'אוהד'),s:v.s,txt:String(v.txt),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()}});
+  }).catch(function(e){console.warn(e)}).then(fin);
+}
+
+function prPaint(){
+  view.querySelectorAll('.pc[data-p]').forEach(function(el){
+    var p=playerById(el.dataset.p);if(!p)return;
+    var w=document.createElement('div');w.innerHTML=pCard(p);var n=w.firstChild;
+    if(n&&n.outerHTML!==el.outerHTML)el.replaceWith(n);
+  });
+}
+
+/* ---------- cloud stand photos: the team's shared gallery (only that team's fans see it) ---------- */
+var TPC={unsub:null,team:null,list:[]};
+function tpCloud(){return prCloud()}
+function tpAttach(){
+  if(!tpCloud()){tpDetach();return}
+  if(TPC.team===fav.id&&TPC.unsub)return;
+  tpDetach();
+  var F=CLOUD.fb.F,team=fav.id;TPC.team=team;
+  TPC.unsub=F.onSnapshot(F.query(F.collection(CLOUD.fb.db,'teams',team,'photos'),F.orderBy('t','desc'),F.limit(60)),function(s){
+    if(TPC.team!==team)return;
+    var me=CLOUD.user.uid,prev={};TPC.list.forEach(function(p){prev[p.id]=p});
+    var before=TPC.list.map(function(p){return p.id}).join(',');
+    TPC.list=s.docs.map(function(d){
+      var v=d.data({serverTimestamps:'estimate'}),id='tp_'+d.id,o=prev[id];
+      return {id:id,fid:d.id,cloud:true,owner:v.uid===me?'me':resolveFan(String(v.nick||'אוהד'),team).id,tid:team,cap:String(v.cap||''),aud:'team',
+        t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),img:String(v.img||''),likes:v.likes||0,ncm:v.ncm||0,comments:o?o.comments:[],cmLoaded:o?o.cmLoaded:false};
+    }).filter(function(p){return /^data:image\//.test(p.img)});
+    if(TPC.list.map(function(p){return p.id}).join(',')!==before&&ui.tab==='stand'&&!cur&&!SV&&!VW)render();
+  },function(e){console.warn('photos',e)});
+}
+function tpDetach(){if(TPC.unsub){TPC.unsub();TPC.unsub=null}TPC.team=null;TPC.list=[]}
+function tpRef(p){var F=CLOUD.fb.F;return F.doc(CLOUD.fb.db,'teams',p.tid,'photos',p.fid)}
+function tpCm(p){return p.cloud?Math.max(p.ncm,p.comments.length):p.comments.length}
+function tpLike(p,after){
+  var on=!LIKED[p.id];
+  if(on)LIKED[p.id]=1;else delete LIKED[p.id];store.set('liked',JSON.stringify(LIKED));
+  p.likes=Math.max(0,p.likes+(on?1:-1));after();
+  var F=CLOUD.fb.F,bt=F.writeBatch(CLOUD.fb.db),lr=F.doc(CLOUD.fb.db,'teams',p.tid,'photos',p.fid,'likes',CLOUD.user.uid);
+  if(on)bt.set(lr,{t:F.serverTimestamp()});else bt.delete(lr);
+  bt.update(tpRef(p),{likes:F.increment(on?1:-1)});
+  bt.commit().catch(function(){p.likes=Math.max(0,p.likes+(on?-1:1));after()});
+}
+function tpLoadCm(p,cb){
+  if(p.cmLoaded)return;p.cmLoaded=true;
+  var F=CLOUD.fb.F,me=CLOUD.user.uid;
+  F.getDocs(F.query(F.collection(CLOUD.fb.db,'teams',p.tid,'photos',p.fid,'cm'),F.orderBy('t','asc'),F.limit(100))).then(function(s){
+    p.comments=s.docs.map(function(d){var v=d.data({serverTimestamps:'estimate'});return {nick:String(v.nick||'אוהד'),text:String(v.text||''),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),me:v.uid===me}});
+    cb();
+  }).catch(function(e){p.cmLoaded=false;console.warn(e)});
+}
+function tpComment(p,text){
+  var F=CLOUD.fb.F,bt=F.writeBatch(CLOUD.fb.db);
+  bt.set(F.doc(F.collection(CLOUD.fb.db,'teams',p.tid,'photos',p.fid,'cm')),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),text:text,t:F.serverTimestamp()});
+  bt.update(tpRef(p),{ncm:F.increment(1)});
+  p.comments.push({nick:nick,text:text,t:Date.now(),me:true});p.ncm++;
+  bt.commit().catch(function(e){console.warn(e);toast('התגובה לא נשמרה')});
+}
+function tpPublish(img,cap){
+  var F=CLOUD.fb.F;
+  sqFitImg(img,function(u){
+    if(!u){toast('התמונה גדולה מדי. נסה תמונה אחרת');return}
+    F.addDoc(F.collection(CLOUD.fb.db,'teams',fav.id,'photos'),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),img:u,cap:cap.slice(0,120),t:F.serverTimestamp(),likes:0,ncm:0})
+      .then(function(){toast('התמונה פורסמה לאוהדי '+fav.short)})
+      .catch(function(e){console.warn(e);toast('הפרסום נכשל. נסה שוב')});
+  });
+}
+function tpDelete(p){CLOUD.fb.F.deleteDoc(tpRef(p)).catch(function(){toast('המחיקה נכשלה')})}
 
 /* ---------- live simulation ---------- */
 setInterval(function(){

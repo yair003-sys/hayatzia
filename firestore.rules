@@ -5,18 +5,28 @@ service cloud.firestore {
     function teamIds() { return ['mta','hta','mhf','bei','hbs','hhf','hjr','mpt','hpt','ikn','itb','hrg','mnt','snk']; }
     function validNick(n) { return n is string && n.size() <= 20; }
     function myTeam() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.team; }
+    function rd() { return request.resource.data; }
+    function onlyChanged(f) { return rd().diff(resource.data).affectedKeys().hasOnly([f]); }
+    function bump(f, d) { return rd()[f] == resource.data[f] + d; }
+    // a counter moves by one exactly when the fan's own marker document appears or disappears in the same write
+    function toggled(f, mark) {
+      return (bump(f, 1) && existsAfter(mark) && !exists(mark))
+          || (bump(f, -1) && !existsAfter(mark) && exists(mark));
+    }
+    function validImg(img) { return img is string && img.size() < 700000 && img.matches('data:image/jpeg;base64,.*'); }
+    function validText(t, max) { return t is string && t.size() > 0 && t.size() <= max; }
 
     // A fan's profile. The team is chosen once and can never change.
     match /users/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['team','nick','created'])
-        && request.resource.data.team in teamIds()
-        && validNick(request.resource.data.nick)
-        && request.resource.data.created == request.time;
+        && rd().keys().hasOnly(['team','nick','created'])
+        && rd().team in teamIds()
+        && validNick(rd().nick)
+        && rd().created == request.time;
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nick'])
-        && validNick(request.resource.data.nick);
+        && rd().diff(resource.data).affectedKeys().hasOnly(['nick'])
+        && validNick(rd().nick);
       allow delete: if false;
     }
 
@@ -24,57 +34,124 @@ service cloud.firestore {
     match /teams/{team}/msgs/{msgId} {
       allow read: if signedIn() && myTeam() == team;
       allow create: if signedIn() && myTeam() == team
-        && request.resource.data.keys().hasOnly(['uid','nick','text','t'])
-        && request.resource.data.uid == request.auth.uid
-        && validNick(request.resource.data.nick)
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 200
-        && request.resource.data.t == request.time;
+        && rd().keys().hasOnly(['uid','nick','text','t'])
+        && rd().uid == request.auth.uid
+        && validNick(rd().nick)
+        && validText(rd().text, 200)
+        && rd().t == request.time;
       allow update, delete: if false;
+    }
+
+    // Player ratings: one rating per fan per player, plus a running total per player.
+    match /teams/{team}/ratings/{pid} {
+      function byPath() { return /databases/$(database)/documents/teams/$(team)/ratings/$(pid)/by/$(request.auth.uid); }
+      function ov(f) { return resource == null ? 0 : resource.data.get(f, 0); }
+      function nv(f) { return rd().get(f, 0); }
+      function one(c) { return c ? 1 : 0; }
+      function dOk(k, a, b) { return nv('d' + string(k)) == ov('d' + string(k)) + one(a == k) - one(b == k); }
+      function consistent(a, b) {
+        return a != b
+          && nv('sum') == ov('sum') + a - b
+          && nv('cnt') == ov('cnt') + one(a > 0) - one(b > 0)
+          && dOk(1, a, b) && dOk(2, a, b) && dOk(3, a, b) && dOk(4, a, b) && dOk(5, a, b);
+      }
+      allow read: if signedIn() && myTeam() == team;
+      allow create, update: if signedIn() && myTeam() == team
+        && rd().keys().hasOnly(['sum','cnt','d1','d2','d3','d4','d5'])
+        && consistent(existsAfter(byPath()) ? getAfter(byPath()).data.s : 0,
+                      exists(byPath()) ? get(byPath()).data.s : 0);
+      allow delete: if false;
+
+      match /by/{uid} {
+        function aggPath() { return /databases/$(database)/documents/teams/$(team)/ratings/$(pid); }
+        function aggOld() { return exists(aggPath()) ? get(aggPath()).data.get('sum', 0) : 0; }
+        function aggNew() { return getAfter(aggPath()).data.get('sum', 0); }
+        function valid() {
+          return rd().keys().hasOnly(['s','txt','nick','t'])
+            && rd().s is int && rd().s >= 1 && rd().s <= 5
+            && rd().txt is string && rd().txt.size() <= 200
+            && validNick(rd().nick)
+            && rd().t == request.time;
+        }
+        allow read: if signedIn() && myTeam() == team;
+        allow create: if signedIn() && request.auth.uid == uid && myTeam() == team && valid()
+          && aggNew() == aggOld() + rd().s;
+        allow update: if signedIn() && request.auth.uid == uid && myTeam() == team && valid()
+          && (rd().s == resource.data.s || aggNew() == aggOld() + rd().s - resource.data.s);
+        allow delete: if signedIn() && request.auth.uid == uid
+          && aggNew() == aggOld() - resource.data.s;
+      }
+    }
+
+    // Stand photos: the team's own gallery. Only that team's fans see it.
+    match /teams/{team}/photos/{phid} {
+      function photoPath() { return /databases/$(database)/documents/teams/$(team)/photos/$(phid); }
+      allow read: if signedIn() && myTeam() == team;
+      allow create: if signedIn() && myTeam() == team
+        && rd().keys().hasOnly(['uid','nick','img','cap','t','likes','ncm'])
+        && rd().uid == request.auth.uid
+        && validNick(rd().nick)
+        && validImg(rd().img)
+        && rd().cap is string && rd().cap.size() <= 120
+        && rd().t == request.time
+        && rd().likes == 0 && rd().ncm == 0;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && myTeam() == team && (
+        (onlyChanged('likes') && toggled('likes', /databases/$(database)/documents/teams/$(team)/photos/$(phid)/likes/$(request.auth.uid)))
+        || (onlyChanged('ncm') && bump('ncm', 1))
+      );
+      match /likes/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid && rd().keys().hasOnly(['t'])
+          && getAfter(photoPath()).data.likes == get(photoPath()).data.likes + 1;
+        allow delete: if signedIn() && request.auth.uid == uid
+          && getAfter(photoPath()).data.likes == get(photoPath()).data.likes - 1;
+      }
+      match /cm/{mid} {
+        allow read: if signedIn() && myTeam() == team;
+        allow create: if signedIn() && myTeam() == team
+          && rd().keys().hasOnly(['uid','nick','text','t'])
+          && rd().uid == request.auth.uid
+          && validNick(rd().nick)
+          && validText(rd().text, 120)
+          && rd().t == request.time;
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
     }
 
     // The square: one shared feed for the whole league.
     match /clips/{cid} {
       function clipPath() { return /databases/$(database)/documents/clips/$(cid); }
       function mark(kind) { return /databases/$(database)/documents/clips/$(cid)/$(kind)/$(request.auth.uid); }
-      function onlyChanged(f) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly([f]); }
-      function bump(f, d) { return request.resource.data[f] == resource.data[f] + d; }
-      function toggled(f, kind) {
-        return (bump(f, 1) && existsAfter(mark(kind)) && !exists(mark(kind)))
-            || (bump(f, -1) && !existsAfter(mark(kind)) && exists(mark(kind)));
-      }
       allow read: if signedIn();
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.tid == myTeam()
-        && validNick(request.resource.data.nick)
-        && request.resource.data.img is string
-        && request.resource.data.img.size() < 700000
-        && request.resource.data.img.matches('data:image/jpeg;base64,.*')
-        && request.resource.data.cap is string && request.resource.data.cap.size() <= 120
-        && request.resource.data.tags is string && request.resource.data.tags.size() <= 60
-        && request.resource.data.t == request.time
-        && request.resource.data.likes == 0 && request.resource.data.resp == 0 && request.resource.data.ncm == 0;
+        && rd().keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm'])
+        && rd().uid == request.auth.uid
+        && rd().tid == myTeam()
+        && validNick(rd().nick)
+        && validImg(rd().img)
+        && rd().cap is string && rd().cap.size() <= 120
+        && rd().tags is string && rd().tags.size() <= 60
+        && rd().t == request.time
+        && rd().likes == 0 && rd().resp == 0 && rd().ncm == 0;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
       allow update: if signedIn() && (
-        (onlyChanged('likes') && toggled('likes', 'likes'))
-        || (onlyChanged('resp') && myTeam() != resource.data.tid && toggled('resp', 'resp'))
+        (onlyChanged('likes') && toggled('likes', mark('likes')))
+        || (onlyChanged('resp') && myTeam() != resource.data.tid && toggled('resp', mark('resp')))
         || (onlyChanged('ncm') && bump('ncm', 1))
       );
 
       // one like and one "respect" per fan, kept in step with the counters above
       match /likes/{uid} {
         allow read: if signedIn() && request.auth.uid == uid;
-        allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['t'])
+        allow create: if signedIn() && request.auth.uid == uid && rd().keys().hasOnly(['t'])
           && getAfter(clipPath()).data.likes == get(clipPath()).data.likes + 1;
         allow delete: if signedIn() && request.auth.uid == uid
           && getAfter(clipPath()).data.likes == get(clipPath()).data.likes - 1;
       }
       match /resp/{uid} {
         allow read: if signedIn() && request.auth.uid == uid;
-        allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['t'])
+        allow create: if signedIn() && request.auth.uid == uid && rd().keys().hasOnly(['t'])
           && getAfter(clipPath()).data.resp == get(clipPath()).data.resp + 1;
         allow delete: if signedIn() && request.auth.uid == uid
           && getAfter(clipPath()).data.resp == get(clipPath()).data.resp - 1;
@@ -82,14 +159,12 @@ service cloud.firestore {
       match /cm/{mid} {
         allow read: if signedIn();
         allow create: if signedIn()
-          && request.resource.data.keys().hasOnly(['uid','nick','tid','text','t'])
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.tid == myTeam()
-          && validNick(request.resource.data.nick)
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 150
-          && request.resource.data.t == request.time;
+          && rd().keys().hasOnly(['uid','nick','tid','text','t'])
+          && rd().uid == request.auth.uid
+          && rd().tid == myTeam()
+          && validNick(rd().nick)
+          && validText(rd().text, 150)
+          && rd().t == request.time;
         allow delete: if signedIn() && resource.data.uid == request.auth.uid;
       }
     }
@@ -97,13 +172,13 @@ service cloud.firestore {
     // Reports go to the moderators only. Nobody can read them from the app.
     match /reports/{rid} {
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','kind','ref','reason','note','t'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.kind is string && request.resource.data.kind.size() <= 20
-        && request.resource.data.ref is string && request.resource.data.ref.size() <= 100
-        && request.resource.data.reason is string && request.resource.data.reason.size() <= 60
-        && request.resource.data.note is string && request.resource.data.note.size() <= 120
-        && request.resource.data.t == request.time;
+        && rd().keys().hasOnly(['uid','kind','ref','reason','note','t'])
+        && rd().uid == request.auth.uid
+        && rd().kind is string && rd().kind.size() <= 20
+        && rd().ref is string && rd().ref.size() <= 100
+        && rd().reason is string && rd().reason.size() <= 60
+        && rd().note is string && rd().note.size() <= 120
+        && rd().t == request.time;
       allow read, update, delete: if false;
     }
   }
