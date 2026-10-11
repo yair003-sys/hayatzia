@@ -1521,7 +1521,7 @@ function render(){
   view.scrollTop=y;
   tabs.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===ui.tab?'page':'false')});
   seg.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.f===ui.filter))});
-  setIdBtn();setTabLabels();
+  setIdBtn();setTabLabels();navSave();
 }
 function go(tab){ui.tab=tab;render();view.scrollTop=0}
 tabs.addEventListener('click',function(e){var b=e.target.closest('button');if(b)go(b.dataset.tab)});
@@ -2118,7 +2118,7 @@ function seedTrips(){
 }
 function setSub(s){
   if(!cur||cur.kind!=='team')return;
-  cur.sub=s;
+  cur.sub=s;navSave();
   chat.querySelectorAll('#ctabs button').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.t===s))});
   var mw=chat.querySelector('#mw'),cp=chat.querySelector('#comp');
   if(mw)mw.hidden=s!=='chat';
@@ -3479,7 +3479,7 @@ function mount(kind,id){
   chat.innerHTML='<div class="ch" id="chHead"></div>'+(isTeam?CTABS:'')+'<div class="msgwrap" id="mw"><div class="msgs" id="msgs" role="log" aria-live="polite"></div><button class="newpill" id="newpill" hidden>הודעות חדשות ↓</button></div>'+(isTeam?'<div class="trips" id="trips" hidden></div><div class="trips" id="events" hidden></div><div class="trips" id="market" hidden></div>':'')+'<div class="comp" id="comp"></div>';
   cur.sub='chat';
   if(isTeam)updTCount();
-  renderHead();renderMsgs();renderComp();
+  renderHead();renderMsgs();renderComp();navSave();
   msgsEl().addEventListener('scroll',function(){if(nearBottom(this))chat.querySelector('#newpill').hidden=true});
 }
 function openRoom(id){mount('match',id)}
@@ -3604,7 +3604,7 @@ function cloudUser(u){
       loadAccount();
       if(!nick)showAuth('nick');
       else if(!authEl.hidden){authEl.hidden=true;authEl.innerHTML='';ui.tab='stand';render();toast('ברוך שובך, '+nick)}
-      else render();
+      else{render();navApply()}
     }else{
       store.del('team');loadAccount();render();AUTH.pick=null;showAuth('team');
     }
@@ -4071,7 +4071,7 @@ function dmAttach(){
       var open=cur&&cur.kind==='thread'&&cur.id===id;
       th.unread=!open&&v.lastFrom&&v.lastFrom!==me&&last>(DM.read[d.id]||0)?1:0;
     });
-    setTabLabels();if(ui.tab==='inbox'&&!cur)render();
+    setTabLabels();if(NAV_PENDING&&NAV_PENDING.kind==='thread')navApply();if(ui.tab==='inbox'&&!cur)render();
   },function(e){console.warn('dms',e)});
 }
 function dmDetach(){if(DM.unsub){DM.unsub();DM.unsub=null}dmClose();Object.keys(THREADS).forEach(function(k){if(THREADS[k].real)delete THREADS[k]})}
@@ -4191,6 +4191,35 @@ document.addEventListener('change',function(e){
   t.value='';
   dst.dispatchEvent(new Event('change',{bubbles:true}));
 },true);
+
+/* ---------- remember where the fan is: the screen lives in the address (#square, #team/market, #thread/…) so a refresh returns there ---------- */
+var NAVTABS={stand:1,home:1,square:1,inbox:1,me:1},NAV_PENDING=null;
+function navHash(){
+  if(cur){
+    if(cur.kind==='team')return '#team'+(cur.sub&&cur.sub!=='chat'?'/'+cur.sub:'');
+    if(cur.kind==='match')return '#room/'+cur.id;
+    if(cur.kind==='thread')return '#thread/'+cur.id;
+  }
+  return ui.tab==='stand'?'':'#'+ui.tab;
+}
+function navSave(){
+  var h=navHash();
+  if((location.hash||'')!==h){try{history.replaceState(null,'',location.pathname+location.search+h)}catch(e){}}
+}
+function navRead(){
+  var h=decodeURIComponent((location.hash||'').slice(1)),p=h.split('/');
+  if(!h)return;
+  if(NAVTABS[p[0]]){ui.tab=p[0];return}
+  if(p[0]==='team'||p[0]==='room'||p[0]==='thread')NAV_PENDING={kind:p[0],arg:p.slice(1).join('/')};
+}
+// open the saved chat screen once the data it needs is there
+function navApply(){
+  var n=NAV_PENDING;if(!n||!fav)return false;
+  if(n.kind==='team'){NAV_PENDING=null;ui.tab='stand';openTeam(n.arg||'chat');return true}
+  if(n.kind==='room'&&MBY[n.arg]){NAV_PENDING=null;ui.tab='home';openRoom(n.arg);return true}
+  if(n.kind==='thread'&&THREADS[n.arg]){NAV_PENDING=null;ui.tab='inbox';openThread(n.arg);return true}
+  return false;
+}
 /* ---------- live simulation ---------- */
 setInterval(function(){
   var now=Date.now();
@@ -4258,12 +4287,13 @@ function tick(){
 }
 setInterval(tick,1000);
 
-loadAccount();cloudInit();
+loadAccount();navRead();cloudInit();
 idbInit(function(){render()});
 render();tick();
 if(!who)showAuth('welcome');
 else if(!fav)showAuth('team');
 else if(!nick)showAuth('nick');
+else if(!cloudWanted())navApply();
 })();
 </script>
 
