@@ -3267,7 +3267,7 @@ function renderAuth(){
   if(s==='welcome'){
     h=ART+authTop()+
       '<div class="a-main"><div class="kick">ליגת העל · 2026/27</div><h1>רק אוהדים<br>אמיתיים.</h1><p>קהילה פרטית לכל קבוצה. כל אוהד מאומת, וקבוצה אחת לכל החיים.</p></div>'+
-      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">'+(CLOUD.ok?'כניסה מאובטחת: קוד חד פעמי ב-SMS, או חשבון Google.':'בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.')+'</div></div>';
+      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">'+(CLOUD.ok&&inAppBrowser()?'<b>פתחת מתוך אפליקציה אחרת.</b> לכניסה עם Google פתח את הקישור בכרום או בספארי. כניסה בטלפון עובדת גם כאן.':CLOUD.ok?'כניסה מאובטחת: קוד חד פעמי ב-SMS, או חשבון Google.':'בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.')+'</div></div>';
   }else if(s==='phone'){
     h=ART+authTop('welcome')+
       '<div class="a-main"><h2>מה המספר שלך?</h2><p>נשלח קוד אימות ב-SMS. המספר לא יוצג לאף אוהד אחר.</p>'+
@@ -3607,13 +3607,18 @@ function cloudUser(u){
     }
   }).catch(function(e){console.warn(e);toast('לא הצלחנו לטעון את הפרופיל מהשרת')});
 }
+// in-app browsers (Instagram, Facebook, TikTok, LinkedIn, Line, Snapchat) are blocked by Google sign-in
+function inAppBrowser(){return /FBAN|FBAV|FB_IAB|Instagram|TikTok|musical_ly|BytedanceWebview|LinkedInApp|Line\/|Snapchat/i.test(navigator.userAgent||'')}
 function cloudSignIn(){
+  if(inAppBrowser()){toast('גוגל חוסמת התחברות מתוך האפליקציה הזאת. פתח את הקישור בכרום או בספארי, או היכנס עם מספר טלפון');return}
   var Au=CLOUD.fb.Au,p=new Au.GoogleAuthProvider();
   p.setCustomParameters({prompt:'select_account'});
   Au.signInWithPopup(CLOUD.fb.auth,p).catch(function(e){
     var c=e&&e.code||'';
     if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'){Au.signInWithRedirect(CLOUD.fb.auth,p);return}
-    if(c!=='auth/popup-closed-by-user'&&c!=='auth/cancelled-popup-request')toast('ההתחברות נכשלה. נסה שוב');
+    if(c==='auth/web-storage-unsupported'||c==='auth/operation-not-supported-in-this-environment')toast('הדפדפן הזה לא תומך בהתחברות. פתח את הקישור בכרום או בספארי');
+    else if(c==='auth/network-request-failed')toast('אין חיבור לאינטרנט. נסה שוב');
+    else if(c!=='auth/popup-closed-by-user'&&c!=='auth/cancelled-popup-request')toast('ההתחברות נכשלה. נסה שוב, או היכנס עם מספר טלפון');
   });
 }
 function cloudSaveProfile(){
@@ -4138,7 +4143,7 @@ function phoneErr(e){
   if(c==='auth/too-many-requests')return 'יותר מדי ניסיונות מהמכשיר הזה. נסה שוב בעוד כמה דקות';
   if(c==='auth/quota-exceeded')return 'הגענו למכסת ההודעות היומית. נסה שוב מחר, או התחבר עם Google';
   if(c==='auth/billing-not-enabled')return 'שליחת SMS עוד לא הופעלה באפליקציה. בינתיים אפשר להתחבר עם Google';
-  if(c==='auth/operation-not-allowed'||c==='auth/unsupported-first-factor')return 'אי אפשר לשלוח SMS למספר הזה';
+  if(c==='auth/operation-not-allowed'||c==='auth/unsupported-first-factor')return 'כרגע אפשר לשלוח קוד רק למספרים ישראליים';
   if(c==='auth/invalid-verification-code')return 'הקוד שגוי. בדוק ונסה שוב';
   if(c==='auth/code-expired')return 'פג תוקף הקוד. שלח קוד חדש';
   if(c==='auth/network-request-failed')return 'אין חיבור לאינטרנט. נסה שוב';
