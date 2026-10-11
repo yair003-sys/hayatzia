@@ -1,6 +1,6 @@
 -- Security rules, tested against a fresh local database with every migration applied (supabase test db).
 begin;
-select plan(17);
+select plan(19);
 
 -- Two fans of Maccabi Tel Aviv, one of Hapoel Tel Aviv.
 insert into auth.users (id, aud, role, email) values
@@ -13,6 +13,10 @@ select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity),
   0, 'every public table has RLS enabled');
+
+-- Privileges are explicit: anon has nothing on profiles, authenticated may only update the nickname.
+select ok(not has_table_privilege('anon', 'public.profiles', 'select'), 'anon has no access to profiles');
+select ok(not has_column_privilege('authenticated', 'public.profiles', 'team_id', 'update'), 'team_id is not updatable by fans');
 
 -- Reference data
 select is((select count(*)::int from public.teams), 14, '14 clubs seeded');

@@ -54,6 +54,7 @@ create policy team_messages_read on public.team_messages for select to authentic
 create policy team_messages_insert on public.team_messages for insert to authenticated
   with check (user_id = (select auth.uid()) and team_id = (select public.my_team()));
 
+revoke all on public.team_messages from anon, authenticated;
 grant select on public.team_messages to authenticated;
 grant insert (body) on public.team_messages to authenticated;   -- column-level: the fan sends only the text
 
