@@ -8,7 +8,7 @@ import { toRows } from '../src/features/matches/ingest/rows.ts'
 
 const DATA_DIR = process.env.DATA_DIR ?? path.resolve(import.meta.dirname, '../../../data')
 const URL_BASE = process.env.SUPABASE_URL
-const KEY = process.env.SUPABASE_SECRET_KEY
+const KEY = process.env.SUPABASE_SECRET_KEY?.trim()
 const CHUNK = 500
 
 if (!URL_BASE || !KEY) {
@@ -16,7 +16,10 @@ if (!URL_BASE || !KEY) {
   process.exit(1)
 }
 if (!/^[\x21-\x7e]+$/.test(KEY)) {
-  console.error('SUPABASE_SECRET_KEY looks masked or has spaces (e.g. "•••"): copy the full key after revealing it')
+  const masked = KEY.includes('\u2022')
+  console.error(
+    `SUPABASE_SECRET_KEY is not a plain key (length ${KEY.length}, masked dots: ${masked}): copy the full key after revealing it`,
+  )
   process.exit(1)
 }
 
