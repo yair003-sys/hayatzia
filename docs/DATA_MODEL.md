@@ -9,15 +9,16 @@ Conventions: `snake_case`, `uuid` ids (`gen_random_uuid()`) unless noted, `times
 - `same_team(uid uuid) returns boolean`: true if that user's team equals `my_team()`.
 
 ## Reference data (read by everyone, written by ingest only)
+Live since 2026-10-11 (migration `20261011200000_league_data.sql`), filled by `apps/web/scripts/ingest-league.ts` from the legacy `data/*.json` after every change.
 | Table | Key columns | Notes |
 |---|---|---|
 | `teams` | `id text pk` (mta, mhf…), `name`, `short`, `color_bg`, `color_ring`, `api_id int unique` | seeded; 14 clubs |
 | `players` | `id text pk`, `team_id → teams`, `number`, `name_he`, `name_short`, `position`, `injured bool` | seeded from current squads, later API |
-| `fixtures` | `id bigint pk` (API id), `season`, `round`, `kickoff_at`, `status`, `elapsed`, `home_team_id`, `away_team_id`, `home_goals`, `away_goals`, `venue` | idx `(kickoff_at)`, `(home_team_id, kickoff_at)`, `(away_team_id, kickoff_at)` |
-| `standings` | `(season, group_name, team_id) pk`, `rank`, `points`, `played`, `won`, `drawn`, `lost`, `gf`, `ga`, `form` | |
-| `lineups` | `(fixture_id, team_id) pk`, `formation`, `coach`, `start_xi jsonb`, `subs jsonb` | |
-| `match_events` | `id`, `fixture_id`, `minute`, `extra`, `team_id`, `type`, `detail`, `player`, `assist` | idx `(fixture_id, minute)` |
-RLS: `select` for `authenticated` and `anon`; no write policies (only the secret key used by ingest writes).
+| `api_teams` | `api_id int pk`, `name`, `logo` | every club API-Football mentions (past seasons include clubs outside today's 14) |
+| `fixtures` | `id bigint pk` (API id), `league_id`, `season`, `round`, `kickoff_at`, `status`, `elapsed`, `home_api_id`/`away_api_id → api_teams`, `home_goals`, `away_goals`, `venue` | idx `(season, kickoff_at)`, `(home_api_id, kickoff_at)`, `(away_api_id, kickoff_at)` |
+| `standings` | `(season, group_name, api_team_id) pk`, `group_order`, `rank`, `points`, `played`, `won`, `drawn`, `lost`, `gf`, `ga`, `gd`, `form`, `description` | idx `(season, group_order, rank)`; rows not refreshed in a run are deleted |
+| `fixture_details` | `fixture_id pk → fixtures`, `events jsonb`, `lineups jsonb` | one PK read per match page; normalise only when a feature queries inside |
+RLS: `select` for `anon` + `authenticated`; writes only through the secret key (`service_role`).
 
 ## People
 | Table | Columns | Rules |

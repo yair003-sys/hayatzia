@@ -34,6 +34,11 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - Staging: redirect allow-list `https://hayatzia-*-hayaziha.vercel.app/**` (preview deployments only).
 - Google provider: on in both projects. One OAuth web client `hayatzia-supabase` in Google Cloud project `hayatzia-2b0ff` (separate from Firebase's auto-created client), redirect URIs = both `https://<ref>.supabase.co/auth/v1/callback`. Client ID + secret were pasted by the owner. Verified 2026-10-11: production login → Google → `/onboarding`.
 
+## GitHub environments (league ingest)
+- `staging` and `Production` (shared with Vercel's deployment records; names are case-insensitive). Each has variable `SUPABASE_URL` and secret `SUPABASE_SECRET_KEY` (that project's `sb_secret_…`, pasted by the owner).
+- `.github/workflows/web-ingest.yml` runs per environment; the legacy `update.yml` calls it whenever `data/` changed. Manual run: dispatch with `inputs[target]=staging|production|both`.
+- The script strips whitespace and invisible direction marks from the key (pasting on a Hebrew keyboard adds them) and reports row counts as a `::notice` annotation.
+
 ## Supabase projects
 - Organization: "yair003-sys's Orghayatzia" (free plan), owner signs in with GitHub.
 - Both projects: region eu-central-1 (closest to Israel), Data API on, **new tables not auto-exposed** (grants are explicit in migrations), **automatic RLS on new tables**.

@@ -11,17 +11,17 @@
 - **Read path:** `getLeague()` reads Postgres through a cookie-less public client (allowed inside `'use cache'`). It falls back to the legacy JSON when Supabase is not configured, on error, or when the tables are still empty.
 
 **Tasks**
-- [ ] Migration `20261011200000_league_data.sql`:
+- [x] Migration `20261011200000_league_data.sql`:
   - Tables: `api_teams`, `fixtures`, `standings`, `fixture_details`.
   - Indexes, RLS, and a public select policy.
   - Grants: select to `anon` and `authenticated`; all to `service_role`.
-- [ ] `rows.ts` + `rows.test.ts` (round trip; null scores; group order kept).
-- [ ] `scripts/ingest-league.ts`:
+- [x] `rows.ts` + `rows.test.ts` (round trip; null scores; group order kept).
+- [x] `scripts/ingest-league.ts`:
   - Reads `../../data`, upserts in chunks of 500.
   - Deletes the season's standings rows that weren't touched in this run.
-- [ ] `lib/supabase/public.ts` + `getLeague` / `getFixtureDetail` read from Postgres, with fallback.
-- [ ] `.github/workflows/web-ingest.yml`:
+- [x] `lib/supabase/public.ts` + `getLeague` / `getFixtureDetail` read from Postgres, with fallback.
+- [x] `.github/workflows/web-ingest.yml`:
   - Triggers: `workflow_dispatch` + `workflow_call`.
   - Matrix over the `staging` and `production` environments.
   - `update.yml` calls it when data changed.
-- [ ] Apply the migration: staging, verify, then production. Run the ingest. Verify row counts. Check that `/matches` on production is served from Postgres.
+- [x] Apply the migration: staging, verify, then production. Run the ingest. Verify row counts. Check that `/matches` on production is served from Postgres.
