@@ -6,6 +6,7 @@ import { Camera, Heart, ImagePlus, MessageCircle, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { shortCount } from '@/features/square/schema'
+import { ReportBlock } from '@/features/safety/components/report-block'
 import { PHOTO_ACCEPT, PHOTO_EXT, PHOTO_MAX_MB, PHOTOS_PAGE, type PhotoComment, type StandPhoto } from '../schema'
 import {
   addPhotoCommentAction,
@@ -183,6 +184,7 @@ function PhotoCard({ photo, mine, onRemoved }: { photo: StandPhoto; mine: boolea
             {shortCount(count)}
           </button>
         </div>
+        {!mine && <ReportBlock kind="photo" refId={photo.id} userId={photo.user_id} userNick={photo.nick} />}
         {comments && (
           <div className="space-y-2 border-t border-line-soft pt-2">
             <ul className="space-y-1">

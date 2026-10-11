@@ -16,6 +16,7 @@ type Props = {
   home: Side
   away: Side
   initial: ChatMessage[]
+  hidden: string[]
 }
 
 const STATE_LABEL: Record<RoomState, string> = {
@@ -25,7 +26,7 @@ const STATE_LABEL: Record<RoomState, string> = {
   closed: 'החדר נסגר',
 }
 
-export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial }: Props) {
+export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden }: Props) {
   const [state, setState] = useState<RoomState>(() => roomState(kickoff, Date.now()))
   useEffect(() => {
     const t = setInterval(() => setState(roomState(kickoff, Date.now())), 30_000)
@@ -60,6 +61,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         topic={`match:${fixtureId}`}
         meId={meId}
         initial={initial}
+        hiddenUsers={hidden}
         readOnly={readOnly}
         placeholder="מה קורה במגרש?"
         emptyText={state === 'soon' ? 'עוד מוקדם. נתראה לפני שריקת הפתיחה.' : 'עוד אין הודעות בחדר.'}

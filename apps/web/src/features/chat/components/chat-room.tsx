@@ -28,9 +28,11 @@ export type ChatRoomProps = {
   emptyText?: string
   /** Optional colour for the nickname / bubble edge of other fans' messages (e.g. by side in a match room). */
   tint?: (m: ChatMessage) => string | undefined
+  /** Fans the viewer blocked: their messages are not shown. */
+  hiddenUsers?: string[]
 }
 
-export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, placeholder, emptyText, tint }: ChatRoomProps) {
+export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, placeholder, emptyText, tint, hiddenUsers }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
   const [draft, setDraft] = useState('')
@@ -108,7 +110,7 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
           </li>
         )}
         {messages.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
-        {messages.map((m) => {
+        {messages.filter((m) => !hiddenUsers?.includes(m.user_id)).map((m) => {
           const mine = m.user_id === meId
           const color = mine ? undefined : tint?.(m)
           return (

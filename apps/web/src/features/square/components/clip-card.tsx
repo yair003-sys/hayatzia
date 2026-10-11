@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Eye, Heart, MessageCircle, Trash2 } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
+import { ReportBlock } from '@/features/safety/components/report-block'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { cn } from '@/lib/utils'
 import { shortCount, timeLeftHe, type Clip, type ClipComment } from '../schema'
@@ -205,6 +206,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
             </form>
           </div>
         )}
+        {!mine && <ReportBlock kind="clip" refId={clip.id} userId={clip.user_id} userNick={clip.nick} />}
         {note && (
           <p role="alert" className="text-xs text-live">
             {note}

@@ -7,6 +7,7 @@ import { getFixtureDetail, getLeague } from '@/features/matches/server/queries'
 import { MatchRoom } from '@/features/match-room/components/match-room'
 import { getMatchMessages } from '@/features/match-room/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
+import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 
 export default function MatchPage({ params }: PageProps<'/matches/[id]'>) {
@@ -75,7 +76,7 @@ async function MatchContent({ id }: { id: number }) {
 async function MatchRoomSection(props: { fixtureId: number; kickoff: number; home: DisplayTeam; away: DisplayTeam }) {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return null
-  const initial = await getMatchMessages(props.fixtureId)
+  const [initial, hidden] = await Promise.all([getMatchMessages(props.fixtureId), getBlockedIds()])
   const side = (t: DisplayTeam) => ({ id: t.id, short: t.short, bar: t.bar })
   return (
     <MatchRoom
@@ -86,6 +87,7 @@ async function MatchRoomSection(props: { fixtureId: number; kickoff: number; hom
       home={side(props.home)}
       away={side(props.away)}
       initial={initial}
+      hidden={hidden}
     />
   )
 }

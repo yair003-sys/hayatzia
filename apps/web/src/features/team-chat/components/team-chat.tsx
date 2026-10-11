@@ -4,12 +4,13 @@ import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { loadOlderTeamMessagesAction, sendTeamMessageAction } from '../server/actions'
 
-export function TeamChat({ teamId, meId, initial }: { teamId: string; meId: string; initial: ChatMessage[] }) {
+export function TeamChat({ teamId, meId, initial, hidden }: { teamId: string; meId: string; initial: ChatMessage[]; hidden: string[] }) {
   return (
     <ChatRoom
       topic={`team:${teamId}`}
       meId={meId}
       initial={initial}
+      hiddenUsers={hidden}
       placeholder="כתוב ליציע…"
       emptyText="עוד אין הודעות. תפתח את היציע 👋"
       send={async (body) => {

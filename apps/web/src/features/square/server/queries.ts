@@ -1,5 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
+import { getBlockedIds } from '@/features/safety/server/queries'
 import { FEED_SIZE, type Clip, type ClipComment } from '../schema'
 
 const COLUMNS =
@@ -33,7 +34,8 @@ export async function getSquareFeed(opts: { mine?: boolean; before?: Cursor } = 
     const b = opts.before
     q = q.or(`created_at.lt."${b.createdAt}",and(created_at.eq."${b.createdAt}",id.lt.${b.id})`)
   }
-  const { data: rows, error } = await q
+  const [{ data: all, error }, blocked] = await Promise.all([q, getBlockedIds()])
+  const rows = all?.filter((r) => !blocked.includes(r.user_id))
   if (error || !rows?.length) return []
 
   const ids = rows.map((r) => r.id)
