@@ -24,4 +24,5 @@
   - Triggers: `workflow_dispatch` + `workflow_call`.
   - Matrix over the `staging` and `production` environments.
   - `update.yml` calls it when data changed.
-- [x] Apply the migration: staging, verify, then production. Run the ingest. Verify row counts. Check that `/matches` on production is served from Postgres.
+- [x] Apply the migration: staging, verify, then production. Run the ingest. Verify row counts. (Done: both projects show 14 / 240 / 28 / 8.)
+- [ ] Check that `/matches` on production is served from Postgres. Open until the owner finishes onboarding, because `/matches` is behind the session gate. Evidence will be the Supabase API logs showing `fixtures` reads from Vercel.
