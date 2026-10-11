@@ -22,8 +22,13 @@ Read this first, every session. Then read `docs/README.md` for the map of all do
 ## Stack (new app in `apps/web`)
 Next.js 16 App Router + TypeScript strict + Tailwind v4, Supabase (Postgres + RLS + Realtime + Storage + Auth), Drizzle ORM, Vercel. Follow the official Next.js docs (https://nextjs.org/docs): Server Components first, Cache Components (`'use cache'` + `cacheLife` + `cacheTag`), `<Suspense>` around runtime data, Server Actions for mutations, `proxy.ts` for session refresh only. Architecture: `docs/ARCHITECTURE.md`. Conventions: `docs/CONVENTIONS.md`.
 
-## Sandbox limitation
-The Claude sandbox cannot reach the npm registry. Install, typecheck, lint, test and build run in GitHub Actions (`.github/workflows/web-ci.yml`). Push, then read the run with `gh run list/view -R yair003-sys/hayatzia`. A green CI run is the evidence that the code works.
+## Sandbox limitation: CI is the build machine
+The Claude sandbox cannot reach the npm registry, and GitHub's raw job logs (blob storage) are blocked too.
+- **Verify:** push to `main` (or dispatch `web-ci.yml`). It runs install → typecheck → lint → unit tests → build → Playwright smoke. Watch with `gh run list/view -R yair003-sys/hayatzia --workflow web-ci.yml`. A green run is the evidence that the code works.
+- **Read failures:** every step runs through `apps/web/scripts/ci-step.sh`, which re-emits the output tail as an annotation. Read it with:
+  `JID=$(gh api repos/yair003-sys/hayatzia/actions/runs/<run>/jobs -q '.jobs[0].id'); CR=$(gh api repos/yair003-sys/hayatzia/actions/jobs/$JID -q .check_run_url | sed 's#.*/##'); gh api repos/yair003-sys/hayatzia/check-runs/$CR/annotations -q '.[]|.title+"\n"+.message'`
+- **Add or update packages:** dispatch `web-deps.yml` with `inputs[packages]` (and `inputs[dev]=true` for dev deps). It commits exact versions + lockfile to `main` and re-runs CI. Never hand-edit versions in `package.json`.
+- Pinned on purpose: TypeScript 6.x (typescript-eslint does not support TS 7 yet), ESLint 9.
 
 ## Standing technical rules
 - Security rules live in code: legacy `firestore.rules` (publish in the Firebase console after every change); new app RLS in Drizzle schema + SQL migrations.

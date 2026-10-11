@@ -1,0 +1,58 @@
+name: web deps (add or update packages)
+
+# The Claude sandbox cannot reach npm. Run this workflow to add/update packages:
+#   gh api -X POST repos/yair003-sys/hayatzia/actions/workflows/web-deps.yml/dispatches \
+#     -f ref=main -f inputs[packages]="drizzle-orm@latest postgres@latest" -f inputs[dev]=false
+# It installs with exact versions and commits package.json + package-lock.json to main.
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'space-separated package specs, e.g. "zod@latest @supabase/ssr@latest"'
+        required: true
+      dev:
+        description: 'install as devDependencies'
+        type: boolean
+        default: false
+      remove:
+        description: 'uninstall instead of install'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Change dependencies
+        run: |
+          npm ci
+          if [ "${{ inputs.remove }}" = "true" ]; then
+            npm uninstall ${{ inputs.packages }}
+          elif [ "${{ inputs.dev }}" = "true" ]; then
+            npm install --save-exact --save-dev ${{ inputs.packages }}
+          else
+            npm install --save-exact ${{ inputs.packages }}
+          fi
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "web deps: ${{ inputs.remove && 'remove' || 'add' }} ${{ inputs.packages }}"
+          git pull --rebase origin main
+          git push
+      - name: Trigger CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run web-ci.yml --ref main
