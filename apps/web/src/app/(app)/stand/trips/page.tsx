@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { BackToStand } from '@/features/team-life/components/back'
-import { TripsBoard, type MatchOption } from '@/features/team-life/components/boards'
+import { TripsBoard } from '@/features/team-life/components/boards'
+import { upcomingTeamMatches } from '@/features/team-life/server/matches'
 import { getTrips } from '@/features/team-life/server/queries'
-import { displayTeam } from '@/features/matches/api-teams'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 
@@ -26,17 +26,7 @@ async function Trips() {
   if (s.status === 'disabled') return <p className="text-muted">פועל רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
   const league = await getLeague()
-  const now = Date.now() / 1000
-  const matches: MatchOption[] = (league?.fixtures ?? [])
-    .filter((f) => f.t > now - 3 * 3600)
-    .map((f) => ({ f, home: displayTeam(f.h, league?.teams[String(f.h)]?.name), away: displayTeam(f.a, league?.teams[String(f.a)]?.name) }))
-    .filter(({ home, away }) => home.id === s.team.id || away.id === s.team.id)
-    .slice(0, 6)
-    .map(({ f, home, away }) => ({
-      id: f.id,
-      kickoff: f.t,
-      label: `${home.id === s.team.id ? `נגד ${away.short} (בית)` : `נגד ${home.short} (חוץ)`} · ${new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' }).format(new Date(f.t * 1000))}`,
-    }))
+  const matches = upcomingTeamMatches(league, s.team.id)
   const trips = await getTrips(matches.map((m) => m.id))
   return <TripsBoard matches={matches} trips={trips} meId={s.userId} />
 }
