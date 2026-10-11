@@ -55,24 +55,24 @@ jobs:
 
       - name: Install
         if: steps.boot.outputs.created != 'true'
-        run: npm ci
+        run: ./scripts/ci-step.sh install npm ci
 
       - name: Typecheck
-        run: npx next typegen && npm run typecheck
+        run: ./scripts/ci-step.sh typecheck bash -c 'npx next typegen && npm run typecheck'
 
       - name: Lint
-        run: npm run lint
+        run: ./scripts/ci-step.sh lint npm run lint
 
       - name: Unit tests
-        run: npm test
+        run: ./scripts/ci-step.sh unit-tests npm test
 
       - name: Build
-        run: npm run build
+        run: ./scripts/ci-step.sh build npm run build
 
       - name: E2E smoke (local build only)
         run: |
           npx playwright install --with-deps chromium
-          npm run e2e
+          ./scripts/ci-step.sh e2e npm run e2e
 
       - name: Upload Playwright report
         if: failure()
