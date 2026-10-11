@@ -139,14 +139,19 @@ alter table public.clip_likes    enable row level security;
 alter table public.clip_respects enable row level security;
 alter table public.clip_comments enable row level security;
 
+-- Has the current fan already viewed this post? security definer so the clips policy does not re-enter the
+-- clip_views policy (which itself checks clips): that loop is "infinite recursion detected in policy".
+create function public.clip_seen(p_clip uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.clip_views v where v.clip_id = p_clip and v.user_id = auth.uid())
+$$;
+revoke all on function public.clip_seen(uuid) from public;
+grant execute on function public.clip_seen(uuid) to authenticated;
+
 -- Visible while alive; a view-once post disappears for a fan after their first view (the owner always sees it).
 create policy clips_read on public.clips for select to authenticated using (
   expires_at > now()
-  and (
-    not once
-    or user_id = (select auth.uid())
-    or not exists (select 1 from public.clip_views v where v.clip_id = id and v.user_id = (select auth.uid()))
-  )
+  and (not once or user_id = (select auth.uid()) or not public.clip_seen(id))
 );
 create policy clips_insert on public.clips for insert to authenticated
   with check (user_id = (select auth.uid()) and team_id = (select public.my_team()));
