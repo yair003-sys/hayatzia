@@ -28,8 +28,8 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Start local database (applies all migrations)
-        run: ./scripts/ci-step.sh "db start" supabase db start
+      - name: Start local Supabase (database + realtime + auth + storage; applies all migrations)
+        run: ./scripts/ci-step.sh "supabase start" supabase start -x studio,edge-runtime,logflare,vector,imgproxy
       - name: Security tests (pgTAP)
         run: ./scripts/ci-step.sh "db test" supabase test db
       - name: Generate database types
