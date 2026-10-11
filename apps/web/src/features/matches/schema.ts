@@ -1,0 +1,47 @@
+import { z } from 'zod'
+
+// Shape of the JSON published by the legacy ingest (scripts/update.mjs → data/league.json).
+// Validated at the boundary so a bad upstream file can never crash a page.
+export const fixtureSchema = z.object({
+  id: z.number(),
+  t: z.number(), // kick-off, unix seconds
+  st: z.string(), // status short code (NS, 1H, HT, 2H, FT…)
+  el: z.number().nullable().optional(),
+  r: z.string(), // round label from API-Football
+  h: z.number(), // home team api id
+  a: z.number(), // away team api id
+  gh: z.number().nullable(),
+  ga: z.number().nullable(),
+  v: z.string().optional().default(''),
+})
+
+export const standingRowSchema = z.object({
+  rank: z.number(),
+  team: z.number(),
+  pts: z.number(),
+  gd: z.number(),
+  form: z.string().default(''),
+  grp: z.string().default(''),
+  desc: z.string().default(''),
+  p: z.number(),
+  w: z.number(),
+  d: z.number(),
+  l: z.number(),
+  gf: z.number(),
+  ga: z.number(),
+})
+
+export const leagueSchema = z.object({
+  league: z.object({ id: z.number(), season: z.number() }),
+  teams: z.record(z.string(), z.object({ name: z.string(), logo: z.string().optional() })),
+  fixtures: z.array(fixtureSchema),
+  standings: z.array(z.array(standingRowSchema)),
+  have: z.array(z.number()).default([]),
+})
+
+export type Fixture = z.infer<typeof fixtureSchema>
+export type StandingRow = z.infer<typeof standingRowSchema>
+export type League = z.infer<typeof leagueSchema>
+
+export const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'])
+export const DONE_STATUSES = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO'])

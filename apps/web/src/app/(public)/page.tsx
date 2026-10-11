@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import { supabaseConfig } from '@/lib/supabase/config'
 import { TEAMS } from '@/features/teams/data'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 
 export default function WelcomePage() {
+  const enabled = supabaseConfig() !== null
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-16 pb-10">
       <header className="font-display text-xl font-extrabold tracking-tight">היציע</header>
@@ -26,12 +28,12 @@ export default function WelcomePage() {
 
       <div className="space-y-3">
         <Link
-          href="/stand"
+          href={enabled ? '/login' : '/stand'}
           className="block rounded-lg bg-accent py-4 text-center text-lg font-bold text-white shadow-[0_8px_30px_rgb(109_74_255/0.4)] transition-transform active:scale-[0.98]"
         >
           כניסה ליציע
         </Link>
-        <p className="text-center text-xs text-dim">גרסה חדשה בבנייה. ההתחברות תתווסף בשלב הבא.</p>
+        <p className="text-center text-xs text-dim">גרסה חדשה בבנייה.</p>
       </div>
     </main>
   )
