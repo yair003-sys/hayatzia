@@ -41,7 +41,9 @@ async function upsert(table: string, rows: object[], onConflict: string): Promis
     await rest('POST', `${table}?on_conflict=${onConflict}`, stamped, 'resolution=merge-duplicates,return=minimal')
   }
   console.log(`${table}: ${rows.length}`)
+  counts.push(`${table}=${rows.length}`)
 }
+const counts: string[] = []
 
 const runStartedAt = new Date().toISOString()
 const league = JSON.parse(await readFile(path.join(DATA_DIR, 'league.json'), 'utf8')) as League
@@ -67,3 +69,5 @@ if (rows.standings.length > 0) {
   await rest('DELETE', `standings?season=eq.${season}&updated_at=lt.${encodeURIComponent(runStartedAt)}`)
 }
 console.log(`done: season ${league.league.season}`)
+// Shows up as an annotation on the run (readable through the GitHub API, unlike raw logs).
+if (process.env.GITHUB_ACTIONS) console.log(`::notice title=ingest::season ${league.league.season} ${counts.join(' ')}`)
