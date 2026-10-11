@@ -3520,7 +3520,12 @@ function cloudInit(){
 }
 function cloudUser(u){
   CLOUD.user=u||null;
-  if(!u){CLOUD.prof=null;CLOUD.saved=false;cloudDetach();return}
+  if(!u){
+    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();
+    // an old demo "Google" account on the live site: send it through the real sign-in
+    if(who==='חשבון Google'||/^Google · /.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
+    return;
+  }
   var F=CLOUD.fb.F;
   F.getDoc(F.doc(CLOUD.fb.db,'users',u.uid)).then(function(s){
     CLOUD.prof=s.exists()?s.data():null;CLOUD.saved=!!CLOUD.prof;
