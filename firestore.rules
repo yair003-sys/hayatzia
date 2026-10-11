@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function teamIds() { return ['mta','hta','mhf','bei','hbs','hhf','hjr','mpt','hpt','ikn','itb','hrg','mnt','snk']; }
+    function validNick(n) { return n is string && n.size() <= 20; }
+    function myTeam() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.team; }
+
+    // A fan's profile. The team is chosen once and can never change.
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['team','nick','created'])
+        && request.resource.data.team in teamIds()
+        && validNick(request.resource.data.nick)
+        && request.resource.data.created == request.time;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nick'])
+        && validNick(request.resource.data.nick);
+      allow delete: if false;
+    }
+
+    // Team chat: only fans locked to that team can read or write.
+    match /teams/{team}/msgs/{msgId} {
+      allow read: if signedIn() && myTeam() == team;
+      allow create: if signedIn() && myTeam() == team
+        && request.resource.data.keys().hasOnly(['uid','nick','text','t'])
+        && request.resource.data.uid == request.auth.uid
+        && validNick(request.resource.data.nick)
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 200
+        && request.resource.data.t == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

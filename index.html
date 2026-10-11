@@ -1252,6 +1252,8 @@ function fanById(id){
 
 /* ---------- account + social state ---------- */
 var fav=null,nick='',who='';
+var CLOUD={ok:false,fb:null,user:null,prof:null,saved:false,live:false,unsub:null,ids:{},nickT:null,err:false};
+
 var PROF={bio:'',since:'',city:'',stand:''};
 var PRIV={dm:'approved',dir:'team',showCity:false,showOnline:true};
 var BLOCKED=[];
@@ -1304,6 +1306,7 @@ function loadAccount(){
   PRIV=loadJSON('priv',{dm:'approved',dir:'team',showCity:false,showOnline:true,photoAud:'team'});
   try{BLOCKED=JSON.parse(store.get('blocked')||'[]')}catch(e){BLOCKED=[]}
   seedSocial();seedPosts();seedTrips();xLoad();
+  if(typeof cloudAttach==='function'){CLOUD.live=false;if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}cloudAttach()}
 }
 function okFans(){return fav?fansOf(fav.id).filter(function(f){return BLOCKED.indexOf(f.id)<0}):[]}
 function seedSocial(){
@@ -1617,7 +1620,7 @@ view.addEventListener('keydown',function(e){
 });
 view.addEventListener('input',function(e){
   var id=e.target.id,v=e.target.value;
-  if(id==='f-nick'){var t=v.trim();if(t.length>=2){nick=t;store.set('nick',t);setIdBtn();updPreview()}}
+  if(id==='f-nick'){var t=v.trim();if(t.length>=2){nick=t;store.set('nick',t);setIdBtn();updPreview();cloudNickSoon()}}
   else if(id==='f-bio'){PROF.bio=v;saveProf();updPreview()}
   else if(id==='f-since'){PROF.since=v.replace(/\D/g,'').slice(0,4);saveProf();updPreview()}
   else if(id==='f-stand'){PROF.stand=v;saveProf();updPreview()}
@@ -3225,7 +3228,7 @@ function renderAuth(){
   if(s==='welcome'){
     h=ART+authTop()+
       '<div class="a-main"><div class="kick">ליגת העל · 2026/27</div><h1>רק אוהדים<br>אמיתיים.</h1><p>קהילה פרטית לכל קבוצה. כל אוהד מאומת, וקבוצה אחת לכל החיים.</p></div>'+
-      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.</div></div>';
+      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">'+(CLOUD.ok?'ההתחברות עם Google אמיתית. הכניסה בטלפון עדיין בהדגמה.':'בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.')+'</div></div>';
   }else if(s==='phone'){
     h=ART+authTop('welcome')+
       '<div class="a-main"><h2>מה המספר שלך?</h2><p>נשלח קוד אימות ב-SMS. המספר לא יוצג לאף אוהד אחר.</p>'+
@@ -3296,7 +3299,7 @@ function doVerify(){
 function doFinish(){
   var v=($('#nk').value||'').trim();
   if(v.length<2){setErr('הכינוי צריך להיות לפחות 2 תווים');return}
-  store.set('nick',v);
+  store.set('nick',v);if(CLOUD.saved)cloudSaveProfile();
   authEl.hidden=true;authEl.innerHTML='';
   loadAccount();ui.tab='stand';ui.filter='all';render();
   toast('ברוך הבא ליציע, '+v);
@@ -3306,6 +3309,7 @@ authEl.addEventListener('click',function(e){
   if(b.dataset.go){showAuth(b.dataset.go);return}
   if(b.dataset.t){AUTH.pick=b.dataset.t;renderAuth();return}
   var a=b.dataset.act;
+  if(a==='google'&&CLOUD.ok){cloudSignIn();return}
   if(a==='google'){who='חשבון Google';store.set('who',who);toast('בהדגמה: בגרסה האמיתית נפתח חלון התחברות של Google');showAuth('team')}
   else if(a==='sendcode')doSend();
   else if(a==='verify')doVerify();
@@ -3315,12 +3319,12 @@ authEl.addEventListener('click',function(e){
   else if(a==='lock'){
     var ag=$('#agree');if(!ag||!ag.checked)return;
     store.set('team',AUTH.pick);store.set('lockedAt',String(Date.now()));
-    loadAccount();showAuth('nick');
+    loadAccount();cloudSaveProfile();showAuth('nick');
   }
   else if(a==='finish')doFinish();
 });
 function resetDemo(){
-  THEME_PREVIEW=null;
+  THEME_PREVIEW=null;cloudSignOut();
   ['who','team','nick','lockedAt','prof','priv','blocked','liked','trips','hiddenph','reports','seen','pr','chk','sub','mr','pred','going','chlike','events','items','chants','clips','clike','cresp'].forEach(store.del);
   HIDPH={};REPORTS=[];HIDM={};
   MY_POSTS=[];LIKED={};VW=null;UP=null;idbClear();
@@ -3369,7 +3373,7 @@ function renderHead(){
   }else if(cur.kind==='team'){
     head.innerHTML=HEADART+'<div class="ch-top">'+back+'<span class="ch-title">צ\'אט הקבוצה</span><span class="chip open">פתוח תמיד</span></div>'+
       '<div class="bd1"><div class="bt">'+scarf(fav)+'<span>'+fav.name+'</span></div></div>'+
-      '<div class="ch-sub">'+ic.lockS+'<span>פרטי · רק אוהדי '+fav.short+' המאומתים</span><span class="sp"><i class="on"></i><span data-online>'+num(TEAM.online)+'</span> מחוברים</span></div>';
+      '<div class="ch-sub">'+ic.lockS+'<span>פרטי · רק אוהדי '+fav.short+' המאומתים</span>'+(CLOUD.live?'<span class="sp">צ\'אט חי ומשותף</span>':'<span class="sp"><i class="on"></i><span data-online>'+num(TEAM.online)+'</span> מחוברים</span>')+'</div>';
   }else{
     var th=THREADS[cur.id];if(!th)return;
     var title=esc(thTitle(th)),sub,btns;
@@ -3395,7 +3399,7 @@ function renderMsgs(){
       if(s.room==='closed')html+='<div class="sys">הצ\'אט נסגר שעה אחרי סיום המשחק</div>';
     }
   }else if(cur.kind==='team'){
-    html='<div class="sys">החדר הזה סגור לאוהדי '+fav.short+' המאומתים בלבד</div>'+TEAM.msgs.map(msgHTML).join('');
+    html='<div class="sys">החדר הזה סגור לאוהדי '+fav.short+' המאומתים בלבד</div>'+(CLOUD.live&&!TEAM.msgs.length?'<div class="sys">עוד אין הודעות. תהיה הראשון לכתוב</div>':'')+TEAM.msgs.map(msgHTML).join('');
   }else{
     html=curMsgs().map(msgHTML).join('');
   }
@@ -3454,7 +3458,8 @@ function sendMsg(text){
     var m=MBY[cur.id],s=st(m,Date.now()),side=mySide(m);
     if((s.room!=='open'&&s.room!=='closing')||!side)return;
     x={id:++mid,nick:nick,side:side,text:text,t:Date.now(),me:true};
-  }else x={id:++mid,nick:nick,tid:fav.id,text:text,t:Date.now(),me:true};
+  }else if(cur.kind==='team'&&CLOUD.live){cloudSend(text);return}
+  else x={id:++mid,nick:nick,tid:fav.id,text:text,t:Date.now(),me:true};
   curMsgs().push(x);appendMsg(x,true);
   if(cur.kind==='thread')scheduleReply(cur.id);
 }
@@ -3499,6 +3504,99 @@ chat.addEventListener('submit',function(e){
   sendMsg(inp.value);inp.value='';inp.focus();
 });
 
+/* ---------- cloud: real Google sign-in + shared team chat (Firebase, only on the live site) ---------- */
+var FBCFG={apiKey:'AIzaSyAZWVU6v44FkxBWRPBybf9AkL2s1cU7AEY',authDomain:'hayatzia-2b0ff.firebaseapp.com',projectId:'hayatzia-2b0ff',storageBucket:'hayatzia-2b0ff.firebasestorage.app',messagingSenderId:'547854343175',appId:'1:547854343175:web:0756c61e7fb5f02c1a1ea2'};
+var FBU='https://www.gstatic.com/firebasejs/10.12.2/';
+function cloudWanted(){return /\.github\.io$/.test(location.hostname)||/[?&]cloud=1/.test(location.search)}
+function cloudInit(){
+  if(!cloudWanted())return;
+  Promise.all([import(FBU+'firebase-app.js'),import(FBU+'firebase-auth.js'),import(FBU+'firebase-firestore.js')]).then(function(m){
+    var app=m[0].initializeApp(FBCFG);
+    CLOUD.fb={Au:m[1],F:m[2],auth:m[1].getAuth(app),db:m[2].getFirestore(app)};
+    CLOUD.ok=true;
+    if(!authEl.hidden&&AUTH.step==='welcome')renderAuth();
+    m[1].onAuthStateChanged(CLOUD.fb.auth,cloudUser);
+  }).catch(function(e){console.warn('cloud unavailable',e)});
+}
+function cloudUser(u){
+  CLOUD.user=u||null;
+  if(!u){CLOUD.prof=null;CLOUD.saved=false;cloudDetach();return}
+  var F=CLOUD.fb.F;
+  F.getDoc(F.doc(CLOUD.fb.db,'users',u.uid)).then(function(s){
+    CLOUD.prof=s.exists()?s.data():null;CLOUD.saved=!!CLOUD.prof;
+    who='Google · '+(u.email||u.displayName||'');store.set('who',who);
+    if(CLOUD.prof&&T[CLOUD.prof.team]){
+      store.set('team',CLOUD.prof.team);
+      if(CLOUD.prof.nick)store.set('nick',CLOUD.prof.nick);
+      if(!store.get('lockedAt'))store.set('lockedAt',String(CLOUD.prof.created&&CLOUD.prof.created.toMillis?CLOUD.prof.created.toMillis():Date.now()));
+      loadAccount();
+      if(!nick)showAuth('nick');
+      else if(!authEl.hidden){authEl.hidden=true;authEl.innerHTML='';ui.tab='stand';render();toast('ברוך שובך, '+nick)}
+      else render();
+    }else{
+      store.del('team');loadAccount();render();AUTH.pick=null;showAuth('team');
+    }
+  }).catch(function(e){console.warn(e);toast('לא הצלחנו לטעון את הפרופיל מהשרת')});
+}
+function cloudSignIn(){
+  var Au=CLOUD.fb.Au,p=new Au.GoogleAuthProvider();
+  p.setCustomParameters({prompt:'select_account'});
+  Au.signInWithPopup(CLOUD.fb.auth,p).catch(function(e){
+    var c=e&&e.code||'';
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'){Au.signInWithRedirect(CLOUD.fb.auth,p);return}
+    if(c!=='auth/popup-closed-by-user'&&c!=='auth/cancelled-popup-request')toast('ההתחברות נכשלה. נסה שוב');
+  });
+}
+function cloudSaveProfile(){
+  if(!CLOUD.user)return;
+  var F=CLOUD.fb.F,ref=F.doc(CLOUD.fb.db,'users',CLOUD.user.uid),t=store.get('team'),n=String(store.get('nick')||'').slice(0,20),p;
+  if(!CLOUD.prof){
+    if(!T[t])return;
+    CLOUD.prof={team:t,nick:n};
+    p=F.setDoc(ref,{team:t,nick:n,created:F.serverTimestamp()});
+  }else{
+    if(CLOUD.prof.nick===n)return;
+    CLOUD.prof.nick=n;p=F.updateDoc(ref,{nick:n});
+  }
+  p.then(function(){CLOUD.saved=true;cloudAttach();if(CLOUD.prof.nick!==String(store.get('nick')||'').slice(0,20))cloudSaveProfile()}).catch(function(e){console.warn(e);toast('השמירה בשרת נכשלה')});
+}
+function cloudNickSoon(){if(!CLOUD.saved)return;clearTimeout(CLOUD.nickT);CLOUD.nickT=setTimeout(cloudSaveProfile,900)}
+function cloudDetach(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}CLOUD.live=false}
+function cloudAttach(){
+  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();return}
+  if(CLOUD.live===fav.id)return;
+  cloudDetach();
+  var F=CLOUD.fb.F,team=fav.id;
+  var q=F.query(F.collection(CLOUD.fb.db,'teams',team,'msgs'),F.orderBy('t','desc'),F.limit(120));
+  CLOUD.live=team;TEAM.msgs=[];
+  if(cur&&cur.kind==='team'){renderHead();renderMsgs()}
+  CLOUD.unsub=F.onSnapshot(q,function(snap){
+    if(!fav||fav.id!==team)return;
+    var arr=snap.docs.map(function(d){
+      var v=d.data({serverTimestamps:'estimate'}),id=CLOUD.ids[d.id]||(CLOUD.ids[d.id]=++mid);
+      return {id:id,nick:String(v.nick||'אוהד'),tid:team,text:String(v.text||''),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),me:v.uid===CLOUD.user.uid};
+    }).reverse();
+    var old=TEAM.msgs,known={};old.forEach(function(x){known[x.id]=1});
+    var fresh=arr.filter(function(x){return !known[x.id]});
+    var tail=old.length>0&&arr.slice(arr.length-fresh.length).every(function(x){return !known[x.id]});
+    TEAM.msgs=arr;
+    if(cur&&cur.kind==='team'&&msgsEl()){
+      if(!fresh.length&&arr.length===old.length)return;
+      if(tail&&fresh.length&&fresh.length<=10)fresh.forEach(function(x){appendMsg(x,x.me)});
+      else renderMsgs();
+    }
+  },function(e){console.warn(e);if(!CLOUD.err){CLOUD.err=true;toast('הצ\'אט המשותף לא זמין כרגע')}});
+}
+function cloudSend(text){
+  var F=CLOUD.fb.F;
+  F.addDoc(F.collection(CLOUD.fb.db,'teams',fav.id,'msgs'),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),text:text,t:F.serverTimestamp()})
+    .catch(function(e){console.warn(e);toast('ההודעה לא נשלחה')});
+}
+function cloudSignOut(){
+  cloudDetach();CLOUD.prof=null;CLOUD.saved=false;
+  if(CLOUD.fb&&CLOUD.user)CLOUD.fb.Au.signOut(CLOUD.fb.auth);
+}
+
 /* ---------- live simulation ---------- */
 setInterval(function(){
   var now=Date.now();
@@ -3512,7 +3610,7 @@ setInterval(function(){
     R.msgs.push(x);if(R.msgs.length>150)R.msgs.shift();
     if(viewing)appendMsg(x,false);
   });
-  if(fav){
+  if(fav&&!CLOUD.live){
     var tv=cur&&cur.kind==='team';
     if(Math.random()<(tv?0.7:0.2)){
       var ok=okFans();
@@ -3566,7 +3664,7 @@ function tick(){
 }
 setInterval(tick,1000);
 
-loadAccount();
+loadAccount();cloudInit();
 idbInit(function(){render()});
 render();tick();
 if(!who)showAuth('welcome');
