@@ -19,6 +19,20 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"blocks": {
+                  Row: {
+                    "blocked_id": string,"created_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_id": string,"created_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "blocked_id"?: string,"created_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"clip_comments": {
                   Row: {
                     "body": string,"clip_id": string,"created_at": string,"id": string,"nick": string,"team_id": string,"user_id": string
@@ -124,6 +138,54 @@ isOneToOne: false
       referencedRelation: "teams"
       referencedColumns: ["id"]
     }
+                  ]
+                },"device_keys": {
+                  Row: {
+                    "created_at": string,"device_id": string,"public_jwk": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"device_id": string,"public_jwk": string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"device_id"?: string,"public_jwk"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"dm_messages": {
+                  Row: {
+                    "ciphertext": string,"created_at": string,"id": string,"iv": string,"sender_device": string,"sender_id": string,"thread_id": string,"wrapped_keys": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "ciphertext": string,"created_at"?: string,"id"?: string,"iv": string,"sender_device": string,"sender_id"?: string,"thread_id": string,"wrapped_keys": NonNullable<Json>
+                  }
+                  Update: {
+                    "ciphertext"?: string,"created_at"?: string,"id"?: string,"iv"?: string,"sender_device"?: string,"sender_id"?: string,"thread_id"?: string,"wrapped_keys"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dm_messages_thread_id_fkey"
+      columns: ["thread_id"]
+isOneToOne: false
+      referencedRelation: "dm_threads"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dm_threads": {
+                  Row: {
+                    "created_at": string,"id": string,"last_at": string,"last_from": string | null,"nick_a": string,"nick_b": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"nick_a"?: string,"nick_b"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"nick_a"?: string,"nick_b"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"fixture_details": {
                   Row: {
@@ -277,6 +339,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"reports": {
+                  Row: {
+                    "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"kind": string,"note"?: string,"reason": string,"ref": string,"reporter_id"?: string,"status"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"standings": {
                   Row: {
                     "api_team_id": number,"description": string,"drawn": number,"form": string,"ga": number,"gd": number,"gf": number,"group_name": string,"group_order": number,"lost": number,"played": number,"points": number,"rank": number,"season": number,"updated_at": string,"won": number
@@ -397,7 +473,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "clip_seen":
+            "blocked_between":
+{ Args: { "a": string,"b": string }; Returns: boolean
+                           },
+"clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
                            },
 "club_of_api":
@@ -408,6 +487,9 @@ isOneToOne: false
                            },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"same_team":
+{ Args: { "other": string }; Returns: boolean
                            }
           }
           Enums: {
