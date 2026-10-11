@@ -4,6 +4,10 @@ import { Suspense } from 'react'
 import { displayTeam, roundLabelHe } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getFixtureDetail, getLeague } from '@/features/matches/server/queries'
+import { MatchRoom } from '@/features/match-room/components/match-room'
+import { getMatchMessages } from '@/features/match-room/server/queries'
+import { getSessionProfile } from '@/features/profile/server/queries'
+import type { DisplayTeam } from '@/features/matches/api-teams'
 
 export default function MatchPage({ params }: PageProps<'/matches/[id]'>) {
   return (
@@ -61,6 +65,27 @@ async function MatchContent({ id }: { id: number }) {
           <p className="text-sm text-muted">{detail ? 'אין שערים במשחק הזה.' : 'פרטי המשחק עוד לא נטענו.'}</p>
         )}
       </section>
+      <Suspense fallback={<div className="skeleton h-48 rounded-lg" aria-hidden="true" />}>
+        <MatchRoomSection fixtureId={id} kickoff={f.t} home={home} away={away} />
+      </Suspense>
     </>
+  )
+}
+
+async function MatchRoomSection(props: { fixtureId: number; kickoff: number; home: DisplayTeam; away: DisplayTeam }) {
+  const s = await getSessionProfile()
+  if (s.status !== 'ready') return null
+  const initial = await getMatchMessages(props.fixtureId)
+  const side = (t: DisplayTeam) => ({ id: t.id, short: t.short, bar: t.bar })
+  return (
+    <MatchRoom
+      fixtureId={props.fixtureId}
+      kickoff={props.kickoff}
+      meId={s.userId}
+      myTeamId={s.team.id}
+      home={side(props.home)}
+      away={side(props.away)}
+      initial={initial}
+    />
   )
 }

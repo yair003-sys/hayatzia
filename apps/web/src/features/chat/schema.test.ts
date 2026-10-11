@@ -22,6 +22,10 @@ describe('messageFromBroadcast', () => {
     expect(messageFromBroadcast({ record, operation: 'INSERT' })).toEqual(record)
   })
 
+  it('keeps the side of match-room messages', () => {
+    expect(messageFromBroadcast({ record: { ...msg('a', '2026-10-11T19:00:00.000Z'), side: 'a' } })?.side).toBe('a')
+  })
+
   it('ignores unexpected payloads', () => {
     expect(messageFromBroadcast(null)).toBeNull()
     expect(messageFromBroadcast({ record: { id: 1 } })).toBeNull()

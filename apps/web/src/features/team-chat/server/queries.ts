@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { PAGE_SIZE, type ChatMessage } from '../schema'
+import { PAGE_SIZE, type ChatMessage } from '@/features/chat/schema'
 
 const COLUMNS = 'id,user_id,nick,body,created_at'
 

@@ -15,6 +15,19 @@ export type ChatMessage = {
   nick: string
   body: string
   created_at: string
+  /** Match rooms only: the writer's side ('h' home, 'a' away). */
+  side?: 'h' | 'a'
+}
+
+export type Cursor = z.infer<typeof cursorSchema>
+export type SendResult = { message: ChatMessage } | { error: string }
+
+/** Hebrew text for the errors the database raises on insert. */
+export function chatErrorHe(message: string): string {
+  if (message.includes('rate_limit')) return 'לאט לאט 🙂 נסה שוב בעוד כמה שניות'
+  if (message.includes('room_closed')) return 'החדר סגור כרגע'
+  if (message.includes('not_playing')) return 'רק אוהדי שתי הקבוצות כותבים בחדר הזה'
+  return 'ההודעה לא נשלחה. נסה שוב'
 }
 
 /** Adds messages (from the server, the realtime channel or an older page), dropping duplicates, oldest first. */
@@ -31,9 +44,11 @@ export function mergeMessages(current: readonly ChatMessage[], incoming: readonl
 export function messageFromBroadcast(payload: unknown): ChatMessage | null {
   const record = (payload as { record?: Partial<ChatMessage> } | null)?.record
   if (!record) return null
-  const { id, user_id, nick, body, created_at } = record
+  const { id, user_id, nick, body, created_at, side } = record
   if (![id, user_id, nick, body, created_at].every((v) => typeof v === 'string')) return null
-  return { id, user_id, nick, body, created_at } as ChatMessage
+  const m = { id, user_id, nick, body, created_at } as ChatMessage
+  if (side === 'h' || side === 'a') m.side = side
+  return m
 }
 
 /** Clock time in Israel, e.g. "21:07". */
