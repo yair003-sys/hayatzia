@@ -1092,6 +1092,7 @@ input[type="datetime-local"],input[type="time"]{color-scheme:dark}
 .clip-spent{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(7,9,13,.72);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);color:#fff;font-weight:700;font-size:15px;text-align:center;pointer-events:none}
 .clip-spent b{font-size:34px}
 .clip.spent .clip-spent{display:flex}
+.e2e-code{font:800 30px/1.3 Rubik,Heebo,sans-serif;letter-spacing:.06em;text-align:center;direction:ltr;padding:18px 12px;border-radius:14px;background:var(--surface-2,rgba(255,255,255,.06));border:1px solid var(--line-soft)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
@@ -1424,7 +1425,8 @@ function renderStand(){
 /* ---------- inbox ---------- */
 function renderInbox(){
   if(!fav){view.innerHTML='<div class="empty"><div>עוד לא סיימת הרשמה</div></div>';return}
-  var html='<div class="topbtn"><div class="sec-h" style="flex:1;margin-top:0">הודעות פרטיות</div><button class="btn sm" data-act="newgroup">קבוצה חדשה</button></div>';
+  var html='<div class="topbtn"><div class="sec-h" style="flex:1;margin-top:0">הודעות פרטיות</div>'+(dmOn()?'':'<button class="btn sm" data-act="newgroup">קבוצה חדשה</button>')+'</div>';
+  if(dmOn())html+='<div class="note"><b>🔒 הצפנה מקצה לקצה.</b> הודעות פרטיות מוצפנות במכשיר שלך ונפתחות רק במכשיר של מי שקיבל. אף אחד אחר לא יכול לקרוא אותן, גם לא מפעילי האפליקציה.</div>';
   var polTxt=PRIV.dm==='team'?'כל אוהד של '+fav.short+' יכול לכתוב לך':(PRIV.dm==='approved'?'אוהדים יכולים לבקש, ורק אתה מאשר':'כיבית קבלת פניות');
   html+='<div class="note"><b>מי יכול לפנות אליך:</b> '+polTxt+'. <button data-act="gopriv" style="color:var(--accent-text);font-weight:800;text-decoration:underline">שינוי</button></div>';
   if(PRIV.dm==='approved'&&REQS.length){
@@ -1435,14 +1437,14 @@ function renderInbox(){
     }).join('');
   }
   var ths=Object.keys(THREADS).map(function(k){return THREADS[k]});
-  ths.sort(function(a,b){var la=a.msgs.length?a.msgs[a.msgs.length-1].t:0,lb=b.msgs.length?b.msgs[b.msgs.length-1].t:0;return lb-la});
+  ths.sort(function(a,b){var la=a.real?a.lastT||0:(a.msgs.length?a.msgs[a.msgs.length-1].t:0),lb=b.real?b.lastT||0:(b.msgs.length?b.msgs[b.msgs.length-1].t:0);return lb-la});
   html+='<div class="sec-h">שיחות</div>';
-  if(!ths.length)html+='<div class="empty"><div>עוד אין שיחות. פתח כרטיס של אוהד ב"היציע שלי" ושלח בקשה.</div></div>';
+  if(!ths.length)html+='<div class="empty"><div>'+(dmOn()?'עוד אין שיחות. לחץ על התמונה של אוהד בצ\'אט הקבוצה או בכיכר, ושלח לו הודעה מוצפנת.':'עוד אין שיחות. פתח כרטיס של אוהד ב"היציע שלי" ושלח בקשה.')+'</div></div>';
   ths.forEach(function(th){
-    var last=th.msgs[th.msgs.length-1],pair='';
+    var last=th.real?null:th.msgs[th.msgs.length-1],pair='';
     if(th.kind==='dm'){var f=fanById(th.members[0]);pair=avCore({fan:f},40)}
     else pair=scarf(fav)+scarf(fav);
-    html+='<button class="room" data-th="'+th.id+'"><span class="pair">'+pair+'</span><span class="rbody"><span class="rt">'+esc(thTitle(th))+(th.kind==='group'?' · '+(th.members.length+1)+' חברים':'')+'</span><span class="rp">'+(last&&!last.sys?'<b>'+(last.me?'אתה':esc(last.nick))+':</b> '+esc(last.text):'שיחה חדשה')+'</span></span>'+(th.unread?'<span class="chip open">'+th.unread+'</span>':'')+'</button>';
+    html+='<button class="room" data-th="'+th.id+'"><span class="pair">'+pair+'</span><span class="rbody"><span class="rt">'+esc(thTitle(th))+(th.kind==='group'?' · '+(th.members.length+1)+' חברים':'')+'</span><span class="rp">'+(th.real?'🔒 '+(th.lastT?'הודעה מוצפנת · '+timeAgo(th.lastT):'שיחה חדשה'):(last&&!last.sys?'<b>'+(last.me?'אתה':esc(last.nick))+':</b> '+esc(last.text):'שיחה חדשה'))+'</span></span>'+(th.unread?'<span class="chip open">'+th.unread+'</span>':'')+'</button>';
   });
   if(OUT.length){
     html+='<div class="sec-h">ממתינות לאישור</div>'+OUT.map(function(o){var f=fanById(o.fan);return f?'<div class="frow" style="cursor:default">'+scarf(T[f.team])+'<div><div class="fn">'+esc(f.nick)+'</div><div class="fs">הבקשה נשלחה</div></div><span class="chip">ממתין</span></div>':''}).join('');
@@ -2053,6 +2055,7 @@ function msgAuthorFan(id){
   var arr=curMsgs();if(!arr)return null;
   for(var i=0;i<arr.length;i++){
     var x=arr[i];
+    if(x.id===id&&!x.me&&x.uid)return realFan(x.uid,x.nick,x.tid);
     if(x.id===id&&!x.me&&x.nick){
       var m=cur&&cur.kind==='match'?MBY[cur.id]:null;
       var tid=x.tid||(m?(x.side==='h'?m.h:m.a):null);
@@ -2300,6 +2303,7 @@ function openSheet(html){sheetEl.innerHTML='<div class="sheet-in">'+html+'</div>
 function closeSheet(){sheetEl.hidden=true;sheetEl.innerHTML=''}
 function openFanSheet(fid){
   var f=fanById(fid);if(!f)return;
+  if(f.real){openRealFanSheet(f);return}
   if(f.team!==fav.id){
     openSheet('<div class="vhead">'+avCore({fan:f},48)+'<div><b>'+esc(f.nick)+'</b><span>אוהד מאומת · '+T[f.team].short+'</span></div><button class="x" data-act="close">סגירה</button></div>'+
       '<div class="note">הכרטיס המלא והתמונות של אוהד נראים רק לאוהדי הקבוצה שלו. כך כל קבוצה שומרת על קהילה פרטית.</div>'+
@@ -2333,6 +2337,7 @@ sheetEl.addEventListener('click',function(e){
   else if(xAct(a,b)){}
   else if(sqAct(a,b)){}
   else if(a==='gochat')startChat(fanById(fid));
+  else if(a==='rdm')dmStart(fanById(fid));
   else if(a==='blk')blockFan(fid);
   else if(a==='rep')openReport('user',fid,fid);
   else if(a==='mkgroup'){
@@ -2957,7 +2962,7 @@ function clipHTML(c){
   return '<article class="clip'+(c.once&&!own&&SQNOW[c.id]==='spent'?' spent':'')+'" data-cid="'+c.id+'" style="--tc:'+t.bg+';--tr:'+t.ring+'">'+
     '<div class="clip-bg" style="background-image:url(&quot;'+(c.video?'':c.img)+'&quot;)" aria-hidden="true"></div>'+media+'<div class="clip-shade" aria-hidden="true"></div>'+
     '<div class="clip-rail">'+
-      '<span class="clip-av">'+avCore(own?{me:true}:(c.cloud?{nick:c.nick,tid:c.tid}:{fan:f}),46,true,true)+'</span>'+
+      '<span class="clip-av">'+avCore(own?{me:true}:(c.cloud?{fan:realFan(c.uid,c.nick,c.tid)}:{fan:f}),46,true,true)+'</span>'+
       '<button class="cr'+(lk?' on':'')+'" data-act="sqlike" data-c="'+c.id+'" aria-pressed="'+lk+'" aria-label="לייק"><i>'+ic.heart+'</i><span>'+kfmt(c.likes+(lk&&!c.cloud?1:0))+'</span></button>'+
       '<button class="cr" data-act="sqcm" data-c="'+c.id+'" aria-label="תגובות"><i>'+icCm+'</i><span>'+(c.cloud?c.ncm:c.comments.length)+'</span></button>'+
       (c.tid!==fav.id?'<button class="cr resp'+(rs?' on':'')+'" data-act="sqresp" data-c="'+c.id+'" aria-pressed="'+rs+'" aria-label="כבוד מאוהד יריב"><i>🤝</i><span>'+kfmt(c.resp+(rs&&!c.cloud?1:0))+'</span></button>':'<span class="cr dim" title="כבוד נותנים רק אוהדי קבוצות אחרות"><i>🤝</i><span>'+kfmt(c.resp)+'</span></span>')+
@@ -3379,7 +3384,7 @@ function msgHTML(x){
   var m=cur&&cur.kind==='match'?MBY[cur.id]:null;
   if(HIDM[x.id])return '<div class="sys" data-mid="'+x.id+'">הודעה הוסתרה בעקבות דיווח · בבדיקה</div>';
   var tid=x.tid||(x.side==='h'?m.h:m.a),badge=!!(cur&&cur.kind==='match');
-  return '<div class="msg'+(x.me?' me':'')+'" data-mid="'+x.id+'">'+avCore(x.me?{me:true}:{nick:x.nick,tid:tid},38,badge,true)+'<div><div class="meta"><b>'+esc(x.nick)+'</b>'+subMark(x,tid)+(x.me?'<span class="you">אתה</span>':'')+'<span>'+hm(x.t)+'</span></div>'+
+  return '<div class="msg'+(x.me?' me':'')+'" data-mid="'+x.id+'">'+avCore(x.me?{me:true}:(x.uid?{fan:realFan(x.uid,x.nick,tid)}:{nick:x.nick,tid:tid}),38,badge,true)+'<div><div class="meta"><b>'+esc(x.nick)+'</b>'+subMark(x,tid)+(x.me?'<span class="you">אתה</span>':'')+'<span>'+hm(x.t)+'</span></div>'+
     '<div class="txt">'+esc(x.text)+'</div>'+(x.me?'':'<div class="act"><button data-rep="'+x.id+'">דיווח על ההודעה</button></div>')+'</div></div>';
 }
 function msgsEl(){return chat.querySelector('#msgs')}
@@ -3413,8 +3418,8 @@ function renderHead(){
     var title=esc(thTitle(th)),sub,btns;
     if(th.kind==='dm'){
       var f=fanById(th.members[0]);
-      sub=avCore({fan:f},24)+'<span>אוהד מאומת · '+T[f.team].short+(f.online?' · מחובר':'')+'</span>';
-      btns='<span class="sp"><button class="hb" data-act="rep-th">דיווח</button><button class="hb" data-act="blk-th">חסימה</button></span>';
+      sub=avCore({fan:f},24)+(th.real?'<span>🔒 מוצפן מקצה לקצה</span>':'<span>אוהד מאומת · '+T[f.team].short+(f.online?' · מחובר':'')+'</span>');
+      btns='<span class="sp">'+(th.real?'<button class="hb" data-act="e2ecode">קוד אימות</button>':'')+'<button class="hb" data-act="rep-th">דיווח</button><button class="hb" data-act="blk-th">חסימה</button></span>';
     }else{
       sub=ic.lockS+'<span>קבוצה פרטית · '+(th.members.length+1)+' חברים</span>';
       btns='<span class="sp"><button class="hb" data-act="leave">יציאה</button></span>';
@@ -3476,8 +3481,9 @@ function openTeam(sub){if(!fav)return;mount('team','team');if(sub&&sub!=='chat')
 function openThread(id){
   var th=THREADS[id];if(!th)return;
   th.unread=0;mount('thread',id);setTabLabels();
+  if(th.real){if(th.lastT)dmOpen(th);else{dmClose();DM.open=th.id}}
 }
-function closeRoom(){cur=null;chat.hidden=true;chat.innerHTML='';render()}
+function closeRoom(){dmClose();cur=null;chat.hidden=true;chat.innerHTML='';render()}
 function appendMsg(x,mine){
   var el=msgsEl();if(!el)return;
   var stick=nearBottom(el)||mine;
@@ -3493,6 +3499,7 @@ function sendMsg(text){
     if((s.room!=='open'&&s.room!=='closing')||!side)return;
     x={id:++mid,nick:nick,side:side,text:text,t:Date.now(),me:true};
   }else if(cur.kind==='team'&&CLOUD.live){cloudSend(text);return}
+  else if(cur.kind==='thread'&&THREADS[cur.id]&&THREADS[cur.id].real){dmSend(THREADS[cur.id],text);return}
   else x={id:++mid,nick:nick,tid:fav.id,text:text,t:Date.now(),me:true};
   curMsgs().push(x);appendMsg(x,true);
   if(cur.kind==='thread')scheduleReply(cur.id);
@@ -3524,6 +3531,7 @@ chat.addEventListener('click',function(e){
     if(b.id==='remind'){var Rr=ROOMS[cur.id];Rr.remind=!Rr.remind;b.textContent=Rr.remind?'נרשמת לתזכורת ✓':'תזכירו לי כשהחדר נפתח';if(Rr.remind)toast('נרשמת. בגרסה האמיתית תגיע התראה לטלפון');return}
     if(b.id==='newpill'){toBottom();return}
     var a=b.dataset.act;
+    if(a==='e2ecode'){var thc=THREADS[cur.id];if(thc&&thc.real)dmShowCode(thc);return}
     if(a==='rep-th'){var th0=THREADS[cur.id];if(th0)openReport('user',th0.members[0],th0.members[0]);return}
     if(a==='blk-th'){var th=THREADS[cur.id];if(th)blockFan(th.members[0]);return}
     if(a==='leave'){delete THREADS[cur.id];closeRoom();toast('יצאת מהקבוצה');return}
@@ -3555,7 +3563,7 @@ function cloudInit(){
 function cloudUser(u){
   CLOUD.user=u||null;
   if(!u){
-    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();
+    CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();dmDetach();
     // an old demo "Google" account on the live site: send it through the real sign-in
     if(who==='חשבון Google'||/^Google · /.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
     return;
@@ -3602,8 +3610,9 @@ function cloudSaveProfile(){
 function cloudNickSoon(){if(!CLOUD.saved)return;clearTimeout(CLOUD.nickT);CLOUD.nickT=setTimeout(cloudSaveProfile,900)}
 function cloudDetach(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}CLOUD.live=false}
 function cloudAttach(){
-  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();return}
-  sqCloudAttach();prCloudAttach();tpAttach();
+  if(!CLOUD.user||!CLOUD.saved||!fav||!CLOUD.prof||CLOUD.prof.team!==fav.id){cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();dmDetach();return}
+  // each feature attaches on its own, so one failing never takes the others down
+  [sqCloudAttach,prCloudAttach,tpAttach,dmAttach].forEach(function(f){try{f()}catch(e){console.warn(e)}});
   if(CLOUD.live===fav.id)return;
   cloudDetach();
   var F=CLOUD.fb.F,team=fav.id;
@@ -3614,7 +3623,7 @@ function cloudAttach(){
     if(!fav||fav.id!==team)return;
     var arr=snap.docs.map(function(d){
       var v=d.data({serverTimestamps:'estimate'}),id=CLOUD.ids[d.id]||(CLOUD.ids[d.id]=++mid);
-      return {id:id,nick:String(v.nick||'אוהד'),tid:team,text:String(v.text||''),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),me:v.uid===CLOUD.user.uid};
+      return {id:id,nick:String(v.nick||'אוהד'),tid:team,uid:v.uid,text:String(v.text||''),t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),me:v.uid===CLOUD.user.uid};
     }).reverse();
     var old=TEAM.msgs,known={};old.forEach(function(x){known[x.id]=1});
     var fresh=arr.filter(function(x){return !known[x.id]});
@@ -3633,7 +3642,7 @@ function cloudSend(text){
     .catch(function(e){console.warn(e);toast('ההודעה לא נשלחה')});
 }
 function cloudSignOut(){
-  cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();CLOUD.prof=null;CLOUD.saved=false;
+  cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();dmDetach();CLOUD.prof=null;CLOUD.saved=false;
   if(CLOUD.fb&&CLOUD.user)CLOUD.fb.Au.signOut(CLOUD.fb.auth);
 }
 
@@ -3648,7 +3657,7 @@ function sqCloudAttach(){
     var me=CLOUD.user&&CLOUD.user.uid,prev={};SQC.list.forEach(function(c){prev[c.id]=c});
     SQC.list=s.docs.map(function(d){
       var v=d.data({serverTimestamps:'estimate'});
-      return {id:'fc_'+d.id,fid:d.id,cloud:true,owner:v.uid===me?'me':'u:'+v.uid,nick:String(v.nick||'אוהד'),tid:v.tid,img:String(v.img||''),video:'',
+      return {id:'fc_'+d.id,fid:d.id,cloud:true,uid:v.uid,owner:v.uid===me?'me':'u:'+v.uid,nick:String(v.nick||'אוהד'),tid:v.tid,img:String(v.img||''),video:'',
         cap:String(v.cap||''),tags:String(v.tags||''),likes:v.likes||0,resp:v.resp||0,ncm:v.ncm||0,once:!!v.once,views:v.views||0,comments:prev['fc_'+d.id]?prev['fc_'+d.id].comments:[],t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()};
     }).filter(function(c){return T[c.tid]&&/^data:image\//.test(c.img)});
     sqOnceCheck();sqMerge();
@@ -3846,7 +3855,7 @@ function tpAttach(){
     var before=TPC.list.map(function(p){return p.id}).join(',');
     TPC.list=s.docs.map(function(d){
       var v=d.data({serverTimestamps:'estimate'}),id='tp_'+d.id,o=prev[id];
-      return {id:id,fid:d.id,cloud:true,owner:v.uid===me?'me':resolveFan(String(v.nick||'אוהד'),team).id,tid:team,cap:String(v.cap||''),aud:'team',
+      return {id:id,fid:d.id,cloud:true,owner:v.uid===me?'me':realFan(v.uid,String(v.nick||'אוהד'),team).id,tid:team,cap:String(v.cap||''),aud:'team',
         t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),img:String(v.img||''),likes:v.likes||0,ncm:v.ncm||0,comments:o?o.comments:[],cmLoaded:o?o.cmLoaded:false};
     }).filter(function(p){return /^data:image\//.test(p.img)});
     if(TPC.list.map(function(p){return p.id}).join(',')!==before&&ui.tab==='stand'&&!cur&&!SV&&!VW)render();
@@ -3889,6 +3898,214 @@ function tpPublish(img,cap){
   });
 }
 function tpDelete(p){CLOUD.fb.F.deleteDoc(tpRef(p)).catch(function(){toast('המחיקה נכשלה')})}
+
+/* ---------- end-to-end encrypted private messages ----------
+   Every device makes its own key pair (ECDH P-256). The private key is created non-extractable and never
+   leaves the device; only the public key is published. Each message gets a fresh AES-256-GCM key, and that
+   key is wrapped separately for every device of both fans (HKDF over the ECDH secret). The server only ever
+   holds ciphertext, so nobody else can read the messages, including the app owner. */
+var E2E={uid:null,ready:null,dev:null,priv:null,pub:null,devs:{},devsAt:{},pubs:{},sk:{}};
+var B64={
+  en:function(buf){var b=new Uint8Array(buf),s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s)},
+  de:function(str){var s=atob(str),b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b}
+};
+function e2eOk(){return !!(window.crypto&&crypto.subtle&&window.indexedDB)}
+function e2eStore(){
+  return new Promise(function(res,rej){
+    var rq=indexedDB.open('hy-keys',1);
+    rq.onupgradeneeded=function(){rq.result.createObjectStore('k')};
+    rq.onsuccess=function(){res(rq.result)};rq.onerror=function(){rej(rq.error)};
+  });
+}
+function e2eGet(db,k){return new Promise(function(res){try{var r=db.transaction('k').objectStore('k').get(k);r.onsuccess=function(){res(r.result||null)};r.onerror=function(){res(null)}}catch(e){res(null)}})}
+function e2eSet(db,k,v){return new Promise(function(res,rej){var tx=db.transaction('k','readwrite');tx.objectStore('k').put(v,k);tx.oncomplete=function(){res()};tx.onerror=function(){rej(tx.error)}})}
+function e2eInit(){
+  var uid=CLOUD.user.uid;
+  if(E2E.ready&&E2E.uid===uid)return E2E.ready;
+  E2E.uid=uid;
+  E2E.ready=e2eStore().then(function(db){
+    return e2eGet(db,'dev_'+uid).then(function(rec){
+      if(rec&&rec.priv)return rec;
+      return crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},false,['deriveBits']).then(function(kp){
+        return crypto.subtle.exportKey('jwk',kp.publicKey).then(function(j){
+          var id=B64.en(crypto.getRandomValues(new Uint8Array(9))).replace(/[+/=]/g,'x');
+          var r={id:id,priv:kp.privateKey,pub:JSON.stringify({kty:j.kty,crv:j.crv,x:j.x,y:j.y})};
+          return e2eSet(db,'dev_'+uid,r).then(function(){return r});
+        });
+      });
+    });
+  }).then(function(rec){
+    E2E.dev=rec.id;E2E.priv=rec.priv;E2E.pub=rec.pub;
+    var F=CLOUD.fb.F;
+    return F.setDoc(F.doc(CLOUD.fb.db,'keys',uid,'dev',rec.id),{pub:rec.pub,t:F.serverTimestamp()}).then(function(){return rec});
+  });
+  E2E.ready.catch(function(e){console.warn('e2e',e);E2E.ready=null});
+  return E2E.ready;
+}
+function e2eDevs(uid,fresh){
+  if(!fresh&&E2E.devs[uid]&&Date.now()-E2E.devsAt[uid]<60000)return Promise.resolve(E2E.devs[uid]);
+  var F=CLOUD.fb.F;
+  return F.getDocs(F.collection(CLOUD.fb.db,'keys',uid,'dev')).then(function(s){
+    var L=s.docs.map(function(d){var v=d.data();E2E.pubs[uid+'/'+d.id]=v.pub;return {id:d.id,pub:v.pub}});
+    E2E.devs[uid]=L;E2E.devsAt[uid]=Date.now();return L;
+  });
+}
+function e2ePub(uid,dev){
+  var k=uid+'/'+dev;if(E2E.pubs[k])return Promise.resolve(E2E.pubs[k]);
+  var F=CLOUD.fb.F;
+  return F.getDoc(F.doc(CLOUD.fb.db,'keys',uid,'dev',dev)).then(function(d){if(!d.exists())throw new Error('no key');return E2E.pubs[k]=d.data().pub});
+}
+// the key shared between this device and another device: HKDF(ECDH secret) -> AES-256-GCM
+function e2eShared(pub){
+  if(E2E.sk[pub])return E2E.sk[pub];
+  var enc=new TextEncoder();
+  E2E.sk[pub]=crypto.subtle.importKey('jwk',JSON.parse(pub),{name:'ECDH',namedCurve:'P-256'},false,[]).then(function(pk){
+    return crypto.subtle.deriveBits({name:'ECDH',public:pk},E2E.priv,256);
+  }).then(function(bits){
+    return crypto.subtle.importKey('raw',bits,'HKDF',false,['deriveKey']);
+  }).then(function(h){
+    return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:enc.encode('hayatzia-dm'),info:enc.encode('wrap-v1')},h,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  });
+  return E2E.sk[pub];
+}
+function e2eEncrypt(text,toUid){
+  var me=CLOUD.user.uid,K,iv=crypto.getRandomValues(new Uint8Array(12)),out={};
+  return Promise.all([e2eInit(),e2eDevs(toUid,true),e2eDevs(me,true)]).then(function(r){
+    var devs=r[1].concat(r[2]);
+    if(!r[1].length)throw new Error('no-recipient-key');
+    return crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt']).then(function(k){
+      K=k;return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},K,new TextEncoder().encode(text));
+    }).then(function(ct){
+      out.iv=B64.en(iv);out.ct=B64.en(ct);
+      return crypto.subtle.exportKey('raw',K);
+    }).then(function(raw){
+      out.wk={};
+      return Promise.all(devs.map(function(d){
+        var wi=crypto.getRandomValues(new Uint8Array(12));
+        return e2eShared(d.pub).then(function(sk){return crypto.subtle.encrypt({name:'AES-GCM',iv:wi},sk,raw)}).then(function(w){out.wk[d.id]={i:B64.en(wi),w:B64.en(w)}});
+      }));
+    }).then(function(){out.sd=E2E.dev;return out});
+  });
+}
+function e2eDecrypt(m){
+  return e2eInit().then(function(){
+    var k=m.wk&&m.wk[E2E.dev];if(!k)throw new Error('not-for-this-device');
+    return e2ePub(m.from,m.sd).then(e2eShared).then(function(sk){
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:B64.de(k.i)},sk,B64.de(k.w));
+    }).then(function(raw){
+      return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['decrypt']);
+    }).then(function(K){
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:B64.de(m.iv)},K,B64.de(m.ct));
+    }).then(function(pt){return new TextDecoder().decode(pt)});
+  });
+}
+// a short code both fans can compare (in person or by phone) to be sure nobody swapped the keys
+function e2eCode(otherUid){
+  var me=CLOUD.user.uid;
+  return Promise.all([e2eDevs(me,true),e2eDevs(otherUid,true)]).then(function(r){
+    var all=r[0].concat(r[1]).map(function(d){return d.pub}).sort().join('|');
+    return crypto.subtle.digest('SHA-256',new TextEncoder().encode(all));
+  }).then(function(h){
+    var b=new Uint8Array(h),s='';
+    for(var i=0;i<12;i++)s+=String(b[i]%10);
+    return s.replace(/(\d{4})(?=\d)/g,'$1 ');
+  });
+}
+
+/* ---------- real private conversations (Firestore) ---------- */
+var DM={unsub:null,munsub:null,open:null,live:null,read:{}};
+function dmOn(){return prCloud()&&e2eOk()}
+function dmTid(a,b){return a<b?a+'_'+b:b+'_'+a}
+function realFan(uid,nk,tid){
+  var id='u_'+uid,f=SYNTH[id];
+  if(!f)f=SYNTH[id]={id:id,uid:uid,nick:nk||'אוהד',team:tid,since:'',city:'',stand:'',bio:'',online:false,dm:'team',showCity:false,hidden:false,av:-1,real:true};
+  else if(nk)f.nick=nk;
+  return f;
+}
+function dmAttach(){
+  if(!dmOn()){dmDetach();return}
+  if(DM.unsub){DM.unsub();DM.unsub=null}
+  DM.read=lsObj('dmread');
+  // real conversations replace the demo ones
+  Object.keys(THREADS).forEach(function(k){if(!THREADS[k].real)delete THREADS[k]});REQS=[];OUT=[];
+  e2eInit().catch(function(){});
+  var F=CLOUD.fb.F,me=CLOUD.user.uid;
+  DM.unsub=F.onSnapshot(F.query(F.collection(CLOUD.fb.db,'dms'),F.where('members','array-contains',me)),function(s){
+    s.docs.forEach(function(d){
+      var v=d.data({serverTimestamps:'estimate'}),other=(v.members||[]).filter(function(u){return u!==me})[0];if(!other)return;
+      var f=realFan(other,(v.nicks||{})[other],fav.id),id='e_'+d.id,th=THREADS[id];
+      if(BLOCKED.indexOf(f.id)>=0)return;
+      var last=v.last&&v.last.toMillis?v.last.toMillis():0;
+      if(!th)th=THREADS[id]={id:id,kind:'dm',members:[f.id],title:null,msgs:[],unread:0,real:true,tid:d.id,other:other};
+      th.lastT=last;th.lastFrom=v.lastFrom;
+      var open=cur&&cur.kind==='thread'&&cur.id===id;
+      th.unread=!open&&v.lastFrom&&v.lastFrom!==me&&last>(DM.read[d.id]||0)?1:0;
+    });
+    setTabLabels();if(ui.tab==='inbox'&&!cur)render();
+  },function(e){console.warn('dms',e)});
+}
+function dmDetach(){if(DM.unsub){DM.unsub();DM.unsub=null}dmClose();Object.keys(THREADS).forEach(function(k){if(THREADS[k].real)delete THREADS[k]})}
+function dmMarkRead(th){DM.read[th.tid]=Date.now();lsSet('dmread',DM.read);th.unread=0;setTabLabels()}
+function dmOpen(th){
+  dmClose();DM.open=th.id;dmMarkRead(th);
+  var F=CLOUD.fb.F,me=CLOUD.user.uid,f=fanById(th.members[0]),cache={};
+  th.msgs.forEach(function(x){if(x.fid)cache[x.fid]=x});
+  DM.munsub=F.onSnapshot(F.query(F.collection(CLOUD.fb.db,'dms',th.tid,'m'),F.orderBy('t','desc'),F.limit(150)),function(s){
+    var docs=s.docs.slice().reverse();
+    Promise.all(docs.map(function(d){
+      if(cache[d.id])return cache[d.id];
+      var v=d.data({serverTimestamps:'estimate'}),t=v.t&&v.t.toMillis?v.t.toMillis():Date.now(),mine=v.from===me;
+      return e2eDecrypt(v).then(function(txt){return {text:txt,lock:false}},function(){return {text:'🔒 ההודעה הוצפנה למכשיר אחר ולא ניתן לפתוח אותה כאן',lock:true}}).then(function(r){
+        var x={id:++mid,fid:d.id,nick:mine?nick:(f?f.nick:'אוהד'),tid:fav.id,text:r.text,t:t,me:mine};
+        if(!r.lock)cache[d.id]=x;
+        return x;
+      });
+    })).then(function(list){
+      if(DM.open!==th.id)return;
+      DM.live=th.id;
+      var head={id:-1,sys:true,t:0,text:'🔒 השיחה מוצפנת מקצה לקצה. רק שניכם יכולים לקרוא אותה, גם לא מפעילי האפליקציה.'};
+      var known={};th.msgs.forEach(function(x){if(x.fid)known[x.fid]=1});
+      var fresh=list.filter(function(x){return !known[x.fid]});
+      var wasEmpty=!th.msgs.some(function(x){return x.fid});
+      th.msgs=[head].concat(list);dmMarkRead(th);
+      if(cur&&cur.kind==='thread'&&cur.id===th.id&&msgsEl()){
+        if(!wasEmpty&&fresh.length&&fresh.length<=10)fresh.forEach(function(x){appendMsg(x,x.me)});
+        else renderMsgs();
+      }
+    });
+  },function(e){console.warn('dm msgs',e);DM.munsub=null;DM.live=null});
+}
+function dmClose(){if(DM.munsub){DM.munsub();DM.munsub=null}DM.open=null;DM.live=null}
+function dmStart(f){
+  if(!f||!f.uid||BLOCKED.indexOf(f.id)>=0)return;
+  var me=CLOUD.user.uid,tid=dmTid(me,f.uid),id='e_'+tid;
+  if(!THREADS[id])THREADS[id]={id:id,kind:'dm',members:[f.id],title:null,msgs:[{id:-1,sys:true,t:0,text:'🔒 השיחה מוצפנת מקצה לקצה. רק שניכם יכולים לקרוא אותה, גם לא מפעילי האפליקציה.'}],unread:0,real:true,tid:tid,other:f.uid};
+  closeSheet();openThread(id);
+}
+function dmSend(th,text){
+  var F=CLOUD.fb.F,me=CLOUD.user.uid,f=fanById(th.members[0]),members=[me,th.other].sort(),nicks={};
+  nicks[me]=String(nick||'אוהד').slice(0,20);nicks[th.other]=String(f?f.nick:'אוהד').slice(0,20);
+  e2eEncrypt(text,th.other).then(function(enc){
+    var bt=F.writeBatch(CLOUD.fb.db);
+    bt.set(F.doc(CLOUD.fb.db,'dms',th.tid),{members:members,nicks:nicks,last:F.serverTimestamp(),lastFrom:me});
+    bt.set(F.doc(F.collection(CLOUD.fb.db,'dms',th.tid,'m')),{from:me,sd:enc.sd,t:F.serverTimestamp(),iv:enc.iv,ct:enc.ct,wk:enc.wk});
+    return bt.commit();
+  }).then(function(){th.lastT=Date.now();if(DM.live!==th.id&&cur&&cur.kind==='thread'&&cur.id===th.id)dmOpen(th)}).catch(function(e){
+    console.warn(e);
+    toast(String(e&&e.message)==='no-recipient-key'?'לאוהד הזה עוד אין מפתח הצפנה. הוא צריך להיכנס לאפליקציה פעם אחת':'ההודעה לא נשלחה');
+  });
+}
+function dmShowCode(th){
+  openSheet('<div class="tm" style="font-size:30px">🔒 קוד אימות</div><p>השוו את הקוד הזה עם '+esc(thTitle(th))+', פנים אל פנים או בטלפון. אם הוא זהה אצל שניכם, אף אחד לא יכול להתחזות או לקרוא את השיחה.</p><div class="e2e-code" id="e2ecode">מחשב…</div><p style="font-size:12.5px">הקוד משתנה כשאחד מכם נכנס ממכשיר חדש.</p><button class="abtn" data-act="close">סגירה</button>');
+  e2eCode(th.other).then(function(c){var el=$('#e2ecode');if(el)el.textContent=c}).catch(function(){var el=$('#e2ecode');if(el)el.textContent='לא הצלחנו לחשב קוד'});
+}
+function openRealFanSheet(f){
+  var same=f.team===fav.id,can=same&&dmOn()&&f.uid!==(CLOUD.user&&CLOUD.user.uid);
+  openSheet('<div class="vhead">'+avCore({fan:f},48)+'<div><b>'+esc(f.nick)+'</b><span>אוהד מחובר · '+T[f.team].short+'</span></div><button class="x" data-act="close">סגירה</button></div>'+
+    (same?'':'<div class="note">הכרטיס המלא של אוהד נראה רק לאוהדי הקבוצה שלו. כך כל קבוצה שומרת על קהילה פרטית.</div>')+
+    (can?'<button class="abtn primary" data-act="rdm" data-fan="'+f.id+'">🔒 הודעה פרטית מוצפנת</button>':'')+
+    '<div class="srow"><button class="abtn danger" data-act="blk" data-fan="'+f.id+'">חסימה</button><button class="abtn" data-act="rep" data-fan="'+f.id+'">דיווח</button></div>');
+}
 
 /* ---------- live simulation ---------- */
 setInterval(function(){

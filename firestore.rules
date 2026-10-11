@@ -180,6 +180,48 @@ service cloud.firestore {
       }
     }
 
+    // Encryption keys: one public key per device. Only the owner publishes; any signed-in fan can read public keys.
+    match /keys/{uid}/dev/{dev} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && rd().keys().hasOnly(['pub','t'])
+        && rd().pub is string && rd().pub.size() < 400
+        && rd().t == request.time;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Private conversations between two fans of the same team. The messages inside are end-to-end encrypted:
+    // the server only ever stores ciphertext.
+    match /dms/{tid} {
+      function okPair(m) {
+        return m is list && m.size() == 2 && m[0] < m[1] && tid == m[0] + '_' + m[1]
+          && request.auth.uid in m
+          && get(/databases/$(database)/documents/users/$(m[0])).data.team == get(/databases/$(database)/documents/users/$(m[1])).data.team;
+      }
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create, update: if signedIn()
+        && rd().keys().hasOnly(['members','nicks','last','lastFrom'])
+        && okPair(rd().members)
+        && (resource == null || rd().members == resource.data.members)
+        && rd().nicks is map && rd().nicks.size() <= 2
+        && rd().lastFrom == request.auth.uid
+        && rd().last == request.time;
+      allow delete: if false;
+      match /m/{mid} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/dms/$(tid)).data.members;
+        allow create: if signedIn()
+          && request.auth.uid in getAfter(/databases/$(database)/documents/dms/$(tid)).data.members
+          && rd().keys().hasOnly(['from','sd','t','iv','ct','wk'])
+          && rd().from == request.auth.uid
+          && rd().sd is string && rd().sd.size() < 40
+          && rd().iv is string && rd().iv.size() < 40
+          && rd().ct is string && rd().ct.size() < 4000
+          && rd().wk is map && rd().wk.size() <= 20
+          && rd().t == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     // Reports go to the moderators only. Nobody can read them from the app.
     match /reports/{rid} {
       allow create: if signedIn()
