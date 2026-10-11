@@ -32,9 +32,11 @@ reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000022","role":"authenticated"}', true);
 set local role authenticated;
 select lives_ok($$ insert into public.trip_requests (trip_id) select id from public.trips $$, 'ask for a seat');
-select throws_ok($$ update public.trip_requests set status = 'accepted' $$, '42501', 'only the driver decides', 'riders cannot accept themselves');
+select is((with u as (update public.trip_requests set status = 'accepted' returning 1) select count(*)::int from u), 0,
+  'riders cannot accept themselves');
 select lives_ok($$ insert into public.fan_event_going (event_id) select id from public.fan_events $$, 'say "going"');
-select throws_ok($$ update public.market_items set sold = true $$, '42501', null, 'cannot mark someone else''s item sold');
+select is((with u as (update public.market_items set sold = true returning 1) select count(*)::int from u), 0,
+  'cannot mark someone else''s item sold');
 reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000023","role":"authenticated"}', true);
 set local role authenticated;
