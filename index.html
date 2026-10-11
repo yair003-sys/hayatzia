@@ -1093,6 +1093,7 @@ input[type="datetime-local"],input[type="time"]{color-scheme:dark}
 .clip-spent b{font-size:34px}
 .clip.spent .clip-spent{display:flex}
 .e2e-code{font:800 30px/1.3 Rubik,Heebo,sans-serif;letter-spacing:.06em;text-align:center;direction:ltr;padding:18px 12px;border-radius:14px;background:var(--surface-2,rgba(255,255,255,.06));border:1px solid var(--line-soft)}
+.camrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.camrow:has(> :only-child){grid-template-columns:1fr}.camrow .abtn{margin:0}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
@@ -1472,7 +1473,7 @@ function renderMe(){
     '<div class="prev-l">כך אוהדים אחרים רואים אותך</div><div id="prev"></div>'+
     '<div class="note"><b>'+ic.lockS.replace('15','14').replace('15','14')+' '+esc(who)+'</b> · הקבוצה ננעלה ב-'+d+'. המספר והחשבון שלך אף פעם לא מוצגים לאוהדים אחרים.</div>'+
     careerHTML()+
-    '<div class="box"><h3>תמונת פרופיל</h3><div class="avrow">'+avCore({me:true},72)+'<div class="avbtns"><label class="btn sm" for="afile" style="cursor:pointer">העלאת תמונה</label><input id="afile" type="file" accept="image/*" hidden><button class="btn sm line" data-act="avclear">הסרה</button></div></div>'+
+    '<div class="box"><h3>תמונת פרופיל</h3><div class="avrow">'+avCore({me:true},72)+'<div class="avbtns"><label class="btn sm" for="afilecam" style="cursor:pointer">🤳 סלפי</label><label class="btn sm line" for="afile" style="cursor:pointer">🖼️ מהגלריה</label><input id="afile" type="file" accept="image/*" hidden><input id="afilecam" data-for="afile" type="file" accept="image/*" capture="user" hidden><button class="btn sm line" data-act="avclear">הסרה</button></div></div>'+
       '<div class="prev-l">או בחר אחת מוכנה</div><div class="avpre">'+PRESETS.map(function(p,i){return '<button class="avp'+(PROF.avatar==='preset:'+i?' on':'')+'" data-act="avpreset" data-i="'+i+'" aria-label="תמונה מוכנה '+(i+1)+'"><span class="avc" style="--s:52px"><span class="av"><img src="'+art(fav.id,p[0],p[1])+'" alt=""></span></span></button>'}).join('')+'</div>'+
       '<p>התמונה מופיעה ליד ההודעות שלך, ובלחיצה עליה אוהדי הקבוצה מגיעים לכרטיס שלך.</p></div>'+
     '<div class="box"><h3>התמונות שלי</h3><p>לכל תמונה בוחרים מי רואה אותה. התמונה נדחסת, ופרטי המצלמה והמיקום נמחקים ממנה בהעלאה.</p><div class="grid3"><button class="cell add" data-act="upload" aria-label="העלאת תמונה">'+ic.plus+'</button>'+cellsHTML(mineIds(),'mine',99)+'</div></div>'+
@@ -1886,7 +1887,7 @@ function openUpload(){
   var A=audLabels();
   function opt(v,t,d){return '<label class="opt"><input type="radio" name="aud" value="'+v+'"'+(UP.aud===v?' checked':'')+'><span>'+t+'<small>'+d+'</small></span></label>'}
   openSheet('<div class="tm" style="font-size:40px">תמונה חדשה</div>'+
-    '<label class="abtn" for="pfile" id="pbtn" style="cursor:pointer">בחירת תמונה</label><input id="pfile" type="file" accept="image/*" hidden>'+
+    '<div class="srow camrow"><label class="abtn primary" for="pfilecam" style="cursor:pointer">📷 צילום עכשיו</label><label class="abtn" for="pfile" id="pbtn" style="cursor:pointer">🖼️ מהגלריה</label></div><input id="pfile" type="file" accept="image/*" hidden><input id="pfilecam" data-for="pfile" type="file" accept="image/*" capture="environment" hidden>'+
     '<div class="vimg" id="pprev" hidden><img id="pimg" alt="תצוגה מקדימה"></div>'+
     '<label class="fld">כיתוב<input id="pcap" maxlength="120" placeholder="ספר על התמונה" autocomplete="off"></label>'+
     '<div><div class="prev-l">מי רואה את התמונה</div>'+
@@ -2584,7 +2585,7 @@ function openSubV(){
   openSheet('<div class="tm" style="font-size:30px">💳 אימות מנוי</div><p>מנויים מקבלים תג "מנוי" בכרטיס ובצ׳אט. האימות נעשה פעם אחת לעונה.</p>'+
     '<label class="opt"><input type="radio" name="subm" value="photo" checked><span>צילום כרטיס המנוי<small>התמונה נמחקת מיד אחרי הבדיקה, לא נשמרת אצלנו</small></span></label>'+
     '<label class="opt"><input type="radio" name="subm" value="num"><span>מספר מנוי<small>נבדק מול רשימת המנויים של הקבוצה, בגרסה האמיתית</small></span></label>'+
-    '<label class="abtn" for="subf" id="subfl" style="cursor:pointer">בחירת תמונה</label><input id="subf" type="file" accept="image/*" hidden>'+
+    '<div class="srow camrow"><label class="abtn primary" for="subfcam" style="cursor:pointer">📷 צילום עכשיו</label><label class="abtn" for="subf" id="subfl" style="cursor:pointer">🖼️ מהגלריה</label></div><input id="subf" type="file" accept="image/*" hidden><input id="subfcam" data-for="subf" type="file" accept="image/*" capture="environment" hidden>'+
     '<label class="fld" id="subnl" hidden>מספר מנוי<input id="subn" inputmode="numeric" maxlength="10" placeholder="למשל 1234567" autocomplete="off"></label>'+
     '<button class="abtn primary" data-act="subsend" id="subsend" disabled>שליחה לבדיקה</button><button class="abtn" data-act="close">ביטול</button>'+
     '<p style="font-size:12.5px">בהדגמה כל בקשה מאושרת אחרי כמה שניות.</p>');
@@ -2782,7 +2783,7 @@ function renderMarket(){
 function openMkSheet(){
   MKUP={img:null};
   openSheet('<div class="tm" style="font-size:30px">מודעה חדשה</div>'+
-    '<label class="abtn" for="mkfile" style="cursor:pointer">צילום הפריט</label><input id="mkfile" type="file" accept="image/*" hidden>'+
+    '<div class="srow camrow"><label class="abtn primary" for="mkfilecam" style="cursor:pointer">📷 צילום הפריט</label><label class="abtn" for="mkfile" style="cursor:pointer">🖼️ מהגלריה</label></div><input id="mkfile" type="file" accept="image/*" hidden><input id="mkfilecam" data-for="mkfile" type="file" accept="image/*" capture="environment" hidden>'+
     '<div class="vimg" id="mkprev" hidden><img id="mkimg" alt="תצוגה מקדימה"></div>'+
     '<label class="fld">מה מוכרים<input id="mkt" maxlength="40" placeholder="למשל: חולצת בית 2024" autocomplete="off"></label>'+
     '<div class="row2"><label class="fld">קטגוריה<select id="mkc">'+Object.keys(MKCAT).map(function(k){return '<option value="'+k+'">'+MKCAT[k]+'</option>'}).join('')+'</select></label>'+
@@ -2829,7 +2830,7 @@ function openChSheet(){
   openSheet('<div class="tm" style="font-size:30px">שיר חדש</div>'+
     '<label class="fld">שם השיר<input id="cht" maxlength="40" autocomplete="off"></label>'+
     '<label class="fld">המילים<textarea id="chly" maxlength="400" rows="5" placeholder="כל שורה בשורה נפרדת"></textarea></label>'+
-    '<label class="abtn" for="chfile" style="cursor:pointer" id="chfl">🎙️ הוספת הקלטה מהיציע (אופציונלי)</label><input id="chfile" type="file" accept="audio/*" hidden>'+
+    '<div class="srow camrow"><label class="abtn" for="chfilecam" style="cursor:pointer">🎙️ הקלטה עכשיו</label><label class="abtn" for="chfile" style="cursor:pointer" id="chfl">📁 הקלטה מהטלפון</label></div><input id="chfile" type="file" accept="audio/*" hidden><input id="chfilecam" data-for="chfile" type="file" accept="audio/*" capture="environment" hidden>'+
     '<p style="font-size:12.5px">רק שירים של היציע. בלי שירים מוקלטים של אמנים, כי יש עליהם זכויות יוצרים. בהדגמה ההקלטה נשמרת רק עד סגירת הדף.</p>'+
     '<button class="abtn primary" data-act="chpub">פרסום</button><button class="abtn" data-act="close">ביטול</button>');
 }
@@ -3027,7 +3028,9 @@ function sqComments(id,local){
 function openSqUp(){
   SQUP={img:null,video:null};
   openSheet('<div class="tm" style="font-size:30px">העלאה לכיכר</div><p>מה שמעלים לכיכר רואים כל אוהדי הליגה המאומתים, מכל הקבוצות.</p>'+
-    '<label class="abtn" for="sqfile" style="cursor:pointer" id="sqfl">'+(sqCloud()?'📷 בחירת תמונה':'📷 בחירת תמונה או סרטון')+'</label><input id="sqfile" type="file" accept="'+(sqCloud()?'image/*':'image/*,video/*')+'" hidden>'+
+    '<div class="srow camrow"><label class="abtn primary" for="sqfilecam" style="cursor:pointer">📷 צילום עכשיו</label>'+(sqCloud()?'':'<label class="abtn" for="sqvidcam" style="cursor:pointer">🎥 צילום סרטון</label>')+'</div>'+
+    '<label class="abtn" for="sqfile" style="cursor:pointer" id="sqfl">'+(sqCloud()?'🖼️ בחירה מהגלריה':'🖼️ תמונה או סרטון מהגלריה')+'</label><input id="sqfile" type="file" accept="'+(sqCloud()?'image/*':'image/*,video/*')+'" hidden>'+
+    '<input id="sqfilecam" data-for="sqfile" type="file" accept="image/*" capture="environment" hidden><input id="sqvidcam" data-for="sqfile" type="file" accept="video/*" capture="environment" hidden>'+
     '<div class="vimg" id="sqprev" hidden></div>'+
     '<label class="fld">כיתוב<input id="sqcap" maxlength="120" placeholder="מה רואים כאן?" autocomplete="off"></label>'+
     '<label class="fld">תגיות (אופציונלי)<input id="sqtags" maxlength="60" placeholder="#תפאורה #משחק_חוץ" autocomplete="off"></label>'+
@@ -4177,6 +4180,17 @@ function phoneVerify(code){
   phoneBusy(true,'מאמת…');
   CLOUD.conf.confirm(code).then(function(){CLOUD.conf=null;phoneRcReset()}).catch(function(e){console.warn(e);phoneBusy(false);setErr(phoneErr(e))});
 }
+
+/* ---------- camera buttons: a "take a photo" input hands its file to the normal upload input ---------- */
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t||!t.dataset||!t.dataset.for)return;
+  e.stopPropagation();
+  var dst=document.getElementById(t.dataset.for);
+  if(!dst||!t.files||!t.files.length)return;
+  try{var dt=new DataTransfer();dt.items.add(t.files[0]);dst.files=dt.files}catch(err){toast('הדפדפן הזה לא תומך בצילום ישיר. בחר מהגלריה');return}
+  t.value='';
+  dst.dispatchEvent(new Event('change',{bubbles:true}));
+},true);
 /* ---------- live simulation ---------- */
 setInterval(function(){
   var now=Date.now();
