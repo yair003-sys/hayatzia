@@ -2,8 +2,9 @@
 -- is open: 30 minutes before kick-off until 170 minutes after (90' + break + stoppage ≈ 110', then 60' "closing").
 -- Same timing as the legacy app (DUR=110, OPEN_BEFORE=30, CLOSE_AFTER=60).
 
--- API-Football calls Kiryat Shmona "Ironi Kiryat Shmona".
+-- API-Football names seen in the data (same list as features/matches/api-teams.ts).
 update public.teams set api_names = array['Hapoel Ironi Kiryat Shmona', 'Ironi Kiryat Shmona'] where id = 'ikn';
+update public.teams set api_names = array['Hapoel Katamon', 'Hapoel Jerusalem'] where id = 'hjr';
 
 -- Our club for an API-Football team id (null for clubs that are not in the league this season).
 create function public.club_of_api(p_api_id integer) returns text
