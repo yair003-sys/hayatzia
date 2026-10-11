@@ -1088,6 +1088,10 @@ input[type="datetime-local"],input[type="time"]{color-scheme:dark}
 .lv-subs span{font-weight:700;color:var(--fg)}
 .lv-wait{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px;color:var(--muted)}
 .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--accent);animation:spin .7s linear infinite}
+.clip-once{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;padding:4px 10px;border-radius:999px;background:rgba(109,74,255,.55);border:1px solid rgba(255,255,255,.25);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-size:12px;font-weight:700;text-shadow:none}
+.clip-spent{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(7,9,13,.72);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);color:#fff;font-weight:700;font-size:15px;text-align:center;pointer-events:none}
+.clip-spent b{font-size:34px}
+.clip.spent .clip-spent{display:flex}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
@@ -2906,6 +2910,9 @@ function shrink(url,max,cb){
 
 /* ---------- the square: one shared vertical feed for the whole league ---------- */
 var CLIPS=[],CLIKE={},CRESP={},SQF='all',SQUP=null,SQOBS=null,SQTAP={},SQMUTE=true,SQCUR=null;
+var SQLIFE=24*3600000,SQSEEN={},SQNOW={};
+function sqAlive(c){return Date.now()-c.t<SQLIFE}
+function sqLeft(c){var m=Math.max(1,Math.round((c.t+SQLIFE-Date.now())/60000));return m<60?m+' דק׳':Math.round(m/60)+' שע׳'}
 var SQCAP=[
   ['תפאורה לפני השריקה. כל היציע עם צעיפים','#תפאורה #יום_משחק'],
   ['הגענו למשחק חוץ, 200 איש באוטובוסים','#משחק_חוץ #אוהדי_אמת'],
@@ -2926,42 +2933,43 @@ function seedClips(){
     for(var k=0;k<n;k++){
       var f=L[Math.floor(r()*L.length)],c=pick(r,SQCAP),cm=[],m=Math.floor(r()*4);
       for(var j=0;j<m;j++){var ot=pick(r,TEAMS),ol=fansOf(ot.id);cm.push({fid:ol[Math.floor(r()*ol.length)].id,text:pick(r,SQCM),t:Date.now()-Math.floor(r()*20)*3600000})}
-      CLIPS.push({id:'cl_'+t.id+'_'+k,owner:f.id,tid:t.id,img:sampleArt(t.id,Math.floor(r()*4),hash(t.id+'cl'+k)),cap:c[0],tags:c[1],likes:40+Math.floor(r()*2600),resp:Math.floor(r()*320),comments:cm,t:Date.now()-Math.floor(r()*30)*3600000,sample:true});
+      CLIPS.push({id:'cl_'+t.id+'_'+k,owner:f.id,tid:t.id,img:sampleArt(t.id,Math.floor(r()*4),hash(t.id+'cl'+k)),cap:c[0],tags:c[1],likes:40+Math.floor(r()*2600),resp:Math.floor(r()*320),comments:cm,t:Date.now()-Math.floor(r()*20)*3600000-Math.floor(r()*50)*60000,sample:true});
     }
   });
   CLIPS.sort(function(a,b){return b.t-a.t});
   lsArr('clips').forEach(function(c){if(c&&c.id){c.comments=c.comments||[];CLIPS.unshift(c)}});
-  CLIKE=lsObj('clike');CRESP=lsObj('cresp');
+  CLIKE=lsObj('clike');CRESP=lsObj('cresp');SQSEEN=lsObj('sqseen');
   if(typeof SQC!=='undefined'&&SQC&&SQC.on)sqMerge(true);
 }
 function clipVisible(c){return c.owner==='me'||(!HIDPH[c.id]&&BLOCKED.indexOf(c.owner)<0)}
 function derbyTeams(){var s={};MATCHES.forEach(function(m){if(m.tag&&m.tag.indexOf('דרבי')>=0){s[m.h]=1;s[m.a]=1}});return s}
 function sqList(){
   var d=derbyTeams();
-  return CLIPS.filter(clipVisible).filter(function(c){return SQF==='all'||(SQF==='mine'?c.tid===fav.id:!!d[c.tid])});
+  return CLIPS.filter(clipVisible).filter(function(c){return sqAlive(c)&&!(c.once&&c.owner!=='me'&&SQSEEN[c.id]&&!SQNOW[c.id])}).filter(function(c){return SQF==='all'||(SQF==='mine'?c.tid===fav.id:!!d[c.tid])});
 }
 function clipById(id){for(var i=0;i<CLIPS.length;i++)if(CLIPS[i].id===id)return CLIPS[i];return null}
-function saveClips(){return lsSet('clips',CLIPS.filter(function(c){return c.owner==='me'&&!c.video}).slice(0,6).map(function(c){return {id:c.id,owner:'me',tid:c.tid,img:c.img,cap:c.cap,tags:c.tags,likes:c.likes,resp:c.resp,comments:c.comments,t:c.t}}))}
+function saveClips(){return lsSet('clips',CLIPS.filter(function(c){return c.owner==='me'&&!c.video}).slice(0,6).map(function(c){return {id:c.id,owner:'me',tid:c.tid,img:c.img,cap:c.cap,tags:c.tags,likes:c.likes,resp:c.resp,comments:c.comments,t:c.t,once:!!c.once,views:c.views||0}}))}
 function kfmt(n){return n>=10000?(Math.round(n/100)/10)+'K':num(n)}
 function clipHTML(c){
   var own=c.owner==='me',f=own||c.cloud?null:fanById(c.owner),t=T[c.tid],nm=own?nick:(c.cloud?c.nick:(f?f.nick:'אוהד')),lk=!!CLIKE[c.id],rs=!!CRESP[c.id];
   var media=c.video?'<video class="clip-m" src="'+c.video+'" playsinline loop muted preload="metadata"></video>':'<img class="clip-m" src="'+c.img+'" alt="'+esc(c.cap)+'" loading="lazy">';
   var ch=CHANTS&&c.tid===fav.id&&CHANTS.length?CHANTS[0].title:'שירי היציע';
-  return '<article class="clip" data-cid="'+c.id+'" style="--tc:'+t.bg+';--tr:'+t.ring+'">'+
+  return '<article class="clip'+(c.once&&!own&&SQNOW[c.id]==='spent'?' spent':'')+'" data-cid="'+c.id+'" style="--tc:'+t.bg+';--tr:'+t.ring+'">'+
     '<div class="clip-bg" style="background-image:url(&quot;'+(c.video?'':c.img)+'&quot;)" aria-hidden="true"></div>'+media+'<div class="clip-shade" aria-hidden="true"></div>'+
     '<div class="clip-rail">'+
       '<span class="clip-av">'+avCore(own?{me:true}:(c.cloud?{nick:c.nick,tid:c.tid}:{fan:f}),46,true,true)+'</span>'+
       '<button class="cr'+(lk?' on':'')+'" data-act="sqlike" data-c="'+c.id+'" aria-pressed="'+lk+'" aria-label="לייק"><i>'+ic.heart+'</i><span>'+kfmt(c.likes+(lk&&!c.cloud?1:0))+'</span></button>'+
       '<button class="cr" data-act="sqcm" data-c="'+c.id+'" aria-label="תגובות"><i>'+icCm+'</i><span>'+(c.cloud?c.ncm:c.comments.length)+'</span></button>'+
       (c.tid!==fav.id?'<button class="cr resp'+(rs?' on':'')+'" data-act="sqresp" data-c="'+c.id+'" aria-pressed="'+rs+'" aria-label="כבוד מאוהד יריב"><i>🤝</i><span>'+kfmt(c.resp+(rs&&!c.cloud?1:0))+'</span></button>':'<span class="cr dim" title="כבוד נותנים רק אוהדי קבוצות אחרות"><i>🤝</i><span>'+kfmt(c.resp)+'</span></span>')+
-      '<button class="cr" data-act="sqshare" data-c="'+c.id+'" aria-label="שיתוף"><i>'+svg('<path d="M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6v1"/>',22)+'</i><span>שיתוף</span></button>'+
+      (c.once?'':'<button class="cr" data-act="sqshare" data-c="'+c.id+'" aria-label="שיתוף">')+(c.once?'':'<i>'+svg('<path d="M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6v1"/>',22)+'</i><span>שיתוף</span></button>')+
       (own?'<button class="cr" data-act="sqdel" data-c="'+c.id+'" aria-label="מחיקה"><i>🗑️</i><span>מחיקה</span></button>':'<button class="cr" data-act="sqrep" data-c="'+c.id+'" aria-label="דיווח"><i>⚑</i><span>דיווח</span></button>')+
     '</div>'+
     '<div class="clip-tx"><span class="clip-team">'+scarfH(t,14,5)+'<b>'+t.short+'</b>'+(c.tid===fav.id?'<em>הקבוצה שלך</em>':'')+'</span>'+
-      '<b class="clip-nk">'+esc(nm)+'<small> · '+timeAgo(c.t)+(c.sample?' · לדוגמה':'')+'</small></b>'+
+      (c.once?'<span class="clip-once">👁 חד פעמי'+(own?' · '+(c.views||0)+' צפו':' · לא יופיע שוב')+'</span>':'')+
+      '<b class="clip-nk">'+esc(nm)+'<small> · '+timeAgo(c.t)+' · נעלם בעוד '+sqLeft(c)+(c.sample?' · לדוגמה':'')+'</small></b>'+
       '<p>'+esc(c.cap)+(c.tags?' <span class="clip-tags">'+esc(c.tags)+'</span>':'')+'</p>'+
       '<span class="clip-snd"><i>♫</i><span><span>'+esc(ch)+' · אוהדי '+t.short+'&nbsp;&nbsp;&nbsp;&nbsp;'+esc(ch)+' · אוהדי '+t.short+'</span></span></span></div>'+
-    (c.video?'<button class="clip-mute" data-act="sqmute" aria-label="קול">'+(SQMUTE?'🔇':'🔊')+'</button>':'')+
+    '<div class="clip-spent" aria-hidden="true"><b>👁</b><span>צפית בפוסט החד פעמי</span></div>'+(c.video?'<button class="clip-mute" data-act="sqmute" aria-label="קול">'+(SQMUTE?'🔇':'🔊')+'</button>':'')+
   '</article>';
 }
 function renderSquare(){
@@ -2982,8 +2990,8 @@ function sqObserve(){
   SQOBS=new IntersectionObserver(function(es){
     es.forEach(function(e){
       var el=e.target,v=el.querySelector('video');
-      if(e.isIntersecting&&e.intersectionRatio>0.6){el.classList.add('on');SQCUR=el.dataset.cid;if(v){v.muted=SQMUTE;var p=v.play();if(p&&p.catch)p.catch(function(){})}}
-      else{el.classList.remove('on');if(v)v.pause()}
+      if(e.isIntersecting&&e.intersectionRatio>0.6){el.classList.add('on');SQCUR=el.dataset.cid;sqSeen(el.dataset.cid);if(v){v.muted=SQMUTE;var p=v.play();if(p&&p.catch)p.catch(function(){})}}
+      else{el.classList.remove('on');if(v)v.pause();if(SQNOW[el.dataset.cid]===1&&!e.isIntersecting){SQNOW[el.dataset.cid]='spent';el.classList.add('spent')}}
     });
   },{root:view,threshold:[0,0.6,1]});
   view.querySelectorAll('.clip').forEach(function(el){SQOBS.observe(el)});
@@ -3018,13 +3026,16 @@ function openSqUp(){
     '<div class="vimg" id="sqprev" hidden></div>'+
     '<label class="fld">כיתוב<input id="sqcap" maxlength="120" placeholder="מה רואים כאן?" autocomplete="off"></label>'+
     '<label class="fld">תגיות (אופציונלי)<input id="sqtags" maxlength="60" placeholder="#תפאורה #משחק_חוץ" autocomplete="off"></label>'+
+    '<label class="chk"><input type="checkbox" id="sqonce"><span>👁 חד פעמי<small style="display:block;font-weight:500;font-size:12.5px;color:var(--muted)">כל אוהד יכול לצפות פעם אחת, ואחרי זה הפוסט נעלם אצלו</small></span></label>'+
+    '<p style="font-size:12.5px">⏳ כל מה שעולה לכיכר נמחק אוטומטית אחרי 24 שעות.</p>'+
     '<p style="font-size:12.5px">בלי קללות, בלי השפלה של אוהדי היריבה ובלי פרצופים של ילדים בלי אישור. תוכן כזה יורד מהכיכר.'+(sqCloud()?' בשלב הזה מעלים לכיכר רק תמונות.':' בהדגמה סרטון נשמר רק עד סגירת הדף.')+'</p>'+
     '<button class="abtn primary" data-act="sqpub" id="sqpub" disabled>פרסום בכיכר</button><button class="abtn" data-act="close">ביטול</button>');
 }
 function publishSq(){
   if(!SQUP||(!SQUP.img&&!SQUP.video))return;
-  if(sqCloud()&&SQUP.img){sqCloudPublish(SQUP.img,(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,(($('#sqtags')||{}).value||'').trim());SQUP=null;closeSheet();SQF='all';view.dataset.sq='';render();view.scrollTop=0;return}
-  var c={id:'cl'+Date.now(),owner:'me',tid:fav.id,img:SQUP.img||'',video:SQUP.video||'',cap:(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,tags:(($('#sqtags')||{}).value||'').trim(),likes:0,resp:0,comments:[],t:Date.now()};
+  var once=!!(($('#sqonce')||{}).checked);
+  if(sqCloud()&&SQUP.img){sqCloudPublish(SQUP.img,(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,(($('#sqtags')||{}).value||'').trim(),once);SQUP=null;closeSheet();SQF='all';view.dataset.sq='';render();view.scrollTop=0;return}
+  var c={id:'cl'+Date.now(),owner:'me',tid:fav.id,img:SQUP.img||'',video:SQUP.video||'',cap:(($('#sqcap')||{}).value||'').trim()||'מהיציע של '+fav.short,tags:(($('#sqtags')||{}).value||'').trim(),likes:0,resp:0,comments:[],t:Date.now(),once:once,views:0};
   CLIPS.unshift(c);if(!c.video&&!saveClips()){c.img=c.img}
   SQUP=null;closeSheet();SQF='all';view.dataset.sq='';render();view.scrollTop=0;
   toast('עלה לכיכר. כל אוהדי הליגה רואים');
@@ -3631,18 +3642,50 @@ var SQC={unsub:null,list:[],on:false,cm:{}};
 function sqCloud(){return !!(CLOUD.saved&&CLOUD.user)}
 function sqCloudAttach(){
   if(!sqCloud()||SQC.unsub)return;
-  var F=CLOUD.fb.F,q=F.query(F.collection(CLOUD.fb.db,'clips'),F.orderBy('t','desc'),F.limit(40));
-  SQC.on=true;
+  var F=CLOUD.fb.F,q=F.query(F.collection(CLOUD.fb.db,'clips'),F.where('t','>',new Date(Date.now()-SQLIFE)),F.orderBy('t','desc'),F.limit(40));
+  SQC.on=true;sqSweep();
   SQC.unsub=F.onSnapshot(q,function(s){
     var me=CLOUD.user&&CLOUD.user.uid,prev={};SQC.list.forEach(function(c){prev[c.id]=c});
     SQC.list=s.docs.map(function(d){
       var v=d.data({serverTimestamps:'estimate'});
       return {id:'fc_'+d.id,fid:d.id,cloud:true,owner:v.uid===me?'me':'u:'+v.uid,nick:String(v.nick||'אוהד'),tid:v.tid,img:String(v.img||''),video:'',
-        cap:String(v.cap||''),tags:String(v.tags||''),likes:v.likes||0,resp:v.resp||0,ncm:v.ncm||0,comments:prev['fc_'+d.id]?prev['fc_'+d.id].comments:[],t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()};
+        cap:String(v.cap||''),tags:String(v.tags||''),likes:v.likes||0,resp:v.resp||0,ncm:v.ncm||0,once:!!v.once,views:v.views||0,comments:prev['fc_'+d.id]?prev['fc_'+d.id].comments:[],t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()};
     }).filter(function(c){return T[c.tid]&&/^data:image\//.test(c.img)});
-    sqMerge();
+    sqOnceCheck();sqMerge();
   },function(e){console.warn('square',e)});
 }
+
+// view-once: each fan sees the post one time. The server keeps who watched, so it holds across devices too.
+function sqSeen(id){
+  var c=clipById(id);if(!c||!c.once||c.owner==='me'||SQSEEN[id])return;
+  SQSEEN[id]=1;SQNOW[id]=1;lsSet('sqseen',SQSEEN);
+  if(c.cloud&&sqCloud()){
+    var F=CLOUD.fb.F,bt=F.writeBatch(CLOUD.fb.db);
+    bt.set(F.doc(CLOUD.fb.db,'clips',c.fid,'seen',CLOUD.user.uid),{t:F.serverTimestamp()});
+    bt.update(F.doc(CLOUD.fb.db,'clips',c.fid),{views:F.increment(1)});
+    bt.commit().catch(function(e){console.warn(e)});
+  }else c.views=(c.views||0)+1;
+}
+function sqOnceCheck(){
+  var F=CLOUD.fb.F,me=CLOUD.user.uid;SQC.chk=SQC.chk||{};
+  SQC.list.forEach(function(c){
+    if(!c.once||c.owner==='me'||SQSEEN[c.id]||SQC.chk[c.id])return;
+    SQC.chk[c.id]=1;
+    F.getDoc(F.doc(CLOUD.fb.db,'clips',c.fid,'seen',me)).then(function(d){if(d.exists()&&!SQNOW[c.id]){SQSEEN[c.id]=1;lsSet('sqseen',SQSEEN);sqMerge()}}).catch(function(){});
+  });
+}
+// posts older than 24 hours are removed from the server (any signed-in fan may remove an expired post)
+function sqSweep(){
+  var F=CLOUD.fb.F;
+  F.getDocs(F.query(F.collection(CLOUD.fb.db,'clips'),F.where('t','<',new Date(Date.now()-SQLIFE)),F.limit(20))).then(function(s){
+    s.docs.forEach(function(d){F.deleteDoc(d.ref).catch(function(){})});
+  }).catch(function(e){console.warn('sweep',e)});
+}
+// the feed drops expired posts by itself, even with the app left open
+setInterval(function(){
+  if(ui.tab!=='square'||cur)return;
+  if(CLIPS.some(function(c){return !sqAlive(c)&&view.querySelector('.clip[data-cid="'+c.id+'"]')})){view.dataset.sq='';render()}
+},60000);
 function sqCloudDetach(){if(SQC.unsub){SQC.unsub();SQC.unsub=null}if(SQC.on){SQC.on=false;SQC.list=[];sqMerge()}}
 function sqMerge(silent){
   // real posts first, then the labelled sample posts; local demo uploads are dropped once the real feed is on
@@ -3706,11 +3749,11 @@ function sqFitImg(url,cb){
   if(url.length<=650000){cb(url);return}
   shrink(url,720,function(u2){if(u2.length<=650000){cb(u2);return}shrink(u2,560,function(u3){cb(u3.length<=650000?u3:null)})});
 }
-function sqCloudPublish(img,cap,tags){
+function sqCloudPublish(img,cap,tags,once){
   var F=CLOUD.fb.F;
   sqFitImg(img,function(u){
     if(!u){toast('התמונה גדולה מדי. נסה תמונה אחרת');return}
-    F.addDoc(F.collection(CLOUD.fb.db,'clips'),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),tid:fav.id,img:u,cap:cap.slice(0,120),tags:tags.slice(0,60),t:F.serverTimestamp(),likes:0,resp:0,ncm:0})
+    F.addDoc(F.collection(CLOUD.fb.db,'clips'),{uid:CLOUD.user.uid,nick:String(nick||'אוהד').slice(0,20),tid:fav.id,img:u,cap:cap.slice(0,120),tags:tags.slice(0,60),t:F.serverTimestamp(),likes:0,resp:0,ncm:0,once:!!once,views:0})
       .then(function(){toast('עלה לכיכר. כל אוהדי הליגה רואים')})
       .catch(function(e){console.warn(e);toast('ההעלאה נכשלה. נסה שוב')});
   });

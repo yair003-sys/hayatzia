@@ -125,7 +125,8 @@ service cloud.firestore {
       function mark(kind) { return /databases/$(database)/documents/clips/$(cid)/$(kind)/$(request.auth.uid); }
       allow read: if signedIn();
       allow create: if signedIn()
-        && rd().keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm'])
+        && rd().keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm','once','views'])
+        && rd().get('once', false) is bool && rd().get('views', 0) == 0
         && rd().uid == request.auth.uid
         && rd().tid == myTeam()
         && validNick(rd().nick)
@@ -134,9 +135,12 @@ service cloud.firestore {
         && rd().tags is string && rd().tags.size() <= 60
         && rd().t == request.time
         && rd().likes == 0 && rd().resp == 0 && rd().ncm == 0;
-      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      // the owner can delete any time; after 24 hours any fan may clear an expired post
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || resource.data.t < request.time - duration.value(24, 'h'));
       allow update: if signedIn() && (
         (onlyChanged('likes') && toggled('likes', mark('likes')))
+        || (onlyChanged('views') && resource.data.get('once', false) == true && resource.data.uid != request.auth.uid
+            && bump('views', 1) && existsAfter(mark('seen')) && !exists(mark('seen')))
         || (onlyChanged('resp') && myTeam() != resource.data.tid && toggled('resp', mark('resp')))
         || (onlyChanged('ncm') && bump('ncm', 1))
       );
@@ -155,6 +159,13 @@ service cloud.firestore {
           && getAfter(clipPath()).data.resp == get(clipPath()).data.resp + 1;
         allow delete: if signedIn() && request.auth.uid == uid
           && getAfter(clipPath()).data.resp == get(clipPath()).data.resp - 1;
+      }
+      // view-once: who already watched, kept in step with the views counter
+      match /seen/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid && rd().keys().hasOnly(['t'])
+          && getAfter(clipPath()).data.views == get(clipPath()).data.views + 1;
+        allow update, delete: if false;
       }
       match /cm/{mid} {
         allow read: if signedIn();
