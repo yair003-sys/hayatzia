@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Suspense } from 'react'
 import { House, MessageCircle, Trophy, Clapperboard, IdCard, type LucideIcon } from 'lucide-react'
 import type { Route } from 'next'
 import { cn } from '@/lib/utils'
@@ -16,8 +17,12 @@ export const TABS: readonly Tab[] = [
   { href: '/me', label: 'הכרטיס שלי', icon: IdCard },
 ]
 
-export function TabBar() {
-  const pathname = usePathname()
+export function activeTab(pathname: string): Route | null {
+  return TABS.find((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))?.href ?? null
+}
+
+/** Pure view: the same markup is the static shell (no active tab) and the live bar. */
+function TabBarView({ active }: { active: Route | null }) {
   return (
     <nav
       aria-label="ניווט ראשי"
@@ -25,18 +30,18 @@ export function TabBar() {
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`)
+          const on = active === href
           return (
             <li key={href}>
               <Link
                 href={href}
-                aria-current={active ? 'page' : undefined}
+                aria-current={on ? 'page' : undefined}
                 className={cn(
                   'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-dim transition-colors',
-                  active && 'text-fg',
+                  on && 'text-fg',
                 )}
               >
-                <Icon aria-hidden className={cn('size-5', active && 'text-accent-text')} strokeWidth={2.2} />
+                <Icon aria-hidden className={cn('size-5', on && 'text-accent-text')} strokeWidth={2.2} />
                 {label}
               </Link>
             </li>
@@ -44,5 +49,18 @@ export function TabBar() {
         })}
       </ul>
     </nav>
+  )
+}
+
+function LiveTabBar() {
+  return <TabBarView active={activeTab(usePathname())} />
+}
+
+/** The pathname is request data on dynamic routes, so the live bar streams in over an identical static shell. */
+export function TabBar() {
+  return (
+    <Suspense fallback={<TabBarView active={null} />}>
+      <LiveTabBar />
+    </Suspense>
   )
 }
