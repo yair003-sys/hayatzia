@@ -102,7 +102,7 @@ out.have = out.fixtures.filter(f => existsSync(`${DIR}/fx/${f.id}.json`)).map(f 
 const body = JSON.stringify(out);
 const oldBody = league ? JSON.stringify(league) : '';
 if (body !== oldBody) { await writeFile(`${DIR}/league.json`, body); changed = true; }
-if (made) { meta.fetched = now; await writeFile(`${DIR}/meta.json`, JSON.stringify(meta)); changed = true; }
+if (made) { delete meta.sample; meta.fetched = now; await writeFile(`${DIR}/meta.json`, JSON.stringify(meta)); changed = true; }
 
 console.log(JSON.stringify({ made, reqToday: meta.req, remaining: meta.remaining, fixtures: out.fixtures.length, details: out.have.length, changed }));
 if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `changed=${changed}\n`, { flag: 'a' });
