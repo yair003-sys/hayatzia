@@ -27,12 +27,12 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - Production URL: https://hayatzia-flame.vercel.app. Previews: `hayatzia-*-hayaziha.vercel.app`.
 - Function region: `fra1` (Frankfurt, next to the database), pinned in `apps/web/vercel.json`.
 - `vercel.json` `ignoreCommand` skips builds when a commit does not touch `apps/web` (the legacy hourly league-data commits would otherwise rebuild every hour). Changing only Vercel env vars needs a manual "Redeploy" in the dashboard.
-- Env vars set: Production → `NEXT_PUBLIC_APP_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://loaqhisfhafjbrmtygrp.supabase.co`; Preview + Development → `preview`, `https://yblzcgetkfbdwsfogkqp.supabase.co`. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is pasted by the owner per environment (Claude never types keys). Until a key exists, the app runs without sign-in.
+- Env vars set: Production → `NEXT_PUBLIC_APP_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://loaqhisfhafjbrmtygrp.supabase.co`; Preview + Development → `preview`, `https://yblzcgetkfbdwsfogkqp.supabase.co`. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set per environment (pasted by the owner; Claude never types keys).
 
 ## Supabase Auth URLs
 - Production: Site URL `https://hayatzia-flame.vercel.app`; redirect allow-list `https://hayatzia-flame.vercel.app/auth/callback`.
 - Staging: redirect allow-list `https://hayatzia-*-hayaziha.vercel.app/**` (preview deployments only).
-- Google provider: pending (OAuth client in Google Cloud; owner pastes client ID + secret into each project).
+- Google provider: on in both projects. One OAuth web client `hayatzia-supabase` in Google Cloud project `hayatzia-2b0ff` (separate from Firebase's auto-created client), redirect URIs = both `https://<ref>.supabase.co/auth/v1/callback`. Client ID + secret were pasted by the owner. Verified 2026-10-11: production login → Google → `/onboarding`.
 
 ## Supabase projects
 - Organization: "yair003-sys's Orghayatzia" (free plan), owner signs in with GitHub.
