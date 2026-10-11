@@ -197,6 +197,46 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"player_rating_stats": {
+                  Row: {
+                    "count": number,"d1": number,"d2": number,"d3": number,"d4": number,"d5": number,"player_id": string,"sum": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "count"?: number,"d1"?: number,"d2"?: number,"d3"?: number,"d4"?: number,"d5"?: number,"player_id": string,"sum"?: number
+                  }
+                  Update: {
+                    "count"?: number,"d1"?: number,"d2"?: number,"d3"?: number,"d4"?: number,"d5"?: number,"player_id"?: string,"sum"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "player_rating_stats_player_id_fkey"
+      columns: ["player_id"]
+isOneToOne: true
+      referencedRelation: "players"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"player_ratings": {
+                  Row: {
+                    "nick": string,"player_id": string,"review": string,"stars": number,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "nick"?: string,"player_id": string,"review"?: string,"stars": number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "nick"?: string,"player_id"?: string,"review"?: string,"stars"?: number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "player_ratings_player_id_fkey"
+      columns: ["player_id"]
+isOneToOne: false
+      referencedRelation: "players"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"players": {
                   Row: {
                     "id": string,"in_xi": boolean,"injured": boolean,"name_he": string,"name_short": string,"number": number | null,"pitch_x": number | null,"pitch_y": number | null,"position": string,"team_id": string
@@ -271,6 +311,66 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "team_messages_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"team_photo_comments": {
+                  Row: {
+                    "body": string,"created_at": string,"id": string,"nick": string,"photo_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"photo_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"photo_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "team_photo_comments_photo_id_fkey"
+      columns: ["photo_id"]
+isOneToOne: false
+      referencedRelation: "team_photos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"team_photo_likes": {
+                  Row: {
+                    "photo_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "photo_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "photo_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "team_photo_likes_photo_id_fkey"
+      columns: ["photo_id"]
+isOneToOne: false
+      referencedRelation: "team_photos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"team_photos": {
+                  Row: {
+                    "caption": string,"comments_count": number,"created_at": string,"id": string,"likes_count": number,"media_path": string,"nick": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "caption"?: string,"comments_count"?: number,"created_at"?: string,"id"?: string,"likes_count"?: number,"media_path": string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "caption"?: string,"comments_count"?: number,"created_at"?: string,"id"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "team_photos_team_id_fkey"
       columns: ["team_id"]
 isOneToOne: false
       referencedRelation: "teams"
