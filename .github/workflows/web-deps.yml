@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # to start web-ci after committing the lockfile
 
 jobs:
   deps:
