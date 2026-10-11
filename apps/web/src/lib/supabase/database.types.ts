@@ -187,6 +187,46 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"fan_event_going": {
+                  Row: {
+                    "event_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "event_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "event_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fan_event_going_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "fan_events"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"fan_events": {
+                  Row: {
+                    "area": string,"created_at": string,"going_count": number,"id": string,"kind": string,"nick": string,"note": string,"starts_at": string,"team_id": string,"title": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "area": string,"created_at"?: string,"going_count"?: number,"id"?: string,"kind": string,"nick"?: string,"note"?: string,"starts_at": string,"team_id"?: string,"title": string,"user_id"?: string
+                  }
+                  Update: {
+                    "area"?: string,"created_at"?: string,"going_count"?: number,"id"?: string,"kind"?: string,"nick"?: string,"note"?: string,"starts_at"?: string,"team_id"?: string,"title"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fan_events_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fixture_details": {
                   Row: {
                     "events": NonNullable<Json>,"fixture_id": number,"lineups": NonNullable<Json>,"updated_at": string
@@ -231,6 +271,26 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "api_teams"
       referencedColumns: ["api_id"]
+    }
+                  ]
+                },"market_items": {
+                  Row: {
+                    "category": string,"condition": string,"created_at": string,"id": string,"media_path": string | null,"nick": string,"price": number,"size": string,"sold": boolean,"team_id": string,"title": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category": string,"condition": string,"created_at"?: string,"id"?: string,"media_path"?: string | null,"nick"?: string,"price": number,"size"?: string,"sold"?: boolean,"team_id"?: string,"title": string,"user_id"?: string
+                  }
+                  Update: {
+                    "category"?: string,"condition"?: string,"created_at"?: string,"id"?: string,"media_path"?: string | null,"nick"?: string,"price"?: number,"size"?: string,"sold"?: boolean,"team_id"?: string,"title"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "market_items_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
     }
                   ]
                 },"match_messages": {
@@ -466,6 +526,58 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"trip_requests": {
+                  Row: {
+                    "created_at": string,"nick": string,"status": string,"team_id": string,"trip_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"nick"?: string,"status"?: string,"team_id"?: string,"trip_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"nick"?: string,"status"?: string,"team_id"?: string,"trip_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "trip_requests_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_requests_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"trips": {
+                  Row: {
+                    "cost": string,"created_at": string,"depart_before_min": number,"fixture_id": number,"from_city": string,"id": string,"kind": string,"nick": string,"note": string,"seats": number,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id": number,"from_city": string,"id"?: string,"kind": string,"nick"?: string,"note"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id"?: number,"from_city"?: string,"id"?: string,"kind"?: string,"nick"?: string,"note"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "trips_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trips_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
                   ]
                 }
           }
