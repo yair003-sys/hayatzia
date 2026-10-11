@@ -38,6 +38,10 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - `.github/workflows/web-ingest.yml` runs per environment; the legacy `update.yml` calls it whenever `data/` changed. Manual run: dispatch with `inputs[target]=staging|production|both`.
 - The script strips whitespace and invisible direction marks from the key (pasting on a Hebrew keyboard adds them) and reports row counts as a `::notice` annotation.
 
+## Scheduled jobs
+- `web-cleanup.yml` (hourly, :17): removes expired Square posts (Storage files, then rows) in both projects with the environment secret key.
+- `web-ingest.yml`: league data after every legacy update (see above).
+
 ## Supabase projects
 - Organization: "yair003-sys's Orghayatzia" (free plan), owner signs in with GitHub.
 - Both projects: region eu-central-1 (closest to Israel), Data API on, **new tables not auto-exposed** (grants are explicit in migrations), **automatic RLS on new tables**.

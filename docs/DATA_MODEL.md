@@ -26,6 +26,12 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 | `profiles` | `user_id uuid pk → auth.users`, `nick varchar(20)`, `team_id → teams`, `created_at` | insert own row once; `team_id` immutable (trigger `profiles_lock_team`); update `nick` only |
 | `device_keys` | `(user_id, device_id) pk`, `public_jwk jsonb`, `created_at` | select: authenticated; insert/update/delete: own rows |
 
+## Live tables (P2, 2026-10-11)
+- `team_messages`: as below, plus `nick` stamped by trigger; only `body` is insertable; 5 messages / 10 s; Broadcast to private channel `team:<club>`.
+- `match_messages`: `fixture_id`, `side` and `nick` stamped by trigger; writable only by fans of the two clubs (`club_of_api()`), only while `match_room_open()` (−30′ … +170′); channel `match:<fixture id>`.
+- `clips` + `clip_views` / `clip_likes` / `clip_respects` / `clip_comments`: as in "The Square" below; `clip_seen()` (security definer) breaks the clips ↔ clip_views policy loop; uploads ≤ 10 per hour; bucket `clips` (private, 50 MB, images + mp4/mov/webm).
+- Privileges: nothing is granted implicitly (migration `explicit_privileges`); each migration revokes and grants exactly.
+
 ## Team space (team-private: `team_id = my_team()`)
 | Table | Columns | Indexes / triggers |
 |---|---|---|
