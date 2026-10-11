@@ -131,7 +131,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"id"?: string,"nick": string,"team_id": string,"user_id"?: string
+                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
                     "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
