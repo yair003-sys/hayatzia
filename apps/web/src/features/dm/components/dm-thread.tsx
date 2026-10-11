@@ -15,7 +15,7 @@ type Shown = { id: string; sender_id: string; created_at: string; text: string |
 // Private messages never pass through the app server: this component encrypts, writes and reads
 // straight against the database with the fan's own session. The server stores ciphertext only.
 export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: string; meId: string; otherId: string; otherNick: string }) {
-  const supabase = useRef(createClient()).current
+  const [supabase] = useState(() => createClient())
   const [me, setMe] = useState<DeviceKey | null>(null)
   const [messages, setMessages] = useState<Shown[]>([])
   const [draft, setDraft] = useState('')
@@ -58,16 +58,17 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
 
   // Device key: load or create, publish the public half.
   useEffect(() => {
-    if (!e2eSupported()) {
-      setStatus('הדפדפן הזה לא תומך בהצפנה. נסה דפדפן מעודכן.')
-      return
-    }
     let cancelled = false
-    void loadDeviceKey(meId).then(async ({ key }) => {
+    void (async () => {
+      if (!e2eSupported()) {
+        setStatus('הדפדפן הזה לא תומך בהצפנה. נסה דפדפן מעודכן.')
+        return
+      }
+      const { key } = await loadDeviceKey(meId)
       const { error } = await supabase.from('device_keys').insert({ device_id: key.id, public_jwk: key.publicJwk })
       if (error && error.code !== '23505') console.warn('device key', error.message)
       if (!cancelled) setMe(key)
-    })
+    })()
     return () => {
       cancelled = true
     }
