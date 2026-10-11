@@ -2,9 +2,9 @@
 
 create table public.team_messages (
   id          uuid primary key default gen_random_uuid(),
-  team_id     text not null references public.teams (id),
+  team_id     text not null default public.my_team() references public.teams (id),  -- stamped again by trigger
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  nick        varchar(20) not null,
+  nick        varchar(20) not null default '',                                         -- stamped by trigger
   body        varchar(200) not null check (char_length(btrim(body)) between 1 and 200),
   created_at  timestamptz not null default now()
 );
