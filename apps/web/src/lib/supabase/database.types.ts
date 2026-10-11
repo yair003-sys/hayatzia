@@ -65,6 +65,32 @@ isOneToOne: false
       referencedColumns: ["api_id"]
     }
                   ]
+                },"match_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"side": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"fixture_id": number,"id"?: string,"nick"?: string,"side"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"nick"?: string,"side"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_messages_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_messages_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"players": {
                   Row: {
                     "id": string,"in_xi": boolean,"injured": boolean,"name_he": string,"name_short": string,"number": number | null,"pitch_x": number | null,"pitch_y": number | null,"position": string,"team_id": string
@@ -165,7 +191,13 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "my_team":
+            "club_of_api":
+{ Args: { "p_api_id": number }; Returns: string
+                           },
+"match_room_open":
+{ Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
+                           },
+"my_team":
 { Args: Record<PropertyKey, never>; Returns: string
                            }
           }
