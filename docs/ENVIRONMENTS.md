@@ -25,7 +25,8 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 ## Vercel project
 - Team "hayaziha" (Hobby), project `hayatzia`, root directory `apps/web`, Git: `yair003-sys/hayatzia` (`main` → production, any other branch → preview).
 - Production URL: https://hayatzia-flame.vercel.app. Previews: `hayatzia-*-hayaziha.vercel.app`.
-- Function region: `fra1` (Frankfurt, next to the database).
+- Function region: `fra1` (Frankfurt, next to the database), pinned in `apps/web/vercel.json`.
+- `vercel.json` `ignoreCommand` skips builds when a commit does not touch `apps/web` (the legacy hourly league-data commits would otherwise rebuild every hour). Changing only Vercel env vars needs a manual "Redeploy" in the dashboard.
 - Env vars set: Production → `NEXT_PUBLIC_APP_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://loaqhisfhafjbrmtygrp.supabase.co`; Preview + Development → `preview`, `https://yblzcgetkfbdwsfogkqp.supabase.co`. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is pasted by the owner per environment (Claude never types keys). Until a key exists, the app runs without sign-in.
 
 ## Supabase Auth URLs
