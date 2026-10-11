@@ -3257,7 +3257,7 @@ lvLoad();setInterval(lvLoad,5*60000);
 var AUTH={step:'welcome',phone:'',pick:null,method:''};
 var resendLeft=0,resendIv=null;
 function authTop(back){
-  return back?'<button class="abk" data-go="'+back+'" aria-label="חזרה">'+ic.back+'</button>':'<div class="a-top"><span class="wm">היציע</span><span class="demo">הדגמה</span></div>';
+  return back?'<button class="abk" data-go="'+back+'" aria-label="חזרה">'+ic.back+'</button>':'<div class="a-top"><span class="wm">היציע</span>'+(CLOUD.ok?'':'<span class="demo">הדגמה</span>')+'</div>';
 }
 function showAuth(step){AUTH.step=step;authEl.hidden=false;renderAuth()}
 function maskPhone(p){return p.slice(0,3)+'-•••-'+p.slice(6)}
@@ -3267,7 +3267,7 @@ function renderAuth(){
   if(s==='welcome'){
     h=ART+authTop()+
       '<div class="a-main"><div class="kick">ליגת העל · 2026/27</div><h1>רק אוהדים<br>אמיתיים.</h1><p>קהילה פרטית לכל קבוצה. כל אוהד מאומת, וקבוצה אחת לכל החיים.</p></div>'+
-      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">'+(CLOUD.ok?'ההתחברות עם Google אמיתית. הכניסה בטלפון עדיין בהדגמה.':'בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.')+'</div></div>';
+      '<div class="a-bot"><button class="abtn primary" data-go="phone">המשך עם מספר טלפון</button><button class="abtn" data-act="google">המשך עם Google</button><div class="fine">'+(CLOUD.ok?'כניסה מאובטחת: קוד חד פעמי ב-SMS, או חשבון Google.':'בהדגמה האימות מדומה: לא נשלח SMS ואין חיבור ל-Google.')+'</div></div>';
   }else if(s==='phone'){
     h=ART+authTop('welcome')+
       '<div class="a-main"><h2>מה המספר שלך?</h2><p>נשלח קוד אימות ב-SMS. המספר לא יוצג לאף אוהד אחר.</p>'+
@@ -3277,9 +3277,9 @@ function renderAuth(){
     h=ART+authTop('phone')+
       '<div class="a-main"><h2>הקלד את הקוד</h2><p>שלחנו קוד בן 6 ספרות אל <b dir="ltr">'+maskPhone(AUTH.phone)+'</b></p>'+
       '<input class="ain code" id="cd" type="text" inputmode="numeric" maxlength="6" dir="ltr" placeholder="••••••" autocomplete="one-time-code" aria-label="קוד אימות"><div class="err" id="err" role="alert"></div></div>'+
-      '<div class="a-bot"><button class="abtn primary" data-act="verify">אימות</button><button class="abtn" id="resend" data-act="resend" disabled>שלח שוב</button><div class="fine">בהדגמה כל קוד בן 6 ספרות מתקבל.</div></div>';
+      '<div class="a-bot"><button class="abtn primary" data-act="verify">אימות</button><button class="abtn" id="resend" data-act="resend" disabled>שלח שוב</button><div class="fine">'+(CLOUD.ok?'הקוד תקף לכמה דקות. לא הגיע? בדוק שהמספר נכון ושלח שוב.':'בהדגמה כל קוד בן 6 ספרות מתקבל.')+'</div></div>';
   }else if(s==='team'){
-    h=ART+'<div class="a-top"><span class="wm">היציע</span><span class="demo">הדגמה</span></div>'+
+    h=ART+'<div class="a-top"><span class="wm">היציע</span>'+(CLOUD.ok?'':'<span class="demo">הדגמה</span>')+'</div>'+
       '<div class="a-main" style="margin-block:0"><h2>הקבוצה שלך. לתמיד.</h2><p>הבחירה חד-פעמית. אחרי האישור אי אפשר להחליף.</p></div>'+
       '<div class="pgrid">'+TEAMS.map(function(t){return '<button class="pteam" data-t="'+t.id+'" aria-pressed="'+(AUTH.pick===t.id)+'">'+scarf(t)+'<span class="n">'+t.name+'</span></button>'}).join('')+'</div>'+
       '<div class="a-bot"><button class="abtn primary" data-act="teamnext"'+(AUTH.pick?'':' disabled')+'>המשך</button></div>';
@@ -3327,11 +3327,14 @@ function doSend(){
   var p=($('#ph').value||'').replace(/\D/g,'');
   if(p.indexOf('972')===0)p='0'+p.slice(3);
   if(!/^05\d{8}$/.test(p)){setErr('הקלד מספר נייד ישראלי תקין, למשל 050-123-4567');return}
-  AUTH.phone=p;AUTH.method='phone';showAuth('code');
+  AUTH.phone=p;AUTH.method='phone';
+  if(CLOUD.ok){phoneSend(false);return}
+  showAuth('code');
 }
 function doVerify(){
   var c=($('#cd').value||'');
   if(!/^\d{6}$/.test(c)){setErr('הקוד הוא 6 ספרות');return}
+  if(CLOUD.ok){phoneVerify(c);return}
   who='טלפון '+maskPhone(AUTH.phone);store.set('who',who);
   showAuth('team');
 }
@@ -3352,7 +3355,7 @@ authEl.addEventListener('click',function(e){
   if(a==='google'){who='חשבון Google';store.set('who',who);toast('בהדגמה: בגרסה האמיתית נפתח חלון התחברות של Google');showAuth('team')}
   else if(a==='sendcode')doSend();
   else if(a==='verify')doVerify();
-  else if(a==='resend'){startResend();toast('נשלח קוד חדש (הדגמה)')}
+  else if(a==='resend'){if(CLOUD.ok)phoneSend(true);else{startResend();toast('נשלח קוד חדש (הדגמה)')}}
   else if(a==='teamnext'&&AUTH.pick)confirmSheet();
   else if(a==='unsheet'){var sh=$('#asheet');if(sh)sh.remove()}
   else if(a==='lock'){
@@ -3565,13 +3568,13 @@ function cloudUser(u){
   if(!u){
     CLOUD.prof=null;CLOUD.saved=false;cloudDetach();sqCloudDetach();prCloudDetach();tpDetach();dmDetach();
     // an old demo "Google" account on the live site: send it through the real sign-in
-    if(who==='חשבון Google'||/^Google · /.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
+    if(who==='חשבון Google'||/^Google · /.test(who)||/^טלפון/.test(who)){['who','team','nick','lockedAt'].forEach(store.del);loadAccount();render();AUTH.pick=null;showAuth('welcome')}
     return;
   }
   var F=CLOUD.fb.F;
   F.getDoc(F.doc(CLOUD.fb.db,'users',u.uid)).then(function(s){
     CLOUD.prof=s.exists()?s.data():null;CLOUD.saved=!!CLOUD.prof;
-    who='Google · '+(u.email||u.displayName||'');store.set('who',who);
+    who=u.phoneNumber?'טלפון · '+maskPhone('0'+u.phoneNumber.replace(/^\+972/,'')):'Google · '+(u.email||u.displayName||'');store.set('who',who);
     if(CLOUD.prof&&T[CLOUD.prof.team]){
       store.set('team',CLOUD.prof.team);
       if(CLOUD.prof.nick)store.set('nick',CLOUD.prof.nick);
@@ -4107,6 +4110,49 @@ function openRealFanSheet(f){
     '<div class="srow"><button class="abtn danger" data-act="blk" data-fan="'+f.id+'">חסימה</button><button class="abtn" data-act="rep" data-fan="'+f.id+'">דיווח</button></div>');
 }
 
+
+/* ---------- real phone sign-in: a one-time code by SMS (Firebase), behind an invisible reCAPTCHA ---------- */
+function phoneE164(p){return '+972'+String(p).replace(/^0/,'')}
+function phoneErr(e){
+  var c=e&&e.code||'';
+  if(c==='auth/invalid-phone-number')return 'המספר לא תקין. בדוק ונסה שוב';
+  if(c==='auth/too-many-requests')return 'יותר מדי ניסיונות מהמכשיר הזה. נסה שוב בעוד כמה דקות';
+  if(c==='auth/quota-exceeded')return 'הגענו למכסת ההודעות היומית. נסה שוב מחר, או התחבר עם Google';
+  if(c==='auth/billing-not-enabled')return 'שליחת SMS עוד לא הופעלה באפליקציה. בינתיים אפשר להתחבר עם Google';
+  if(c==='auth/operation-not-allowed'||c==='auth/unsupported-first-factor')return 'אי אפשר לשלוח SMS למספר הזה';
+  if(c==='auth/invalid-verification-code')return 'הקוד שגוי. בדוק ונסה שוב';
+  if(c==='auth/code-expired')return 'פג תוקף הקוד. שלח קוד חדש';
+  if(c==='auth/network-request-failed')return 'אין חיבור לאינטרנט. נסה שוב';
+  return 'משהו השתבש. נסה שוב';
+}
+function phoneBusy(on,label){
+  var b=authEl.querySelector('.a-bot .abtn.primary');if(!b)return;
+  if(on){b.dataset.lbl=b.textContent;b.textContent=label;b.disabled=true}else{b.textContent=b.dataset.lbl||b.textContent;b.disabled=false}
+}
+function phoneRc(){
+  if(CLOUD.rc)return CLOUD.rc;
+  var box=document.getElementById('rc-box');
+  if(!box){box=document.createElement('div');box.id='rc-box';document.body.appendChild(box)}
+  CLOUD.fb.auth.languageCode='he';
+  CLOUD.rc=new CLOUD.fb.Au.RecaptchaVerifier(CLOUD.fb.auth,box,{size:'invisible'});
+  return CLOUD.rc;
+}
+function phoneRcReset(){try{if(CLOUD.rc)CLOUD.rc.clear()}catch(e){}CLOUD.rc=null;var box=document.getElementById('rc-box');if(box)box.innerHTML=''}
+function phoneSend(again){
+  phoneBusy(true,'שולח קוד…');
+  CLOUD.fb.Au.signInWithPhoneNumber(CLOUD.fb.auth,phoneE164(AUTH.phone),phoneRc()).then(function(conf){
+    CLOUD.conf=conf;
+    if(again){startResend();toast('נשלח קוד חדש')}else showAuth('code');
+  }).catch(function(e){
+    console.warn(e);phoneRcReset();phoneBusy(false);
+    if(again)toast(phoneErr(e));else setErr(phoneErr(e));
+  });
+}
+function phoneVerify(code){
+  if(!CLOUD.conf){setErr('שלח קוד חדש');return}
+  phoneBusy(true,'מאמת…');
+  CLOUD.conf.confirm(code).then(function(){CLOUD.conf=null;phoneRcReset()}).catch(function(e){console.warn(e);phoneBusy(false);setErr(phoneErr(e))});
+}
 /* ---------- live simulation ---------- */
 setInterval(function(){
   var now=Date.now();
