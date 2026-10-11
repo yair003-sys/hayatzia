@@ -6,6 +6,8 @@ on:
   workflow_dispatch:          # "Run workflow" button for a manual update
   push:
     branches: [main]
+    # changes to the new app, docs or tooling never redeploy the legacy site
+    paths-ignore: ['apps/**', 'docs/**', '.claude/**', 'CLAUDE.md', '.github/workflows/web-ci.yml']
 
 permissions:
   contents: write

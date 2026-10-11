@@ -1,0 +1,40 @@
+# Conventions
+
+## TypeScript
+- `strict: true`, `noUncheckedIndexedAccess: true`. No `any`; use `unknown` and narrow.
+- Types come from the source of truth: Drizzle (`typeof table.$inferSelect`) and Zod (`z.infer`). Never hand-write a duplicate type.
+- Path alias `@/*` → `src/*`.
+
+## Naming
+- Files: `kebab-case.ts(x)`. Components: `PascalCase`. Hooks: `useThing`. Server actions: `verbNounAction` (`sendTeamMessageAction`).
+- DB: `snake_case` tables and columns, plural table names, `*_count` for trigger-maintained counters, `created_at`/`updated_at` as `timestamptz`.
+- Routes: English segments (`/square`, `/team/chat`); all visible text is Hebrew.
+
+## Components
+- Server Component unless it needs state, effects, browser APIs or event handlers.
+- Pass serialisable props only across the server→client boundary.
+- Styling: Tailwind utilities + design tokens (`bg-surface`, `text-muted`…). Use logical properties (`ps-*`, `pe-*`, `ms-*`, `start-*`) for RTL, never `left`/`right` for layout.
+- Variants with `class-variance-authority`; merge classes with `cn()`.
+- Accessibility: every interactive element is a real button or link with a Hebrew label. Visible focus. Respect `prefers-reduced-motion`.
+
+## Data
+- Reads: `features/*/server/queries.ts`, cached when shared (`'use cache'` + `cacheLife` + `cacheTag`).
+- Writes: `features/*/server/actions.ts` with next-safe-action + Zod. Return typed results, never throw raw errors to the client.
+- Every list is paginated by keyset (`created_at, id`) with a matching index.
+- Every new table: RLS enabled, policies written, indexes for its queries, and a line in `docs/DATA_MODEL.md`.
+
+## Testing
+- Unit and component tests: Vitest + Testing Library, next to the code (`thing.test.ts`).
+- E2E: Playwright in `apps/web/tests/`, against local services or mocks only. Never against production.
+- TDD for logic (superpowers `test-driven-development`): write the failing test first.
+- CI must be green before claiming done.
+
+## Git
+- Small, safe changes: commit straight to `main` (owner's rule). Branch + PR only for risky or multi-day work.
+- Commit messages: Hebrew or English, imperative, one subject line plus details when useful.
+- Never commit secrets. `.env*` files are git-ignored, except `.env.example`.
+
+## Hebrew copy
+- Plain, warm, short. Sentence case. No exclamation marks in system messages.
+- Errors say what happened and what to do next ("ההודעה לא נשלחה. נסה שוב").
+- Demo or sample content is always labelled ("לדוגמה").
