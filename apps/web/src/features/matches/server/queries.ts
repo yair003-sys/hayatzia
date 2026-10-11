@@ -1,7 +1,7 @@
 import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public'
-import { fromRows, type ApiTeamRow, type FixtureRow, type StandingDbRow } from '../ingest/rows'
+import { fromRows } from '../ingest/rows'
 import { leagueSchema, type FixtureDetail, type League } from '../schema'
 
 export type { FixtureDetail } from '../schema'
@@ -30,7 +30,7 @@ async function leagueFromDb(): Promise<League | null> {
   if (!db) return null
   try {
     const latest = await db.from('fixtures').select('season').order('season', { ascending: false }).limit(1)
-    const season = (latest.data as { season: number }[] | null)?.[0]?.season
+    const season = latest.data?.[0]?.season
     if (latest.error || season === undefined) return null
 
     const [teams, fixtures, standings, details] = await Promise.all([
@@ -48,10 +48,10 @@ async function leagueFromDb(): Promise<League | null> {
     if (teams.error || fixtures.error || standings.error || details.error) return null
 
     return fromRows({
-      apiTeams: teams.data as ApiTeamRow[],
-      fixtures: fixtures.data as FixtureRow[],
-      standings: standings.data as StandingDbRow[],
-      detailIds: (details.data as { fixture_id: number }[]).map((d) => d.fixture_id),
+      apiTeams: teams.data,
+      fixtures: fixtures.data,
+      standings: standings.data,
+      detailIds: details.data.map((d) => d.fixture_id),
     })
   } catch {
     return null
@@ -68,8 +68,8 @@ async function detailFromDb(id: number): Promise<FixtureDetail | null> {
       .eq('fixture_id', id)
       .maybeSingle()
     if (error || !data) return null
-    const row = data as { events: FixtureDetail['ev']; lineups: FixtureDetail['lu'] }
-    return { ev: row.events, lu: row.lineups }
+    // jsonb columns are typed as Json; the shape is guaranteed by the ingest (toRows).
+    return { ev: data.events as unknown as FixtureDetail['ev'], lu: data.lineups as unknown as FixtureDetail['lu'] }
   } catch {
     return null
   }
