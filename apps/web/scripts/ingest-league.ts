@@ -8,7 +8,8 @@ import { toRows } from '../src/features/matches/ingest/rows.ts'
 
 const DATA_DIR = process.env.DATA_DIR ?? path.resolve(import.meta.dirname, '../../../data')
 const URL_BASE = process.env.SUPABASE_URL
-const KEY = process.env.SUPABASE_SECRET_KEY?.trim()
+// Pasting from a Hebrew (RTL) keyboard can add invisible direction marks: strip whitespace and format characters.
+const KEY = process.env.SUPABASE_SECRET_KEY?.replace(/[\s\p{Cf}]/gu, '')
 const CHUNK = 500
 
 if (!URL_BASE || !KEY) {
