@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { GoogleSignIn } from '@/features/auth/components/google-sign-in'
+import { InAppBrowserNote } from '@/features/auth/components/in-app-browser-note'
+import { PhoneSignIn } from '@/features/auth/components/phone-sign-in'
+import { env } from '@/lib/env'
 import { supabaseConfig } from '@/lib/supabase/config'
 
 export const metadata: Metadata = { title: 'כניסה' }
@@ -14,7 +17,20 @@ export default function LoginPage() {
         <p className="text-muted">כל אוהד מאומת. אחרי הכניסה בוחרים קבוצה, פעם אחת ולתמיד.</p>
       </div>
       {enabled ? (
-        <GoogleSignIn />
+        <div className="space-y-4">
+          <InAppBrowserNote />
+          <GoogleSignIn />
+          {env.NEXT_PUBLIC_PHONE_AUTH === 'on' && (
+            <>
+              <div className="flex items-center gap-3 text-xs text-dim" aria-hidden="true">
+                <span className="h-px flex-1 bg-line" />
+                או
+                <span className="h-px flex-1 bg-line" />
+              </div>
+              <PhoneSignIn />
+            </>
+          )}
+        </div>
       ) : (
         <p className="rounded-md bg-surface p-4 text-sm text-muted">
           ההתחברות לא מחוברת בסביבה הזאת.{' '}
@@ -23,7 +39,6 @@ export default function LoginPage() {
           </Link>
         </p>
       )}
-      <p className="text-center text-xs text-dim">הכניסה בטלפון תתווסף בשלב הבא.</p>
     </main>
   )
 }

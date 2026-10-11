@@ -14,6 +14,8 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_ENV: z.enum(APP_ENVS).default('local'),
     NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20).optional(),
+    /** Phone (SMS code) sign-in. Off until an SMS provider is connected in Supabase Auth. */
+    NEXT_PUBLIC_PHONE_AUTH: z.enum(['on', 'off']).default('off'),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
@@ -21,6 +23,7 @@ export const env = createEnv({
     // The Vercel ↔ Supabase integration names it ANON_KEY; new keys are "publishable". Accept both.
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_PHONE_AUTH: process.env.NEXT_PUBLIC_PHONE_AUTH,
   },
   emptyStringAsUndefined: true,
 })
