@@ -20,7 +20,7 @@ Read this first, every session. Then read `docs/README.md` for the map of all do
 - Never claim something works without evidence: tests, CI, or a check on the deployed site.
 
 ## Stack (new app in `apps/web`)
-Next.js 16 App Router + TypeScript strict + Tailwind v4, Supabase (Postgres + RLS + Realtime + Storage + Auth), Drizzle ORM, Vercel. Follow the official Next.js docs (https://nextjs.org/docs): Server Components first, Cache Components (`'use cache'` + `cacheLife` + `cacheTag`), `<Suspense>` around runtime data, Server Actions for mutations, `proxy.ts` for session refresh only. Architecture: `docs/ARCHITECTURE.md`. Conventions: `docs/CONVENTIONS.md`.
+Next.js 16 App Router + TypeScript strict + Tailwind v4, Supabase (Postgres + RLS + Realtime + Storage + Auth) through supabase-js typed by generated `database.types.ts`, Vercel. Follow the official Next.js docs (https://nextjs.org/docs): Server Components first, Cache Components (`'use cache'` + `cacheLife` + `cacheTag`), `<Suspense>` around runtime data, Server Actions for mutations, `proxy.ts` for session refresh only. Architecture: `docs/ARCHITECTURE.md`. Conventions: `docs/CONVENTIONS.md`.
 
 ## Sandbox limitation: CI is the build machine
 The Claude sandbox cannot reach the npm registry, and GitHub's raw job logs (blob storage) are blocked too.
@@ -31,7 +31,7 @@ The Claude sandbox cannot reach the npm registry, and GitHub's raw job logs (blo
 - Pinned on purpose: TypeScript 6.x (typescript-eslint does not support TS 7 yet), ESLint 9.
 
 ## Standing technical rules
-- Security rules live in code: legacy `firestore.rules` (publish in the Firebase console after every change); new app RLS in Drizzle schema + SQL migrations.
+- Security rules live in code: legacy `firestore.rules` (publish in the Firebase console after every change); new app RLS in SQL migrations (`apps/web/supabase/migrations`), covered by pgTAP tests in `apps/web/supabase/tests` that run in CI (`web-db.yml`) on a fresh local database. Apply a migration to staging, verify, then production.
 - Private messages are end-to-end encrypted. Never add a path that sends their plaintext to the server.
 - Demo or sample content must always be labelled as such.
 - Always think about scale: indexes for every query, keyset pagination, no N+1, counters by trigger, media through Storage + CDN.

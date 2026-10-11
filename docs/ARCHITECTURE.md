@@ -10,7 +10,7 @@ Browser ── Client Components (interactive leaves, realtime, E2EE crypto)
 Vercel CDN ── static shells (Partial Prerendering) + cached segments ('use cache')
    │
 Next.js server ── Server Components (reads) · Server Actions (writes) · Route Handlers (webhooks/cron)
-   │                └ Drizzle (typed SQL) · @supabase/ssr (session from cookies)
+   │                └ supabase-js typed by generated DB types · @supabase/ssr (session from cookies)
    ▼
 Supabase ── Postgres (RLS on every table, triggers, pg_cron) · Auth · Realtime · Storage (CDN)
    ▲
@@ -33,11 +33,8 @@ apps/web/
       server/actions.ts     Writes via next-safe-action, Zod-validated, auth-checked.
       hooks/                Client hooks (react-query, realtime subscriptions).
       schema.ts             Zod schemas + inferred types shared by UI and server.
-    db/
-      schema/               Drizzle tables, relations and RLS policies (one file per domain).
-      index.ts              Drizzle client (server only).
     lib/
-      supabase/             client.ts (browser), server.ts (RSC/actions), proxy.ts (session refresh).
+      supabase/             client.ts (browser), server.ts (RSC/actions), public.ts (cookie-less, for 'use cache'), proxy.ts (session refresh), database.types.ts (generated, never edit).
       env.ts                @t3-oss/env-nextjs: the only place that reads process.env.
       e2e/                  WebCrypto end-to-end encryption (ported from the legacy app).
       utils.ts              cn() and small pure helpers.
@@ -69,3 +66,9 @@ apps/web/
 | `/inbox`, `/inbox/[threadId]` | Private messages (E2EE) |
 | `/me` | הכרטיס שלי |
 | `/fans/[userId]` | Fan card |
+
+## Database workflow
+- Schema, RLS and triggers live only in `apps/web/supabase/migrations/*.sql` (timestamped, append-only).
+- Every push touching `apps/web/supabase/**` runs `web-db.yml`. It starts a fresh local Postgres (Supabase CLI), applies all migrations, runs the pgTAP tests in `supabase/tests/database`, and regenerates `src/lib/supabase/database.types.ts` (committed by the bot, then web CI re-runs).
+- Engineering call (2026-10-11): no ORM. supabase-js + generated types gives typed queries with RLS enforced by the database for every caller. An ORM over a direct connection would bypass RLS and need the DB password in the app.
+- Applying a migration to the real projects: SQL editor on **staging** → verify → **production** (owner clicks Run on production).

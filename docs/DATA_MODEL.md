@@ -1,6 +1,6 @@
 # Data model (Postgres on Supabase)
 
-Target schema for the new app. Source of truth once P1 starts: `apps/web/src/db/schema/*.ts` (Drizzle) + `apps/web/supabase/migrations/*.sql`. Keep this file in sync.
+Target schema for the new app. Source of truth: `apps/web/supabase/migrations/*.sql` (TS types are generated from them into `apps/web/src/lib/supabase/database.types.ts`; security tested in `apps/web/supabase/tests/database/*.test.sql`). Keep this file in sync.
 
 Conventions: `snake_case`, `uuid` ids (`gen_random_uuid()`) unless noted, `timestamptz` times, RLS **enabled on every table** and deny by default.
 

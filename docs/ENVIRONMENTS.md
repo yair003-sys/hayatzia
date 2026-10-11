@@ -16,7 +16,6 @@ Owner's standing rule: **local and test data never touch production.**
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | differs per environment |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client + server | safe to expose; RLS protects data |
 | `SUPABASE_SECRET_KEY` | server only | bypasses RLS: ingest and admin jobs only |
-| `DATABASE_URL` | server only | pooled connection (transaction mode) for Drizzle |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
 | `NEXT_PUBLIC_APP_ENV` | client + server | `local` / `preview` / `production`; shows a banner outside production |
 
