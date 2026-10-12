@@ -69,3 +69,16 @@ describe('fromRows', () => {
     expect(back.have).toEqual([1])
   })
 })
+
+describe('demo fixtures', () => {
+  it('flags a demo match so pages can label it', () => {
+    const rows = toRows(league, details)
+    const demo = { ...rows.fixtures[0]!, id: 900000001, is_demo: true }
+    const back = fromRows({ ...rows, fixtures: [...rows.fixtures, demo], detailIds: [] })
+    expect(back.fixtures.find((f) => f.id === 900000001)?.dm).toBe(true)
+    expect(back.fixtures.find((f) => f.id === 1)?.dm).toBeUndefined()
+  })
+  it('never sends the flag from the ingest', () => {
+    expect(toRows(league, details).fixtures.every((f) => !('is_demo' in f))).toBe(true)
+  })
+})
