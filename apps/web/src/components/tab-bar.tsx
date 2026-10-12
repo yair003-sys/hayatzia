@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 type Tab = { href: Route; label: string; icon: LucideIcon }
 
 export const TABS: readonly Tab[] = [
-  { href: '/stand', label: 'היציע שלי', icon: House },
+  { href: '/stand', label: 'onefan', icon: House },
   { href: '/matches', label: 'משחקים', icon: Trophy },
   { href: '/square', label: 'הכיכר', icon: Clapperboard },
   { href: '/inbox', label: 'הודעות', icon: MessageCircle },

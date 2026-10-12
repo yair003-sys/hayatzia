@@ -12,7 +12,7 @@ export function TeamChat({ teamId, meId, initial, hidden }: { teamId: string; me
       initial={initial}
       hiddenUsers={hidden}
       placeholder="כתוב ליציע…"
-      emptyText="עוד אין הודעות. תפתח את היציע 👋"
+      emptyText="עוד אין הודעות. תפתח את הצ׳אט 👋"
       send={async (body) => {
         const r = await sendTeamMessageAction({ body })
         return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה' }

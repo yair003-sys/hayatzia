@@ -18,7 +18,7 @@ import { getCheckedIn } from '@/features/stage4/server/queries'
 import { DONE_STATUSES } from '@/features/matches/schema'
 import { roomState } from '@/features/match-room/schema'
 
-export const metadata: Metadata = { title: 'היציע שלי' }
+export const metadata: Metadata = { title: { absolute: 'onefan' } }
 
 export default function Page() {
   return (
@@ -40,7 +40,7 @@ const clock = () => Date.now()
 
 async function StandHome() {
   const s = await getSessionProfile()
-  if (s.status !== 'ready') return <h1 className="font-display text-3xl font-black">היציע שלי</h1>
+  if (s.status !== 'ready') return <h1 className="font-display text-3xl font-black">onefan</h1>
   const team = s.team
   const league = await getLeague()
   const ids = clubApiIds(league, team.id)
@@ -115,7 +115,7 @@ async function StandHome() {
         </Link>
         <Link href="/stand/chants" className="sh-tile">
           <i aria-hidden="true">🎶</i>
-          <b>שירי היציע</b>
+          <b>שירי הקהל</b>
           <span>{data.chants} שירים</span>
         </Link>
       </nav>

@@ -15,7 +15,7 @@ export default function Page() {
     <section>
       <Link href="/stand" className="mb-3 inline-flex items-center gap-1 text-sm text-muted">
         <ChevronRight className="size-4" aria-hidden="true" />
-        היציע שלי
+        onefan
       </Link>
       <Suspense fallback={<ChatSkeleton />}>
         <ChatScreen />

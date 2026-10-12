@@ -14,7 +14,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 | P5 Cutover | Move remaining data, domain, legacy → redirect | |
 
 ## Open owner decisions
-0. Next session (owner, 2026-10-12): rename the app to "one fan" and use the owner's logo (he has one; affects manifest, icons, titles, texts).
+0. Done 2026-10-12: the new app is renamed **onefan** with the owner's logo and colours (see `docs/BRAND.md`).
 1. P5 cutover: when to point fans to the new site, and whether to buy a domain (otherwise `hayatzia-flame.vercel.app`).
 2. OK for the current Firebase users to sign up again (legacy data is local/demo apart from a few real profiles).
 3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider if phone sign-in is wanted; Sentry account.

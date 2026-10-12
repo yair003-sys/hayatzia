@@ -1,24 +1,24 @@
 @import 'tailwindcss';
 
-/* Design tokens, ported 1:1 from the legacy app (:root in index.html). */
+/* Design tokens: legacy layout scale, onefan brand colours (owner's brand guide, 2026-10-12). */
 @theme {
-  --color-canvas: #07090d;
-  --color-elev: #0b0e14;
-  --color-surface: #10151d;
-  --color-surface-2: #151b25;
-  --color-surface-3: #1c2330;
+  --color-canvas: #0a0e1a;
+  --color-elev: #0d1220;
+  --color-surface: #111829;
+  --color-surface-2: #161e31;
+  --color-surface-3: #1d263b;
   --color-fg: #f3f5f8;
-  --color-muted: #8c96a8;
-  --color-dim: #7c8698;
+  --color-muted: #a0aab8;
+  --color-dim: #8590a3;
   --color-line: rgb(255 255 255 / 0.14);
   --color-line-soft: rgb(255 255 255 / 0.075);
   --color-line-strong: rgb(255 255 255 / 0.24);
-  --color-accent: #6d4aff;
-  --color-accent-2: #8c6eff;
-  --color-accent-text: #a08cff;
-  --color-accent-soft: rgb(109 74 255 / 0.16);
+  --color-accent: #0066ff;
+  --color-accent-2: #3385ff;
+  --color-accent-text: #5c9dff;
+  --color-accent-soft: rgb(0 102 255 / 0.16);
   --color-live: #ff3d57;
-  --color-ok: #2ee59d;
+  --color-ok: #00ff66;
   --color-warn: #f5b700;
   --color-pitch: #0a1210;
 
@@ -31,6 +31,7 @@
   --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
 
   --font-sans: var(--font-heebo), var(--font-rubik), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-brand: var(--font-inter), 'SF Pro Display', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   --font-display: var(--font-rubik), var(--font-heebo), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 
   --animate-shimmer: shimmer 1.4s linear infinite;
@@ -75,13 +76,13 @@
     position: relative;
     border-radius: 1.25rem;
     background:
-      radial-gradient(120% 90% at 50% -25%, rgb(109 74 255 / 0.28), transparent 60%),
+      radial-gradient(120% 90% at 50% -25%, rgb(0 102 255 / 0.28), transparent 60%),
       linear-gradient(180deg, var(--color-surface-3), var(--color-surface-2));
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.09),
-      0 0 0 1px rgb(109 74 255 / 0.45),
+      0 0 0 1px rgb(0 102 255 / 0.45),
       0 22px 40px -22px rgb(0 0 0 / 0.95),
-      0 0 34px -14px rgb(109 74 255 / 0.7);
+      0 0 34px -14px rgb(0 102 255 / 0.7);
     transform-origin: 50% 0;
     animation: crowd-flip-in 0.7s var(--ease-spring) both;
   }
@@ -119,8 +120,8 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.4),
       inset 0 -2px 0 rgb(0 0 0 / 0.25),
-      0 5px 0 #2b1d70,
-      0 0 26px -6px rgb(109 74 255 / 0.95);
+      0 5px 0 #00297a,
+      0 0 26px -6px rgb(0 102 255 / 0.95);
   }
 
   /* Result fill inside a key, with one glossy sweep when it grows. */
@@ -194,11 +195,11 @@
     border: 1px solid rgb(155 132 255 / 0.55);
     background: linear-gradient(180deg, rgb(132 102 255 / 0.95), rgb(74 47 209 / 0.95));
     color: #fff;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 4px 0 #2b1d70, 0 12px 26px -10px rgb(109 74 255 / 0.9);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 4px 0 #00297a, 0 12px 26px -10px rgb(0 102 255 / 0.9);
     transition: transform 0.14s var(--ease-spring), box-shadow 0.14s ease;
     animation: crowd-flip-in 0.6s var(--ease-spring) both;
   }
-  .crowd-pin:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 0 #2b1d70; }
+  .crowd-pin:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 0 #00297a; }
 
   @keyframes crowd-flip-in {
     from { opacity: 0; transform: perspective(900px) rotateX(-60deg) translateY(-10px) scale(0.95); }
@@ -206,7 +207,7 @@
     to { opacity: 1; transform: perspective(900px) rotateX(0) translateY(0) scale(1); }
   }
   @keyframes crowd-glow {
-    50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 0 0 1px rgb(155 132 255 / 0.75), 0 22px 40px -22px rgb(0 0 0 / 0.95), 0 0 44px -10px rgb(109 74 255 / 0.95); }
+    50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 0 0 1px rgb(92 157 255 / 0.75), 0 22px 40px -22px rgb(0 0 0 / 0.95), 0 0 44px -10px rgb(0 102 255 / 0.95); }
   }
   @keyframes crowd-shine {
     from { transform: translateX(-130%); }
@@ -230,8 +231,8 @@
     --acc2: var(--t-acc2, var(--color-accent-2));
     --acc-text: var(--t-text, var(--color-accent-text));
     --acc-on: var(--t-on, #fff);
-    --acc-soft: rgb(var(--t-rgb, 109 74 255) / 0.14);
-    --acc-line: rgb(var(--t-rgb, 109 74 255) / 0.4);
+    --acc-soft: rgb(var(--t-rgb, 0 102 255) / 0.14);
+    --acc-line: rgb(var(--t-rgb, 0 102 255) / 0.4);
     --pitch-fg: #f3f5f8;
     --pitch-dim: rgb(243 245 248 / 0.62);
   }
@@ -316,7 +317,7 @@
   /* fans' pitch and player cards */
   .sh-pitch { position: relative; isolation: isolate; aspect-ratio: 3 / 4.15; border-radius: 22px; overflow: hidden; border: 1px solid rgb(255 255 255 / 0.1);
     background: radial-gradient(110% 60% at 50% -5%, rgb(255 255 255 / 0.16), transparent 60%), radial-gradient(90% 50% at 50% 105%, rgb(0 0 0 / 0.45), transparent 70%), repeating-linear-gradient(180deg, #106239 0 9.09%, #0d5532 9.09% 18.18%);
-    box-shadow: inset 0 0 70px rgb(0 0 0 / 0.5), 0 24px 50px -28px rgb(46 229 157 / 0.45); }
+    box-shadow: inset 0 0 70px rgb(0 0 0 / 0.5), 0 24px 50px -28px rgb(0 255 102 / 0.45); }
   .sh-lines { position: absolute; inset: 3.5% 4%; border: 1.5px solid rgb(255 255 255 / 0.3); border-radius: 3px; z-index: -1; }
   .sh-lines i { position: absolute; border: 1.5px solid rgb(255 255 255 / 0.3); }
   .sh-lines .mid { left: 0; right: 0; top: 50%; height: 0; border-width: 1.5px 0 0; }
@@ -330,7 +331,7 @@
   .sh-pc:hover { transform: translateY(-3px) scale(1.04); }
   .sh-pc[data-tier='silver'] { --cg: linear-gradient(160deg, #f4f6f9, #b9c1cc 48%, #77808d); --ct: #14181f; }
   .sh-pc[data-tier='gold'] { --cg: linear-gradient(160deg, #fceba8, #ddb04a 46%, #a0761f); --ct: #2b1d02; }
-  .sh-pc[data-rated='true'] { filter: drop-shadow(0 0 1.5px var(--acc)) drop-shadow(0 0 1.5px var(--acc)) drop-shadow(0 8px 14px rgb(var(--t-rgb, 109 74 255) / 0.35)); }
+  .sh-pc[data-rated='true'] { filter: drop-shadow(0 0 1.5px var(--acc)) drop-shadow(0 0 1.5px var(--acc)) drop-shadow(0 8px 14px rgb(var(--t-rgb, 0 102 255) / 0.35)); }
   .sh-pitch .sh-pc { position: absolute; transform: translate(-50%, -50%); }
   .sh-pitch .sh-pc:hover { transform: translate(-50%, -53%) scale(1.04); }
   .sh-pc-in { position: absolute; inset: 0; background: var(--cg); clip-path: polygon(50% 0, 100% 6%, 100% 85%, 50% 100%, 0 85%, 0 6%); }

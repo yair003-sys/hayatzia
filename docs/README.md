@@ -7,6 +7,7 @@
 | `CONVENTIONS.md` | Code style, naming, patterns, testing, git | Before writing code |
 | `DATA_MODEL.md` | Database tables, relations, RLS, triggers, indexes | Before touching the DB |
 | `ENVIRONMENTS.md` | local / preview / production, env vars, secrets | Before running anything against a service |
+| `BRAND.md` | the onefan name, colours, logo and icons | Before touching colours, icons or the app name |
 | `ROADMAP.md` | Migration phases and status | To pick the next piece of work |
 | `superpowers/specs/` | Approved designs (the "why") | When starting a phase |
 | `superpowers/plans/` | Step-by-step implementation plans | When executing a phase |

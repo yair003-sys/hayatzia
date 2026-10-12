@@ -2,12 +2,15 @@ import Link from 'next/link'
 import { supabaseConfig } from '@/lib/supabase/config'
 import { TEAMS } from '@/features/teams/data'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
+import { Brand } from '@/components/brand'
 
 export default function WelcomePage() {
   const enabled = supabaseConfig() !== null
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-16 pb-10">
-      <header className="font-display text-xl font-extrabold tracking-tight">היציע</header>
+      <header>
+        <Brand className="text-2xl" size={36} />
+      </header>
 
       <section className="space-y-4">
         <p className="text-sm font-semibold text-ok">ליגת העל · 2026/27</p>
@@ -29,9 +32,9 @@ export default function WelcomePage() {
       <div className="space-y-3">
         <Link
           href={enabled ? '/login' : '/stand'}
-          className="block rounded-lg bg-accent py-4 text-center text-lg font-bold text-white shadow-[0_8px_30px_rgb(109_74_255/0.4)] transition-transform active:scale-[0.98]"
+          className="block rounded-lg bg-ok py-4 text-center text-lg font-bold text-canvas shadow-[0_8px_30px_rgb(0_255_102/0.3)] transition-transform active:scale-[0.98]"
         >
-          כניסה ליציע
+          כניסה ל-onefan
         </Link>
         <p className="text-center text-xs text-dim">גרסה חדשה בבנייה.</p>
       </div>

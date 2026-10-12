@@ -5,13 +5,13 @@ import { ChantsBoard } from '@/features/stage4/components/chants-board'
 import { getChants } from '@/features/stage4/server/queries'
 import { BackToStand } from '@/features/team-life/components/back'
 
-export const metadata: Metadata = { title: 'שירי היציע' }
+export const metadata: Metadata = { title: 'שירי הקהל' }
 
 export default function Page() {
   return (
     <section className="space-y-4">
       <BackToStand />
-      <h1 className="font-display text-3xl font-black">🎶 שירי היציע</h1>
+      <h1 className="font-display text-3xl font-black">🎶 שירי הקהל</h1>
       <Suspense fallback={<div className="skeleton h-60 rounded-2xl" aria-hidden="true" />}>
         <Chants />
       </Suspense>

@@ -1,4 +1,4 @@
-// היציע service worker: notifications only. No page caching, so fans never see stale or someone else's data.
+// onefan service worker: notifications only. No page caching, so fans never see stale or someone else's data.
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
@@ -9,7 +9,7 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { body: event.data ? event.data.text() : '' }
   }
-  const title = data.title || 'היציע'
+  const title = data.title || 'onefan'
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',

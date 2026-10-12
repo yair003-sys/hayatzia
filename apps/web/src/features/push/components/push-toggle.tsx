@@ -50,7 +50,7 @@ export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
 
   if (state === 'loading') return null
   if (state === 'unsupported') {
-    return <p className="text-sm text-muted">כדי לקבל התראות באייפון, קודם צריך להתקין את היציע למסך הבית.</p>
+    return <p className="text-sm text-muted">כדי לקבל התראות באייפון, קודם צריך להתקין את onefan למסך הבית.</p>
   }
   if (state === 'blocked') {
     return <p className="text-sm text-muted">ההתראות חסומות בהגדרות הדפדפן. אפשר לאפשר אותן שם.</p>

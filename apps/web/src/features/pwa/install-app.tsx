@@ -34,7 +34,7 @@ export function InstallApp() {
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft py-3 font-semibold"
       >
         <Download className="size-5" aria-hidden="true" />
-        התקן את היציע בטלפון
+        התקן את onefan בטלפון
       </button>
     )
   }

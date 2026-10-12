@@ -13,7 +13,7 @@ export default function Page() {
     <section className="space-y-4">
       <Link href="/stand" className="inline-flex items-center gap-1 text-sm text-muted">
         <ChevronRight className="size-4" aria-hidden="true" />
-        היציע שלי
+        onefan
       </Link>
       <h1 className="font-display text-3xl font-black">דירוג שחקנים</h1>
       <p className="text-sm text-muted">הדירוגים והביקורות נשארים בתוך הקבוצה. אפשר לשנות דירוג מתי שרוצים.</p>
