@@ -18,7 +18,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider if phone sign-in is wanted; Sentry account.
 
 ## Notes for the next session
-- All migrations through `20261012041000_crowd_triggers` are applied on staging and production; `20261012042000_demo_access` (grants only) on staging, production pending.
+- All migrations through `20261012043000_crowd_tick_queue` are applied on staging and production.
 - League data stays on season 2024 for now (owner, 2026-10-12): "Trips" shows no upcoming matches until the API plan changes.
 - Owner's own production profile has no team yet (he chooses).
 - Preview deployments have no `SUPABASE_SECRET_KEY`, so they do not send notifications (by design for now).
