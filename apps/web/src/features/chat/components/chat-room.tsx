@@ -2,6 +2,8 @@
 
 import { memo, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { ArrowDown, SendHorizontal } from 'lucide-react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
@@ -97,20 +99,24 @@ export function ChatRoom({
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
-    const channel = supabase.channel(topic, { config: { private: true } })
-    channel.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
-      const m = messageFromBroadcast(payload)
-      if (m) setMessages((cur) => mergeMessages(cur, [m]))
-    })
-    for (const ev of EXTRA_EVENTS) {
-      channel.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
-    }
-    void supabase.realtime.setAuth().then(() => {
-      if (!cancelled) channel.subscribe((status) => setLive(status === 'SUBSCRIBED'))
-    })
+    let channel: RealtimeChannel | null = null
+    void (async () => {
+      const ch = await openChannel(supabase, topic, { private: true })
+      if (cancelled) return void supabase.removeChannel(ch)
+      channel = ch
+      ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
+        const m = messageFromBroadcast(payload)
+        if (m) setMessages((cur) => mergeMessages(cur, [m]))
+      })
+      for (const ev of EXTRA_EVENTS) {
+        ch.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
+      }
+      await supabase.realtime.setAuth()
+      if (!cancelled) ch.subscribe((status) => setLive(status === 'SUBSCRIBED'))
+    })()
     return () => {
       cancelled = true
-      void supabase.removeChannel(channel)
+      if (channel) void supabase.removeChannel(channel)
     }
   }, [topic])
 

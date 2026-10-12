@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '@/features/ratings/schema'
@@ -13,6 +13,7 @@ import { cardTier, splitPitch } from '../schema'
 export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }) {
   const [players, setPlayers] = useState(initial)
   const [open, setOpen] = useState<PlayerRow | null>(null)
+  const close = useCallback(() => setOpen(null), [])
   const { xi, bench } = splitPitch(players)
   const card = (p: PlayerRow, style?: CSSProperties) => (
     <PlayerCard key={p.id} p={p} team={team} style={style} onOpen={() => setOpen(p)} />
@@ -46,7 +47,7 @@ export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }
       {open && (
         <RatingSheet
           p={open}
-          onClose={() => setOpen(null)}
+          onClose={close}
           onRated={(next) => {
             setPlayers((cur) => cur.map((x) => (x.id === next.id ? next : x)))
             setOpen(next)
@@ -110,6 +111,34 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const panel = useRef<HTMLDivElement>(null)
+  const closeBtn = useRef<HTMLButtonElement>(null)
+
+  // Modal behaviour: focus inside on open, Escape closes, Tab stays inside, focus returns to the card on close.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    closeBtn.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab' || !panel.current) return
+      const items = [...panel.current.querySelectorAll<HTMLElement>('button, textarea')].filter((el) => !el.hasAttribute('disabled'))
+      const first = items[0]
+      const last = items.at(-1)
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last?.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      opener?.focus()
+    }
+  }, [onClose])
+
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -123,6 +152,7 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`דירוג ${p.name_he}`} onClick={onClose}>
       <div
+        ref={panel}
         className="w-full max-w-md space-y-3 rounded-t-3xl border border-line bg-surface-2 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] motion-safe:animate-pop"
         onClick={(e) => e.stopPropagation()}
       >
@@ -131,16 +161,16 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
             {p.number !== null && <span className="me-2 text-muted tabular-nums">{p.number}</span>}
             {p.name_he}
           </h2>
-          <button type="button" onClick={onClose} aria-label="סגור" className="grid size-10 place-items-center rounded-full text-muted">
+          <button ref={closeBtn} type="button" onClick={onClose} aria-label="סגור" className="grid size-10 place-items-center rounded-full text-muted">
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
         <p className="text-sm text-muted">
           ממוצע {p.avg ?? '–'} · {p.count} מדרגים
         </p>
-        <div className="flex items-center gap-1" role="radiogroup" aria-label="הדירוג שלך">
+        <div className="flex items-center gap-1" role="group" aria-label="הדירוג שלך">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} כוכבים`} onClick={() => setStars(n)} className="p-1">
+            <button key={n} type="button" aria-pressed={stars === n} aria-label={`${n} כוכבים`} onClick={() => setStars(n)} className="p-1">
               <Star className={cn('size-8', n <= stars ? 'fill-warn text-warn' : 'text-dim')} aria-hidden="true" />
             </button>
           ))}

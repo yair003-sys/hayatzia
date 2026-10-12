@@ -3,20 +3,20 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageCircle } from 'lucide-react'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { DONE_STATUSES, type Fixture } from '@/features/matches/schema'
 import { CLOSE_AFTER_MIN, MATCH_MIN, OPEN_BEFORE_MIN, roomState } from '@/features/match-room/schema'
 import { isTicketLive, minuteLabel, untilLabel } from '../schema'
+import { ticketFixtureAction } from '../server/actions'
 import { usePresence } from './presence'
 
 const MIN = 60_000
 
 /** Legacy "יום משחק" ticket: live minute, score rows, and a footer that follows the match room's state. */
-export function MatchTicket({ fixture: f, home, away }: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam }) {
-  const router = useRouter()
+export function MatchTicket({ fixture: initial, home, away }: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam }) {
+  const [f, setF] = useState(initial)
   const [now, setNow] = useState(() => Date.now())
   const room = roomState(f.t, now)
   const live = isTicketLive(f, now)
@@ -27,17 +27,21 @@ export function MatchTicket({ fixture: f, home, away }: { fixture: Fixture; home
     const tick = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(tick)
   }, [])
-  // While the room is active, re-read the (cached) league data for the score every minute.
+  // While the match is live, re-read just this match (cached league data) for the score once a minute.
   useEffect(() => {
-    if (!active) return
-    const t = setInterval(() => router.refresh(), 60_000)
+    if (!live) return
+    const t = setInterval(() => {
+      void ticketFixtureAction({ fixtureId: f.id }).then((r) => {
+        if (r.data?.fixture) setF(r.data.fixture)
+      })
+    }, 60_000)
     return () => clearInterval(t)
-  }, [active, router])
+  }, [live, f.id])
 
   const kick = f.t * 1000
   const started = now >= kick || DONE_STATUSES.has(f.st)
   return (
-    <Link href={`/matches/${f.id}`} className="sh-tk" data-live={live} aria-label={`${home.name} נגד ${away.name}`}>
+    <Link href={`/matches/${f.id}`} className="sh-tk" data-live={live}>
       <div className="sh-tk-h">
         {live ? (
           <span className="lv">

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, MessageCircle } from 'lucide-react'
 import { mergeMessages, messageFromBroadcast, type ChatMessage } from '@/features/chat/schema'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 
 /** Team chat card with the last 3 messages; new messages slide in live. */
@@ -16,17 +18,21 @@ export function TeamChatCard({ teamId, short, initial, hidden }: { teamId: strin
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
-    const channel = supabase.channel(`team:${teamId}`, { config: { private: true } })
-    channel.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
-      const m = messageFromBroadcast(payload)
-      if (m && !hiddenRef.current.includes(m.user_id)) setMsgs((cur) => mergeMessages(cur, [m]).slice(-3))
-    })
-    void supabase.realtime.setAuth().then(() => {
-      if (!cancelled) channel.subscribe()
-    })
+    let channel: RealtimeChannel | null = null
+    void (async () => {
+      const ch = await openChannel(supabase, `team:${teamId}`, { private: true })
+      if (cancelled) return void supabase.removeChannel(ch)
+      channel = ch
+      ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
+        const m = messageFromBroadcast(payload)
+        if (m && !hiddenRef.current.includes(m.user_id)) setMsgs((cur) => mergeMessages(cur, [m]).slice(-3))
+      })
+      await supabase.realtime.setAuth()
+      if (!cancelled) ch.subscribe()
+    })()
     return () => {
       cancelled = true
-      void supabase.removeChannel(channel)
+      if (channel) void supabase.removeChannel(channel)
     }
   }, [teamId])
 

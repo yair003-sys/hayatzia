@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { countUsers } from '../schema'
 
@@ -11,22 +13,29 @@ import { countUsers } from '../schema'
 export function usePresence(topic: string | null, userId?: string): number | null {
   const [count, setCount] = useState<number | null>(null)
   useEffect(() => {
-    if (!topic) return
+    if (!topic) {
+      const reset = setTimeout(() => setCount(null), 0)
+      return () => clearTimeout(reset)
+    }
     const supabase = createClient()
     let cancelled = false
-    const channel = supabase.channel(topic, { config: { private: true, presence: { key: userId ?? '' } } })
-    channel.on('presence', { event: 'sync' }, () => {
-      setCount(countUsers(channel.presenceState() as Record<string, { user_id?: string }[]>))
-    })
-    void supabase.realtime.setAuth().then(() => {
-      if (cancelled) return
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED' && userId) void channel.track({ user_id: userId })
+    let channel: RealtimeChannel | null = null
+    void (async () => {
+      const ch = await openChannel(supabase, topic, { private: true, presence: { key: userId ?? '' } })
+      if (cancelled) return void supabase.removeChannel(ch)
+      channel = ch
+      ch.on('presence', { event: 'sync' }, () => {
+        setCount(countUsers(ch.presenceState() as Record<string, { user_id?: string }[]>))
       })
-    })
+      await supabase.realtime.setAuth()
+      if (cancelled) return
+      ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED' && userId) void ch.track({ user_id: userId })
+      })
+    })()
     return () => {
       cancelled = true
-      void supabase.removeChannel(channel)
+      if (channel) void supabase.removeChannel(channel)
     }
   }, [topic, userId])
   return count
