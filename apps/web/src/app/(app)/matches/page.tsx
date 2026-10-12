@@ -5,6 +5,7 @@ import { FixtureRow } from '@/features/matches/components/fixture-row'
 import { StandingsTable } from '@/features/matches/components/standings-table'
 import { currentRoundIndex, groupByRound } from '@/features/matches/rounds'
 import { getLeague } from '@/features/matches/server/queries'
+import { PredictCard } from '@/features/predictions/components/predict-card'
 
 export const metadata: Metadata = { title: 'משחקים' }
 
@@ -12,6 +13,9 @@ export default function MatchesPage() {
   return (
     <section className="space-y-6">
       <h1 className="font-display text-3xl font-black">משחקים</h1>
+      <Suspense fallback={<div className="skeleton h-20 rounded-2xl" aria-hidden="true" />}>
+        <PredictCard />
+      </Suspense>
       <Suspense fallback={<MatchesSkeleton />}>
         <MatchesContent />
       </Suspense>
