@@ -7,7 +7,7 @@ export async function getSquadWithRatings(teamId: string, userId: string): Promi
   const supabase = await createClient()
   if (!supabase) return []
   const [players, stats, mine] = await Promise.all([
-    supabase.from('players').select('id,number,name_he,name_short,position,injured,in_xi').eq('team_id', teamId),
+    supabase.from('players').select('id,number,name_he,name_short,position,injured,in_xi,pitch_x,pitch_y').eq('team_id', teamId),
     supabase.from('player_rating_stats').select('player_id,sum,count'),
     supabase.from('player_ratings').select('player_id,stars,review').eq('user_id', userId),
   ])

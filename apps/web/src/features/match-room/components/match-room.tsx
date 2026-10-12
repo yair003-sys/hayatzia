@@ -10,6 +10,7 @@ import { PollCard } from '@/features/crowd-verdict/components/poll-card'
 import { useCrowd } from '@/features/crowd-verdict/components/use-crowd'
 import { canVote, pollState } from '@/features/crowd-verdict/schema'
 import type { CrowdState } from '@/features/crowd-verdict/server/queries'
+import { usePresence } from '@/features/stand-home/components/presence'
 
 type Side = { id: string; short: string; bar: string }
 
@@ -35,6 +36,7 @@ const STATE_LABEL: Record<RoomState, string> = {
 export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd }: Props) {
   const myGroup = myTeamId === home.id ? 'h' : myTeamId === away.id ? 'a' : 'n'
   const c = useCrowd(crowd, fixtureId, myGroup)
+  const inRoom = usePresence(`room:${fixtureId}`, meId)
   const openPolls = [...c.polls].reverse().filter((p) => pollState(p, c.now) === 'open')
   // With two club cards open at minute 60, jump to the one this fan can vote in.
   const openPoll = openPolls.find((p) => canVote(p, myTeamId, c.now)) ?? openPolls[0] ?? null
@@ -88,6 +90,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
           }
         >
           {STATE_LABEL[state]}
+          {inRoom !== null && inRoom > 0 && ` · ${inRoom.toLocaleString('he-IL')} בחדר`}
         </span>
       </div>
       <ChatRoom

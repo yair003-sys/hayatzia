@@ -15,6 +15,9 @@ export type PlayerRow = {
   position: string
   injured: boolean
   in_xi: boolean
+  /** Sample XI position on the pitch (0–100), null off the XI. */
+  pitch_x: number | null
+  pitch_y: number | null
   avg: number | null
   count: number
   myStars: number | null
