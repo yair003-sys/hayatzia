@@ -15,7 +15,9 @@ Owner's standing rule: **local and test data never touch production.**
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | differs per environment |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client + server | safe to expose; RLS protects data |
-| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: ingest and admin jobs only |
+| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: only `lib/supabase/admin.ts` (reading push subscriptions to send notifications). Production: key `server_2026_10` (rotated 2026-10-12; the old `default` key is deleted). Preview: not set yet, so previews do not send notifications |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | client / server | Web Push pair, generated in the owner's browser (never seen by Claude), Production + Preview |
+| `NEXT_PUBLIC_PHONE_AUTH` | client | `on`/`off` (default off): SMS sign-in, needs an SMS provider |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
 | `NEXT_PUBLIC_APP_ENV` | client + server | `local` / `preview` / `production`; shows a banner outside production |
 
@@ -34,7 +36,7 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - Google provider: on in both projects. One OAuth web client `hayatzia-supabase` in Google Cloud project `hayatzia-2b0ff` (separate from Firebase's auto-created client), redirect URIs = both `https://<ref>.supabase.co/auth/v1/callback`. Client ID + secret were pasted by the owner. Verified 2026-10-11: production login → Google → `/onboarding`.
 
 ## GitHub environments (league ingest)
-- `staging` and `Production` (shared with Vercel's deployment records; names are case-insensitive). Each has variable `SUPABASE_URL` and secret `SUPABASE_SECRET_KEY` (that project's `sb_secret_…`, pasted by the owner).
+- `staging` and `Production` (shared with Vercel's deployment records; names are case-insensitive). Each has variable `SUPABASE_URL` and secret `SUPABASE_SECRET_KEY` (that project's `sb_secret_…`, pasted by the owner). Production uses key `server_2026_10` since 2026-10-12.
 - `.github/workflows/web-ingest.yml` runs per environment; the legacy `update.yml` calls it whenever `data/` changed. Manual run: dispatch with `inputs[target]=staging|production|both`.
 - The script strips whitespace and invisible direction marks from the key (pasting on a Hebrew keyboard adds them) and reports row counts as a `::notice` annotation.
 
