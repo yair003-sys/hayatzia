@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createClipSchema, mediaOf, shortCount, timeLeftHe } from './schema'
+import { createClipSchema, feedCursorSchema, mediaOf, shortCount, timeLeftHe } from './schema'
 
 describe('mediaOf', () => {
   it('accepts photos and videos the bucket allows', () => {
@@ -34,5 +34,18 @@ describe('createClipSchema', () => {
     expect(createClipSchema.safeParse({ path: `${uid}/${file}.jpg`, kind: 'image' }).success).toBe(true)
     expect(createClipSchema.safeParse({ path: `../${file}.jpg`, kind: 'image' }).success).toBe(false)
     expect(createClipSchema.safeParse({ path: `${uid}/${file}.exe`, kind: 'image' }).success).toBe(false)
+  })
+})
+
+describe('audience', () => {
+  const uid = '00000000-0000-0000-0000-0000000000f1'
+  const file = '11111111-2222-3333-4444-555555555555'
+  it('posts to the whole league unless the club tab is open', () => {
+    expect(createClipSchema.parse({ path: `${uid}/${file}.jpg`, kind: 'image' }).audience).toBe('all')
+    expect(createClipSchema.parse({ path: `${uid}/${file}.jpg`, kind: 'image', audience: 'team' }).audience).toBe('team')
+    expect(createClipSchema.safeParse({ path: `${uid}/${file}.jpg`, kind: 'image', audience: 'friends' }).success).toBe(false)
+  })
+  it('pages the tab that is open', () => {
+    expect(feedCursorSchema.parse({ createdAt: '2026-10-12T10:00:00Z', id: file }).audience).toBe('all')
   })
 })
