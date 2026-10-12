@@ -241,6 +241,23 @@ while (!at(600)) {
 await sleep(95_000) // let the last poll run out
 await rpc('crowd_tick', { p_fixture: FIXTURE })
 
+// Full time: the room stays open ~100 more minutes, so fans can rate the players 1–10 (player of the match).
+await rest('PATCH', `fixtures?id=eq.${FIXTURE}`, { status: 'FT', elapsed: 90 }, 'return=minimal')
+let ratings = 0
+for (const fan of fans.filter((f) => f.group !== 'n')) {
+  const squad = sq[fan.club]!.filter((p) => p.in_xi).slice(0, 11)
+  for (const p of squad.sort(() => Math.random() - 0.5).slice(0, 5)) {
+    const id = `${fan.club}_${p.number}`
+    try {
+      await rest('POST', 'match_ratings', { user_id: fan.id, fixture_id: FIXTURE, player_id: id, score: 4 + Math.floor(Math.random() * 7) }, 'return=minimal')
+      ratings++
+    } catch {
+      // player id not in this squad format: skip
+    }
+  }
+}
+notice('demo match', `full time: ${ratings} demo ratings for player of the match`)
+
 notice('demo match', `done: ${fans.length} demo fans, ${messages} messages, ${polls.size} polls, ${votes} demo votes`)
 if (polls.size < 4) {
   console.error(`expected at least 4 polls, saw ${polls.size}`)
