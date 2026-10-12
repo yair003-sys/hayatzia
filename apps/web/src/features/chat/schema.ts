@@ -47,6 +47,13 @@ export function hasNewTail(prev: readonly ChatMessage[], next: readonly ChatMess
   return last !== undefined && last.id !== prev.at(-1)?.id
 }
 
+/** How many messages came after the one with `seenId` (0 when unknown). */
+export function countAfter(messages: readonly ChatMessage[], seenId: string | null): number {
+  if (!seenId) return 0
+  const i = messages.findIndex((m) => m.id === seenId)
+  return i < 0 ? 0 : messages.length - 1 - i
+}
+
 export function messageFromBroadcast(payload: unknown): ChatMessage | null {
   const record = (payload as { record?: Partial<ChatMessage> } | null)?.record
   if (!record) return null

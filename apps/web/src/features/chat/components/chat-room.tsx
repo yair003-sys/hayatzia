@@ -1,11 +1,12 @@
 'use client'
 
 import { memo, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
-import { SendHorizontal } from 'lucide-react'
+import { ArrowDown, SendHorizontal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   chatTime,
+  countAfter,
   hasNewTail,
   MESSAGE_MAX,
   mergeMessages,
@@ -66,6 +67,26 @@ export function ChatRoom({
   const bottom = useRef<HTMLDivElement>(null)
   const shown = useRef<ChatMessage[]>(initial)
   const shownInserts = useRef(inserts?.length ?? 0)
+  // Whether the end of the conversation is on screen; the chat follows new messages only then.
+  const [atBottom, setAtBottom] = useState(true)
+  const atBottomRef = useRef(true)
+  const [seenId, setSeenId] = useState<string | null>(initial.at(-1)?.id ?? null)
+  const followMine = useRef(false)
+
+  useEffect(() => {
+    const el = bottom.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([e]) => {
+        const v = e?.isIntersecting ?? true
+        atBottomRef.current = v
+        setAtBottom(v)
+      },
+      { rootMargin: '0px 0px 160px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   const onExtra = useRef(onChannelEvent)
   useEffect(() => {
     onExtra.current = onChannelEvent
@@ -91,13 +112,28 @@ export function ChatRoom({
     }
   }, [topic])
 
-  // Follow the conversation: every new message (or a new poll card) scrolls to the end; loading older ones does not.
+  // Follow the conversation only when the fan is already at the end (or just sent a message);
+  // someone reading further up stays where they are and gets the "jump to the end" button instead.
   useEffect(() => {
     const grew = (inserts?.length ?? 0) > shownInserts.current
-    if (hasNewTail(shown.current, messages) || grew) bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    const newTail = hasNewTail(shown.current, messages)
+    if ((newTail || grew) && (atBottomRef.current || followMine.current)) {
+      bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    }
+    followMine.current = false
     shown.current = messages
     shownInserts.current = inserts?.length ?? 0
   }, [messages, inserts?.length])
+
+  // What the fan has seen: everything up to the last message while at the end.
+  const last = messages.at(-1)?.id ?? null
+  useEffect(() => {
+    if (!atBottom || !last) return
+    const t = setTimeout(() => setSeenId(last), 0)
+    return () => clearTimeout(t)
+  }, [atBottom, last])
+  const unread = atBottom ? 0 : countAfter(messages, seenId)
+  const toEnd = () => bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
 
   const submit = () => {
     const body = draft.trim()
@@ -105,6 +141,7 @@ export function ChatRoom({
     startSend(async () => {
       const res = await send(body)
       if ('message' in res) {
+        followMine.current = true
         setMessages((cur) => mergeMessages(cur, [res.message]))
         setDraft('')
         setError(null)
@@ -151,6 +188,16 @@ export function ChatRoom({
       </ol>
 
       <div className="sticky bottom-24 z-10 mt-4 grid gap-2">
+      {!atBottom && (
+        <button
+          type="button"
+          onClick={toEnd}
+          className="flex min-h-10 items-center gap-1.5 justify-self-center rounded-full border border-line bg-surface-3/95 px-3.5 text-xs font-bold shadow-[0_3px_0_var(--color-elev),0_10px_20px_-10px_rgb(0_0_0/.9)] backdrop-blur transition-transform active:translate-y-0.5"
+        >
+          <ArrowDown className="size-4" aria-hidden="true" />
+          {unread > 0 ? `${unread} הודעות חדשות` : 'לסוף הצ׳אט'}
+        </button>
+      )}
       {pinned}
       {readOnly ? (
         <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">
