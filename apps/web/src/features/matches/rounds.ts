@@ -21,3 +21,18 @@ export function currentRoundIndex(rounds: readonly Round[]): number {
   if (open >= 0) return open
   return Math.max(0, rounds.length - 1)
 }
+
+/** For predictions: the round of the next match that has not kicked off yet (stale unplayed matches don't count). */
+export function predictRoundIndex(rounds: readonly Round[], nowMs: number): number {
+  let best = -1
+  let bestT = Infinity
+  rounds.forEach((r, i) => {
+    for (const f of r.fixtures) {
+      if (f.t * 1000 > nowMs && !DONE_STATUSES.has(f.st) && f.t < bestT) {
+        best = i
+        bestT = f.t
+      }
+    }
+  })
+  return best >= 0 ? best : currentRoundIndex(rounds)
+}

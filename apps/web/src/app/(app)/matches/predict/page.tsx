@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { displayTeam, roundLabelHe } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
-import { currentRoundIndex, groupByRound } from '@/features/matches/rounds'
+import { groupByRound, predictRoundIndex } from '@/features/matches/rounds'
 import { DONE_STATUSES } from '@/features/matches/schema'
 import { getLeague } from '@/features/matches/server/queries'
 import { GuessRow } from '@/features/predictions/components/guess-row'
@@ -36,9 +36,9 @@ async function Predict() {
   const league = await getLeague()
   if (!league) return <p className="text-muted">לא הצלחנו לטעון את המשחקים כרגע.</p>
   const rounds = groupByRound(league.fixtures)
-  const round = rounds[currentRoundIndex(rounds)]
-  const fixtures = round?.fixtures ?? []
   const now = clock()
+  const round = rounds[predictRoundIndex(rounds, now)]
+  const fixtures = round?.fixtures ?? []
   const [mine, board] = await Promise.all([
     getMyGuesses(fixtures.map((f) => f.id)),
     getBoard(s.team.id, league.league.season, s.userId),

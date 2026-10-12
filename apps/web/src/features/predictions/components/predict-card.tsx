@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { currentRoundIndex, groupByRound } from '@/features/matches/rounds'
+import { groupByRound, predictRoundIndex } from '@/features/matches/rounds'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getBoard, getMyGuesses } from '../server/queries'
@@ -14,7 +14,8 @@ export async function PredictCard() {
   const league = await getLeague()
   if (!league) return null
   const rounds = groupByRound(league.fixtures)
-  const open = (rounds[currentRoundIndex(rounds)]?.fixtures ?? []).filter((f) => f.t * 1000 > clock())
+  const now = clock()
+  const open = (rounds[predictRoundIndex(rounds, now)]?.fixtures ?? []).filter((f) => f.t * 1000 > now)
   const [mine, board] = await Promise.all([getMyGuesses(open.map((f) => f.id)), getBoard(s.team.id, league.league.season, s.userId)])
   const left = open.filter((f) => !mine[f.id]).length
   return (
