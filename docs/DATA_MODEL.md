@@ -48,6 +48,12 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 |---|---|---|
 | `match_messages` | `id`, `fixture_id`, `user_id`, `side 'h'/'a'`, `body varchar(200)`, `created_at` | read: authenticated; insert: only fans of one of the two teams, only while the room is open (30′ before kick-off → 60′ after full time); idx `(fixture_id, created_at)` |
 
+## Stand home (2026-10-12)
+| Table | Columns | Rules |
+|---|---|---|
+| `team_stats` | `team_id pk`, `fans` | read: fans of that club; kept by trigger on `profiles` insert/delete ("אוהדים מאומתים") |
+Realtime Presence (private topics, RLS on `realtime.messages` with `extension = 'presence'`): `online:<club>` (own club only; tracked once per app by `OnlineTracker` in the session gate → "מחוברים עכשיו"), `room:<fixture>` (any fan; tracked by the match room, read by the home ticket → "X אוהדים בחדר"). Counts are distinct user ids.
+
 ## Crowd verdict (דעת הקהל, in the match room, 2026-10-12)
 | Table | Columns | Rules |
 |---|---|---|
