@@ -33,6 +33,78 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"chant_fires": {
+                  Row: {
+                    "chant_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chant_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "chant_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "chant_fires_chant_id_fkey"
+      columns: ["chant_id"]
+isOneToOne: false
+      referencedRelation: "chants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"chants": {
+                  Row: {
+                    "audio_path": string | null,"created_at": string,"created_by": string,"fire_count": number,"id": string,"lyrics": string,"team_id": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audio_path"?: string | null,"created_at"?: string,"created_by"?: string,"fire_count"?: number,"id"?: string,"lyrics"?: string,"team_id"?: string,"title": string
+                  }
+                  Update: {
+                    "audio_path"?: string | null,"created_at"?: string,"created_by"?: string,"fire_count"?: number,"id"?: string,"lyrics"?: string,"team_id"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "chants_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"checkins": {
+                  Row: {
+                    "away": boolean,"created_at": string,"fixture_id": number,"stadium_id": string | null,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "away"?: boolean,"created_at"?: string,"fixture_id": number,"stadium_id"?: string | null,"team_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "away"?: boolean,"created_at"?: string,"fixture_id"?: number,"stadium_id"?: string | null,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "checkins_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "checkins_stadium_id_fkey"
+      columns: ["stadium_id"]
+isOneToOne: false
+      referencedRelation: "stadiums"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "checkins_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"clip_comments": {
                   Row: {
                     "body": string,"clip_id": string,"created_at": string,"id": string,"nick": string,"team_id": string,"user_id": string
@@ -133,6 +205,26 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "clips_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"club_reps": {
+                  Row: {
+                    "created_at": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"team_id": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "club_reps_team_id_fkey"
       columns: ["team_id"]
 isOneToOne: false
       referencedRelation: "teams"
@@ -425,6 +517,58 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"match_rating_stats": {
+                  Row: {
+                    "count": number,"fixture_id": number,"player_id": string,"sum": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "count"?: number,"fixture_id": number,"player_id": string,"sum"?: number
+                  }
+                  Update: {
+                    "count"?: number,"fixture_id"?: number,"player_id"?: string,"sum"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_rating_stats_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_rating_stats_player_id_fkey"
+      columns: ["player_id"]
+isOneToOne: false
+      referencedRelation: "players"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_ratings": {
+                  Row: {
+                    "fixture_id": number,"player_id": string,"score": number,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fixture_id": number,"player_id": string,"score": number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "fixture_id"?: number,"player_id"?: string,"score"?: number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_ratings_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_ratings_player_id_fkey"
+      columns: ["player_id"]
+isOneToOne: false
+      referencedRelation: "players"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"player_rating_stats": {
                   Row: {
                     "count": number,"d1": number,"d2": number,"d3": number,"d4": number,"d5": number,"player_id": string,"sum": number
@@ -575,6 +719,20 @@ isOneToOne: false
                   }
                   Update: {
                     "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"stadiums": {
+                  Row: {
+                    "id": string,"lat": number,"lng": number,"name_he": string,"names": (string)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id": string,"lat": number,"lng": number,"name_he": string,"names": (string)[]
+                  }
+                  Update: {
+                    "id"?: string,"lat"?: number,"lng"?: number,"name_he"?: string,"names"?: (string)[]
                   }
                   Relationships: [
                     
@@ -774,6 +932,9 @@ isOneToOne: false
             "blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
+"check_in":
+{ Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
+                           },
 "clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
                            },
@@ -800,6 +961,12 @@ isOneToOne: false
                            },
 "crowd_tick":
 { Args: { "p_fixture": number }; Returns: undefined
+                           },
+"distance_m":
+{ Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
+                           },
+"is_club_rep":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
