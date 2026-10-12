@@ -26,7 +26,7 @@ create function pg_temp.open_polls() returns int language sql as $$
   select count(*)::int from public.match_polls where fixture_id = 21 and closes_at > now()
 $$;
 create function pg_temp.expire_all() returns void language sql as $$
-  update public.match_polls set opens_at = now() - interval '5 minutes', closes_at = now() - interval '1 second'
+  update public.match_polls set opens_at = now() - interval '2 minutes', closes_at = now() - interval '1 second'
   where fixture_id = 21 and closes_at > now()
 $$;
 
