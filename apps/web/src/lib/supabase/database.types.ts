@@ -249,14 +249,14 @@ isOneToOne: true
                   ]
                 },"fixtures": {
                   Row: {
-                    "away_api_id": number,"away_goals": number | null,"elapsed": number | null,"home_api_id": number,"home_goals": number | null,"id": number,"kickoff_at": string,"league_id": number,"round": string,"season": number,"status": string,"updated_at": string,"venue": string
+                    "away_api_id": number,"away_goals": number | null,"elapsed": number | null,"home_api_id": number,"home_goals": number | null,"id": number,"is_demo": boolean,"kickoff_at": string,"league_id": number,"round": string,"season": number,"status": string,"updated_at": string,"venue": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "away_api_id": number,"away_goals"?: number | null,"elapsed"?: number | null,"home_api_id": number,"home_goals"?: number | null,"id": number,"kickoff_at": string,"league_id": number,"round": string,"season": number,"status": string,"updated_at"?: string,"venue"?: string
+                    "away_api_id": number,"away_goals"?: number | null,"elapsed"?: number | null,"home_api_id": number,"home_goals"?: number | null,"id": number,"is_demo"?: boolean,"kickoff_at": string,"league_id": number,"round": string,"season": number,"status": string,"updated_at"?: string,"venue"?: string
                   }
                   Update: {
-                    "away_api_id"?: number,"away_goals"?: number | null,"elapsed"?: number | null,"home_api_id"?: number,"home_goals"?: number | null,"id"?: number,"kickoff_at"?: string,"league_id"?: number,"round"?: string,"season"?: number,"status"?: string,"updated_at"?: string,"venue"?: string
+                    "away_api_id"?: number,"away_goals"?: number | null,"elapsed"?: number | null,"home_api_id"?: number,"home_goals"?: number | null,"id"?: number,"is_demo"?: boolean,"kickoff_at"?: string,"league_id"?: number,"round"?: string,"season"?: number,"status"?: string,"updated_at"?: string,"venue"?: string
                   }
                   Relationships: [
                     {
@@ -314,6 +314,72 @@ isOneToOne: false
     },{
       foreignKeyName: "match_messages_team_id_fkey"
       columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_poll_tallies": {
+                  Row: {
+                    "n": number,"option_id": string,"poll_id": string,"row_kind": string,"voter_group": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "n"?: number,"option_id": string,"poll_id": string,"row_kind": string,"voter_group": string
+                  }
+                  Update: {
+                    "n"?: number,"option_id"?: string,"poll_id"?: string,"row_kind"?: string,"voter_group"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_poll_tallies_poll_id_fkey"
+      columns: ["poll_id"]
+isOneToOne: false
+      referencedRelation: "match_polls"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_poll_votes": {
+                  Row: {
+                    "option_id": string,"option_in": string | null,"poll_id": string,"updated_at": string,"user_id": string,"voter_group": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "option_id": string,"option_in"?: string | null,"poll_id": string,"updated_at"?: string,"user_id"?: string,"voter_group"?: string
+                  }
+                  Update: {
+                    "option_id"?: string,"option_in"?: string | null,"poll_id"?: string,"updated_at"?: string,"user_id"?: string,"voter_group"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_poll_votes_poll_id_fkey"
+      columns: ["poll_id"]
+isOneToOne: false
+      referencedRelation: "match_polls"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_polls": {
+                  Row: {
+                    "closes_at": string,"created_at": string,"fixture_id": number,"id": string,"kind": string,"last_tally_at": string,"opens_at": string,"options": NonNullable<Json>,"options_in": Json | null,"question": string,"source": string,"summary": string | null,"voter_scope": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "closes_at": string,"created_at"?: string,"fixture_id": number,"id"?: string,"kind": string,"last_tally_at"?: string,"opens_at"?: string,"options": NonNullable<Json>,"options_in"?: Json | null,"question": string,"source": string,"summary"?: string | null,"voter_scope"?: string | null
+                  }
+                  Update: {
+                    "closes_at"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"kind"?: string,"last_tally_at"?: string,"opens_at"?: string,"options"?: NonNullable<Json>,"options_in"?: Json | null,"question"?: string,"source"?: string,"summary"?: string | null,"voter_scope"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_polls_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "match_polls_voter_scope_fkey"
+      columns: ["voter_scope"]
 isOneToOne: false
       referencedRelation: "teams"
       referencedColumns: ["id"]
@@ -607,6 +673,9 @@ isOneToOne: false
                            },
 "club_of_api":
 { Args: { "p_api_id": number }; Returns: string
+                           },
+"crowd_bump":
+{ Args: { "p_delta": number,"p_group": string,"p_option": string,"p_poll": string,"p_row": string }; Returns: undefined
                            },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
