@@ -5,14 +5,13 @@ import { Suspense } from 'react'
 import { Car, ChevronLeft } from 'lucide-react'
 import { displayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
-import { LIVE_STATUSES } from '@/features/matches/schema'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { FanPitch } from '@/features/stand-home/components/fan-pitch'
 import { Hero } from '@/features/stand-home/components/hero'
 import { MatchTicket } from '@/features/stand-home/components/match-ticket'
 import { TeamChatCard } from '@/features/stand-home/components/team-chat-card'
-import { pickTicket, teamAccent } from '@/features/stand-home/schema'
+import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
 
 export const metadata: Metadata = { title: 'היציע שלי' }
@@ -57,7 +56,7 @@ async function StandHome() {
       <Hero team={team} fans={data.fans} />
 
       <h2 className="sh-sec">
-        {ticket && LIVE_STATUSES.has(ticket.st) && <i className="sh-live-dot" aria-hidden="true" />}
+        {ticket && isTicketLive(ticket, now) && <i className="sh-live-dot" aria-hidden="true" />}
         יום משחק
       </h2>
       {ticket ? (

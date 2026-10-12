@@ -43,10 +43,11 @@ export function teamAccent(bar: string): TeamAccent {
 // ── match-day ticket ─────────────────────────────────────────────────────────────────────
 const elapsedMin = (f: Fixture, nowMs: number) => (nowMs - f.t * 1000) / MIN
 
+// A "live" status from the data is trusted only within the room's window (extra time fits); after that it is stale.
 function isLive(f: Fixture, nowMs: number): boolean {
-  if (LIVE_STATUSES.has(f.st)) return true
   const e = elapsedMin(f, nowMs)
-  return !DONE_STATUSES.has(f.st) && e >= 0 && e < MATCH_MIN
+  if (DONE_STATUSES.has(f.st) || e < 0) return false
+  return e < MATCH_MIN || (LIVE_STATUSES.has(f.st) && e < ROOM_CLOSE_MIN)
 }
 
 /** Minute shown on the ticket: estimated from kick-off like the legacy app; the data wins for HT and full time. */
