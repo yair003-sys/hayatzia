@@ -1,0 +1,28 @@
+name: web-load (load test, staging only)
+
+# Manual: simulates many fans reading the league pages at once against the STAGING Supabase project.
+# The script refuses to run against production.
+on:
+  workflow_dispatch:
+    inputs:
+      peak:
+        description: 'peak simultaneous fans'
+        default: '200'
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: grafana/setup-k6-action@v1
+      - name: Run k6
+        working-directory: apps/web
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          PEAK_VUS: ${{ inputs.peak }}
+        run: ./scripts/ci-step.sh "load test" k6 run --quiet load/league-read.js
