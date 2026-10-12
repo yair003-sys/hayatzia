@@ -1,0 +1,27 @@
+name: web-demo-predictions (predictions demo, staging only)
+
+# Manual: a labelled demo round on the STAGING project — two upcoming matches to guess, one finished match
+# scored from the demo fans' guesses. Needs the demo fans from web-demo-match. Never touches production.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Demo round
+        working-directory: apps/web
+        env:
+          DEMO_TARGET: staging
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: ./scripts/ci-step.sh "demo predictions" node scripts/demo-predictions.ts
