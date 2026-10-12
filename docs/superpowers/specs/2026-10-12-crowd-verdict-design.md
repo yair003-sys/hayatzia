@@ -73,8 +73,8 @@ Option labels above are the builder's starting wording; Hebrew copy can be tuned
 - **App:** new feature folder `features/crowd-verdict/` (schema with pure helpers such as keyword normalisation and percentage rounding, unit-tested; server queries/actions via next-safe-action; client card + pinned strip). `MatchRoom` / `ChatRoom` render poll cards interleaved with messages by time. No change to how chat messages are stored.
 
 ## Player names in options (Claude's call)
-- Source of truth for who is in the match is the provider's lineups (`fixture_details.lineups`, provider player ids), because the live poller will use the same ids later.
-- Each option stores the provider player id plus a display name. The display name is the Hebrew name from our `players` table when it can be matched (by club + shirt number, then by name), otherwise the provider's name as is. The matching is one pure, unit-tested helper.
+- Source of truth for who is in the match is the provider's lineups (`fixture_details.lineups`), because the live poller will use the same data later. The stored lineups carry no provider player id, so a player key is `<team api id>:<shirt number>` (or `:<name>` when the number is missing).
+- Each option stores that key plus a display name. The display name is the Hebrew name from our `players` table when it can be matched (by club + shirt number, then by name), otherwise the provider's name as is. The matching is one pure, unit-tested helper.
 - "On the pitch" vs "bench" is derived from lineups plus substitution events so far (one pure helper, unit-tested).
 - The demo fixture seeds lineups in the same provider shape, so the demo exercises the real path.
 
