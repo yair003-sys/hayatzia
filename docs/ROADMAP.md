@@ -10,7 +10,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 | P3 Private & safety | E2EE DMs (port tested crypto), phone sign-in (SMS provider), reports + moderation, rate limits, Sentry | **done** except two owner-gated items: E2EE DMs (browser-only crypto, ported 1:1, tested), blocks (hide content everywhere), reports (write-only), DB rate limits, in-app-browser note. Phone sign-in code ready behind `NEXT_PUBLIC_PHONE_AUTH=off` (owner chose Google-only for now, 2026-10-12). Sentry: needs an account |
 | P4 Growth | Trips, events, market, PWA install + push notifications, analytics, load test | **done** (2026-10-12): trips/events/market live on both projects; installable app (manifest, icons, notification-only service worker); Web Push for private messages and trip requests (no message content in notifications; VAPID generated in the owner's browser); Vercel Web Analytics (Hobby) + Speed Insights; k6 load test on staging (see below). 112 pgTAP tests green |
 | Crowd verdict | Live polls inside the match room (spec `superpowers/specs/2026-10-12-crowd-verdict-design.md`) | **built** (2026-10-12): on staging + production DBs; tested on the staging demo match; live data needs the paid API (5-second poller, owner's later step) |
-| Home in the legacy look | 4 stages (owner, 2026-10-12): 1 home · 2 stand photos → Square · 3 predictions → Matches · 4 player of the match, "הייתי שם", stand songs | **stages 1–3 done** (2026-10-12): 1 home (`superpowers/specs/2026-10-12-stand-home-design.md`), 2 Square reels with a league tab and a club tab (team posts replace stand photos; photos shrunk before upload), 3 predictions in Matches (`superpowers/specs/2026-10-12-predictions-design.md`, no first-scorer bonus until the paid API). On staging + production. Stage 4 next |
+| Home in the legacy look | 4 stages (owner, 2026-10-12): 1 home · 2 stand photos → Square · 3 predictions → Matches · 4 player of the match, "הייתי שם", stand songs | **stages 1–3 done** (2026-10-12): 1 home (`superpowers/specs/2026-10-12-stand-home-design.md`), 2 Square reels with a league tab and a club tab (team posts replace stand photos; photos shrunk before upload), 3 predictions in Matches (`superpowers/specs/2026-10-12-predictions-design.md`, no first-scorer bonus until the paid API). On staging + production. Stage 4 (check-in by location ≤ 500 m, player of the match 1–10, stand songs by the club's fan representative) built and on staging; production migration `20261012080000_stage4` loaded for the owner, not yet confirmed run |
 | P5 Cutover | Move remaining data, domain, legacy → redirect | |
 
 ## Open owner decisions
@@ -19,7 +19,8 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider if phone sign-in is wanted; Sentry account.
 
 ## Notes for the next session
-- All migrations through `20261012070000_predictions` are applied on staging and production.
+- All migrations through `20261012070000_predictions` are applied on staging and production; `20261012080000_stage4` on staging (production pending the owner's Run).
+- Club fan representatives (`club_reps`): none yet — the owner names them; add by SQL until an admin screen exists.
 - Staging demos: `web-demo-match.yml` (crowd verdict), `web-demo-predictions.yml` (needs the demo fans from the first).
 - Presence joins take ~2 s on the free staging DB, ~30 s while the demo match loads it: one more reason for Pro + compute before launch.
 - League data stays on season 2024 for now (owner, 2026-10-12): "Trips" shows no upcoming matches until the API plan changes.
