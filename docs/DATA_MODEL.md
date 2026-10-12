@@ -48,6 +48,16 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 |---|---|---|
 | `match_messages` | `id`, `fixture_id`, `user_id`, `side 'h'/'a'`, `body varchar(200)`, `created_at` | read: authenticated; insert: only fans of one of the two teams, only while the room is open (30′ before kick-off → 60′ after full time); idx `(fixture_id, created_at)` |
 
+## Crowd verdict (דעת הקהל, in the match room, 2026-10-12)
+| Table | Columns | Rules |
+|---|---|---|
+| `match_polls` | `id`, `fixture_id`, `kind` (penalty/red/offside/var/card/goal/sub60/sub_event/motm), `question`, `options jsonb`, `options_in jsonb` (bench row, sub60), `source` (chat/event/schedule), `voter_scope` (club or null), `opens_at`, `closes_at` (+90 s), `summary` (set once on close), `last_tally_at` | read: authenticated; created only by the database (chat bursts) or service role (`open_event_poll`); idx `(fixture_id, opens_at desc)` |
+| `match_poll_votes` | `(poll_id, user_id) pk`, `option_id`, `option_in`, `voter_group` (h/a/n, stamped), `updated_at` | own rows only; insert/update while open, valid option, within scope |
+| `match_poll_tallies` | `(poll_id, row_kind o/i, option_id, voter_group) pk`, `n` | read: authenticated; written only by the vote trigger |
+| `match_chat_bursts` | `(fixture_id, kind, user_id) pk`, `at` | internal: distinct fans per keyword, rolling 60 s |
+| `match_poll_queue` | `id`, `fixture_id`, `kind`, `source`, `payload`, `queued_at` | internal: event polls waiting for the open poll (dropped after 3 min) |
+Functions: `crowd_keyword(text)`, `crowd_open_poll(...)` (internal), `crowd_tick(fixture)` (authenticated + service role; idempotent close + next from queue), `open_event_poll(...)` (service role only). Broadcasts on `match:<fixture_id>`: `poll`, `tally` (≤ 1/s per poll), `poll_closed`. `fixtures.is_demo` flags staging demo matches.
+
 ## The Square (league-wide, 24 hours)
 | Table | Columns | Rules |
 |---|---|---|

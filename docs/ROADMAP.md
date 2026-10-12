@@ -9,6 +9,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 | P2 Community | Team chat (realtime), match rooms, Square (Storage, 24h expiry, view-once, likes/respects/comments), stand photos, ratings | **done** (2026-10-11): all live on staging + production; private Broadcast channels, server-stamped rows, rate limits, hourly cleanup; 75 pgTAP tests green |
 | P3 Private & safety | E2EE DMs (port tested crypto), phone sign-in (SMS provider), reports + moderation, rate limits, Sentry | **done** except two owner-gated items: E2EE DMs (browser-only crypto, ported 1:1, tested), blocks (hide content everywhere), reports (write-only), DB rate limits, in-app-browser note. Phone sign-in code ready behind `NEXT_PUBLIC_PHONE_AUTH=off` (owner chose Google-only for now, 2026-10-12). Sentry: needs an account |
 | P4 Growth | Trips, events, market, PWA install + push notifications, analytics, load test | **done** (2026-10-12): trips/events/market live on both projects; installable app (manifest, icons, notification-only service worker); Web Push for private messages and trip requests (no message content in notifications; VAPID generated in the owner's browser); Vercel Web Analytics (Hobby) + Speed Insights; k6 load test on staging (see below). 112 pgTAP tests green |
+| Crowd verdict | Live polls inside the match room (spec `superpowers/specs/2026-10-12-crowd-verdict-design.md`) | **built** (2026-10-12): on staging + production DBs; tested on the staging demo match; live data needs the paid API (5-second poller, owner's later step) |
 | P5 Cutover | Move remaining data, domain, legacy → redirect | |
 
 ## Open owner decisions
@@ -17,7 +18,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider if phone sign-in is wanted; Sentry account.
 
 ## Notes for the next session
-- All migrations through `20261012030000_push` are applied on staging and production.
+- All migrations through `20261012041000_crowd_triggers` are applied on staging and production; `20261012042000_demo_access` (grants only) on staging, production pending.
 - League data stays on season 2024 for now (owner, 2026-10-12): "Trips" shows no upcoming matches until the API plan changes.
 - Owner's own production profile has no team yet (he chooses).
 - Preview deployments have no `SUPABASE_SECRET_KEY`, so they do not send notifications (by design for now).
