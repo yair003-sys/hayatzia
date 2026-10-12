@@ -89,7 +89,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         return onDone(localId, null)
       }
       const r = await createClipAction({ path, kind: media.kind, ...input })
-      if (r.data && 'clip' in r.data) return onDone(localId, r.data.clip)
+      if (r.data && 'clip' in r.data) return onDone(localId, r.data.clip ?? null)
       setError((r.data && 'error' in r.data && r.data.error) || 'הפרסום נכשל. נסה שוב')
       onDone(localId, null)
     })()
