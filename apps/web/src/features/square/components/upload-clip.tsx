@@ -4,11 +4,12 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, ImagePlus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { ACCEPT, MAX_UPLOAD_MB, mediaOf } from '../schema'
+import { ACCEPT, MAX_UPLOAD_MB, mediaOf, type Audience } from '../schema'
 import { createClipAction } from '../server/actions'
 
-/** Upload straight from the phone (gallery or camera) to Storage, then publish the post. */
-export function UploadClip({ meId }: { meId: string }) {
+/** Upload straight from the phone (gallery or camera) to Storage, then publish to the tab that is open. */
+export function UploadClip({ meId, audience, teamShort }: { meId: string; audience: Audience; teamShort: string }) {
+  const target = audience === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה'
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
@@ -51,7 +52,7 @@ export function UploadClip({ meId }: { meId: string }) {
         .storage.from('clips')
         .upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false })
       if (upErr) return setError('ההעלאה נכשלה. נסה שוב')
-      const r = await createClipAction({ path, kind: media.kind, caption, tags, once })
+      const r = await createClipAction({ path, kind: media.kind, caption, tags, once, audience })
       if (r.data?.ok) {
         reset()
         router.refresh()
@@ -69,7 +70,7 @@ export function UploadClip({ meId }: { meId: string }) {
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => gallery.current?.click()} className="flex items-center justify-center gap-2 rounded-lg bg-accent py-3 font-semibold text-white">
             <ImagePlus className="size-5" aria-hidden="true" />
-            העלאה לכיכר
+            העלאה {target}
           </button>
           <button type="button" onClick={() => camera.current?.click()} className="flex items-center justify-center gap-2 rounded-lg border border-line py-3 font-semibold">
             <Camera className="size-5" aria-hidden="true" />
@@ -81,7 +82,7 @@ export function UploadClip({ meId }: { meId: string }) {
       {open && file && preview && (
         <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
           <div className="flex items-center justify-between">
-            <b>פוסט חדש · 24 שעות</b>
+            <b>פוסט חדש {target} · 24 שעות</b>
             <button type="button" aria-label="ביטול" onClick={reset} className="text-muted">
               <X className="size-5" aria-hidden="true" />
             </button>
@@ -102,7 +103,7 @@ export function UploadClip({ meId }: { meId: string }) {
             חד פעמי: כל אוהד יוכל לצפות פעם אחת בלבד
           </label>
           <button type="button" disabled={pending} onClick={publish} className="w-full rounded-lg bg-accent py-3 font-semibold text-white disabled:opacity-50">
-            {pending ? 'מעלה…' : 'פרסם בכיכר'}
+            {pending ? 'מעלה…' : `פרסם ${target}`}
           </button>
         </div>
       )}

@@ -97,10 +97,10 @@ async function StandHome() {
           <b>שוק אוהדים</b>
           <span>{data.market} מודעות</span>
         </Link>
-        <Link href="/stand/photos" className="sh-tile">
-          <i aria-hidden="true">🖼️</i>
-          <b>תמונות</b>
-          <span>מהיציע</span>
+        <Link href="/square?f=team" className="sh-tile">
+          <i aria-hidden="true">🎬</i>
+          <b>רילס</b>
+          <span>של {team.short}</span>
         </Link>
       </nav>
 

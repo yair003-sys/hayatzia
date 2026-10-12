@@ -5,6 +5,8 @@ export const MAX_UPLOAD_MB = 50
 export const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm'
 
 export type ClipKind = 'image' | 'video'
+export type Audience = 'all' | 'team'
+const audience = z.enum(['all', 'team'])
 
 export type Clip = {
   id: string
@@ -21,6 +23,8 @@ export type Clip = {
   views_count: number
   created_at: string
   expires_at: string
+  /** 'all' = the whole league, 'team' = only the poster's club. */
+  audience: Audience
   /** Signed URL (null for view-once posts until the fan opens them). */
   url: string | null
   liked: boolean
@@ -40,11 +44,12 @@ export const createClipSchema = z.object({
   caption: z.string().trim().max(120, 'עד 120 תווים').default(''),
   tags: z.string().trim().max(60, 'עד 60 תווים').default(''),
   once: z.boolean().default(false),
+  audience: audience.default('all'),
 })
 export const feedCursorSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
   id: z.uuid(),
-  mine: z.boolean().default(false),
+  audience: audience.default('all'),
 })
 
 const EXT: Record<string, string> = {

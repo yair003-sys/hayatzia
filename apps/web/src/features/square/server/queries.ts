@@ -1,19 +1,20 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
-import { FEED_SIZE, type Clip, type ClipComment } from '../schema'
+import { FEED_SIZE, type Audience, type Clip, type ClipComment } from '../schema'
 
 const COLUMNS =
-  'id,user_id,team_id,nick,media_path,kind,caption,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at'
+  'id,user_id,team_id,nick,media_path,kind,caption,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
 const URL_TTL = 60 * 60 // seconds; feed pages are short-lived anyway
 
 type Cursor = { createdAt: string; id: string }
 
 /**
- * One page of the Square, newest first (keyset). RLS hides expired posts and view-once posts already seen.
+ * One page of a Square tab, newest first (keyset): 'all' = league posts, 'team' = the fan's club only.
+ * RLS hides expired posts, other clubs' team posts and view-once posts already seen.
  * Private per fan (likes, view-once state): reads the session, never cached.
  */
-export async function getSquareFeed(opts: { mine?: boolean; before?: Cursor } = {}): Promise<Clip[]> {
+export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor } = {}): Promise<Clip[]> {
   const supabase = await createClient()
   if (!supabase) return []
   const { data: claims } = await supabase.auth.getClaims()
@@ -23,13 +24,10 @@ export async function getSquareFeed(opts: { mine?: boolean; before?: Cursor } = 
   let q = supabase
     .from('clips')
     .select(COLUMNS)
+    .eq('audience', opts.audience ?? 'all')
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(FEED_SIZE)
-  if (opts.mine) {
-    const { data: p } = await supabase.from('profiles').select('team_id').eq('user_id', me).maybeSingle()
-    if (p) q = q.eq('team_id', p.team_id)
-  }
   if (opts.before) {
     const b = opts.before
     q = q.or(`created_at.lt."${b.createdAt}",and(created_at.eq."${b.createdAt}",id.lt.${b.id})`)
@@ -54,6 +52,7 @@ export async function getSquareFeed(opts: { mine?: boolean; before?: Cursor } = 
   return rows.map(({ media_path, ...r }) => ({
     ...r,
     kind: r.kind === 'video' ? 'video' : 'image',
+    audience: r.audience === 'team' ? 'team' : 'all',
     url: urls.get(media_path) ?? null,
     liked: liked.has(r.id),
     respected: respected.has(r.id),

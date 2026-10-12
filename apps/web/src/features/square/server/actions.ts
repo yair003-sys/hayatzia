@@ -24,6 +24,7 @@ export const createClipAction = actionClient.inputSchema(createClipSchema).actio
     caption: parsedInput.caption,
     tags: parsedInput.tags,
     once: parsedInput.once,
+    audience: parsedInput.audience,
   })
   if (error) {
     await supabase.storage.from('clips').remove([parsedInput.path])
@@ -88,4 +89,4 @@ export const addCommentAction = actionClient.inputSchema(commentSchema).action(a
 
 export const loadMoreSquareAction = actionClient
   .inputSchema(feedCursorSchema)
-  .action(async ({ parsedInput: { mine, ...before } }) => ({ clips: await getSquareFeed({ mine, before }) }))
+  .action(async ({ parsedInput: { audience, ...before } }) => ({ clips: await getSquareFeed({ audience, before }) }))
