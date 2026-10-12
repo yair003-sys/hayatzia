@@ -33,17 +33,31 @@ export function useCrowd(initial: CrowdState, fixtureId: number, myGroup: Group)
     })
   }, [fixtureId])
 
+  // The clock runs only while some poll is still waiting for its summary.
+  const live = polls.some((p) => p.summary === null)
   useEffect(() => {
+    if (!live) return
+    const first = setTimeout(() => setNow(Date.now()), 0)
     const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
+    return () => {
+      clearTimeout(first)
+      clearInterval(t)
+    }
+  }, [live])
 
-  // When a countdown ends, ask the database to close it (idempotent; every client may ask once).
+  // When a countdown ends, ask the database to close it. Every client may ask, so each waits a random
+  // 0–3 s and skips if the closing broadcast already arrived (spreads the load in a full stadium).
+  const latest = useRef(polls)
+  useEffect(() => {
+    latest.current = polls
+  }, [polls])
   useEffect(() => {
     for (const p of polls) {
       if (p.summary === null && Date.parse(p.closesAt) <= now && !ticked.current.has(p.id)) {
         ticked.current.add(p.id)
-        void tickAction({ fixtureId })
+        setTimeout(() => {
+          if (latest.current.find((x) => x.id === p.id)?.summary === null) void tickAction({ fixtureId })
+        }, Math.random() * 3000)
       }
     }
   }, [now, polls, fixtureId])

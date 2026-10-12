@@ -61,3 +61,164 @@
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
 }
+
+/* ── Crowd verdict (דעת הקהל): tactile 3D poll cards ───────────────────────────────────────── */
+@property --pct {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+
+@layer components {
+  /* Card: tips forward into place, glows while open. */
+  .crowd-card {
+    position: relative;
+    border-radius: 1.25rem;
+    background:
+      radial-gradient(120% 90% at 50% -25%, rgb(109 74 255 / 0.28), transparent 60%),
+      linear-gradient(180deg, var(--color-surface-3), var(--color-surface-2));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.09),
+      0 0 0 1px rgb(109 74 255 / 0.45),
+      0 22px 40px -22px rgb(0 0 0 / 0.95),
+      0 0 34px -14px rgb(109 74 255 / 0.7);
+    transform-origin: 50% 0;
+    animation: crowd-flip-in 0.7s var(--ease-spring) both;
+  }
+  .crowd-card[data-open='true'] { animation: crowd-flip-in 0.7s var(--ease-spring) both, crowd-glow 2.6s ease-in-out 0.7s infinite; }
+  .crowd-card[data-open='false'] {
+    background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px var(--color-line), 0 16px 30px -22px rgb(0 0 0 / 0.9);
+  }
+
+  /* Option: a keycap with a real edge; presses down 4px. */
+  .crowd-key {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 0.95rem;
+    border: 1px solid var(--color-line);
+    background: linear-gradient(180deg, #232c3b, var(--color-surface-2));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.16),
+      inset 0 -2px 0 rgb(0 0 0 / 0.28),
+      0 5px 0 #05070a,
+      0 11px 18px -9px rgb(0 0 0 / 0.95);
+    transition: transform 0.14s var(--ease-spring), box-shadow 0.14s ease, border-color 0.2s, background 0.2s;
+  }
+  .crowd-key:hover:not(:disabled) { transform: translateY(-1px); }
+  .crowd-key:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 1px 0 #05070a, 0 4px 8px -5px rgb(0 0 0 / 0.9);
+  }
+  .crowd-key:disabled { cursor: default; }
+  .crowd-key[aria-pressed='true'] {
+    color: #fff;
+    border-color: #9b84ff;
+    background: linear-gradient(180deg, #8466ff, #4a2fd1);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      inset 0 -2px 0 rgb(0 0 0 / 0.25),
+      0 5px 0 #2b1d70,
+      0 0 26px -6px rgb(109 74 255 / 0.95);
+  }
+
+  /* Result fill inside a key, with one glossy sweep when it grows. */
+  .crowd-fill {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.13));
+    transition: width 0.9s var(--ease-soft);
+    overflow: hidden;
+  }
+  .crowd-key[aria-pressed='true'] .crowd-fill { background: linear-gradient(90deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.24)); }
+  .crowd-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 25%, rgb(255 255 255 / 0.4) 50%, transparent 75%);
+    animation: crowd-shine 1.2s 0.25s var(--ease-soft) both;
+  }
+
+  /* Emoji with depth; pops when chosen. */
+  .crowd-emoji {
+    display: inline-block;
+    line-height: 1;
+    filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.35)) drop-shadow(0 6px 6px rgb(0 0 0 / 0.45));
+    transition: transform 0.25s var(--ease-spring);
+  }
+  .crowd-key:hover:not(:disabled) .crowd-emoji { transform: translateY(-2px) scale(1.1) rotate(-4deg); }
+  .crowd-key[aria-pressed='true'] .crowd-emoji { animation: crowd-emoji-pop 0.55s var(--ease-spring); transform: scale(1.12); }
+
+  /* Percentages count up. */
+  .crowd-pct {
+    font-variant-numeric: tabular-nums;
+    counter-reset: pct var(--pct);
+    transition: --pct 0.9s var(--ease-soft);
+  }
+  .crowd-pct::after { content: counter(pct) '%'; }
+
+  /* Emoji burst on vote. */
+  .crowd-burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 2; }
+  .crowd-burst i {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    font-style: normal;
+    font-size: 15px;
+    opacity: 0;
+    animation: crowd-burst 0.8s var(--ease-soft) forwards;
+  }
+
+  /* Bars in the per-club split. */
+  .crowd-bar {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--color-canvas);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.6);
+    overflow: hidden;
+  }
+  .crowd-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.35), transparent 60%);
+    transition: width 0.9s var(--ease-soft);
+  }
+
+  /* The pinned jump button above the composer. */
+  .crowd-pin {
+    border-radius: 0.95rem;
+    border: 1px solid rgb(155 132 255 / 0.55);
+    background: linear-gradient(180deg, rgb(132 102 255 / 0.95), rgb(74 47 209 / 0.95));
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 4px 0 #2b1d70, 0 12px 26px -10px rgb(109 74 255 / 0.9);
+    transition: transform 0.14s var(--ease-spring), box-shadow 0.14s ease;
+    animation: crowd-flip-in 0.6s var(--ease-spring) both;
+  }
+  .crowd-pin:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 0 #2b1d70; }
+
+  @keyframes crowd-flip-in {
+    from { opacity: 0; transform: perspective(900px) rotateX(-60deg) translateY(-10px) scale(0.95); }
+    55% { opacity: 1; }
+    to { opacity: 1; transform: perspective(900px) rotateX(0) translateY(0) scale(1); }
+  }
+  @keyframes crowd-glow {
+    50% { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 0 0 1px rgb(155 132 255 / 0.75), 0 22px 40px -22px rgb(0 0 0 / 0.95), 0 0 44px -10px rgb(109 74 255 / 0.95); }
+  }
+  @keyframes crowd-shine {
+    from { transform: translateX(-130%); }
+    to { transform: translateX(130%); }
+  }
+  @keyframes crowd-emoji-pop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.55) rotate(-12deg) translateY(-5px); }
+    100% { transform: scale(1.12); }
+  }
+  @keyframes crowd-burst {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+    100% { opacity: 0; transform: translate(calc(-50% + cos(var(--a)) * 52px), calc(-50% - sin(var(--a)) * 52px)) scale(1.1) rotate(var(--r)); }
+  }
+}

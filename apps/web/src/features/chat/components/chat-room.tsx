@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { SendHorizontal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   chatTime,
+  hasNewTail,
   MESSAGE_MAX,
   mergeMessages,
   messageFromBroadcast,
@@ -34,6 +35,8 @@ export type ChatRoomProps = {
   inserts?: { key: string; at: string; node: ReactNode }[]
   /** Other broadcast events on the same channel (e.g. 'poll', 'tally', 'poll_closed'). */
   onChannelEvent?: (event: string, payload: unknown) => void
+  /** Shown just above the composer (e.g. the open poll's jump button). */
+  pinned?: ReactNode
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -51,6 +54,7 @@ export function ChatRoom({
   hiddenUsers,
   inserts,
   onChannelEvent,
+  pinned,
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
@@ -60,7 +64,8 @@ export function ChatRoom({
   const [sending, startSend] = useTransition()
   const [loadingOlder, startOlder] = useTransition()
   const bottom = useRef<HTMLDivElement>(null)
-  const stickToBottom = useRef(true)
+  const shown = useRef<ChatMessage[]>(initial)
+  const shownInserts = useRef(inserts?.length ?? 0)
   const onExtra = useRef(onChannelEvent)
   useEffect(() => {
     onExtra.current = onChannelEvent
@@ -86,8 +91,12 @@ export function ChatRoom({
     }
   }, [topic])
 
+  // Follow the conversation: every new message (or a new poll card) scrolls to the end; loading older ones does not.
   useEffect(() => {
-    if (stickToBottom.current) bottom.current?.scrollIntoView({ block: 'end' })
+    const grew = (inserts?.length ?? 0) > shownInserts.current
+    if (hasNewTail(shown.current, messages) || grew) bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    shown.current = messages
+    shownInserts.current = inserts?.length ?? 0
   }, [messages, inserts?.length])
 
   const submit = () => {
@@ -96,7 +105,6 @@ export function ChatRoom({
     startSend(async () => {
       const res = await send(body)
       if ('message' in res) {
-        stickToBottom.current = true
         setMessages((cur) => mergeMessages(cur, [res.message]))
         setDraft('')
         setError(null)
@@ -124,7 +132,6 @@ export function ChatRoom({
               onClick={() =>
                 startOlder(async () => {
                   const older = await loadOlder({ createdAt: first.created_at, id: first.id })
-                  stickToBottom.current = false
                   setMessages((cur) => mergeMessages(cur, older))
                   setHasOlder(older.length >= PAGE_SIZE)
                 })
@@ -138,41 +145,20 @@ export function ChatRoom({
         {messages.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
         {stream(messages.filter((m) => !hiddenUsers?.includes(m.user_id)), inserts).map((item) => {
           if (item.kind === 'x') return <li key={item.key} className="flex flex-col self-stretch">{item.node}</li>
-          const m = item.m
-          const mine = m.user_id === meId
-          const color = mine ? undefined : tint?.(m)
-          return (
-            <li key={m.id} className={cn('flex max-w-[85%] flex-col', mine ? 'self-start' : 'self-end')}>
-              {!mine && (
-                <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
-                  {m.nick}
-                </span>
-              )}
-              <div
-                className={cn(
-                  'rounded-lg px-3 py-2 break-words whitespace-pre-wrap',
-                  mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2',
-                )}
-                style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
-              >
-                {m.body}
-              </div>
-              <time dateTime={m.created_at} className="mt-0.5 px-1 text-[11px] text-dim">
-                {chatTime(m.created_at)}
-              </time>
-            </li>
-          )
+          return <MessageItem key={item.m.id} m={item.m} mine={item.m.user_id === meId} color={item.m.user_id === meId ? undefined : tint?.(item.m)} />
         })}
-        <div ref={bottom} />
+        <div ref={bottom} className="scroll-mb-48" />
       </ol>
 
+      <div className="sticky bottom-24 z-10 mt-4 grid gap-2">
+      {pinned}
       {readOnly ? (
-        <p className="sticky bottom-24 mt-4 rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">
+        <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">
           {readOnly}
         </p>
       ) : (
         <form
-          className="sticky bottom-24 mt-4 flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
+          className="flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
           onSubmit={(e) => {
             e.preventDefault()
             submit()
@@ -206,6 +192,7 @@ export function ChatRoom({
           </button>
         </form>
       )}
+      </div>
       {error && (
         <p role="alert" className="mt-2 text-sm text-live">
           {error}
@@ -224,3 +211,28 @@ function stream(messages: ChatMessage[], inserts: ChatRoomProps['inserts']): Str
   for (const x of inserts) items.push({ kind: 'x', at: x.at, key: x.key, node: x.node })
   return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
 }
+
+/** One message bubble; memoised so a ticking poll countdown does not re-render the whole conversation. */
+const MessageItem = memo(function MessageItem({ m, mine, color }: { m: ChatMessage; mine: boolean; color?: string }) {
+  return (
+            <li className={cn('flex max-w-[85%] flex-col', mine ? 'self-start' : 'self-end')}>
+              {!mine && (
+                <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
+                  {m.nick}
+                </span>
+              )}
+              <div
+                className={cn(
+                  'rounded-lg px-3 py-2 break-words whitespace-pre-wrap',
+                  mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2',
+                )}
+                style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
+              >
+                {m.body}
+              </div>
+              <time dateTime={m.created_at} className="mt-0.5 px-1 text-[11px] text-dim">
+                {chatTime(m.created_at)}
+              </time>
+            </li>
+  )
+})

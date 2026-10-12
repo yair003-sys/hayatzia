@@ -41,6 +41,12 @@ export function mergeMessages(current: readonly ChatMessage[], incoming: readonl
 }
 
 /** Realtime broadcast payload → message, or null when the shape is unexpected. */
+/** True when the newest message changed (new messages at the end), not when older ones were prepended. */
+export function hasNewTail(prev: readonly ChatMessage[], next: readonly ChatMessage[]): boolean {
+  const last = next.at(-1)
+  return last !== undefined && last.id !== prev.at(-1)?.id
+}
+
 export function messageFromBroadcast(payload: unknown): ChatMessage | null {
   const record = (payload as { record?: Partial<ChatMessage> } | null)?.record
   if (!record) return null

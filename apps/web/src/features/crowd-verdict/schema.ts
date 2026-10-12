@@ -113,6 +113,10 @@ export function pollState(poll: Poll, nowMs: number): 'open' | 'closed' {
   return poll.summary === null && nowMs < Date.parse(poll.closesAt) ? 'open' : 'closed'
 }
 
+export function anyOpen(polls: Poll[], nowMs: number): boolean {
+  return polls.some((p) => pollState(p, nowMs) === 'open')
+}
+
 export function canVote(poll: Poll, myTeamId: string, nowMs: number): boolean {
   return pollState(poll, nowMs) === 'open' && (poll.scope === null || poll.scope === myTeamId)
 }
