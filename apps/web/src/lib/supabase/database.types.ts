@@ -633,6 +633,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"team_stats": {
+                  Row: {
+                    "fans": number,"team_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fans"?: number,"team_id": string
+                  }
+                  Update: {
+                    "fans"?: number,"team_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "team_stats_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: true
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"teams": {
                   Row: {
                     "api_names": (string)[],"color_bar": string,"color_bg": string,"color_ring": string,"id": string,"name": string,"short": string,"sort": number
