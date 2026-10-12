@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import { sendPush } from '@/features/push/server/send'
 import { decideSchema, eventSchema, goingSchema, idSchema, itemSchema, tripSchema } from '../schema'
 
 async function db() {
@@ -28,8 +29,13 @@ export const createTripAction = actionClient.inputSchema(tripSchema).action(asyn
 })
 
 export const requestSeatAction = actionClient.inputSchema(idSchema).action(async ({ parsedInput: { id } }) => {
-  const { error } = await (await db()).from('trip_requests').insert({ trip_id: id })
+  const supabase = await db()
+  const { error } = await supabase.from('trip_requests').insert({ trip_id: id })
   if (error && error.code !== '23505') return { error: limitMsg(error.message, 'הבקשה לא נשלחה') }
+  if (!error) {
+    const { data: t } = await supabase.from('trips').select('user_id').eq('id', id).maybeSingle()
+    if (t) await sendPush([t.user_id], { title: 'בקשה לטרמפ', body: 'אוהד ביקש להצטרף לנסיעה שלך', url: '/stand/trips', tag: `trip:${id}` })
+  }
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })
@@ -41,6 +47,12 @@ export const decideSeatAction = actionClient.inputSchema(decideSchema).action(as
     .eq('trip_id', p.tripId)
     .eq('user_id', p.userId)
   if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : 'לא הצלחנו לשמור' }
+  await sendPush([p.userId], {
+    title: p.accept ? 'אושרת לנסיעה 🚗' : 'הבקשה לנסיעה נדחתה',
+    body: p.accept ? 'יש לך מקום. תתאמו פרטים בהודעה.' : 'אפשר לחפש נסיעה אחרת',
+    url: '/stand/trips',
+    tag: `trip:${p.tripId}`,
+  })
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })

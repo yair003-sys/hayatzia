@@ -9,13 +9,20 @@ export type AppEnv = (typeof APP_ENVS)[number]
 export const SUPABASE_REFS = { staging: 'yblzcgetkfbdwsfogkqp', production: 'loaqhisfhafjbrmtygrp' } as const
 
 export const env = createEnv({
-  server: {},
+  server: {
+    /** Secret key of this environment's Supabase project. Server only: used to send notifications. */
+    SUPABASE_SECRET_KEY: z.string().min(20).optional(),
+    /** Web Push (VAPID) private key. Server only. */
+    VAPID_PRIVATE_KEY: z.string().min(20).optional(),
+  },
   client: {
     NEXT_PUBLIC_APP_ENV: z.enum(APP_ENVS).default('local'),
     NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20).optional(),
     /** Phone (SMS code) sign-in. Off until an SMS provider is connected in Supabase Auth. */
     NEXT_PUBLIC_PHONE_AUTH: z.enum(['on', 'off']).default('off'),
+    /** Web Push (VAPID) public key. Safe to expose. */
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(20).optional(),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
@@ -24,6 +31,9 @@ export const env = createEnv({
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_PHONE_AUTH: process.env.NEXT_PUBLIC_PHONE_AUTH,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   },
   emptyStringAsUndefined: true,
 })

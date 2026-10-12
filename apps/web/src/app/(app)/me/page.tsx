@@ -3,6 +3,10 @@ import { Suspense } from 'react'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { signOutAction } from '@/features/profile/server/actions'
+import { InstallApp } from '@/features/pwa/install-app'
+import { PushToggle } from '@/features/push/components/push-toggle'
+import { pushConfigured } from '@/features/push/server/send'
+import { env } from '@/lib/env'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -31,6 +35,8 @@ async function ProfileCard() {
           <p className="text-muted">אוהד {s.team.name} · הקבוצה נעולה</p>
         </div>
       </div>
+      <InstallApp />
+      {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
       <form action={signOutAction}>
         <button type="submit" className="w-full rounded-lg border border-line py-3 font-semibold text-muted">
           יציאה מהחשבון

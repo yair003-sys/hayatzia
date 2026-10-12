@@ -7,6 +7,7 @@ import { decryptMessage, encryptMessage, safetyCode, type DeviceKey, type Encryp
 import { e2eSupported, loadDeviceKey } from '@/lib/e2e/keystore'
 import { chatTime } from '@/features/chat/schema'
 import { cn } from '@/lib/utils'
+import { notifyDmAction } from '@/features/push/server/actions'
 import { DM_MAX, DM_PAGE } from '../schema'
 
 type Row = EncryptedMessage & { id: string; sender_id: string; created_at: string }
@@ -129,6 +130,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       }
       setDraft('')
       setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text }]))
+      void notifyDmAction({ threadId })
     })
   }
 
