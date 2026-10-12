@@ -42,7 +42,7 @@ select lives_ok($$ update public.match_poll_votes set option_id = 'no' where pol
 select ok(pg_temp.n('00000000-0000-0000-0000-00000000aa01', 'o', 'yes', 'h') = 0 and pg_temp.n('00000000-0000-0000-0000-00000000aa01', 'o', 'no', 'h') = 1,
   'changing the vote moves one count');
 select throws_ok($$ insert into public.match_poll_votes (poll_id, option_id) values ('00000000-0000-0000-0000-00000000aa02', 'yes') $$, 'P0001', 'poll_closed', 'late vote rejected');
-select throws_ok($$ insert into public.match_poll_votes (poll_id, option_id) values ('00000000-0000-0000-0000-00000000aa03', 'nope', '604:14') $$, '22023', 'bad_option', 'unknown option rejected');
+select throws_ok($$ insert into public.match_poll_votes (poll_id, option_id, option_in) values ('00000000-0000-0000-0000-00000000aa03', 'nope', '604:14') $$, '22023', 'bad_option', 'unknown option rejected');
 select throws_ok($$ insert into public.match_poll_votes (poll_id, option_id) values ('00000000-0000-0000-0000-00000000aa03', '604:7') $$, '22023', 'bad_option', 'substitution vote needs both players');
 select lives_ok($$ insert into public.match_poll_votes (poll_id, option_id, option_in) values ('00000000-0000-0000-0000-00000000aa03', '604:7', '604:14') $$, 'club fan votes on the substitution');
 select ok(pg_temp.n('00000000-0000-0000-0000-00000000aa03', 'o', '604:7', 'h') = 1 and pg_temp.n('00000000-0000-0000-0000-00000000aa03', 'i', '604:14', 'h') = 1,
