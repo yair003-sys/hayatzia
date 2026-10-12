@@ -5,6 +5,11 @@ import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { roomState, type RoomState } from '../schema'
 import { loadOlderMatchMessagesAction, sendMatchMessageAction } from '../server/actions'
+import { PinnedStrip } from '@/features/crowd-verdict/components/pinned-strip'
+import { PollCard } from '@/features/crowd-verdict/components/poll-card'
+import { useCrowd } from '@/features/crowd-verdict/components/use-crowd'
+import { pollState } from '@/features/crowd-verdict/schema'
+import type { CrowdState } from '@/features/crowd-verdict/server/queries'
 
 type Side = { id: string; short: string; bar: string }
 
@@ -17,6 +22,7 @@ type Props = {
   away: Side
   initial: ChatMessage[]
   hidden: string[]
+  crowd: CrowdState
 }
 
 const STATE_LABEL: Record<RoomState, string> = {
@@ -26,7 +32,32 @@ const STATE_LABEL: Record<RoomState, string> = {
   closed: 'החדר נסגר',
 }
 
-export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden }: Props) {
+export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd }: Props) {
+  const myGroup = myTeamId === home.id ? 'h' : myTeamId === away.id ? 'a' : 'n'
+  const c = useCrowd(crowd, fixtureId, myGroup)
+  const openPoll = [...c.polls].reverse().find((p) => pollState(p, c.now) === 'open') ?? null
+  const inserts = c.polls.flatMap((p) => [
+    {
+      key: `poll-${p.id}`,
+      at: p.opensAt,
+      node: (
+        <PollCard
+          poll={p}
+          tallies={c.tallies[p.id] ?? []}
+          mine={c.mine[p.id] ?? null}
+          now={c.now}
+          myTeamId={myTeamId}
+          home={home}
+          away={away}
+          onVote={c.vote}
+        />
+      ),
+    },
+    ...(p.summary
+      ? [{ key: `sum-${p.id}`, at: p.closesAt, node: <p className="self-center py-0.5 text-xs text-dim">🗳️ {p.summary}</p> }]
+      : []),
+  ])
+
   const [state, setState] = useState<RoomState>(() => roomState(kickoff, Date.now()))
   useEffect(() => {
     const t = setInterval(() => setState(roomState(kickoff, Date.now())), 30_000)
@@ -57,8 +88,17 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
           {STATE_LABEL[state]}
         </span>
       </div>
+      <PinnedStrip
+        poll={openPoll}
+        tallies={openPoll ? (c.tallies[openPoll.id] ?? []) : []}
+        mine={openPoll ? (c.mine[openPoll.id] ?? null) : null}
+        myTeamId={myTeamId}
+        now={c.now}
+      />
       <ChatRoom
         topic={`match:${fixtureId}`}
+        inserts={inserts}
+        onChannelEvent={c.onChannelEvent}
         meId={meId}
         initial={initial}
         hiddenUsers={hidden}

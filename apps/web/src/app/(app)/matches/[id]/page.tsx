@@ -6,6 +6,7 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getFixtureDetail, getLeague } from '@/features/matches/server/queries'
 import { MatchRoom } from '@/features/match-room/components/match-room'
 import { getMatchMessages } from '@/features/match-room/server/queries'
+import { getCrowd } from '@/features/crowd-verdict/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
@@ -37,6 +38,9 @@ async function MatchContent({ id }: { id: number }) {
   return (
     <>
       <header className="space-y-3 rounded-lg bg-surface p-5 text-center">
+        {f.dm && (
+          <p className="mx-auto w-fit rounded-full bg-warn/15 px-3 py-1 text-xs font-bold text-warn">משחק לדוגמה · נתונים לדוגמה</p>
+        )}
         <p className="text-xs text-muted">
           {roundLabelHe(f.r)} · {kickoffDay(f.t)} {kickoffTime(f.t)}
         </p>
@@ -76,7 +80,7 @@ async function MatchContent({ id }: { id: number }) {
 async function MatchRoomSection(props: { fixtureId: number; kickoff: number; home: DisplayTeam; away: DisplayTeam }) {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return null
-  const [initial, hidden] = await Promise.all([getMatchMessages(props.fixtureId), getBlockedIds()])
+  const [initial, hidden, crowd] = await Promise.all([getMatchMessages(props.fixtureId), getBlockedIds(), getCrowd(props.fixtureId)])
   const side = (t: DisplayTeam) => ({ id: t.id, short: t.short, bar: t.bar })
   return (
     <MatchRoom
@@ -88,6 +92,7 @@ async function MatchRoomSection(props: { fixtureId: number; kickoff: number; hom
       away={side(props.away)}
       initial={initial}
       hidden={hidden}
+      crowd={crowd}
     />
   )
 }

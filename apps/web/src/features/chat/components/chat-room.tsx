@@ -30,9 +30,28 @@ export type ChatRoomProps = {
   tint?: (m: ChatMessage) => string | undefined
   /** Fans the viewer blocked: their messages are not shown. */
   hiddenUsers?: string[]
+  /** Extra items shown in the stream by time (e.g. crowd-verdict polls), `at` = ISO time. */
+  inserts?: { key: string; at: string; node: ReactNode }[]
+  /** Other broadcast events on the same channel (e.g. 'poll', 'tally', 'poll_closed'). */
+  onChannelEvent?: (event: string, payload: unknown) => void
 }
 
-export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, placeholder, emptyText, tint, hiddenUsers }: ChatRoomProps) {
+const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
+
+export function ChatRoom({
+  topic,
+  meId,
+  initial,
+  send,
+  loadOlder,
+  readOnly,
+  placeholder,
+  emptyText,
+  tint,
+  hiddenUsers,
+  inserts,
+  onChannelEvent,
+}: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
   const [draft, setDraft] = useState('')
@@ -42,6 +61,10 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
   const [loadingOlder, startOlder] = useTransition()
   const bottom = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
+  const onExtra = useRef(onChannelEvent)
+  useEffect(() => {
+    onExtra.current = onChannelEvent
+  }, [onChannelEvent])
 
   useEffect(() => {
     const supabase = createClient()
@@ -51,6 +74,9 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
       const m = messageFromBroadcast(payload)
       if (m) setMessages((cur) => mergeMessages(cur, [m]))
     })
+    for (const ev of EXTRA_EVENTS) {
+      channel.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
+    }
     void supabase.realtime.setAuth().then(() => {
       if (!cancelled) channel.subscribe((status) => setLive(status === 'SUBSCRIBED'))
     })
@@ -62,7 +88,7 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
 
   useEffect(() => {
     if (stickToBottom.current) bottom.current?.scrollIntoView({ block: 'end' })
-  }, [messages])
+  }, [messages, inserts?.length])
 
   const submit = () => {
     const body = draft.trim()
@@ -110,7 +136,9 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
           </li>
         )}
         {messages.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
-        {messages.filter((m) => !hiddenUsers?.includes(m.user_id)).map((m) => {
+        {stream(messages.filter((m) => !hiddenUsers?.includes(m.user_id)), inserts).map((item) => {
+          if (item.kind === 'x') return <li key={item.key} className="flex flex-col self-stretch">{item.node}</li>
+          const m = item.m
           const mine = m.user_id === meId
           const color = mine ? undefined : tint?.(m)
           return (
@@ -185,4 +213,14 @@ export function ChatRoom({ topic, meId, initial, send, loadOlder, readOnly, plac
       )}
     </div>
   )
+}
+
+type StreamItem = { kind: 'm'; at: string; m: ChatMessage } | { kind: 'x'; at: string; key: string; node: ReactNode }
+
+/** Messages and extra items merged by time (stable: messages first on equal times). */
+function stream(messages: ChatMessage[], inserts: ChatRoomProps['inserts']): StreamItem[] {
+  const items: StreamItem[] = messages.map((m) => ({ kind: 'm', at: m.created_at, m }))
+  if (!inserts?.length) return items
+  for (const x of inserts) items.push({ kind: 'x', at: x.at, key: x.key, node: x.node })
+  return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
 }

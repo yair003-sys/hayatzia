@@ -38,7 +38,7 @@ async function leagueFromDb(): Promise<League | null> {
       db
         .from('fixtures')
         .select(
-          'id,league_id,season,round,kickoff_at,status,elapsed,home_api_id,away_api_id,home_goals,away_goals,venue',
+          'id,league_id,season,round,kickoff_at,status,elapsed,home_api_id,away_api_id,home_goals,away_goals,venue,is_demo',
         )
         .eq('season', season)
         .order('kickoff_at'),

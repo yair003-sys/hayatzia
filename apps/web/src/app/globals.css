@@ -38,6 +38,11 @@
     from { background-position: 150% 0; }
     to { background-position: -50% 0; }
   }
+
+  --animate-pop: pop 0.45s var(--ease-spring);
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.94); }
+  }
 }
 
 @layer base {

@@ -16,6 +16,8 @@ export type FixtureRow = {
   home_goals: number | null
   away_goals: number | null
   venue: string
+  /** Staging demo matches only; never sent by the ingest. */
+  is_demo?: boolean
 }
 export type StandingDbRow = {
   season: number
@@ -126,6 +128,7 @@ export function fromRows(rows: LeagueReadRows): League {
         gh: f.home_goals,
         ga: f.away_goals,
         v: f.venue,
+        ...(f.is_demo ? { dm: true } : {}),
       }),
     )
     .sort((p, q) => p.t - q.t)

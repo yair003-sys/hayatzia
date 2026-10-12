@@ -26,6 +26,7 @@ export function FixtureRow({ fixture: f, teams }: { fixture: Fixture; teams: Lea
         <span className={live ? 'block text-[11px] font-bold text-live' : 'block text-[11px] text-dim'}>
           {live ? `חי · ${f.el ?? ''}′` : kickoffDay(f.t)}
         </span>
+        {f.dm && <span className="block text-[10px] font-bold text-warn">משחק לדוגמה</span>}
       </span>
       <TeamBadge team={away} align="end" />
     </Link>

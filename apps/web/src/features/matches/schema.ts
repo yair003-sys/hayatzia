@@ -13,6 +13,7 @@ export const fixtureSchema = z.object({
   gh: z.number().nullable(),
   ga: z.number().nullable(),
   v: z.string().optional().default(''),
+  dm: z.boolean().optional(), // demo match (staging only): labelled in the UI
 })
 
 export const standingRowSchema = z.object({
