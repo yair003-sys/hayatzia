@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canVote, crowdErrorHe, mergePolls, percentages, pollFromRow, pollState, resultsFor, showResults, talliesFromBroadcast, type Poll } from './schema'
+import { anyOpen, canVote, crowdErrorHe, mergePolls, percentages, pollFromRow, pollState, resultsFor, showResults, talliesFromBroadcast, type Poll } from './schema'
 
 const poll: Poll = {
   id: '00000000-0000-0000-0000-00000000aa01',
@@ -123,5 +123,13 @@ describe('merging polls', () => {
   })
   it('knows when a broadcast is about a poll it has not seen', () => {
     expect(mergePolls([at('a', poll.opensAt)], []).some((p) => p.id === 'z')).toBe(false)
+  })
+})
+
+describe('anyOpen', () => {
+  it('runs the clock only while a poll is open', () => {
+    expect(anyOpen([poll], closesMs - 1)).toBe(true)
+    expect(anyOpen([poll], closesMs)).toBe(false)
+    expect(anyOpen([], closesMs)).toBe(false)
   })
 })
