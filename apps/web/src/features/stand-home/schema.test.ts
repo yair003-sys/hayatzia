@@ -55,6 +55,9 @@ describe('pickTicket', () => {
     expect(pickTicket([past, { ...today, st: 'FT' }, next], [604], KICK + 150 * MIN)?.id).toBe(2)
     expect(pickTicket([past, { ...today, st: 'FT' }, next], [604], KICK + 171 * MIN)?.id).toBe(3)
   })
+  it('does not trust a stale "live" status long after the match', () => {
+    expect(pickTicket([{ ...today, st: '2H' }, next], [604], KICK + 200 * MIN)?.id).toBe(3)
+  })
   it('falls back to the last finished match off-season', () => {
     expect(pickTicket([past], [604], KICK)?.id).toBe(1)
     expect(pickTicket([other], [604], KICK)).toBeNull()
