@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canVote, percentages, pollFromRow, pollState, resultsFor, showResults, talliesFromBroadcast, type Poll } from './schema'
+import { canVote, crowdErrorHe, percentages, pollFromRow, pollState, resultsFor, showResults, talliesFromBroadcast, type Poll } from './schema'
 
 const poll: Poll = {
   id: '00000000-0000-0000-0000-00000000aa01',
@@ -99,5 +99,14 @@ describe('parsing', () => {
     }
     expect(pollFromRow(row)).toEqual(poll)
     expect(pollFromRow({ ...row, kind: 'nope' })).toBeNull()
+  })
+})
+
+describe('vote errors', () => {
+  it('speaks Hebrew', () => {
+    expect(crowdErrorHe('poll_closed')).toBe('ההצבעה נסגרה')
+    expect(crowdErrorHe('not_allowed')).toBe('ההצבעה הזאת רק לאוהדי הקבוצה')
+    expect(crowdErrorHe('bad_option')).toBe('בחירה לא תקינה')
+    expect(crowdErrorHe('something else')).toBe('ההצבעה לא נקלטה')
   })
 })
