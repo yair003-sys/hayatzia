@@ -29,6 +29,8 @@ export type Clip = {
   url: string | null
   liked: boolean
   respected: boolean
+  /** Shown at once from the phone while the upload finishes in the background. */
+  uploading?: boolean
 }
 
 export type ClipComment = { id: string; user_id: string; team_id: string; nick: string; body: string; created_at: string }
@@ -82,4 +84,17 @@ export function shortCount(n: number): string {
   if (n < 1000) return String(n)
   if (n < 10_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`
   return `${Math.floor(n / 1000)}K`
+}
+
+export const SHRINK_MAX_PX = 1600
+
+/** Width and height that fit the long side into `max` pixels, keeping the shape (never enlarges). */
+export function fitWithin(width: number, height: number, max = SHRINK_MAX_PX): { width: number; height: number } {
+  const scale = Math.min(1, max / Math.max(width, height))
+  return { width: Math.round(width * scale), height: Math.round(height * scale) }
+}
+
+/** Still photos are shrunk before upload; videos and (possibly animated) GIFs go as they are. */
+export function shouldShrink(mime: string): boolean {
+  return mime.startsWith('image/') && mime !== 'image/gif'
 }

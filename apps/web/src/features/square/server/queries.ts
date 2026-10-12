@@ -36,6 +36,17 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
   const rows = all?.filter((r) => !blocked.includes(r.user_id))
   if (error || !rows?.length) return []
 
+  return decorate(supabase, rows, me)
+}
+
+type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>
+type Row = { id: string; user_id: string; media_path: string; once: boolean; kind: string; audience: string } & Omit<
+  Clip,
+  'kind' | 'audience' | 'url' | 'liked' | 'respected' | 'uploading'
+>
+
+/** Likes, respects and signed URLs for a set of posts: three requests for the whole set, never per post. */
+async function decorate(supabase: Db, rows: Row[], me: string): Promise<Clip[]> {
   const ids = rows.map((r) => r.id)
   const signable = rows.filter((r) => !r.once || r.user_id === me).map((r) => r.media_path)
   const [likes, respects, signed] = await Promise.all([
@@ -57,6 +68,18 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
     liked: liked.has(r.id),
     respected: respected.has(r.id),
   }))
+}
+
+/** One post as the poster sees it right after publishing (no page reload needed). */
+export async function getClip(id: string): Promise<Clip | null> {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  if (!me) return null
+  const { data } = await supabase.from('clips').select(COLUMNS).eq('id', id).maybeSingle()
+  if (!data) return null
+  return (await decorate(supabase, [data], me))[0] ?? null
 }
 
 export async function getClipComments(clipId: string): Promise<ClipComment[]> {

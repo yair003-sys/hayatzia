@@ -1,11 +1,10 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { chatErrorHe } from '@/features/chat/schema'
 import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, toggleSchema } from '../schema'
-import { getClipComments, getSquareFeed } from './queries'
+import { getClip, getClipComments, getSquareFeed } from './queries'
 
 const ONCE_URL_TTL = 120 // seconds: enough to watch, not to share
 
@@ -18,7 +17,9 @@ async function db() {
 /** Called after the browser uploaded the file to Storage. The database stamps club, nickname and the 24h expiry. */
 export const createClipAction = actionClient.inputSchema(createClipSchema).action(async ({ parsedInput }) => {
   const supabase = await db()
-  const { error } = await supabase.from('clips').insert({
+  const { data: row, error } = await supabase
+    .from('clips')
+    .insert({
     media_path: parsedInput.path,
     kind: parsedInput.kind,
     caption: parsedInput.caption,
@@ -26,12 +27,14 @@ export const createClipAction = actionClient.inputSchema(createClipSchema).actio
     once: parsedInput.once,
     audience: parsedInput.audience,
   })
+    .select('id')
+    .single()
   if (error) {
     await supabase.storage.from('clips').remove([parsedInput.path])
     return { error: error.message.includes('rate_limit') ? 'הגעת למקסימום העלאות לשעה. נסה מאוחר יותר' : 'הפרסום נכשל. נסה שוב' }
   }
-  revalidatePath('/square')
-  return { ok: true as const }
+  // The poster's feed adds the post itself (no page reload); other fans see it on their next load.
+  return { ok: true as const, clip: await getClip(row.id) }
 })
 
 export const toggleLikeAction = actionClient.inputSchema(toggleSchema).action(async ({ parsedInput: { clipId, on } }) => {
@@ -68,7 +71,6 @@ export const deleteClipAction = actionClient.inputSchema(clipIdSchema).action(as
   const { error } = await supabase.from('clips').delete().eq('id', clipId)
   if (error) return { error: 'המחיקה נכשלה' }
   await supabase.storage.from('clips').remove([clip.media_path])
-  revalidatePath('/square')
   return { ok: true as const }
 })
 

@@ -108,6 +108,15 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
         </div>
       )}
 
+      {clip.uploading && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-black/35" role="status">
+          <span className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">
+            <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />
+            מעלה…
+          </span>
+        </div>
+      )}
+
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
@@ -125,7 +134,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
         </span>
       )}
 
-      <div className="absolute end-2 bottom-24 flex flex-col items-center gap-4 text-white">
+      <div className="absolute end-2 bottom-24 flex flex-col items-center gap-4 text-white" hidden={clip.uploading}>
         <button type="button" aria-pressed={liked} onClick={() => toggle('like')} className="flex flex-col items-center gap-0.5 text-xs font-bold">
           <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">
             <Heart className={cn('size-6', liked && 'fill-live text-live')} aria-hidden="true" />

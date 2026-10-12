@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { SquareFeed } from '@/features/square/components/square-feed'
-import { UploadClip } from '@/features/square/components/upload-clip'
 import { getSquareFeed } from '@/features/square/server/queries'
 import { cn } from '@/lib/utils'
 
@@ -44,12 +43,13 @@ async function SquareScreen({ team }: { team: boolean }) {
           </Link>
         </nav>
       </header>
-      <UploadClip meId={s.userId} audience={audience} teamShort={s.team.short} />
       <SquareFeed
         key={`${audience}:${clips[0]?.id ?? ''}`}
         initial={clips}
         meId={s.userId}
         myTeamId={s.team.id}
+        myNick={s.nick}
+        teamShort={s.team.short}
         audience={audience}
         empty={team ? `עוד אין רילס של ${s.team.short}. תעלה את הראשון 🎬` : 'הכיכר ריקה כרגע. תהיה הראשון להעלות 📸'}
       />
