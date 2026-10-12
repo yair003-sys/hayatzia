@@ -10,6 +10,7 @@ import { getCrowd } from '@/features/crowd-verdict/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
+import { MatchExtras } from '@/features/stage4/components/match-extras'
 
 export default function MatchPage({ params }: PageProps<'/matches/[id]'>) {
   return (
@@ -53,6 +54,9 @@ async function MatchContent({ id }: { id: number }) {
         </div>
         {f.v && <p className="text-xs text-dim">{f.v}</p>}
       </header>
+      <Suspense fallback={null}>
+        <MatchExtras fixture={f} home={home} away={away} />
+      </Suspense>
       <section aria-labelledby="goals-title" className="space-y-2">
         <h3 id="goals-title" className="font-bold">
           שערים

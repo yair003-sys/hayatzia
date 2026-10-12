@@ -13,6 +13,7 @@ export type StandHome = {
   events: number
   market: number
   trips: number
+  chants: number
   squad: PlayerRow[]
   /** Fans the viewer blocked (hidden in the chat preview). */
   hidden: string[]
@@ -32,9 +33,9 @@ export function clubApiIds(league: League | null, teamId: string): number[] {
  */
 export async function getStandHome(teamId: string, userId: string, nextFixtureId: number | null): Promise<StandHome> {
   const supabase = await createClient()
-  if (!supabase) return { fans: null, chat: [], events: 0, market: 0, trips: 0, squad: [], hidden: [] }
+  if (!supabase) return { fans: null, chat: [], events: 0, market: 0, trips: 0, chants: 0, squad: [], hidden: [] }
   const since = new Date(Date.now() - 3 * 3600_000).toISOString()
-  const [stats, chat, events, market, trips, squad, blocked] = await Promise.all([
+  const [stats, chat, events, market, trips, chants, squad, blocked] = await Promise.all([
     supabase.from('team_stats').select('fans').eq('team_id', teamId).maybeSingle(),
     supabase.from('team_messages').select('id,user_id,nick,body,created_at').order('created_at', { ascending: false }).limit(6),
     supabase.from('fan_events').select('id', { count: 'exact', head: true }).gte('starts_at', since),
@@ -42,6 +43,7 @@ export async function getStandHome(teamId: string, userId: string, nextFixtureId
     nextFixtureId === null
       ? Promise.resolve({ count: 0 })
       : supabase.from('trips').select('id', { count: 'exact', head: true }).eq('fixture_id', nextFixtureId),
+    supabase.from('chants').select('id', { count: 'exact', head: true }),
     getSquadWithRatings(teamId, userId),
     getBlockedIds(),
   ])
@@ -52,6 +54,7 @@ export async function getStandHome(teamId: string, userId: string, nextFixtureId
     events: events.count ?? 0,
     market: market.count ?? 0,
     trips: trips.count ?? 0,
+    chants: chants.count ?? 0,
     squad,
     hidden: blocked,
   }

@@ -13,6 +13,10 @@ import { MatchTicket } from '@/features/stand-home/components/match-ticket'
 import { TeamChatCard } from '@/features/stand-home/components/team-chat-card'
 import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
+import { CheckinButton } from '@/features/stage4/components/checkin-button'
+import { getCheckedIn } from '@/features/stage4/server/queries'
+import { DONE_STATUSES } from '@/features/matches/schema'
+import { roomState } from '@/features/match-room/schema'
 
 export const metadata: Metadata = { title: 'היציע שלי' }
 
@@ -46,7 +50,11 @@ async function StandHome() {
     league?.fixtures
       .filter((f) => (ids.includes(f.h) || ids.includes(f.a)) && f.t * 1000 > now)
       .sort((a, b) => a.t - b.t)[0] ?? null
-  const data = await getStandHome(team.id, s.userId, next?.id ?? null)
+  const active = ticket ? ['open', 'closing'].includes(roomState(ticket.t, now)) : false
+  const [data, checked] = await Promise.all([
+    getStandHome(team.id, s.userId, next?.id ?? null),
+    ticket && active ? getCheckedIn(ticket.id) : Promise.resolve(false),
+  ])
   const acc = teamAccent(team.bar)
   const theme = { '--t-acc': acc.accent, '--t-acc2': acc.accent2, '--t-rgb': acc.rgb, '--t-text': acc.text, '--t-on': acc.on } as CSSProperties
   const nameOf = (apiId: number) => displayTeam(apiId, league?.teams[String(apiId)]?.name)
@@ -60,7 +68,15 @@ async function StandHome() {
         יום משחק
       </h2>
       {ticket ? (
-        <MatchTicket fixture={ticket} home={nameOf(ticket.h)} away={nameOf(ticket.a)} />
+        <>
+          <MatchTicket fixture={ticket} home={nameOf(ticket.h)} away={nameOf(ticket.a)} />
+          {active && <CheckinButton fixtureId={ticket.id} done={checked} label={team.short} />}
+          {active && DONE_STATUSES.has(ticket.st) && (
+            <Link href={`/matches/${ticket.id}#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-extrabold">
+              🏆 שחקן המשחק · דרג את השחקנים
+            </Link>
+          )}
+        </>
       ) : (
         <p className="sh-card text-sm text-muted">אין כרגע משחקים בלוח.</p>
       )}
@@ -97,10 +113,10 @@ async function StandHome() {
           <b>שוק אוהדים</b>
           <span>{data.market} מודעות</span>
         </Link>
-        <Link href="/square?f=team" className="sh-tile">
-          <i aria-hidden="true">🎬</i>
-          <b>רילס</b>
-          <span>של {team.short}</span>
+        <Link href="/stand/chants" className="sh-tile">
+          <i aria-hidden="true">🎶</i>
+          <b>שירי היציע</b>
+          <span>{data.chants} שירים</span>
         </Link>
       </nav>
 

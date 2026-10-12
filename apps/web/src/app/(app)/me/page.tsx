@@ -7,6 +7,8 @@ import { InstallApp } from '@/features/pwa/install-app'
 import { PushToggle } from '@/features/push/components/push-toggle'
 import { pushConfigured } from '@/features/push/server/send'
 import { env } from '@/lib/env'
+import { getLeague } from '@/features/matches/server/queries'
+import { getAttendance } from '@/features/stage4/server/queries'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -26,6 +28,8 @@ async function ProfileCard() {
   if (s.status !== 'ready') {
     return <p className="rounded-md bg-surface p-4 text-muted">אין חשבון מחובר בסביבה הזאת.</p>
   }
+  const league = await getLeague()
+  const seen = league ? await getAttendance(league.league.season) : { games: 0, away: 0 }
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 rounded-lg bg-surface p-5">
@@ -33,6 +37,16 @@ async function ProfileCard() {
         <div>
           <p className="font-display text-2xl font-black">{s.nick}</p>
           <p className="text-muted">אוהד {s.team.name} · הקבוצה נעולה</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-line-soft bg-surface p-4">
+          <b className="block font-display text-3xl font-black tabular-nums">{seen.games}</b>
+          <span className="text-sm text-muted">📍 משחקים שהייתי בהם העונה</span>
+        </div>
+        <div className="rounded-lg border border-line-soft bg-surface p-4">
+          <b className="block font-display text-3xl font-black tabular-nums">{seen.away}</b>
+          <span className="text-sm text-muted">🚌 מתוכם משחקי חוץ</span>
         </div>
       </div>
       <InstallApp />
