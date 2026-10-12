@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createClipSchema, feedCursorSchema, mediaOf, shortCount, timeLeftHe } from './schema'
+import { createClipSchema, feedCursorSchema, fitWithin, mediaOf, shortCount, shouldShrink, timeLeftHe } from './schema'
 
 describe('mediaOf', () => {
   it('accepts photos and videos the bucket allows', () => {
@@ -47,5 +47,19 @@ describe('audience', () => {
   })
   it('pages the tab that is open', () => {
     expect(feedCursorSchema.parse({ createdAt: '2026-10-12T10:00:00Z', id: '7d9f2c1e-4b3a-4c8d-9e2f-1a2b3c4d5e6f' }).audience).toBe('all')
+  })
+})
+
+describe('shrinking photos before upload', () => {
+  it('fits the long side into 1600px and keeps the shape', () => {
+    expect(fitWithin(4032, 3024)).toEqual({ width: 1600, height: 1200 })
+    expect(fitWithin(3024, 4032)).toEqual({ width: 1200, height: 1600 })
+    expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 })
+  })
+  it('shrinks still photos only (videos and animated GIFs are sent as they are)', () => {
+    expect(shouldShrink('image/jpeg')).toBe(true)
+    expect(shouldShrink('image/png')).toBe(true)
+    expect(shouldShrink('image/gif')).toBe(false)
+    expect(shouldShrink('video/mp4')).toBe(false)
   })
 })
