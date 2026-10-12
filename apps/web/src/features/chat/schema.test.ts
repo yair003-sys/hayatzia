@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chatTime, hasNewTail, mergeMessages, messageFromBroadcast, sendMessageSchema, type ChatMessage } from './schema'
+import { chatTime, countAfter, hasNewTail, mergeMessages, messageFromBroadcast, sendMessageSchema, type ChatMessage } from './schema'
 
 const msg = (id: string, created_at: string, body = 'x'): ChatMessage => ({ id, user_id: 'u', nick: 'n', body, created_at })
 
@@ -55,5 +55,17 @@ describe('hasNewTail', () => {
   it('is false when only older messages were added or nothing changed', () => {
     expect(hasNewTail([m('b')], [m('a'), m('b')])).toBe(false)
     expect(hasNewTail([m('a')], [m('a')])).toBe(false)
+  })
+})
+
+describe('countAfter', () => {
+  const m = (id: string): ChatMessage => ({ id, user_id: 'u', nick: 'n', body: 'b', created_at: '2026-10-12T10:00:00Z' })
+  it('counts messages that arrived after the last one seen', () => {
+    expect(countAfter([m('a'), m('b'), m('c')], 'a')).toBe(2)
+    expect(countAfter([m('a')], 'a')).toBe(0)
+  })
+  it('is zero when nothing was seen yet or the seen message is gone', () => {
+    expect(countAfter([m('a')], null)).toBe(0)
+    expect(countAfter([m('a')], 'zz')).toBe(0)
   })
 })
