@@ -485,6 +485,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"prediction_totals": {
+                  Row: {
+                    "exact": number,"played": number,"points": number,"season": number,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "exact"?: number,"played"?: number,"points"?: number,"season": number,"team_id": string,"user_id": string
+                  }
+                  Update: {
+                    "exact"?: number,"played"?: number,"points"?: number,"season"?: number,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "prediction_totals_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"predictions": {
+                  Row: {
+                    "away_goals": number,"created_at": string,"exact": boolean | null,"fixture_id": number,"home_goals": number,"points": number | null,"team_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "away_goals": number,"created_at"?: string,"exact"?: boolean | null,"fixture_id": number,"home_goals": number,"points"?: number | null,"team_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "away_goals"?: number,"created_at"?: string,"exact"?: boolean | null,"fixture_id"?: number,"home_goals"?: number,"points"?: number | null,"team_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "predictions_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "predictions_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "created_at": string,"nick": string,"team_id": string,"user_id": string
@@ -766,6 +812,9 @@ isOneToOne: false
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean
+                           },
+"score_fixture":
+{ Args: { "p_fixture": number }; Returns: undefined
                            }
           }
           Enums: {
