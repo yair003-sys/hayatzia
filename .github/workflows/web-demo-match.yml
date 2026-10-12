@@ -1,0 +1,32 @@
+name: web-demo-match (crowd verdict demo, staging only)
+
+# Manual: runs a ~12-minute labelled demo match on the STAGING project — demo fans chat, a burst of
+# "פנדל" opens a poll by itself, scripted events open more polls, demo votes trickle in.
+# Open the latest preview deployment at /matches/900000001 while it runs. Never touches production.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-demo-match
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Demo match
+        working-directory: apps/web
+        env:
+          DEMO_TARGET: staging
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: ./scripts/ci-step.sh "demo match" node scripts/demo-match.ts

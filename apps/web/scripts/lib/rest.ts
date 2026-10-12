@@ -27,6 +27,8 @@ export function supabaseFromEnv() {
     rest: (method: string, pathAndQuery: string, body?: unknown, prefer?: string) =>
       call(method, `${base}/rest/v1/${pathAndQuery}`, body, prefer),
     storage: (method: string, path: string, body?: unknown) => call(method, `${base}/storage/v1/${path}`, body),
+    auth: (method: string, path: string, body?: unknown) => call(method, `${base}/auth/v1/${path}`, body),
+    rpc: (fn: string, args: object) => call('POST', `${base}/rest/v1/rpc/${fn}`, args),
   }
 }
 
