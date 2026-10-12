@@ -85,6 +85,8 @@ export function ChatRoom({
       { rootMargin: '0px 0px 160px 0px' },
     )
     io.observe(el)
+    // Open at the newest message, like any chat.
+    el.scrollIntoView({ block: 'end' })
     return () => io.disconnect()
   }, [])
   const onExtra = useRef(onChannelEvent)
