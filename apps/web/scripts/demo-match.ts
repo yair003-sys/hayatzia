@@ -12,6 +12,14 @@ if (process.env.DEMO_TARGET !== 'staging' || (process.env.SUPABASE_URL ?? '').in
   process.exit(1)
 }
 
+// Runs without ci-step.sh so notices stream live; failures still surface as annotations.
+for (const ev of ['uncaughtException', 'unhandledRejection'] as const) {
+  process.on(ev, (e) => {
+    console.log(`::error title=demo match::${String(e).slice(0, 500).replace(/\n/g, '%0A')}`)
+    process.exit(1)
+  })
+}
+
 const { rest, auth, rpc } = supabaseFromEnv()
 const FIXTURE = 900000001
 const HOME = { apiId: 604, clubId: 'mta' }
@@ -106,13 +114,16 @@ async function saveEvents(detail: FixtureDetail) {
 const CHATTER = ['יאללה!', 'איזה משחק', 'קדימה', 'השופט ישן', 'חייבים גול', 'איזו מסירה', 'לחץ לחץ!', 'המגרש בוער 🔥', 'מה הוא עושה?', 'חלש']
 const PENALTY_LINES = ['פנדל!!', 'פנדללללל', 'פנדל ברור', 'זה פנדל', 'פנדל!!!', 'איזה פנדל?? צלילה', 'penalty']
 let messages = 0
+let sayErrors = 0
 
 async function say(fan: Fan, body: string) {
   try {
-    await rest('POST', 'match_messages', { fixture_id: FIXTURE, user_id: fan.id, body }, 'return=minimal')
+    // team_id is sent so the column default (my_team(), for signed-in fans) is not evaluated; the trigger re-stamps it.
+    await rest('POST', 'match_messages', { fixture_id: FIXTURE, user_id: fan.id, team_id: fan.club, body }, 'return=minimal')
     messages++
-  } catch {
-    // rate limit or a closed room: skip this line
+  } catch (e) {
+    // rate limit: skip this line; anything else is reported once
+    if (!String(e).includes('rate_limit') && sayErrors++ === 0) notice('demo chat error', String(e).slice(0, 300))
   }
 }
 
@@ -120,6 +131,7 @@ async function say(fan: Fan, body: string) {
 type OpenPoll = { id: string; kind: string; voter_scope: string | null; options: { id: string }[]; options_in: { id: string }[] | null }
 const voted = new Map<string, Set<string>>()
 let votes = 0
+let voteErrors = 0
 const polls = new Set<string>()
 
 /** Home fans lean to the first option, away fans to the second, neutral fans spread. */
@@ -149,8 +161,8 @@ async function castSomeVotes(fans: Fan[]) {
       try {
         await rest('POST', 'match_poll_votes', body, 'return=minimal')
         votes++
-      } catch {
-        // poll just closed
+      } catch (e) {
+        if (!String(e).includes('poll_closed') && voteErrors++ === 0) notice('demo vote error', String(e).slice(0, 300))
       }
     }
   }

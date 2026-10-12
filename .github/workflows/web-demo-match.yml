@@ -29,4 +29,4 @@ jobs:
           DEMO_TARGET: staging
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        run: ./scripts/ci-step.sh "demo match" node scripts/demo-match.ts
+        run: node scripts/demo-match.ts
