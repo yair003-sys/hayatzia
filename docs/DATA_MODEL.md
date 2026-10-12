@@ -54,6 +54,13 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 | `team_stats` | `team_id pk`, `fans` | read: fans of that club; kept by trigger on `profiles` insert/delete ("אוהדים מאומתים") |
 Realtime Presence (private topics, RLS on `realtime.messages` with `extension = 'presence'`): `online:<club>` (own club only; tracked once per app by `OnlineTracker` in the session gate → "מחוברים עכשיו"), `room:<fixture>` (any fan; tracked by the match room, read by the home ticket → "X אוהדים בחדר"). Counts are distinct user ids.
 
+## Predictions (2026-10-12)
+| Table | Columns | Rules |
+|---|---|---|
+| `predictions` | `(user_id, fixture_id) pk`, `team_id` (stamped), `home_goals`, `away_goals` (0–20), `points` (0/1/3), `exact` | own rows; insert/update only before kick-off (`locked`); points written only by `score_fixture` |
+| `prediction_totals` | `(team_id, season, user_id) pk`, `points`, `exact`, `played` | read: own club; kept by trigger from point changes (re-scoring never double counts) |
+`score_fixture(id)` runs from a trigger on `fixtures` when status or score changes. `clips.audience` (`all`/`team`): team posts are visible only to the poster's club.
+
 ## Crowd verdict (דעת הקהל, in the match room, 2026-10-12)
 | Table | Columns | Rules |
 |---|---|---|
