@@ -293,6 +293,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"match_chat_bursts": {
+                  Row: {
+                    "at": string,"fixture_id": number,"kind": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "at"?: string,"fixture_id": number,"kind": string,"user_id": string
+                  }
+                  Update: {
+                    "at"?: string,"fixture_id"?: number,"kind"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_chat_bursts_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"match_messages": {
                   Row: {
                     "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"side": string,"team_id": string,"user_id": string
@@ -316,6 +336,26 @@ isOneToOne: false
       columns: ["team_id"]
 isOneToOne: false
       referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"match_poll_queue": {
+                  Row: {
+                    "fixture_id": number,"id": number,"kind": string,"payload": NonNullable<Json>,"queued_at": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fixture_id": number,"id"?: number,"kind": string,"payload": NonNullable<Json>,"queued_at"?: string,"source": string
+                  }
+                  Update: {
+                    "fixture_id"?: number,"id"?: number,"kind"?: string,"payload"?: NonNullable<Json>,"queued_at"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_poll_queue_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
       referencedColumns: ["id"]
     }
                   ]
@@ -361,9 +401,9 @@ isOneToOne: false
                   ]
                 },"match_polls": {
                   Row: {
-                    "closes_at": string,"created_at": string,"fixture_id": number,"id": string,"kind": string,"last_tally_at": string,"opens_at": string,"options": NonNullable<Json>,"options_in": Json | null,"question": string,"source": string,"summary": string | null,"voter_scope": string | null
+                    "closes_at": string,"created_at": string,"fixture_id": number,"id": string,"kind": string,"last_tally_at": string,"opens_at": string,"options": NonNullable<Json>,"options_in": Json | null,"question": string,"source": string,"summary": string | null,"voter_scope": string | null,"crowd_poll_json": Json | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "crowd_poll_json"
                   Insert: {
                     "closes_at": string,"created_at"?: string,"fixture_id": number,"id"?: string,"kind": string,"last_tally_at"?: string,"opens_at"?: string,"options": NonNullable<Json>,"options_in"?: Json | null,"question": string,"source": string,"summary"?: string | null,"voter_scope"?: string | null
                   }
@@ -677,11 +717,32 @@ isOneToOne: false
 "crowd_bump":
 { Args: { "p_delta": number,"p_group": string,"p_option": string,"p_poll": string,"p_row": string }; Returns: undefined
                            },
+"crowd_chat_template":
+{ Args: { "p_kind": string }; Returns: Record<string, unknown>
+                           },
+"crowd_keyword":
+{ Args: { "p_body": string }; Returns: string
+                           },
+"crowd_open_poll":
+{ Args: { "p_fixture": number,"p_kind": string,"p_options": Json,"p_options_in": Json,"p_question": string,"p_scope": string,"p_source": string }; Returns: string
+                           },
+"crowd_poll_json":
+{ Args: { "p": Omit<Database["public"]['Tables']["match_polls"]['Row'], Database["public"]['Tables']["match_polls"]['ComputedFields']> }; Returns: Json
+                           },
+"crowd_tallies_json":
+{ Args: { "p_poll": string }; Returns: Json
+                           },
+"crowd_tick":
+{ Args: { "p_fixture": number }; Returns: undefined
+                           },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
                            },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"open_event_poll":
+{ Args: { "p_fixture": number,"p_kind": string,"p_options": Json,"p_options_in": Json,"p_question": string,"p_scope": string }; Returns: string
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean
