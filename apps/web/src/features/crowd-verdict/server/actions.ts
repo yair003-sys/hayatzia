@@ -3,6 +3,7 @@
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { crowdErrorHe, tickSchema, voteSchema } from '../schema'
+import { getCrowd } from './queries'
 
 /** The database checks the poll is open, the option exists and the fan may vote, and stamps the fan's group. */
 export const voteAction = actionClient
@@ -27,3 +28,8 @@ export const tickAction = actionClient.inputSchema(tickSchema).action(async ({ p
   const { error } = await supabase.rpc('crowd_tick', { p_fixture: fixtureId })
   return { ok: !error }
 })
+
+/** Re-reads the match's polls when a client notices it missed a broadcast (e.g. while reconnecting). */
+export const refreshCrowdAction = actionClient
+  .inputSchema(tickSchema)
+  .action(async ({ parsedInput: { fixtureId } }) => getCrowd(fixtureId))

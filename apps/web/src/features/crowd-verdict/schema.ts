@@ -136,3 +136,12 @@ export function crowdErrorHe(message: string): string {
   if (message.includes('bad_option')) return 'בחירה לא תקינה'
   return 'ההצבעה לא נקלטה'
 }
+
+export const KEEP_POLLS = 20
+
+/** New or updated polls into the list: one per id, in time order, the latest KEEP_POLLS. */
+export function mergePolls(cur: Poll[], incoming: Poll[]): Poll[] {
+  const byId = new Map(cur.map((p) => [p.id, p]))
+  for (const p of incoming) byId.set(p.id, p)
+  return [...byId.values()].sort((a, b) => a.opensAt.localeCompare(b.opensAt)).slice(-KEEP_POLLS)
+}

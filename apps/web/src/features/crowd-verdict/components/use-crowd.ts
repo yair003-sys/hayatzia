@@ -1,11 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { closedFromBroadcast, pollFromRow, talliesFromBroadcast, type Group, type MyVote, type Poll, type Tally } from '../schema'
+import { closedFromBroadcast, mergePolls, pollFromRow, talliesFromBroadcast, type Group, type MyVote, type Poll, type Tally } from '../schema'
 import type { CrowdState } from '../server/queries'
-import { tickAction, voteAction } from '../server/actions'
-
-const KEEP = 20
+import { refreshCrowdAction, tickAction, voteAction } from '../server/actions'
 
 /** Live crowd-verdict state for one match room: initial server data, then the room's broadcasts. */
 export function useCrowd(initial: CrowdState, fixtureId: number, myGroup: Group) {
@@ -14,6 +12,26 @@ export function useCrowd(initial: CrowdState, fixtureId: number, myGroup: Group)
   const [mine, setMine] = useState<Record<string, MyVote>>(initial.mine)
   const [now, setNow] = useState(() => Date.now())
   const ticked = useRef(new Set<string>())
+  const known = useRef(new Set(initial.polls.map((p) => p.id)))
+  const refreshing = useRef(false)
+
+  useEffect(() => {
+    known.current = new Set(polls.map((p) => p.id))
+  }, [polls])
+
+  // A tally or closing for a poll we never saw means we missed its opening broadcast: re-read once.
+  const refresh = useCallback(() => {
+    if (refreshing.current) return
+    refreshing.current = true
+    void refreshCrowdAction({ fixtureId }).then((r) => {
+      refreshing.current = false
+      const s = r.data
+      if (!s) return
+      setPolls((cur) => mergePolls(cur, s.polls))
+      setTallies((cur) => ({ ...cur, ...s.tallies }))
+      setMine((cur) => ({ ...s.mine, ...cur }))
+    })
+  }, [fixtureId])
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -33,17 +51,20 @@ export function useCrowd(initial: CrowdState, fixtureId: number, myGroup: Group)
   const onChannelEvent = useCallback((event: string, payload: unknown) => {
     if (event === 'poll') {
       const p = pollFromRow(payload)
-      if (p) setPolls((cur) => [...cur.filter((x) => x.id !== p.id), p].sort((a, b) => a.opensAt.localeCompare(b.opensAt)).slice(-KEEP))
+      if (p) setPolls((cur) => mergePolls(cur, [p]))
     } else if (event === 'tally') {
       const t = talliesFromBroadcast(payload)
-      if (t) setTallies((cur) => ({ ...cur, [t.pollId]: t.tallies }))
+      if (!t) return
+      if (!known.current.has(t.pollId)) refresh()
+      setTallies((cur) => ({ ...cur, [t.pollId]: t.tallies }))
     } else if (event === 'poll_closed') {
       const c = closedFromBroadcast(payload)
       if (!c) return
+      if (!known.current.has(c.pollId)) refresh()
       setPolls((cur) => cur.map((p) => (p.id === c.pollId ? { ...p, summary: c.summary } : p)))
       setTallies((cur) => ({ ...cur, [c.pollId]: c.tallies }))
     }
-  }, [])
+  }, [refresh])
 
   /** Optimistic: my choice and my count show at once; the next broadcast reconciles. */
   const vote = useCallback(
