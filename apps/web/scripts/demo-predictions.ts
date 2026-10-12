@@ -38,7 +38,7 @@ let guesses = 0
 for (const f of fans) {
   const home = Math.floor(Math.random() * 3)
   const away = Math.floor(Math.random() * 3)
-  await rest('POST', 'predictions', { user_id: f.user_id, fixture_id: IDS[2], home_goals: home, away_goals: away }, 'return=minimal')
+  await rest('POST', 'predictions', { user_id: f.user_id, team_id: f.team_id, fixture_id: IDS[2], home_goals: home, away_goals: away }, 'return=minimal')
   guesses++
 }
 // …then the match is over: 1–2. The database scores every guess and fills the season table.
