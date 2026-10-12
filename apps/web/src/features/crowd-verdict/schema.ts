@@ -121,3 +121,18 @@ export function canVote(poll: Poll, myTeamId: string, nowMs: number): boolean {
 export function showResults(poll: Poll, mine: MyVote | null, myTeamId: string, nowMs: number): boolean {
   return mine !== null || !canVote(poll, myTeamId, nowMs)
 }
+
+export const voteSchema = z.object({
+  pollId: z.uuid(),
+  option: z.string().min(1).max(40),
+  optionIn: z.string().min(1).max(40).optional(),
+})
+export const tickSchema = z.object({ fixtureId: z.number().int() })
+
+/** Hebrew message for a database error from voting. */
+export function crowdErrorHe(message: string): string {
+  if (message.includes('poll_closed')) return 'ההצבעה נסגרה'
+  if (message.includes('not_allowed')) return 'ההצבעה הזאת רק לאוהדי הקבוצה'
+  if (message.includes('bad_option')) return 'בחירה לא תקינה'
+  return 'ההצבעה לא נקלטה'
+}
