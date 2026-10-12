@@ -18,10 +18,10 @@ describe('motmRanking', () => {
       { player_id: 'c', sum: 9, count: 1 },
     ])
     expect(r.map((x) => [x.playerId, x.avg])).toEqual([
-      ['c', 9],
       ['b', 9],
+      ['c', 9],
       ['a', 8],
-    ].sort((x, y) => (x[0] === 'b' ? -1 : y[0] === 'b' ? 1 : 0)))
+    ])
   })
   it('rounds the average to one decimal', () => {
     expect(motmRanking([{ player_id: 'a', sum: 25, count: 3 }])[0]!.avg).toBe(8.3)
