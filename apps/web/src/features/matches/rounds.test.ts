@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentRoundIndex, groupByRound } from './rounds'
+import { currentRoundIndex, groupByRound, predictRoundIndex } from './rounds'
 import type { Fixture } from './schema'
 
 const fx = (id: number, r: string, t: number, st = 'FT'): Fixture => ({
@@ -29,5 +29,17 @@ describe('currentRoundIndex', () => {
   })
   it('handles an empty season', () => {
     expect(currentRoundIndex([])).toBe(0)
+  })
+})
+
+describe('predictRoundIndex', () => {
+  it('opens the round of the next match that has not started, ignoring old unplayed matches', () => {
+    // round A: an old match never played (stale "NS"), round B: finished, round C: upcoming
+    const rounds = groupByRound([fx(1, 'A', 100, 'NS'), fx(2, 'B', 200), fx(3, 'C', 5000, 'NS')])
+    expect(predictRoundIndex(rounds, 1000 * 1000)).toBe(2)
+  })
+  it('falls back to the current round when nothing is upcoming', () => {
+    const rounds = groupByRound([fx(1, 'A', 100), fx(2, 'B', 200)])
+    expect(predictRoundIndex(rounds, 1000 * 1000)).toBe(currentRoundIndex(rounds))
   })
 })
