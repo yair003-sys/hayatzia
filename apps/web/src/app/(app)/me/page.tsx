@@ -7,6 +7,8 @@ import { signOutAction } from '@/features/profile/server/actions'
 import { InstallApp } from '@/features/pwa/install-app'
 import { PushToggle } from '@/features/push/components/push-toggle'
 import { pushConfigured } from '@/features/push/server/send'
+import { NotificationSettings } from '@/features/push/components/notification-settings'
+import { getMyPrefs } from '@/features/push/server/queries'
 import { env } from '@/lib/env'
 import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard } from '@/features/me/server/queries'
@@ -33,7 +35,7 @@ async function ProfileCard() {
     return <p className="rounded-2xl bg-surface p-4 text-muted">אין חשבון מחובר בסביבה הזאת.</p>
   }
   const league = await getLeague()
-  const card = await getFanCard(s.userId, s.team.id, league?.league.season ?? null)
+  const [card, prefs] = await Promise.all([getFanCard(s.userId, s.team.id, league?.league.season ?? null), getMyPrefs(s.userId)])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
 
@@ -89,6 +91,7 @@ async function ProfileCard() {
         <div className="space-y-2.5">
           <InstallApp />
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
+          <NotificationSettings initial={prefs} />
           <form action={signOutAction}>
             <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted">
               <LogOut className="size-4" aria-hidden="true" />

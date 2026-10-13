@@ -4,7 +4,7 @@ import { POST } from './route'
 
 const mocks = vi.hoisted(() => ({
   env: { ALERTS_SECRET: undefined as string | undefined },
-  createAdminClient: vi.fn(() => null),
+  createAdminClient: vi.fn((): null => null),
   sendPush: vi.fn(async () => {}),
 }))
 
@@ -12,8 +12,6 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/env', () => ({ env: mocks.env }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: mocks.createAdminClient }))
 vi.mock('@/features/push/server/send', () => ({ sendPush: mocks.sendPush, pushConfigured: () => true }))
-
-import { POST } from './route'
 
 const SECRET = 's'.repeat(40)
 const req = (auth?: string) =>

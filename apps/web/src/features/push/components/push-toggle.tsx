@@ -66,7 +66,7 @@ export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
         {state === 'on' ? <BellOff className="size-5" aria-hidden="true" /> : <Bell className="size-5" aria-hidden="true" />}
         {state === 'on' ? 'כיבוי התראות במכשיר הזה' : 'הפעלת התראות'}
       </button>
-      <p className="text-xs text-dim">הודעות פרטיות ובקשות טרמפ. בלי תוכן ההודעות עצמן.</p>
+      <p className="text-xs text-dim">שערים, סיום משחקים, הודעות ובקשות טרמפ. בלי תוכן ההודעות עצמן.</p>
       {error && <p role="alert" className="text-sm text-live">{error}</p>}
     </div>
   )
