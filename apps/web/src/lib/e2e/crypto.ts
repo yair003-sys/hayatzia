@@ -38,8 +38,8 @@ const sharedCache = new WeakMap<CryptoKey, Map<string, Promise<CryptoKey>>>()
 
 /** AES-GCM key shared between my device and another device: HKDF(ECDH secret). Cached per key pair. */
 export function sharedKey(myPrivate: CryptoKey, theirPublicJwk: string): Promise<CryptoKey> {
-  let byPub = sharedCache.get(myPrivate)
-  if (!byPub) sharedCache.set(myPrivate, (byPub = new Map()))
+  const byPub = sharedCache.get(myPrivate) ?? new Map<string, Promise<CryptoKey>>()
+  sharedCache.set(myPrivate, byPub)
   const hit = byPub.get(theirPublicJwk)
   if (hit) return hit
   const p = (async () => {
@@ -55,10 +55,17 @@ export function sharedKey(myPrivate: CryptoKey, theirPublicJwk: string): Promise
     )
   })()
   byPub.set(theirPublicJwk, p)
+  void p.catch(() => {
+    byPub.delete(theirPublicJwk) // a malformed key is not cached as a failure forever
+  })
   return p
 }
 
-/** Encrypts for every given device (the recipient's and the sender's own, so the sender can read it back). */
+/**
+ * Encrypts for every given device (the recipient's and the sender's own, so the sender can read it back).
+ * A device whose public key cannot be used (malformed or not a P-256 point) is skipped, so one broken key
+ * cannot stop a message; throws 'no-recipient-key' when no device is left.
+ */
 export async function encryptMessage(text: string, me: DeviceKey, devices: PublicDevice[]): Promise<EncryptedMessage> {
   if (devices.length === 0) throw new Error('no-recipient-key')
   const iv = crypto.getRandomValues(new Uint8Array(12))
@@ -68,11 +75,18 @@ export async function encryptMessage(text: string, me: DeviceKey, devices: Publi
   const wrapped: Record<string, WrappedKey> = {}
   await Promise.all(
     devices.map(async (d) => {
+      let shared: CryptoKey
+      try {
+        shared = await sharedKey(me.privateKey, d.publicJwk)
+      } catch {
+        return // unusable public key: this device is skipped
+      }
       const wi = crypto.getRandomValues(new Uint8Array(12))
-      const w = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: wi }, await sharedKey(me.privateKey, d.publicJwk), raw)
+      const w = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: wi }, shared, raw)
       wrapped[d.id] = { i: b64.en(wi), w: b64.en(w) }
     }),
   )
+  if (Object.keys(wrapped).length === 0) throw new Error('no-recipient-key')
   return { sender_device: me.id, iv: b64.en(iv), ciphertext: b64.en(ct), wrapped_keys: wrapped }
 }
 

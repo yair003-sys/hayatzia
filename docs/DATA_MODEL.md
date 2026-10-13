@@ -84,15 +84,24 @@ Cron (`pg_cron`, hourly): delete expired clips and their Storage objects.
 ## Private messages (end-to-end encrypted)
 | Table | Columns | Rules |
 |---|---|---|
-| `dm_threads` | `id`, `user_a`, `user_b` (`user_a < user_b`, unique pair), `last_at`, `last_from` | members only; both must share a team |
+| `dm_threads` | `id`, `user_a`, `user_b` (`user_a < user_b`, unique pair), `last_at`, `last_from`, `last_message_id`, `unread_a`, `unread_b` | members only; both must share a team; after-insert trigger on `dm_messages` sets the preview pointer and the other side's unread counter |
 | `dm_messages` | `id`, `thread_id`, `sender_id`, `sender_device`, `iv`, `ciphertext`, `wrapped_keys jsonb`, `created_at` | members only; insert as self; no update/delete; idx `(thread_id, created_at desc)` |
-The server never stores plaintext. Crypto: per-device ECDH P-256 keys, HKDF-SHA-256, AES-256-GCM per message, key wrapped per device.
+| `dm_groups` | `id`, `team_id`, `name varchar(40)` (2–40), `created_by`, `created_at`, `last_at`, `last_from`, `last_message_id`, `members_count` | read: members and live invitees; no direct writes (RPCs only); `members_count` (admins + members) by trigger |
+| `dm_group_members` | `(group_id, user_id) pk`, `role` (`admin`/`member`/`invited`), `invited_by`, `invited_at`, `joined_at` (null while invited), `unread`, `muted` | read: members see the group's rows, an invitee only their own; invites older than 7 days hidden; RPCs only. Trigger: admin hand-over to the earliest-joined member, empty group deleted. idx `(user_id, group_id)` |
+| `dm_group_messages` | `id`, `group_id`, `sender_id`, `sender_device`, `iv`, `ciphertext` (< 4000), `wrapped_keys jsonb` (≤ 60 keys, `pg_column_size` < 16000), `created_at` | insert by a current member as self (stamped, 10 per 10 s); read: members, only messages since they joined, hidden when a block exists either way with the sender (`blocked_between`). idx `(group_id, created_at desc, id desc)`, `(sender_id, created_at desc)` |
+| `dm_group_events` | `id`, `group_id`, `kind` (`join`/`leave`/`remove`/`rename`), `actor`, `subject`, `created_at` | system lines, ids only; read: members, since they joined |
+
+The server never stores plaintext. Crypto: per-device ECDH P-256 keys, HKDF-SHA-256, AES-256-GCM per message, key wrapped per device (a group message: each current member's newest 3 devices; a device whose public key is unusable is skipped).
+
+Groups (same club, at most 20 fans including live invites, invite-only, invites expire after 7 days). Security-definer RPCs, the only way to change groups:
+`create_group(name, members[]) → id` (caller is admin, the others invited) · `invite_to_group(group, members[]) → uuid[]` (admin; returns the fans actually invited, skipping ones already in the group; no block with anyone in the group) · `answer_invite(group, yes)` · `remove_from_group(group, user)` (admin; also cancels an invite) · `leave_group(group)` · `rename_group(group, name)` (admin) · `mute_group(group, muted)` · `mark_read('dm'|'group', id)` (zeroes the caller's counter) · `group_push_targets(group) → setof uuid` (non-muted fellow members with no block either way; who gets a push about a new message).
+Counters: `dm_group_members.unread` grows for every other member without a block either way with the sender (after-insert trigger), which also pings each such member's `inbox:<user>` channel. Realtime private channels: `dm:<thread>`, `grp:<group>` (members), `inbox:<user>` (self). Notifications carry no message content: group name + sender nickname; invites: inviter nickname + group name.
 
 ## Safety
 | Table | Columns | Rules |
 |---|---|---|
 | `reports` | `id`, `reporter_id`, `kind`, `ref`, `reason`, `note`, `created_at`, `status` | insert own; no select for fans; moderators via service role / admin role |
-| `blocks` | `(user_id, blocked_id) pk` | own rows; used in feed and chat filters |
+| `blocks` | `(user_id, blocked_id) pk` | own rows; used in feed and chat filters; `blocked_between(a, b)` (security definer) checks both directions for private messages and groups |
 
 ## Storage buckets
 | Bucket | Access | Path |

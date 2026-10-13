@@ -33,6 +33,20 @@ describe('end-to-end encryption', () => {
     await expect(encryptMessage('x', await createDeviceKey(), [])).rejects.toThrow('no-recipient-key')
   })
 
+  it('skips a device whose public key is malformed and still encrypts for the others', async () => {
+    const a = await createDeviceKey()
+    const b = await createDeviceKey()
+    const bad = { id: 'broken', publicJwk: JSON.stringify({ kty: 'EC', crv: 'P-256', x: 'AAAA', y: 'AAAA' }) }
+    const notJson = { id: 'garbage', publicJwk: '{not json' }
+    const m = await encryptMessage('שלום', a, [bad, notJson, { id: b.id, publicJwk: b.publicJwk }, { id: a.id, publicJwk: a.publicJwk }])
+    expect(Object.keys(m.wrapped_keys).sort()).toEqual([a.id, b.id].sort())
+    expect(await decryptMessage(m, b, a.publicJwk)).toBe('שלום')
+  })
+
+  it('refuses to encrypt when every recipient key is malformed', async () => {
+    await expect(encryptMessage('x', await createDeviceKey(), [{ id: 'broken', publicJwk: '{"kty":"EC"}' }])).rejects.toThrow('no-recipient-key')
+  })
+
   it('gives both fans the same safety code regardless of order', async () => {
     const a = await createDeviceKey()
     const b = await createDeviceKey()

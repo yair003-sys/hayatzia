@@ -46,3 +46,29 @@ export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uu
   })
   return { ok: true as const }
 })
+
+/**
+ * After a group message is written (by the browser, encrypted), tell the other non-muted members. The notification
+ * carries no message content: only the group name and the sender's nickname. Who to notify comes from the database
+ * (group_push_targets): fellow members of the sender only, never one with a block either way with the sender.
+ */
+export const notifyGroupAction = actionClient.inputSchema(z.object({ groupId: z.uuid() })).action(async ({ parsedInput }) => {
+  const supabase = await createClient()
+  if (!supabase) return { ok: true as const }
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  if (!me) return { ok: true as const }
+  const [{ data: group }, { data: targets }] = await Promise.all([
+    supabase.from('dm_groups').select('id,name').eq('id', parsedInput.groupId).maybeSingle(),
+    supabase.rpc('group_push_targets', { p_group: parsedInput.groupId }),
+  ])
+  if (!group || !targets?.length) return { ok: true as const }
+  const { data: profile } = await supabase.from('profiles').select('nick').eq('user_id', me).maybeSingle()
+  await sendPush(targets, {
+    title: 'הודעה חדשה בקבוצה',
+    body: `${group.name} · מ־${profile?.nick ?? 'אוהד'}`,
+    url: `/inbox/g/${group.id}`,
+    tag: `grp:${group.id}`,
+  })
+  return { ok: true as const }
+})
