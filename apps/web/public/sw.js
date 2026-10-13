@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/icons/icon-192.png?v=onefan',
+      badge: '/icons/icon-192.png?v=onefan',
       lang: 'he',
       dir: 'rtl',
       tag: data.tag || undefined,

@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'onefan', statusBarStyle: 'black-translucent' },
   icons: {
     icon: [
-      { url: '/icons/logo.svg', type: 'image/svg+xml' },
-      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/logo.svg?v=onefan', type: 'image/svg+xml' },
+      { url: '/icons/favicon-32.png?v=onefan', sizes: '32x32', type: 'image/png' },
     ],
-    apple: '/icons/apple-touch-icon.png',
+    apple: '/icons/apple-touch-icon.png?v=onefan',
   },
 }
 
