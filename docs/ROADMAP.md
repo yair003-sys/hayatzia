@@ -11,6 +11,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 | P4 Growth | Trips, events, market, PWA install + push notifications, analytics, load test | **done** (2026-10-12): trips/events/market live on both projects; installable app (manifest, icons, notification-only service worker); Web Push for private messages and trip requests (no message content in notifications; VAPID generated in the owner's browser); Vercel Web Analytics (Hobby) + Speed Insights; k6 load test on staging (see below). 112 pgTAP tests green |
 | Crowd verdict | Live polls inside the match room (spec `superpowers/specs/2026-10-12-crowd-verdict-design.md`) | **built** (2026-10-12): on staging + production DBs; tested on the staging demo match; live data needs the paid API (5-second poller, owner's later step) |
 | Home in the legacy look | 4 stages (owner, 2026-10-12): 1 home · 2 stand photos → Square · 3 predictions → Matches · 4 player of the match, "הייתי שם", stand songs | **all 4 stages done** (2026-10-12/13): 1 home (`superpowers/specs/2026-10-12-stand-home-design.md`), 2 Square reels with a league tab and a club tab (team posts replace stand photos; photos shrunk before upload), 3 predictions in Matches (`superpowers/specs/2026-10-12-predictions-design.md`, no first-scorer bonus until the paid API). On staging + production. Stage 4 (check-in by location ≤ 500 m, player of the match 1–10, stand songs by the club's fan representative) on staging + production (production migration run by the owner 2026-10-13) |
+| Messages like Telegram + groups | Inbox with previews and unread counters, small (≤ 20) invite-only end-to-end encrypted groups (spec `superpowers/specs/2026-10-13-messages-groups-design.md`) | **built** (2026-10-13), on staging (`20261013110000_dm_groups_blocks` still to be applied there). Production migrations `20261013100000_dm_groups` + `20261013110000_dm_groups_blocks` pending the owner's Run |
 | P5 Cutover | Move remaining data, domain, legacy → redirect | |
 
 ## Open owner decisions
@@ -23,6 +24,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 
 ## Notes for the next session
 - All migrations through `20261013090000_fan_card` are applied on staging and production (2026-10-13).
+- `20261013100000_dm_groups` is on staging only; `20261013110000_dm_groups_blocks` is on neither yet (apply to staging, verify, then production). Production for both waits for the owner's Run.
 - Club fan representatives (`club_reps`): none yet — the owner names them; add by SQL until an admin screen exists.
 - Staging demos: `web-demo-match.yml` (crowd verdict), `web-demo-predictions.yml` (needs the demo fans from the first).
 - Presence joins take ~2 s on the free staging DB, ~30 s while the demo match loads it: one more reason for Pro + compute before launch.

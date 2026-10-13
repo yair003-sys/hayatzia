@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import type { InboxRow, Invite } from '../schema'
+import { GROUP_MAX, type InboxRow, type Invite } from '../schema'
 
 export async function getThread(id: string, userId: string) {
   const supabase = await createClient()
@@ -27,6 +27,8 @@ export type GroupDetails = {
   role: 'admin' | 'member'
   muted: boolean
   members: { userId: string; nick: string; role: 'admin' | 'member' }[]
+  /** Live (not expired) invites waiting for an answer. Filled for the admin only (who can cancel them). */
+  invites: { userId: string; nick: string }[]
 }
 
 /**
@@ -110,26 +112,32 @@ async function nicknames(ids: string[]): Promise<Map<string, string>> {
   return new Map((data ?? []).map((p) => [p.user_id, p.nick]))
 }
 
-/** A group I belong to, with its members. Null for non-members and for invitees (who see only the invite). */
+/** A group I belong to, with its members (and, for the admin, live invites). Null for non-members and invitees. */
 export async function getGroup(groupId: string, userId: string): Promise<GroupDetails | null> {
   const supabase = await createClient()
   if (!supabase) return null
-  const [{ data: group }, { data: members }] = await Promise.all([
+  // RLS: a member sees the group's rows, expired invites hidden.
+  const [{ data: group }, { data: rows }] = await Promise.all([
     supabase.from('dm_groups').select('id,name').eq('id', groupId).maybeSingle(),
-    supabase.from('dm_group_members').select('user_id,role,muted').eq('group_id', groupId).in('role', ['admin', 'member']),
+    supabase.from('dm_group_members').select('user_id,role,muted').eq('group_id', groupId).limit(GROUP_MAX + 5),
   ])
-  const mine = members?.find((m) => m.user_id === userId)
-  if (!group || !members || !mine) return null
-  const nicks = await nicknames(members.map((m) => m.user_id))
+  const members = (rows ?? []).filter((m) => m.role === 'admin' || m.role === 'member')
+  const mine = members.find((m) => m.user_id === userId)
+  if (!group || !mine) return null
+  const admin = mine.role === 'admin'
+  // Expired invites (older than 7 days) are already hidden by RLS.
+  const invited = admin ? (rows ?? []).filter((m) => m.role === 'invited') : []
+  const nicks = await nicknames([...members, ...invited].map((m) => m.user_id))
   return {
     id: group.id,
     name: group.name,
-    role: mine.role === 'admin' ? 'admin' : 'member',
+    role: admin ? 'admin' : 'member',
     muted: mine.muted,
     members: members.map((m) => ({
       userId: m.user_id,
       nick: nicks.get(m.user_id) ?? 'אוהד',
       role: m.role === 'admin' ? ('admin' as const) : ('member' as const),
     })),
+    invites: invited.map((m) => ({ userId: m.user_id, nick: nicks.get(m.user_id) ?? 'אוהד' })),
   }
 }

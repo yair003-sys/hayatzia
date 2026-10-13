@@ -48,6 +48,8 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
       }
     })
 
+  // Places left: members and live invites both count toward GROUP_MAX.
+  const room = GROUP_MAX - group.members.length - group.invites.length
   const members = [...group.members].sort((a, b) => (a.userId === meId ? -1 : b.userId === meId ? 1 : a.role === b.role ? a.nick.localeCompare(b.nick) : a.role === 'admin' ? -1 : 1))
 
   return (
@@ -119,7 +121,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
           <h2 id="members-title" className="t-sec">
             חברים
           </h2>
-          {admin && group.members.length < GROUP_MAX && (
+          {admin && room > 0 && (
             <button type="button" className="flex items-center gap-1 text-sm text-accent-text" onClick={() => setInviting(true)}>
               <UserPlus className="size-4" aria-hidden="true" />
               הזמנת אוהדים
@@ -178,6 +180,23 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
               </li>
             )
           })}
+          {admin &&
+            group.invites.map((inv) => (
+              <li key={inv.userId} className="py-0.5">
+                <div className="ib-pick">
+                  <MemberLine nick={inv.nick} userId={inv.userId} admin={false} invited />
+                  <button
+                    type="button"
+                    disabled={pending}
+                    aria-label={`ביטול ההזמנה של ${inv.nick}`}
+                    className="text-xs text-live"
+                    onClick={() => run(() => removeMemberAction({ groupId: group.id, userId: inv.userId }))}
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </li>
+            ))}
         </ul>
       </section>
 
@@ -194,7 +213,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
 
       {confirmLeave ? (
         <div className="space-y-2 rounded-xl border border-line bg-surface p-3">
-          <p className="text-sm">לעזוב את הקבוצה? לא תוכל לקרוא בה הודעות עד שיזמינו אותך שוב.</p>
+          <p className="text-sm">אחרי העזיבה לא תראה את ההודעות בקבוצה, גם אם יזמינו אותך שוב.</p>
           <div className="flex gap-2">
             <button type="button" disabled={pending} className="ib-pill bg-live! text-white" onClick={() => run(() => leaveGroupAction({ groupId: group.id }))}>
               עזיבה
@@ -214,11 +233,12 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
       {inviting && (
         <InviteSheet
           groupId={group.id}
-          memberIds={group.members.map((m) => m.userId)}
+          takenIds={[...group.members, ...group.invites].map((m) => m.userId)}
+          room={room}
           onClose={() => setInviting(false)}
           onDone={(n) => {
             setInviting(false)
-            setNote(n === 1 ? 'ההזמנה נשלחה' : `${n} הזמנות נשלחו`)
+            setNote(n === 0 ? null : n === 1 ? 'ההזמנה נשלחה' : `${n} הזמנות נשלחו`)
             router.refresh()
           }}
         />
@@ -227,7 +247,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
   )
 }
 
-function MemberLine({ nick, userId, admin, me = false }: { nick: string; userId: string; admin: boolean; me?: boolean }) {
+function MemberLine({ nick, userId, admin, me = false, invited = false }: { nick: string; userId: string; admin: boolean; me?: boolean; invited?: boolean }) {
   return (
     <>
       <Avatar id={userId} name={nick} size="sm" />
@@ -236,28 +256,41 @@ function MemberLine({ nick, userId, admin, me = false }: { nick: string; userId:
         {me && <span className="text-dim"> (אתה)</span>}
       </span>
       {admin && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-accent-text">מנהל</span>}
+      {invited && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted">הוזמן</span>}
     </>
   )
 }
 
-/** Admin's teammate picker: multi-select, current members left out. Each pick gets an invite to accept. */
-function InviteSheet({ groupId, memberIds, onClose, onDone }: { groupId: string; memberIds: string[]; onClose: () => void; onDone: (n: number) => void }) {
+/** Admin's teammate picker: multi-select, current members and live invitees left out. Each pick gets an invite to accept. */
+function InviteSheet({
+  groupId,
+  takenIds,
+  room,
+  onClose,
+  onDone,
+}: {
+  groupId: string
+  takenIds: string[]
+  room: number
+  onClose: () => void
+  onDone: (n: number) => void
+}) {
   const { q, fans, search } = useTeammates()
   const [picked, setPicked] = useState<Fan[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
-  const room = GROUP_MAX - memberIds.length
   const full = picked.length >= room
-  const candidates = fans?.filter((f) => !memberIds.includes(f.user_id)) ?? null
+  const candidates = fans?.filter((f) => !takenIds.includes(f.user_id)) ?? null
 
   const toggle = (f: Fan) => setPicked((cur) => (cur.some((p) => p.user_id === f.user_id) ? cur.filter((p) => p.user_id !== f.user_id) : cur.length >= room ? cur : [...cur, f]))
 
   const send = () =>
     start(async () => {
       setError(null)
-      const msg = failure(await inviteAction({ groupId, memberIds: picked.map((p) => p.user_id) }))
+      const r = await inviteAction({ groupId, memberIds: picked.map((p) => p.user_id) })
+      const msg = failure(r)
       if (msg) setError(msg)
-      else onDone(picked.length)
+      else onDone(r?.data && 'invited' in r.data ? r.data.invited : 0) // only fans the database actually invited
     })
 
   return createPortal(

@@ -49,7 +49,8 @@ export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uu
 
 /**
  * After a group message is written (by the browser, encrypted), tell the other non-muted members. The notification
- * carries no message content: only the group name and the sender's nickname. Membership is checked with RLS.
+ * carries no message content: only the group name and the sender's nickname. Who to notify comes from the database
+ * (group_push_targets): fellow members of the sender only, never one with a block either way with the sender.
  */
 export const notifyGroupAction = actionClient.inputSchema(z.object({ groupId: z.uuid() })).action(async ({ parsedInput }) => {
   const supabase = await createClient()
@@ -57,13 +58,11 @@ export const notifyGroupAction = actionClient.inputSchema(z.object({ groupId: z.
   const { data: claims } = await supabase.auth.getClaims()
   const me = claims?.claims.sub
   if (!me) return { ok: true as const }
-  const [{ data: group }, { data: members }] = await Promise.all([
+  const [{ data: group }, { data: targets }] = await Promise.all([
     supabase.from('dm_groups').select('id,name').eq('id', parsedInput.groupId).maybeSingle(),
-    supabase.from('dm_group_members').select('user_id,muted').eq('group_id', parsedInput.groupId).in('role', ['admin', 'member']),
+    supabase.rpc('group_push_targets', { p_group: parsedInput.groupId }),
   ])
-  if (!group || !members?.some((m) => m.user_id === me)) return { ok: true as const }
-  const targets = members.filter((m) => m.user_id !== me && !m.muted).map((m) => m.user_id)
-  if (targets.length === 0) return { ok: true as const }
+  if (!group || !targets?.length) return { ok: true as const }
   const { data: profile } = await supabase.from('profiles').select('nick').eq('user_id', me).maybeSingle()
   await sendPush(targets, {
     title: 'הודעה חדשה בקבוצה',
