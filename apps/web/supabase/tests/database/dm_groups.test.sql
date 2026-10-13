@@ -144,7 +144,8 @@ select is((select last_message_id from public.dm_groups where id = current_setti
   (select id from public.dm_group_messages where group_id = current_setting('t.g')::uuid), 'the group points at its last message for the preview');
 select is((select string_agg(unread::text, ',' order by user_id) from public.dm_group_members where group_id = current_setting('t.g')::uuid
   and role <> 'invited'), '1,0', 'unread grows for the others, not the sender');
--- The message was sent before d joins.
+-- a and b joined an hour ago and the message was sent a minute ago, before d joins.
+update public.dm_group_members set joined_at = now() - interval '1 hour' where group_id = current_setting('t.g')::uuid and role <> 'invited';
 update public.dm_group_messages set created_at = now() - interval '1 minute' where group_id = current_setting('t.g')::uuid;
 
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
