@@ -83,3 +83,19 @@ export function filterInbox(rows: InboxRow[], q: string): InboxRow[] {
   if (!needle) return rows
   return rows.filter((r) => r.name.toLowerCase().includes(needle))
 }
+
+export const markReadSchema = z.object({ kind: z.enum(['dm', 'group']), id: z.uuid() })
+
+const GROUP_ERRORS: Record<string, string> = {
+  group_full: `הקבוצה מלאה (עד ${GROUP_MAX} אוהדים)`,
+  not_admin: 'רק מנהל הקבוצה יכול לעשות את זה',
+  blocked: 'אי אפשר להוסיף את האוהד הזה',
+  not_same_team: 'אפשר להזמין רק אוהדים מהקבוצה שלך',
+  invite_expired: 'ההזמנה פגה',
+  no_members: 'בחר לפחות אוהד אחד',
+}
+
+/** Hebrew message for an error code raised by the group functions in the database. */
+export function groupErrorHe(code: string): string {
+  return GROUP_ERRORS[code] ?? 'הפעולה נכשלה. נסה שוב'
+}
