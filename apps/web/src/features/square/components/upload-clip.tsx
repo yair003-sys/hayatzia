@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Camera, ImagePlus, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { shrinkPhoto } from '../compress'
@@ -107,7 +108,9 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
       </button>
 
-      {choosing && !file && (
+      {choosing &&
+        !file &&
+        createPortal(
         <div className="sq-sheet-wrap" onClick={() => setChoosing(false)}>
           <div className="sq-sheet" role="dialog" aria-label="פוסט חדש" onClick={(e) => e.stopPropagation()}>
             <span className="sq-grip" aria-hidden="true" />
@@ -123,10 +126,13 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
               צילום עכשיו
             </button>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
 
-      {file && preview && (
+      {file &&
+        preview &&
+        createPortal(
         <div className="sq-compose" role="dialog" aria-label={`פוסט חדש ${target}`}>
           <div className="sq-compose-media">
             {file.type.startsWith('video/') ? (
@@ -154,8 +160,9 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
               פרסום {target}
             </button>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
       {error && (
         <p role="alert" className="sq-toast">
           {error}
