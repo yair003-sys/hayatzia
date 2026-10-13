@@ -718,6 +718,68 @@
   .lc-sec > small { font: 600 11.5px / 1.2 var(--font-brand); color: var(--color-muted); }
   .lc-end { margin-top: 2px; font-size: 13px; color: var(--color-muted); }
 
+  /* Match page: hero in both clubs' colours, pill tabs, events timeline, line-up half-pitch. */
+  .lc-hero { position: relative; isolation: isolate; overflow: hidden; padding: 16px 14px; border-radius: 28px; border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--h) 60%, var(--color-canvas)), var(--color-surface) 50%, color-mix(in srgb, var(--w) 50%, var(--color-canvas))); }
+  .lc-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(60% 80% at 50% 0%, rgb(255 255 255 / 0.1), transparent 70%); }
+  .lc-hero .lc-score { font-size: 42px; }
+  .lc-hero .lc-team > b { white-space: normal; line-height: 1.35; }
+  .lc-hero-top { margin-bottom: 12px; text-align: center; font-size: 12px; color: rgb(255 255 255 / 0.72); }
+  .lc-hero-v { margin-top: 10px; text-align: center; font-size: 12px; color: rgb(255 255 255 / 0.6); }
+  .lc-hero-demo { width: fit-content; margin: 0 auto 8px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+    color: var(--color-warn); background: color-mix(in srgb, var(--color-warn) 15%, transparent); }
+
+  .lc-tabs { display: flex; gap: 6px; padding: 5px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.05); }
+  .lc-tab { flex: 1; padding: 8px 0; border-radius: 999px; font-size: 13.5px; font-weight: 500; color: var(--color-muted);
+    transition: background 0.25s, color 0.25s, box-shadow 0.25s; }
+  .lc-tab:hover { color: var(--color-fg); }
+  .lc-tab[aria-selected='true'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 8px 18px -8px rgb(0 102 255 / 0.9); }
+
+  .lc-evs { display: grid; gap: 8px; }
+  .lc-ev { --c: var(--color-line-strong); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px;
+    border: 1px solid var(--color-line-soft); border-inline-start: 3px solid var(--c); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); font-size: 13.5px; }
+  .lc-ev-m { flex: none; width: 42px; direction: ltr; text-align: end; font: 600 12px / 1.2 var(--font-brand); font-variant-numeric: tabular-nums; color: var(--color-muted); }
+  .lc-ev-ico { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--color-muted); background: rgb(255 255 255 / 0.06); }
+  .lc-ev[data-kind='goal'] .lc-ev-ico, .lc-ev[data-kind='penalty'] .lc-ev-ico { background: color-mix(in srgb, var(--color-ok) 16%, transparent); }
+  .lc-ev[data-kind='missed-penalty'] .lc-ev-ico { color: var(--color-live); }
+  .lc-ev-ball { width: 11px; height: 11px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 8px rgb(0 255 102 / 0.6); }
+  .lc-ev-ball[data-kind='own-goal'] { background: var(--color-muted); box-shadow: none; }
+  .lc-ev-card { width: 10px; height: 14px; border-radius: 2px; background: var(--color-warn); transform: rotate(8deg); }
+  .lc-ev-card[data-kind='red'] { background: var(--color-live); }
+  .lc-ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-muted); }
+  .lc-ev-t { min-width: 0; flex: 1; line-height: 1.45; }
+  .lc-ev-t strong { font-weight: 600; }
+  .lc-ev-t > small { display: block; font-size: 12px; color: var(--color-muted); }
+
+  .lc-switch { display: flex; gap: 6px; padding: 4px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.04); }
+  .lc-switch > button { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px 8px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--color-muted); transition: background 0.25s, color 0.25s; }
+  .lc-switch > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-switch > button .lc-crest { --s: 26px; }
+  .lc-switch > button[aria-pressed='true'] { color: var(--color-fg); background: rgb(255 255 255 / 0.1); }
+  .lc-formation { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--color-muted); }
+
+  .lc-pitch { position: relative; isolation: isolate; aspect-ratio: 3 / 4.1; overflow: hidden; border-radius: 22px; border: 1px solid rgb(255 255 255 / 0.08);
+    background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-ok) 9%, var(--color-pitch)) 0 12.5%, color-mix(in srgb, var(--color-ok) 12%, var(--color-pitch)) 12.5% 25%); }
+  .lc-pitch::before { content: ''; position: absolute; inset: 8px; z-index: -1; border: 1.5px solid rgb(255 255 255 / 0.18); border-radius: 12px; }
+  .lc-pitch > i { position: absolute; z-index: -1; border: 1.5px solid rgb(255 255 255 / 0.18); }
+  .lc-pitch > .lc-pitch-arc { left: 50%; top: 8px; width: 34%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
+  .lc-pitch > .lc-pitch-box { left: 22%; right: 22%; bottom: 8px; height: 17%; border-bottom: 0; }
+  .lc-pitch > .lc-pitch-six { left: 37%; right: 37%; bottom: 8px; height: 6.5%; border-bottom: 0; }
+  .lc-p { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 24%; transform: translate(-50%, 50%); }
+  .lc-p > i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font: 700 11.5px / 1 var(--font-brand); font-style: normal;
+    color: var(--t); background: var(--a); box-shadow: 0 0 0 2px var(--b), 0 6px 12px -4px rgb(0 0 0 / 0.7); }
+  .lc-p > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: rgb(255 255 255 / 0.88); text-shadow: 0 1px 3px #000; }
+
+  .lc-list-h { font-size: 13px; font-weight: 600; color: var(--color-muted); }
+  .lc-list { overflow: hidden; border-radius: 18px; border: 1px solid var(--color-line-soft); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); }
+  .lc-list > li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13.5px; }
+  .lc-list > li + li { border-top: 1px solid var(--color-line-soft); }
+  .lc-list > li > b { width: 22px; text-align: center; font-weight: 600; color: var(--color-muted); }
+  .lc-list > li > bdi { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-list > li > small { font-size: 12px; color: var(--color-dim); }
+
   @keyframes lc-pulse {
     70% { box-shadow: 0 0 0 7px rgb(255 61 87 / 0); }
     100% { box-shadow: 0 0 0 0 rgb(255 61 87 / 0); }

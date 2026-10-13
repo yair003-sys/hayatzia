@@ -124,8 +124,10 @@ export function sideScore(f: Pick<Fixture, 'gh' | 'ga'>): string {
 }
 
 export type MatchTab = 'game' | 'lineup' | 'room'
+const TABS: readonly MatchTab[] = ['game', 'lineup', 'room']
 
-/** Stub: implemented after the red run. */
-export function pickTab(_param: unknown, _room: RoomState): MatchTab {
-  return 'game'
+/** The match page's tab: a valid `?tab=` wins; otherwise the room while it is open or closing, else the game. */
+export function pickTab(param: unknown, room: RoomState): MatchTab {
+  if (typeof param === 'string' && (TABS as readonly string[]).includes(param)) return param as MatchTab
+  return room === 'open' || room === 'closing' ? 'room' : 'game'
 }
