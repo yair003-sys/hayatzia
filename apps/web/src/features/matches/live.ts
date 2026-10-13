@@ -3,6 +3,7 @@
 import { isTicketLive } from '@/features/stand-home/schema'
 import { currentRoundIndex, groupByRound } from './rounds'
 import type { Fixture } from './schema'
+import type { RoomState } from '@/features/match-room/schema'
 
 const TZ = 'Asia/Jerusalem'
 const dayKeyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -120,4 +121,11 @@ export function initials(name: string): string {
 /** Score as "away : home" for an LTR number inside an RTL row, so each club's goals sit on its own side. */
 export function sideScore(f: Pick<Fixture, 'gh' | 'ga'>): string {
   return `${f.ga ?? 0} : ${f.gh ?? 0}`
+}
+
+export type MatchTab = 'game' | 'lineup' | 'room'
+
+/** Stub: implemented after the red run. */
+export function pickTab(_param: unknown, _room: RoomState): MatchTab {
+  return 'game'
 }

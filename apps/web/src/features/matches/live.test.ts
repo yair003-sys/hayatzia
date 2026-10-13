@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, parseDayKey, pickDay, pitchSpots, sideScore, stripCentre } from './live'
+import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, parseDayKey, pickDay, pickTab, pitchSpots, sideScore, stripCentre } from './live'
 import type { Fixture } from './schema'
 
 const fx = (id: number, t: number, st = 'NS'): Fixture => ({
@@ -162,5 +162,23 @@ describe('stripCentre / pickDay', () => {
   })
   it('re-centres on a chosen day outside the strip', () => {
     expect(pickDay('2026-11-01', season, '2026-09-20')).toEqual({ centre: '2026-09-20', selected: '2026-09-20' })
+  })
+})
+
+describe('pickTab', () => {
+  it('honours a valid ?tab=', () => {
+    expect(pickTab('game', 'open')).toBe('game')
+    expect(pickTab('lineup', 'closed')).toBe('lineup')
+    expect(pickTab('room', 'soon')).toBe('room')
+  })
+  it('defaults to the room while it is open or closing, else to the game', () => {
+    expect(pickTab(undefined, 'open')).toBe('room')
+    expect(pickTab(undefined, 'closing')).toBe('room')
+    expect(pickTab(undefined, 'soon')).toBe('game')
+    expect(pickTab(undefined, 'closed')).toBe('game')
+  })
+  it('ignores junk and arrays', () => {
+    expect(pickTab('stats', 'closed')).toBe('game')
+    expect(pickTab(['room'], 'closed')).toBe('game')
   })
 })
