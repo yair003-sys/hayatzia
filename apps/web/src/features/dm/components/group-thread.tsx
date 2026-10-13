@@ -97,7 +97,10 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
     }
   }, [key, groupId, meId, supabase, reveal, learnNicks])
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [items])
+  // Braces: newer Chrome returns a Promise from scrollIntoView, and React would call it as a cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' })
+  }, [items])
 
   const send = (text: string) =>
     new Promise<boolean>((resolve) => {
