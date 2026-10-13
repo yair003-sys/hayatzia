@@ -1,6 +1,6 @@
 # Messages like Telegram, with small invite-only groups: design
 
-Status: owner-approved direction, 2026-10-13.
+Status: approved by the owner, 2026-10-13.
 
 ## Intent
 The Messages tab (`/inbox`) looks bare: a title, a "new conversation" button and plain rows with a nickname and a time. The owner wants it **like Telegram**: a real chat list, plus **small groups of invited fans** (the friends who travel to games together, who sit together in the stand). Private messages stay end-to-end encrypted (standing rule: no path may send plaintext to the server). Groups are encrypted the same way.
@@ -8,6 +8,7 @@ The Messages tab (`/inbox`) looks bare: a title, a "new conversation" button and
 ## Owner decisions
 - Telegram-style list. (owner)
 - Groups are **small and invite-only**, **up to 20 fans**. (owner)
+- **Joining needs the invited fan's yes** (Telegram-style invite to accept or decline), not a direct add. (owner, 2026-10-13)
 - Claude's calls, said to the owner and not objected to: only fans of the same club (as DMs today); the fan who opens a group is its admin; **only the admin adds or removes** members; anyone can leave; a new member sees only messages sent after joining (inherent to the encryption).
 
 - Claude's calls after the builder check:
@@ -22,6 +23,10 @@ The Messages tab (`/inbox`) looks bare: a title, a "new conversation" button and
 - One list, newest first, of 1:1 chats and groups mixed. Each row: round avatar (initial on a colour derived from the id; groups show a people icon), name, the **last message preview decrypted on the device** (or "הודעה מוצפנת" if this device cannot read it; groups prefix the sender's nick: "דני: נפגשים בשער 5"), time, and an **unread count** badge (9+ cap).
 - Floating round "+" button → bottom sheet: "שיחה חדשה" (existing teammate search) / "קבוצה חדשה".
 - Empty state: full illustration-free invite, "עוד אין שיחות" + the two actions.
+
+### Invites
+- An invite shows at the top of the inbox: "דני הזמין אותך לקבוצה 'נוסעים לב״ש'" with "הצטרפות" / "לא תודה", and pushes a notification.
+- Pending invites count toward the 20. Declining or the admin cancelling removes the invite. `joined_at` is the moment of accepting, so history starts there. Invites expire after 7 days.
 
 ### New group
 Sheet / page: group name (2–40 chars), pick members from the club (same teammate search, multi-select chips, up to 19 besides me), "פתיחת הקבוצה". Opens the group.
@@ -38,7 +43,7 @@ Unchanged behaviour; restyled header to match (avatar + name), and it now resets
 ## How it gets made (Claude's calls)
 ### Data (one migration, RLS, explicit column grants, pgTAP)
 - `dm_groups(id uuid pk, team_id stamped, name 2–40, created_by, created_at, last_at, last_from, last_message_id, members_count)`; index `(team_id)`.
-- `dm_group_members(group_id, user_id, role 'admin'|'member', joined_at, unread int default 0, pk(group_id,user_id))`; index `(user_id, group_id)`. Trigger: same club as the group, not blocked by/with the adder, max 20 (row lock on the group), only the admin inserts others or deletes others; a member may delete themselves (leave); last admin leaving hands admin to the earliest member; group deleted when empty. `members_count` kept by trigger.
+- `dm_group_members(group_id, user_id, role 'admin'|'member'|'invited', invited_by, invited_at, joined_at null until accepted, unread int default 0, muted bool, pk(group_id,user_id))`; an RPC `answer_invite(group, yes)` turns an invite into a member (sets `joined_at`) or deletes it; index `(user_id, group_id)`. Trigger: same club as the group, not blocked by/with the adder, max 20 (row lock on the group), only the admin inserts others or deletes others; a member may delete themselves (leave); last admin leaving hands admin to the earliest member; group deleted when empty. `members_count` kept by trigger.
 - `dm_group_messages(id, group_id, sender_id stamped, sender_device, iv, ciphertext ≤ 4000, wrapped_keys jsonb (size-capped), created_at)`; index `(group_id, created_at desc, id desc)`. Insert only by a member (trigger, same rate limit as DMs). Read: members only, and only messages with `created_at >= joined_at` (RLS).
 - `dm_group_events(id, group_id, kind join|leave|remove|rename, actor, subject, created_at)` for the system lines (no content).
 - After-insert trigger on messages: `last_at/last_from/last_message_id` on the group, `unread = unread + 1` for every other member (≤ 19 rows), `realtime.broadcast_changes('grp:<id>')`, `realtime.send(... 'inbox:<member>')` per member. Realtime policy extended for `grp:` topics (members only).
