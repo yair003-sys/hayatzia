@@ -6,8 +6,6 @@ export const DM_MAX = 1000 // characters of plaintext (ciphertext limit is 4000 
 export const otherUserSchema = z.object({ otherId: z.uuid() })
 export const teammateSearchSchema = z.object({ q: z.string().trim().max(20).default('') })
 
-export type ThreadSummary = { id: string; otherId: string; otherNick: string; lastAt: string; unreadHint: boolean }
-
 /** Thread members are stored ordered (user_a < user_b), as the database requires. */
 export function orderedPair(a: string, b: string): { user_a: string; user_b: string } {
   return a < b ? { user_a: a, user_b: b } : { user_a: b, user_b: a }
@@ -93,6 +91,8 @@ const GROUP_ERRORS: Record<string, string> = {
   not_same_team: 'אפשר להזמין רק אוהדים מהקבוצה שלך',
   invite_expired: 'ההזמנה פגה',
   no_members: 'בחר לפחות אוהד אחד',
+  not_member: 'ההזמנה כבר לא בתוקף, או שאתה כבר לא בקבוצה',
+  bad_name: 'שם הקבוצה צריך להיות 2–40 תווים',
 }
 
 /** Hebrew message for an error code raised by the group functions in the database. */

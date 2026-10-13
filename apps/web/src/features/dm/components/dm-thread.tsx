@@ -71,20 +71,30 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       if (!key) return resolve(false)
       start(async () => {
         setStatus(null)
-        const devices = await devicesOf([meId, otherId])
-        if (!devices.some((d) => d.user_id === otherId)) {
-          setStatus(`${otherNick} עוד לא פתח את ההודעות הפרטיות במכשיר שלו. אפשר לשלוח אחרי שייכנס.`)
-          return resolve(false)
+        try {
+          const devices = await devicesOf([meId, otherId])
+          if (!devices.some((d) => d.user_id === otherId)) {
+            setStatus(`${otherNick} עוד לא פתח את ההודעות הפרטיות במכשיר שלו. אפשר לשלוח אחרי שייכנס.`)
+            return resolve(false)
+          }
+          const enc = await encryptMessage(text, key, devices)
+          // Every key of the other fan may be unusable (skipped): then nobody but me could read it.
+          if (!devices.some((d) => d.user_id === otherId && enc.wrapped_keys[d.id])) {
+            setStatus('ההודעה לא נשלחה')
+            return resolve(false)
+          }
+          const { data, error } = await supabase.from('dm_messages').insert({ thread_id: threadId, ...enc }).select('id,sender_id,created_at').single()
+          if (error) {
+            setStatus(error.message.includes('blocked') ? 'אי אפשר לשלוח לאוהד הזה' : error.message.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
+            return resolve(false)
+          }
+          setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text }]))
+          void notifyDmAction({ threadId })
+          resolve(true)
+        } catch {
+          setStatus('ההודעה לא נשלחה')
+          resolve(false)
         }
-        const enc = await encryptMessage(text, key, devices)
-        const { data, error } = await supabase.from('dm_messages').insert({ thread_id: threadId, ...enc }).select('id,sender_id,created_at').single()
-        if (error) {
-          setStatus(error.message.includes('blocked') ? 'אי אפשר לשלוח לאוהד הזה' : error.message.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
-          return resolve(false)
-        }
-        setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text }]))
-        void notifyDmAction({ threadId })
-        resolve(true)
       })
     })
 

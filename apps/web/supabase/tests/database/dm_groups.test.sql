@@ -1,7 +1,7 @@
 -- Small invite-only encrypted groups (same club, ≤ 20 fans incl. pending invites, admin invites/removes/renames,
 -- invites expire after 7 days), unread counters and previews for threads and groups, realtime topics.
 begin;
-select plan(68);
+select plan(80);
 
 -- a, b, c, d, f, g: Maccabi Tel Aviv; e: Hapoel Tel Aviv; x01..x20: Maccabi fans for the 20-cap.
 insert into auth.users (id, aud, role, email) values
@@ -137,6 +137,9 @@ select lives_ok($$ insert into public.dm_group_messages (group_id, sender_device
 select throws_ok($$ insert into public.dm_group_messages (group_id, sender_device, iv, ciphertext, wrapped_keys)
   values (current_setting('t.g')::uuid, 'dev02bb', 'aXY=', 'eA==', (select jsonb_object_agg('dev' || i, '{}'::jsonb) from generate_series(1, 61) i)) $$,
   '22023', null, 'at most 60 wrapped keys');
+select throws_ok($$ insert into public.dm_group_messages (group_id, sender_device, iv, ciphertext, wrapped_keys)
+  values (current_setting('t.g')::uuid, 'dev02bb', 'aXY=', 'eA==', jsonb_build_object('dev01aa', jsonb_build_object('i', 'x', 'w', repeat('w', 20000)))) $$,
+  '23514', null, 'wrapped keys are capped in size');
 reset role;
 select is((select last_from from public.dm_groups where id = current_setting('t.g')::uuid), '00000000-0000-0000-0000-0000000000d2'::uuid,
   'the group shows who wrote last');
@@ -185,12 +188,46 @@ reset role;
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d4');
 set local role authenticated;
 select is((select count(*)::int from public.dm_group_messages), 1, 'd reads messages sent after joining');
+reset role;
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
+set local role authenticated;
+select is((select count(*)::int from public.group_push_targets(current_setting('t.g')::uuid)), 2, 'a new message notifies the other members');
+reset role;
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d4');
+set local role authenticated;
 insert into public.blocks (blocked_id) values ('00000000-0000-0000-0000-0000000000d1');
 select is((select count(*)::int from public.dm_group_messages), 0, 'd no longer reads a''s messages after blocking a');
 select lives_ok($$ select public.mute_group(current_setting('t.g')::uuid, true) $$, 'd mutes the group');
 select is((select muted from public.dm_group_members where group_id = current_setting('t.g')::uuid
   and user_id = '00000000-0000-0000-0000-0000000000d4'), true, 'muted is saved on d''s membership');
 reset role;
+-- d blocked a: a's next message does not bump d's unread.
+select set_config('t.du', (select unread::text from public.dm_group_members where group_id = current_setting('t.g')::uuid
+  and user_id = '00000000-0000-0000-0000-0000000000d4'), true);
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
+set local role authenticated;
+insert into public.dm_group_messages (group_id, sender_device, iv, ciphertext, wrapped_keys)
+  values (current_setting('t.g')::uuid, 'dev01aa', 'aXY=', 'eg==', '{}');
+reset role;
+select is((select unread from public.dm_group_members where group_id = current_setting('t.g')::uuid
+  and user_id = '00000000-0000-0000-0000-0000000000d4'), current_setting('t.du')::int, 'a blocked fan''s message does not count as unread for the blocker');
+
+-- The other direction: b blocks a. a (the blocked one) reads none of b's messages and is not counted.
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d2');
+set local role authenticated;
+insert into public.blocks (blocked_id) values ('00000000-0000-0000-0000-0000000000d1');
+select lives_ok($$ insert into public.dm_group_messages (group_id, sender_device, iv, ciphertext, wrapped_keys)
+  values (current_setting('t.g')::uuid, 'dev02bb', 'aXY=', 'dw==', '{}') $$, 'b writes after blocking a');
+reset role;
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
+set local role authenticated;
+select is((select count(*)::int from public.dm_group_messages where sender_id = '00000000-0000-0000-0000-0000000000d2'), 0,
+  'a fan who was blocked reads none of the blocker''s messages');
+select is((select count(*)::int from public.group_push_targets(current_setting('t.g')::uuid)), 0,
+  'no push to a fan with a block either way, nor to one who muted the group');
+reset role;
+select is((select unread from public.dm_group_members where group_id = current_setting('t.g')::uuid
+  and user_id = '00000000-0000-0000-0000-0000000000d1'), 0, 'the blocker''s message does not count as unread for the blocked fan');
 
 -- ── remove, rename, leave ──
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
@@ -201,6 +238,19 @@ select is((select count(*)::int from public.dm_group_events where group_id = cur
 select lives_ok($$ select public.rename_group(current_setting('t.g')::uuid, 'שער 11') $$, 'the admin renames');
 select is((select name::text || ':' || (select count(*) from public.dm_group_events e where e.group_id = g.id and e.kind = 'rename')
   from public.dm_groups g where id = current_setting('t.g')::uuid), 'שער 11:1', 'the new name and a rename line');
+-- The admin invites g, then cancels the invite.
+select is(public.invite_to_group(current_setting('t.g')::uuid, array['00000000-0000-0000-0000-0000000000d7']::uuid[]),
+  array['00000000-0000-0000-0000-0000000000d7']::uuid[], 'an invite returns the fans actually invited');
+select is(public.invite_to_group(current_setting('t.g')::uuid, array['00000000-0000-0000-0000-0000000000d7', '00000000-0000-0000-0000-0000000000d4']::uuid[]),
+  '{}'::uuid[], 'fans already invited or in the group are skipped');
+select lives_ok($$ select public.remove_from_group(current_setting('t.g')::uuid, '00000000-0000-0000-0000-0000000000d7') $$, 'the admin cancels an invite');
+reset role;
+select is((select count(*)::int from public.dm_group_members where group_id = current_setting('t.g')::uuid and user_id = '00000000-0000-0000-0000-0000000000d7')
+  + (select count(*)::int from public.dm_group_events where group_id = current_setting('t.g')::uuid and subject = '00000000-0000-0000-0000-0000000000d7'),
+  0, 'a cancelled invite is gone and leaves no system line');
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d5');
+set local role authenticated;
+select is((select count(*)::int from public.dm_group_events), 0, 'an outsider reads no events');
 reset role;
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d2');
 set local role authenticated;

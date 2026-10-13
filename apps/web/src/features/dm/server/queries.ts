@@ -1,31 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import type { InboxRow, Invite, ThreadSummary } from '../schema'
-
-/** The fan's conversations, newest first. Metadata only: message contents are never read on the server. */
-export async function getThreads(userId: string): Promise<ThreadSummary[]> {
-  const supabase = await createClient()
-  if (!supabase) return []
-  const { data } = await supabase
-    .from('dm_threads')
-    .select('id,user_a,user_b,nick_a,nick_b,last_at,last_from')
-    .order('last_at', { ascending: false })
-    .limit(100)
-  const { data: blocks } = await supabase.from('blocks').select('blocked_id')
-  const blocked = new Set(blocks?.map((b) => b.blocked_id))
-  return (data ?? [])
-    .map((t) => {
-      const mineA = t.user_a === userId
-      return {
-        id: t.id,
-        otherId: mineA ? t.user_b : t.user_a,
-        otherNick: mineA ? t.nick_b : t.nick_a,
-        lastAt: t.last_at,
-        unreadHint: !!t.last_from && t.last_from !== userId,
-      }
-    })
-    .filter((t) => !blocked.has(t.otherId))
-}
+import type { InboxRow, Invite } from '../schema'
 
 export async function getThread(id: string, userId: string) {
   const supabase = await createClient()

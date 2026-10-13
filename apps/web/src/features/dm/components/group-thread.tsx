@@ -84,6 +84,11 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       const r = (payload as { record?: EncryptedRow }).record
       if (!r?.id || blocked.current.has(r.sender_id)) return // the channel does not know who I blocked
       const [m] = await reveal([r])
+      // Not readable here (e.g. the sender blocked me): show it only if the database lets me read the row.
+      if (m && m.text === null && r.sender_id !== meId) {
+        const { data } = await supabase.from('dm_group_messages').select('id').eq('id', r.id).maybeSingle()
+        if (!data) return
+      }
       void learnNicks([r.sender_id])
       if (m) setItems((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, { type: 'msg' as const, id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text }]))
       if (r.sender_id !== meId) void markReadAction({ kind: 'group', id: groupId })
@@ -107,34 +112,39 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       if (!key) return resolve(false)
       start(async () => {
         setStatus(null)
-        // Current members at the moment of sending: never invitees or removed fans, never fans I blocked.
-        const [mem, blk] = await Promise.all([
-          supabase.from('dm_group_members').select('user_id,role').eq('group_id', groupId),
-          supabase.from('blocks').select('blocked_id'),
-        ])
-        if (mem.error || blk.error) {
+        try {
+          // Current members at the moment of sending: never invitees or removed fans, never fans I blocked.
+          const [mem, blk] = await Promise.all([
+            supabase.from('dm_group_members').select('user_id,role').eq('group_id', groupId),
+            supabase.from('blocks').select('blocked_id'),
+          ])
+          if (mem.error || blk.error) {
+            setStatus('ההודעה לא נשלחה')
+            return resolve(false)
+          }
+          blocked.current = new Set(blk.data.map((b) => b.blocked_id))
+          const ids = recipientsFor(
+            mem.data.map((m) => ({ userId: m.user_id, role: m.role })),
+            [...blocked.current],
+            meId,
+          )
+          const found = await devicesOf(ids)
+          // This device may not be listed yet if its key was published a moment ago.
+          const all = found.some((d) => d.id === key.id) ? found : [...found, { user_id: meId, id: key.id, publicJwk: key.publicJwk, created_at: new Date().toISOString() }]
+          const devices = pickDevices(all, DEVICES_PER_FAN, { user_id: meId, id: key.id })
+          const enc = await encryptMessage(text, key, devices)
+          const { data, error } = await supabase.from('dm_group_messages').insert({ group_id: groupId, ...enc }).select('id,sender_id,created_at').single()
+          if (error) {
+            setStatus(error.message.includes('rate_limit') ? 'רגע, לאט יותר' : error.message.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : 'ההודעה לא נשלחה')
+            return resolve(false)
+          }
+          setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text }]))
+          void notifyGroupAction({ groupId })
+          resolve(true)
+        } catch {
           setStatus('ההודעה לא נשלחה')
-          return resolve(false)
+          resolve(false)
         }
-        blocked.current = new Set(blk.data.map((b) => b.blocked_id))
-        const ids = recipientsFor(
-          mem.data.map((m) => ({ userId: m.user_id, role: m.role })),
-          [...blocked.current],
-          meId,
-        )
-        const found = await devicesOf(ids)
-        // This device may not be listed yet if its key was published a moment ago.
-        const all = found.some((d) => d.id === key.id) ? found : [...found, { user_id: meId, id: key.id, publicJwk: key.publicJwk, created_at: new Date().toISOString() }]
-        const devices = pickDevices(all, DEVICES_PER_FAN, { user_id: meId, id: key.id })
-        const enc = await encryptMessage(text, key, devices)
-        const { data, error } = await supabase.from('dm_group_messages').insert({ group_id: groupId, ...enc }).select('id,sender_id,created_at').single()
-        if (error) {
-          setStatus(error.message.includes('rate_limit') ? 'רגע, לאט יותר' : error.message.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : 'ההודעה לא נשלחה')
-          return resolve(false)
-        }
-        setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text }]))
-        void notifyGroupAction({ groupId })
-        resolve(true)
       })
     })
 

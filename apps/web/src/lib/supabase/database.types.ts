@@ -1057,8 +1057,11 @@ isOneToOne: false
 "distance_m":
 { Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
                            },
+"group_push_targets":
+{ Args: { "p_group": string }; Returns: string[]
+                           },
 "invite_to_group":
-{ Args: { "p_group": string,"p_members": string[] }; Returns: undefined
+{ Args: { "p_group": string,"p_members": string[] }; Returns: string[]
                            },
 "is_club_rep":
 { Args: Record<PropertyKey, never>; Returns: boolean
