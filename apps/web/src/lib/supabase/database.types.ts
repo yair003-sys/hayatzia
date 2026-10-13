@@ -245,6 +245,86 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"dm_group_events": {
+                  Row: {
+                    "actor": string | null,"created_at": string,"group_id": string,"id": string,"kind": string,"subject": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor"?: string | null,"created_at"?: string,"group_id": string,"id"?: string,"kind": string,"subject"?: string | null
+                  }
+                  Update: {
+                    "actor"?: string | null,"created_at"?: string,"group_id"?: string,"id"?: string,"kind"?: string,"subject"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dm_group_events_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "dm_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dm_group_members": {
+                  Row: {
+                    "group_id": string,"invited_at": string,"invited_by": string | null,"joined_at": string | null,"muted": boolean,"role": string,"unread": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "group_id": string,"invited_at"?: string,"invited_by"?: string | null,"joined_at"?: string | null,"muted"?: boolean,"role": string,"unread"?: number,"user_id": string
+                  }
+                  Update: {
+                    "group_id"?: string,"invited_at"?: string,"invited_by"?: string | null,"joined_at"?: string | null,"muted"?: boolean,"role"?: string,"unread"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dm_group_members_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "dm_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dm_group_messages": {
+                  Row: {
+                    "ciphertext": string,"created_at": string,"group_id": string,"id": string,"iv": string,"sender_device": string,"sender_id": string,"wrapped_keys": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "ciphertext": string,"created_at"?: string,"group_id": string,"id"?: string,"iv": string,"sender_device": string,"sender_id"?: string,"wrapped_keys": NonNullable<Json>
+                  }
+                  Update: {
+                    "ciphertext"?: string,"created_at"?: string,"group_id"?: string,"id"?: string,"iv"?: string,"sender_device"?: string,"sender_id"?: string,"wrapped_keys"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dm_group_messages_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "dm_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"dm_groups": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"members_count": number,"name": string,"team_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"members_count"?: number,"name": string,"team_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"members_count"?: number,"name"?: string,"team_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dm_groups_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"dm_messages": {
                   Row: {
                     "ciphertext": string,"created_at": string,"id": string,"iv": string,"sender_device": string,"sender_id": string,"thread_id": string,"wrapped_keys": NonNullable<Json>
@@ -267,14 +347,14 @@ isOneToOne: false
                   ]
                 },"dm_threads": {
                   Row: {
-                    "created_at": string,"id": string,"last_at": string,"last_from": string | null,"nick_a": string,"nick_b": string,"user_a": string,"user_b": string
+                    "created_at": string,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"nick_a": string,"nick_b": string,"unread_a": number,"unread_b": number,"user_a": string,"user_b": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"nick_a"?: string,"nick_b"?: string,"user_a": string,"user_b": string
+                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"unread_a"?: number,"unread_b"?: number,"user_a": string,"user_b": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"nick_a"?: string,"nick_b"?: string,"user_a"?: string,"user_b"?: string
+                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string
                   }
                   Relationships: [
                     
@@ -929,8 +1009,14 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "blocked_between":
+            "answer_invite":
+{ Args: { "p_group": string,"p_yes": boolean }; Returns: undefined
+                           },
+"blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
+                           },
+"create_group":
+{ Args: { "p_members": string[],"p_name": string }; Returns: string
                            },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
@@ -962,20 +1048,47 @@ isOneToOne: false
 "crowd_tick":
 { Args: { "p_fixture": number }; Returns: undefined
                            },
+"dm_group_lock":
+{ Args: { "p_group": string }; Returns: string
+                           },
+"dm_group_name":
+{ Args: { "p_name": string }; Returns: string
+                           },
 "distance_m":
 { Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
+                           },
+"invite_to_group":
+{ Args: { "p_group": string,"p_members": string[] }; Returns: undefined
                            },
 "is_club_rep":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"leave_group":
+{ Args: { "p_group": string }; Returns: undefined
+                           },
+"mark_read":
+{ Args: { "p_id": string,"p_kind": string }; Returns: undefined
+                           },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
+                           },
+"mute_group":
+{ Args: { "p_group": string,"p_muted": boolean }; Returns: undefined
+                           },
+"my_groups":
+{ Args: { "with_invites": boolean }; Returns: string[]
                            },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "open_event_poll":
 { Args: { "p_fixture": number,"p_kind": string,"p_options": Json,"p_options_in": Json,"p_question": string,"p_scope": string }; Returns: string
+                           },
+"remove_from_group":
+{ Args: { "p_group": string,"p_user": string }; Returns: undefined
+                           },
+"rename_group":
+{ Args: { "p_group": string,"p_name": string }; Returns: undefined
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean
