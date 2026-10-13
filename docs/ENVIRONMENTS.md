@@ -19,6 +19,7 @@ Owner's standing rule: **local and test data never touch production.**
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | client / server | Web Push pair, generated in the owner's browser (never seen by Claude), Production + Preview |
 | `NEXT_PUBLIC_PHONE_AUTH` | client | `on`/`off` (default off): SMS sign-in, needs an SMS provider |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
+| `ALERTS_SECRET` | server only | guards `POST /api/alerts/dispatch` (goal / full-time alerts, `Authorization: Bearer …`). Generate with `openssl rand -hex 32`. Vercel Production + Preview, and the same value in the matching GitHub environment. **Staging and production values must differ** |
 | `NEXT_PUBLIC_APP_ENV` | client + server | `local` / `preview` / `production`; shows a banner outside production |
 
 Set them in Vercel per environment (Production / Preview / Development). Production values exist **only** in Vercel's Production scope and in the GitHub `production` environment. `.env.local` is git-ignored; `.env.example` lists names only.
@@ -39,6 +40,10 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - `staging` and `Production` (shared with Vercel's deployment records; names are case-insensitive). Each has variable `SUPABASE_URL` and secret `SUPABASE_SECRET_KEY` (that project's `sb_secret_…`, pasted by the owner). Production uses key `server_2026_10` since 2026-10-12.
 - `.github/workflows/web-ingest.yml` runs per environment; the legacy `update.yml` calls it whenever `data/` changed. Manual run: dispatch with `inputs[target]=staging|production|both`.
 - The script strips whitespace and invisible direction marks from the key (pasting on a Hebrew keyboard adds them) and reports row counts as a `::notice` annotation.
+
+## Goal alerts wiring
+- Secret `ALERTS_SECRET` in GitHub environments `Production` and `staging` (each with its own value, equal to the Vercel Production / Preview value respectively), and variable `APP_URL` per environment: production `https://hayatzia-flame.vercel.app`, staging `https://hayatzia-git-demo-preview-hayaziha.vercel.app`.
+- `web-ingest.yml` calls `$APP_URL/api/alerts/dispatch` after each ingest; skipped with a notice when either is empty; never fails the job. `web-demo-match.yml` passes both so the demo script can trigger alerts (it refuses an `APP_URL` pointing at production).
 
 ## Crowd-verdict demo (staging only)
 - `.github/workflows/web-demo-match.yml` (dispatch only, `environment: staging`) runs `scripts/demo-match.ts`: demo match `900000001` (`is_demo`, labelled "משחק לדוגמה · נתונים לדוגמה"), 30 demo fans (`demo-fan-NN@demo.hayatzia.test`, nicks `דמו·…`), a chat burst that opens a poll by itself, scripted events, demo votes; about 12 minutes. The script refuses the production ref.

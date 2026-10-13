@@ -7,7 +7,12 @@ import { buildCardPoll, buildGoalPoll, buildSub60Polls, buildSubEventPoll, type 
 import { notice, supabaseFromEnv } from './lib/rest.ts'
 
 const PRODUCTION_REF = 'loaqhisfhafjbrmtygrp'
-if (process.env.DEMO_TARGET !== 'staging' || (process.env.SUPABASE_URL ?? '').includes(PRODUCTION_REF)) {
+const PRODUCTION_APP = 'hayatzia-flame.vercel.app'
+if (
+  process.env.DEMO_TARGET !== 'staging' ||
+  (process.env.SUPABASE_URL ?? '').includes(PRODUCTION_REF) ||
+  (process.env.APP_URL ?? '').includes(PRODUCTION_APP)
+) {
   console.error('demo-match runs on staging only')
   process.exit(1)
 }
@@ -27,6 +32,23 @@ const AWAY = { apiId: 563, clubId: 'hbs' }
 const MINUTES_IN = 55
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const pick = <T>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)]!
+/** Asks the app to send goal / full-time alerts now. Optional (needs APP_URL + ALERTS_SECRET); logs status and counts only, never throws. */
+async function dispatchAlerts() {
+  const base = process.env.APP_URL
+  const secret = process.env.ALERTS_SECRET
+  if (!base || !secret) return
+  try {
+    const r = await fetch(`${base.replace(/\/$/, '')}/api/alerts/dispatch`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(30_000),
+    })
+    const body = (await r.json().catch(() => ({}))) as { sent?: number; skipped?: number }
+    notice('demo alerts', `dispatch HTTP ${r.status} sent=${body.sent ?? '?'} skipped=${body.skipped ?? '?'}`)
+  } catch {
+    notice('demo alerts', 'dispatch failed (ignored)')
+  }
+}
 const json = async <T>(r: Response): Promise<T> => (await r.json()) as T
 
 // ── demo fans ──────────────────────────────────────────────────────────────────────────────
@@ -223,6 +245,7 @@ while (!at(600)) {
     detail.ev.push(ev)
     await saveEvents(detail)
     await rest('PATCH', `fixtures?id=eq.${FIXTURE}`, { home_goals: 2, elapsed: 71 }, 'return=minimal')
+    await dispatchAlerts()
     await openEvent(buildGoalPoll(ev, p, squadOf(HOME.clubId)))
   }
   if (once('sub', 500)) {
@@ -243,6 +266,7 @@ await rpc('crowd_tick', { p_fixture: FIXTURE })
 
 // Full time: the room stays open ~100 more minutes, so fans can rate the players 1–10 (player of the match).
 await rest('PATCH', `fixtures?id=eq.${FIXTURE}`, { status: 'FT', elapsed: 90 }, 'return=minimal')
+await dispatchAlerts()
 let ratings = 0
 for (const fan of fans.filter((f) => f.group !== 'n')) {
   const squad = sq[fan.club]!.filter((p) => p.in_xi).slice(0, 11)

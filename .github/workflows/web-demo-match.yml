@@ -29,4 +29,6 @@ jobs:
           DEMO_TARGET: staging
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          APP_URL: ${{ vars.APP_URL }}
+          ALERTS_SECRET: ${{ secrets.ALERTS_SECRET }}
         run: node scripts/demo-match.ts
