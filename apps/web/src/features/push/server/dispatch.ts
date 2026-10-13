@@ -5,8 +5,6 @@ import { freshInOrder, groupByMatch } from '../alerts'
 import { describeAlerts, type Admin } from './describe'
 import { pushConfigured, sendPush } from './send'
 
-/** Alerts claimed per dispatch call. */
-const CLAIM_LIMIT = 50
 /** Recipients read per page (keyset on user_id; the API returns at most 1000 rows per request). */
 const RECIPIENT_PAGE = 1000
 
