@@ -465,6 +465,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"match_alerts": {
+                  Row: {
+                    "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "away_goals": number,"created_at"?: string,"fixture_id": number,"home_goals": number,"id"?: number,"kind": string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                  }
+                  Update: {
+                    "away_goals"?: number,"created_at"?: string,"fixture_id"?: number,"home_goals"?: number,"id"?: number,"kind"?: string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_alerts_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"match_chat_bursts": {
                   Row: {
                     "at": string,"fixture_id": number,"kind": string,"user_id": string
@@ -648,6 +668,20 @@ isOneToOne: false
       referencedRelation: "players"
       referencedColumns: ["id"]
     }
+                  ]
+                },"notification_prefs": {
+                  Row: {
+                    "matches": string,"messages": boolean,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "matches"?: string,"messages"?: boolean,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "matches"?: string,"messages"?: boolean,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"player_rating_stats": {
                   Row: {
@@ -1009,7 +1043,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "answer_invite":
+            "alert_recipients":
+{ Args: { "p_fixture": number }; Returns: string[]
+                           },
+"answer_invite":
 { Args: { "p_group": string,"p_yes": boolean }; Returns: undefined
                            },
 "blocked_between":
@@ -1017,6 +1054,9 @@ isOneToOne: false
                            },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
+                           },
+"claim_alerts":
+{ Args: { "p_limit": number }; Returns: { "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null }[]
                            },
 "clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
@@ -1074,6 +1114,9 @@ isOneToOne: false
                            },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
+                           },
+"message_push_allowed":
+{ Args: { "p_users": (string)[] }; Returns: string[]
                            },
 "mute_group":
 { Args: { "p_group": string,"p_muted": boolean }; Returns: undefined
