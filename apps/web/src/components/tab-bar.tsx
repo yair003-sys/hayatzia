@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Suspense } from 'react'
 import { House, MessageCircle, Trophy, Clapperboard, IdCard, type LucideIcon } from 'lucide-react'
 import type { Route } from 'next'
-import { cn } from '@/lib/utils'
 
 type Tab = { href: Route; label: string; icon: LucideIcon }
 
@@ -21,31 +20,18 @@ export function activeTab(pathname: string): Route | null {
   return TABS.find((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))?.href ?? null
 }
 
-/** Pure view: the same markup is the static shell (no active tab) and the live bar. */
+/** Pure view: the same markup is the static shell (no active tab) and the live bar. A floating pill of icons;
+ *  each link is named by its Hebrew label (aria-label), and the active one sits in a blue circle. */
 function TabBarView({ active }: { active: Route | null }) {
   return (
-    <nav
-      aria-label="ניווט ראשי"
-      className={cn(
-        'fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-xl',
-        active === '/square' ? 'border-white/10 bg-black' : 'border-line-soft bg-elev/85',
-      )}
-    >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
+    <nav aria-label="ניווט ראשי" className="tb-pill" data-dark={active === '/square'}>
+      <ul>
         {TABS.map(({ href, label, icon: Icon }) => {
           const on = active === href
           return (
             <li key={href}>
-              <Link
-                href={href}
-                aria-current={on ? 'page' : undefined}
-                className={cn(
-                  'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-dim transition-colors',
-                  on && 'text-fg',
-                )}
-              >
-                <Icon aria-hidden className={cn('size-5', on && 'text-accent-text')} strokeWidth={2.2} />
-                {label}
+              <Link href={href} aria-label={label} title={label} aria-current={on ? 'page' : undefined} className="tb-link">
+                <Icon aria-hidden className="size-[1.3rem]" strokeWidth={2} />
               </Link>
             </li>
           )

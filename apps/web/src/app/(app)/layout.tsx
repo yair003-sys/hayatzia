@@ -8,7 +8,7 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
       <Suspense fallback={null}>
         <SessionGate />
       </Suspense>
-      <div className="mx-auto min-h-dvh max-w-md px-4 pt-6 pb-28">{children}</div>
+      <div className="mx-auto min-h-dvh max-w-md px-4 pt-6 pb-[calc(var(--tabbar-space)+1.5rem)]">{children}</div>
       <TabBar />
     </>
   )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, pitchSpots } from './live'
+import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, pitchSpots, sideScore } from './live'
 import type { Fixture } from './schema'
 
 const fx = (id: number, t: number, st = 'NS'): Fixture => ({
@@ -110,5 +110,12 @@ describe('initials', () => {
     expect(initials('Maccabi Haifa')).toBe('MH')
     expect(initials('אשדוד')).toBe('א')
     expect(initials('  ')).toBe('')
+  })
+})
+
+describe('sideScore', () => {
+  it('puts the away score first for an LTR number in an RTL row', () => {
+    expect(sideScore({ gh: 2, ga: 0 })).toBe('0 : 2')
+    expect(sideScore({ gh: null, ga: null })).toBe('0 : 0')
   })
 })

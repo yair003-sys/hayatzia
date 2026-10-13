@@ -89,3 +89,8 @@ export function initials(name: string): string {
     .map((w) => w[0]!.toUpperCase())
     .join('')
 }
+
+/** Score as "away : home" for an LTR number inside an RTL row, so each club's goals sit on its own side. */
+export function sideScore(f: Pick<Fixture, 'gh' | 'ga'>): string {
+  return `${f.ga ?? 0} : ${f.gh ?? 0}`
+}
