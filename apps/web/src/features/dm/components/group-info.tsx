@@ -290,7 +290,7 @@ function InviteSheet({
       const r = await inviteAction({ groupId, memberIds: picked.map((p) => p.user_id) })
       const msg = failure(r)
       if (msg) setError(msg)
-      else onDone(r?.data && 'invited' in r.data ? r.data.invited : 0) // only fans the database actually invited
+      else onDone(r?.data && 'invited' in r.data ? (r.data.invited ?? 0) : 0) // only fans the database actually invited
     })
 
   return createPortal(
