@@ -8,7 +8,7 @@ import { createGroupAction, openThreadAction, searchTeammatesAction } from '../s
 import { Avatar } from './avatar'
 
 export type SheetMode = 'menu' | 'dm' | 'group'
-type Fan = { user_id: string; nick: string }
+export type Fan = { user_id: string; nick: string }
 
 const PICK_MAX = GROUP_MAX - 1 // everyone besides me
 
@@ -52,7 +52,7 @@ export function NewSheet({ mode, onMode }: { mode: SheetMode | null; onMode: (m:
   )
 }
 
-function SheetHead({ title, onBack }: { title: string; onBack: () => void }) {
+export function SheetHead({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-2">
       <button type="button" onClick={onBack} aria-label="חזרה" className="ib-icon-btn">
@@ -64,7 +64,7 @@ function SheetHead({ title, onBack }: { title: string; onBack: () => void }) {
 }
 
 /** Teammate search shared by both flows. Newest answer wins when the fan types fast. */
-function useTeammates() {
+export function useTeammates() {
   const [q, setQ] = useState('')
   const [fans, setFans] = useState<Fan[] | null>(null)
   const seq = useRef(0)
@@ -86,7 +86,7 @@ function useTeammates() {
   return { q, fans, search }
 }
 
-function SearchField({ q, onChange }: { q: string; onChange: (v: string) => void }) {
+export function SearchField({ q, onChange }: { q: string; onChange: (v: string) => void }) {
   return (
     <label className="ib-search ib-search-sheet">
       <Search className="size-4 shrink-0" aria-hidden="true" />
@@ -115,7 +115,7 @@ function NewChat({ onBack }: { onBack: () => void }) {
       <SearchField q={q} onChange={search} />
       <FanList fans={fans}>
         {(f) => (
-          <button type="button" disabled={pending} onClick={() => open(f)} className="ib-pick">
+          <button type="button" disabled={pending} onClick={() => open(f)} aria-label={f.nick} className="ib-pick">
             <Avatar id={f.user_id} name={f.nick} size="sm" />
             <span className="truncate">{f.nick}</span>
           </button>
@@ -181,7 +181,7 @@ function NewGroup({ onBack }: { onBack: () => void }) {
         {(f) => {
           const on = picked.some((p) => p.user_id === f.user_id)
           return (
-            <button type="button" disabled={!on && full} aria-pressed={on} onClick={() => toggle(f)} className="ib-pick">
+            <button type="button" disabled={!on && full} aria-label={f.nick} aria-pressed={on} onClick={() => toggle(f)} className="ib-pick">
               <Avatar id={f.user_id} name={f.nick} size="sm" />
               <span className="truncate">{f.nick}</span>
               <span className="ib-check" data-on={on} aria-hidden="true">
@@ -204,7 +204,7 @@ function NewGroup({ onBack }: { onBack: () => void }) {
   )
 }
 
-function FanList({ fans, children }: { fans: Fan[] | null; children: (f: Fan) => React.ReactNode }) {
+export function FanList({ fans, children }: { fans: Fan[] | null; children: (f: Fan) => React.ReactNode }) {
   if (fans === null) return <div className="skeleton h-24 rounded-xl" aria-hidden="true" />
   if (fans.length === 0) return <p className="px-1 py-3 text-sm text-muted">לא נמצאו אוהדים</p>
   return (

@@ -1,6 +1,5 @@
 'use server'
 
-import type { Route } from 'next'
 import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
@@ -68,7 +67,7 @@ export const createGroupAction = actionClient.inputSchema(createGroupSchema).act
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { data, error } = await supabase.rpc('create_group', { p_name: parsedInput.name, p_members: parsedInput.memberIds })
   if (error || !data) return { error: groupErrorHe(errorCode(error?.message ?? '')) }
-  redirect(`/inbox/g/${data}` as Route)
+  redirect(`/inbox/g/${data}`)
 })
 
 export const inviteAction = actionClient.inputSchema(inviteSchema).action(async ({ parsedInput }) => {
@@ -86,7 +85,7 @@ export const answerInviteAction = actionClient
     if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
     const { error } = await supabase.rpc('answer_invite', { p_group: parsedInput.groupId, p_yes: parsedInput.yes })
     if (error) return { error: groupErrorHe(errorCode(error.message)) }
-    if (parsedInput.yes) redirect(`/inbox/g/${parsedInput.groupId}` as Route)
+    if (parsedInput.yes) redirect(`/inbox/g/${parsedInput.groupId}`)
     return { ok: true as const }
   })
 

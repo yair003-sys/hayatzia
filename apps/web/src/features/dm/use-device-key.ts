@@ -25,7 +25,15 @@ export function useDeviceKey(meId: string) {
         setStatus('הדפדפן הזה לא תומך בהצפנה. נסה דפדפן מעודכן.')
         return
       }
-      const { key: k } = await loadDeviceKey(meId)
+      const loaded = await loadDeviceKey(meId).catch((e: unknown) => {
+        console.warn('device key', e)
+        return null
+      })
+      if (!loaded) {
+        if (!cancelled) setStatus('לא הצלחנו לפתוח את ההצפנה במכשיר הזה')
+        return
+      }
+      const k = loaded.key
       const { error } = await supabase.from('device_keys').insert({ device_id: k.id, public_jwk: k.publicJwk })
       if (error && error.code !== '23505') console.warn('device key', error.message)
       if (!cancelled) setKey(k)

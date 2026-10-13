@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { Avatar } from '@/features/dm/components/avatar'
 import { DmThread } from '@/features/dm/components/dm-thread'
 import { getThread } from '@/features/dm/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
@@ -35,7 +36,10 @@ async function Thread({ id }: { id: string }) {
   return (
     <>
       <header className="flex items-start justify-between gap-3">
-        <h1 className="t-page">{t.otherNick}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar id={t.otherId} name={t.otherNick} />
+          <h1 className="t-page truncate">{t.otherNick}</h1>
+        </div>
         <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />
       </header>
       <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} />

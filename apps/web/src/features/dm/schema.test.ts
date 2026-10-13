@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   avatarOf,
   createGroupSchema,
+  eventLine,
   filterInbox,
   groupErrorHe,
   groupNameSchema,
@@ -128,5 +129,14 @@ describe('membersLabel', () => {
     expect(membersLabel(1)).toBe('חבר אחד')
     expect(membersLabel(2)).toBe('2 חברים')
     expect(membersLabel(20)).toBe('20 חברים')
+  })
+})
+
+describe('eventLine', () => {
+  it('builds system lines from nicknames only', () => {
+    expect(eventLine('join', 'דני')).toBe('דני הצטרף')
+    expect(eventLine('leave', 'יוסי')).toBe('יוסי עזב')
+    expect(eventLine('remove', 'רון')).toBe('המנהל הוציא את רון')
+    expect(eventLine('rename', '')).toBe('שם הקבוצה שונה')
   })
 })

@@ -99,3 +99,37 @@ const GROUP_ERRORS: Record<string, string> = {
 export function groupErrorHe(code: string): string {
   return GROUP_ERRORS[code] ?? 'הפעולה נכשלה. נסה שוב'
 }
+
+/** "חבר אחד" for one, "n חברים" otherwise. */
+export function membersLabel(n: number): string {
+  return n === 1 ? 'חבר אחד' : `${n} חברים`
+}
+
+/**
+ * Whose devices a new group message is wrapped for: current admins and members (never invitees or
+ * removed fans), minus fans I blocked, plus me. No duplicates.
+ */
+export function recipientsFor(members: { userId: string; role: string }[], blockedByMe: string[], meId: string): string[] {
+  const blocked = new Set(blockedByMe)
+  const ids = new Set<string>([meId])
+  for (const m of members) {
+    if ((m.role === 'admin' || m.role === 'member') && !blocked.has(m.userId)) ids.add(m.userId)
+  }
+  return [...ids]
+}
+
+export type GroupEventKind = 'join' | 'leave' | 'remove' | 'rename'
+
+/** System line for a group event, built from nicknames only (never message content). */
+export function eventLine(kind: GroupEventKind, subjectNick: string): string {
+  switch (kind) {
+    case 'join':
+      return `${subjectNick} הצטרף`
+    case 'leave':
+      return `${subjectNick} עזב`
+    case 'remove':
+      return `המנהל הוציא את ${subjectNick}`
+    case 'rename':
+      return 'שם הקבוצה שונה'
+  }
+}

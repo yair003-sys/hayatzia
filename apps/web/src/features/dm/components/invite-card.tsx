@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Invite } from '../schema'
+import { membersLabel, type Invite } from '../schema'
 import { answerInviteAction } from '../server/actions'
 import { Avatar } from './avatar'
 
@@ -29,7 +29,7 @@ export function InviteCard({ invite }: { invite: Invite }) {
           <b className="font-semibold text-fg">{invite.invitedBy}</b> הזמין אותך לקבוצה{' '}
           <b className="font-semibold text-fg">&#x27;{invite.name}&#x27;</b>
           <span className="block text-xs text-dim">
-            <span className="t-num">{invite.members}</span> חברים
+            {membersLabel(invite.members)}
           </span>
         </p>
       </div>

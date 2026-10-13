@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { Route } from 'next'
 import { BellOff, MessagesSquare, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { chatTime } from '@/features/chat/schema'
-import { filterInbox, previewText, unreadLabel, type InboxRow, type Invite } from '../schema'
+import { filterInbox, membersLabel, previewText, unreadLabel, type InboxRow, type Invite } from '../schema'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
 import { Avatar } from './avatar'
 import { InviteCard } from './invite-card'
@@ -126,15 +125,14 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
 }
 
 function previewOf(r: InboxRow, previews: Map<string, string>): string | null {
-  if (!r.lastMessageId) return r.kind === 'group' ? `0 הודעות · ${r.members ?? 1} חברים` : '0 הודעות'
+  if (!r.lastMessageId) return r.kind === 'group' ? `עוד אין הודעות · ${membersLabel(r.members ?? 1)}` : 'עוד אין הודעות'
   return previews.get(rowKey(r)) ?? null // null while decrypting
 }
 
 function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
   const badge = unreadLabel(row.unread)
-  const href = (row.kind === 'group' ? `/inbox/g/${row.id}` : `/inbox/${row.id}`) as Route
   return (
-    <Link href={href} className="ib-row" data-unread={badge ? 'true' : undefined}>
+    <Link href={row.kind === 'group' ? `/inbox/g/${row.id}` : `/inbox/${row.id}`} className="ib-row" data-unread={badge ? 'true' : undefined}>
       <Avatar id={row.kind === 'group' ? row.id : (row.otherId ?? row.id)} name={row.name} group={row.kind === 'group'} />
       <div className="ib-body">
         <div className="flex items-baseline gap-2">
