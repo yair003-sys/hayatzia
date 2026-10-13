@@ -86,6 +86,8 @@ describe('groupErrorHe', () => {
     expect(groupErrorHe('not_same_team')).toBe('אפשר להזמין רק אוהדים מהקבוצה שלך')
     expect(groupErrorHe('invite_expired')).toBe('ההזמנה פגה')
     expect(groupErrorHe('no_members')).toBe('בחר לפחות אוהד אחד')
+    expect(groupErrorHe('not_member')).toBe('ההזמנה כבר לא בתוקף, או שאתה כבר לא בקבוצה')
+    expect(groupErrorHe('bad_name')).toBe('שם הקבוצה צריך להיות 2–40 תווים')
   })
   it('falls back for unknown codes', () => {
     expect(groupErrorHe('bad_kind')).toBe('הפעולה נכשלה. נסה שוב')
