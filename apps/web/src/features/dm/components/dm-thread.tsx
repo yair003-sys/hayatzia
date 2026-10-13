@@ -106,7 +106,10 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     }
   }, [me, threadId, supabase, reveal])
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages])
+  // Braces: newer Chrome returns a Promise from scrollIntoView, and React would call it as a cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' })
+  }, [messages])
 
   const send = () => {
     const text = draft.trim()
