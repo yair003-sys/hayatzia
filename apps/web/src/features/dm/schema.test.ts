@@ -5,8 +5,10 @@ import {
   filterInbox,
   groupErrorHe,
   groupNameSchema,
+  membersLabel,
   orderedPair,
   previewText,
+  recipientsFor,
   unreadLabel,
   type InboxRow,
 } from './schema'
@@ -86,5 +88,45 @@ describe('groupErrorHe', () => {
   it('falls back for unknown codes', () => {
     expect(groupErrorHe('bad_kind')).toBe('הפעולה נכשלה. נסה שוב')
     expect(groupErrorHe('whatever')).toBe('הפעולה נכשלה. נסה שוב')
+  })
+})
+
+describe('recipientsFor', () => {
+  const me = 'me'
+  it('keeps admins and members, never invitees', () => {
+    const r = recipientsFor([
+      { userId: 'me', role: 'admin' },
+      { userId: 'a', role: 'member' },
+      { userId: 'b', role: 'invited' },
+    ], [], me)
+    expect(r.sort()).toEqual(['a', 'me'])
+  })
+  it('leaves out fans I blocked', () => {
+    const r = recipientsFor([
+      { userId: 'me', role: 'member' },
+      { userId: 'a', role: 'admin' },
+      { userId: 'c', role: 'member' },
+    ], ['c'], me)
+    expect(r.sort()).toEqual(['a', 'me'])
+  })
+  it('always includes me, even when my row is missing', () => {
+    expect(recipientsFor([{ userId: 'a', role: 'member' }], [], me)).toContain('me')
+  })
+  it('de-duplicates', () => {
+    const r = recipientsFor([
+      { userId: 'me', role: 'admin' },
+      { userId: 'a', role: 'member' },
+      { userId: 'a', role: 'member' },
+    ], [], me)
+    expect(r.filter((x) => x === 'a')).toHaveLength(1)
+    expect(r.filter((x) => x === 'me')).toHaveLength(1)
+  })
+})
+
+describe('membersLabel', () => {
+  it('says one member in words and many with a number', () => {
+    expect(membersLabel(1)).toBe('חבר אחד')
+    expect(membersLabel(2)).toBe('2 חברים')
+    expect(membersLabel(20)).toBe('20 חברים')
   })
 })
