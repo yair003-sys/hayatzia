@@ -40,6 +40,14 @@ describe('minuteLabel', () => {
   it('is empty before kick-off', () => {
     expect(minuteLabel(fx(1, KICK), KICK - MIN)).toBe('')
   })
+  it('labels extra time, the break and penalties instead of "הסתיים" past 110′', () => {
+    expect(minuteLabel(fx(1, KICK, 'ET'), KICK + 120 * MIN)).toBe('הארכה')
+    expect(minuteLabel(fx(1, KICK, 'BT'), KICK + 128 * MIN)).toBe('הפסקה בהארכה')
+    expect(minuteLabel(fx(1, KICK, 'P'), KICK + 150 * MIN)).toBe('פנדלים')
+  })
+  it('still calls a stale second-half status finished at 115′', () => {
+    expect(minuteLabel(fx(1, KICK, '2H'), KICK + 115 * MIN)).toBe('הסתיים')
+  })
 })
 
 describe('pickTicket', () => {

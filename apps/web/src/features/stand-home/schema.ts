@@ -54,6 +54,10 @@ function isLive(f: Fixture, nowMs: number): boolean {
 export function minuteLabel(f: Fixture, nowMs: number): string {
   if (DONE_STATUSES.has(f.st)) return 'הסתיים'
   if (f.st === 'HT') return 'מחצית'
+  // Extra time and penalties run past the 110′ cutoff: the data wins, so a game still being played never reads "הסתיים".
+  if (f.st === 'ET') return 'הארכה'
+  if (f.st === 'BT') return 'הפסקה בהארכה'
+  if (f.st === 'P') return 'פנדלים'
   const e = elapsedMin(f, nowMs)
   if (e < 0) return ''
   if (e >= MATCH_MIN) return 'הסתיים'
