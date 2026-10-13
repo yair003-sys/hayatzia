@@ -8,6 +8,7 @@ import {
   groupNameSchema,
   membersLabel,
   orderedPair,
+  pickDevices,
   previewText,
   recipientsFor,
   unreadLabel,
@@ -138,5 +139,37 @@ describe('eventLine', () => {
     expect(eventLine('leave', 'יוסי')).toBe('יוסי עזב')
     expect(eventLine('remove', 'רון')).toBe('המנהל הוציא את רון')
     expect(eventLine('rename', '')).toBe('שם הקבוצה שונה')
+  })
+})
+
+describe('pickDevices', () => {
+  const dev = (user_id: string, id: string, day: number) => ({ user_id, id, created_at: `2026-10-${String(day).padStart(2, '0')}T00:00:00Z` })
+  const all = [
+    dev('a', 'a1', 1),
+    dev('a', 'a2', 2),
+    dev('a', 'a3', 3),
+    dev('a', 'a4', 4),
+    dev('a', 'a5', 5),
+    dev('me', 'm1', 1),
+    dev('me', 'm2', 6),
+    dev('me', 'm3', 7),
+    dev('me', 'm4', 8),
+    dev('b', 'b1', 1),
+  ]
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id).sort()
+
+  it('keeps the newest devices of each fan', () => {
+    const r = pickDevices(all, 3, { user_id: 'me', id: 'm4' })
+    expect(ids(r.filter((d) => d.user_id === 'a'))).toEqual(['a3', 'a4', 'a5'])
+    expect(ids(r.filter((d) => d.user_id === 'b'))).toEqual(['b1'])
+  })
+  it('keeps this device even when it is older than my other devices', () => {
+    const r = pickDevices(all, 3, { user_id: 'me', id: 'm1' })
+    expect(ids(r.filter((d) => d.user_id === 'me'))).toEqual(['m1', 'm3', 'm4'])
+  })
+  it('never keeps more than perUser per fan', () => {
+    const r = pickDevices(all, 3, { user_id: 'me', id: 'm1' })
+    for (const u of ['a', 'b', 'me']) expect(r.filter((d) => d.user_id === u).length).toBeLessThanOrEqual(3)
+    expect(r).toHaveLength(7)
   })
 })
