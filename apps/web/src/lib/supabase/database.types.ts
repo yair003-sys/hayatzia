@@ -1015,9 +1015,6 @@ isOneToOne: false
 "blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
-"create_group":
-{ Args: { "p_members": string[],"p_name": string }; Returns: string
-                           },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
                            },
@@ -1026,6 +1023,9 @@ isOneToOne: false
                            },
 "club_of_api":
 { Args: { "p_api_id": number }; Returns: string
+                           },
+"create_group":
+{ Args: { "p_members": (string)[],"p_name": string }; Returns: string
                            },
 "crowd_bump":
 { Args: { "p_delta": number,"p_group": string,"p_option": string,"p_poll": string,"p_row": string }; Returns: undefined
@@ -1048,20 +1048,20 @@ isOneToOne: false
 "crowd_tick":
 { Args: { "p_fixture": number }; Returns: undefined
                            },
+"distance_m":
+{ Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
+                           },
 "dm_group_lock":
 { Args: { "p_group": string }; Returns: string
                            },
 "dm_group_name":
 { Args: { "p_name": string }; Returns: string
                            },
-"distance_m":
-{ Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
-                           },
 "group_push_targets":
 { Args: { "p_group": string }; Returns: string[]
                            },
 "invite_to_group":
-{ Args: { "p_group": string,"p_members": string[] }; Returns: string[]
+{ Args: { "p_group": string,"p_members": (string)[] }; Returns: (string)[]
                            },
 "is_club_rep":
 { Args: Record<PropertyKey, never>; Returns: boolean
