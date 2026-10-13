@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from './route'
 
 const mocks = vi.hoisted(() => ({ getBannerAlert: vi.fn() }))
-vi.mock('@/features/push/server/banner-alert', () => ({ getBannerAlert: mocks.getBannerAlert }))
+vi.mock('@/features/push/server/banner-alert', () => ({ getBannerAlert: mocks.getBannerAlert, ALERT_NOT_FOUND: 'alert_not_found' }))
 
 const call = (id: string) => GET(new Request(`http://localhost/api/alerts/${id}`), { params: Promise.resolve({ id }) })
 const alert = { title: '⚽ שער! א 1:0 ב', body: "12′", homeApiId: 604, awayApiId: 657, bar: '#FFD400' }
@@ -22,8 +22,8 @@ describe('GET /api/alerts/[id]', () => {
     expect(mocks.getBannerAlert).toHaveBeenCalledWith(42)
   })
 
-  it('404 for an unknown alert, not cached', async () => {
-    mocks.getBannerAlert.mockResolvedValue(null)
+  it('404 for an unknown alert (thrown, so the cache never keeps it), not cached by the CDN either', async () => {
+    mocks.getBannerAlert.mockRejectedValue(new Error('alert_not_found'))
     const res = await call('42')
     expect(res.status).toBe(404)
     expect(res.headers.get('cache-control')).toBe('no-store')

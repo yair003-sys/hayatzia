@@ -40,11 +40,15 @@ async function dispatchAlerts() {
   try {
     const r = await fetch(`${base.replace(/\/$/, '')}/api/alerts/dispatch`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${secret}` },
-      signal: AbortSignal.timeout(30_000),
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        // Vercel Deployment Protection on previews: the "Protection Bypass for Automation" secret, when set.
+        ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? { 'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET } : {}),
+      },
+      signal: AbortSignal.timeout(75_000), // the route may run up to 60 s (maxDuration)
     })
-    const body = (await r.json().catch(() => ({}))) as { sent?: number; skipped?: number }
-    notice('demo alerts', `dispatch HTTP ${r.status} sent=${body.sent ?? '?'} skipped=${body.skipped ?? '?'}`)
+    const body = (await r.json().catch(() => ({}))) as { sent?: number; skipped?: number; more?: boolean }
+    notice('demo alerts', `dispatch HTTP ${r.status} sent=${body.sent ?? '?'} skipped=${body.skipped ?? '?'} more=${body.more ?? '?'}`)
   } catch {
     notice('demo alerts', 'dispatch failed (ignored)')
   }

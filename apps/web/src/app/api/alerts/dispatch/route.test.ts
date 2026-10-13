@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { POST } from './route'
+import { DISPATCH_MAX_SECONDS } from '@/features/push/server/dispatch'
+import { maxDuration, POST } from './route'
 
 const mocks = vi.hoisted(() => ({
   env: { ALERTS_SECRET: undefined as string | undefined },
@@ -49,8 +50,12 @@ describe('POST /api/alerts/dispatch', () => {
   it('with the right secret it runs (no database here → nothing sent)', async () => {
     const res = await POST(req(`Bearer ${SECRET}`))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ sent: 0, skipped: 0 })
+    expect(await res.json()).toEqual({ sent: 0, skipped: 0, more: false })
     expect(mocks.createAdminClient).toHaveBeenCalledOnce()
     expect(mocks.sendPush).not.toHaveBeenCalled()
+  })
+
+  it('the route time limit is the one the dispatcher plans for', () => {
+    expect(maxDuration).toBe(DISPATCH_MAX_SECONDS)
   })
 })

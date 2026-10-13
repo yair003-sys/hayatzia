@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alertText, freshInOrder, goalMinute, goalsSince, isStale } from './alerts'
+import { alertText, freshInOrder, goalMinute, goalsSince, groupByMatch, isStale } from './alerts'
 
 const goal = { id: 1, fixture_id: 77, kind: 'goal', home_goals: 2, away_goals: 1, scoring_api_id: 604 }
 const ft = { ...goal, kind: 'ft', scoring_api_id: null }
@@ -96,5 +96,16 @@ describe('freshInOrder', () => {
     ]
     expect(freshInOrder(claimed, now).map((a) => a.id)).toEqual([10, 11, 12])
     expect(claimed.map((a) => a.id)).toEqual([12, 10, 3, 11]) // input untouched
+  })
+})
+
+describe('groupByMatch', () => {
+  it('one group per match, each in id order, oldest match first', () => {
+    const a = (id: number, fixture_id: number) => ({ id, fixture_id })
+    expect(groupByMatch([a(5, 2), a(3, 1), a(4, 2), a(1, 1)])).toEqual([
+      [a(1, 1), a(3, 1)],
+      [a(4, 2), a(5, 2)],
+    ])
+    expect(groupByMatch([])).toEqual([])
   })
 })

@@ -74,3 +74,17 @@ export function alertText(alert: MatchAlert, home: string, away: string, scorers
   const body = [minute ? `${minute}′` : '', scorers.join(', ')].filter(Boolean).join(' · ')
   return { title: `⚽ שער! ${score}`, body, url, tag }
 }
+
+/**
+ * Alerts grouped per match, each group in id order (the lock screen keeps one notification per match, so the last
+ * one sent must be the newest). Groups are independent and may be sent in parallel; groups come oldest first.
+ */
+export function groupByMatch<T extends { id: number; fixture_id: number }>(alerts: readonly T[]): T[][] {
+  const groups = new Map<number, T[]>()
+  for (const a of [...alerts].sort((p, q) => p.id - q.id)) {
+    const g = groups.get(a.fixture_id)
+    if (g) g.push(a)
+    else groups.set(a.fixture_id, [a])
+  }
+  return [...groups.values()]
+}

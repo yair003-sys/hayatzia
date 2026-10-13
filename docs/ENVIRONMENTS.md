@@ -44,6 +44,13 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 ## Goal alerts wiring
 - Secret `ALERTS_SECRET` in GitHub environments `Production` and `staging` (each with its own value, equal to the Vercel Production / Preview value respectively), and variable `APP_URL` per environment: production `https://hayatzia-flame.vercel.app`, staging `https://hayatzia-git-demo-preview-hayaziha.vercel.app`.
 - `web-ingest.yml` calls `$APP_URL/api/alerts/dispatch` after each ingest; skipped with a notice when either is empty; never fails the job. `web-demo-match.yml` passes both so the demo script can trigger alerts (it refuses an `APP_URL` pointing at production).
+- The dispatch route runs up to 60 s (`maxDuration`, valid on Vercel Hobby and Pro with Fluid compute) and claims alerts in rounds of 5 while time remains; it answers `{sent, skipped, more}` (`more: true` = some alerts wait for the next call). The workflow's curl waits 75 s.
+- `/api/alerts` is outside the session proxy (no cookies), so the banner's `GET /api/alerts/<id>` can be shared by the CDN.
+
+### Owner setup still needed for alerts on staging (and the demo)
+1. **Vercel → Settings → Environment Variables → Preview:** add `SUPABASE_SECRET_KEY` with the **staging** project's `sb_secret_…` key (today it is not set, so on staging the dispatch sends nothing and the banner's goal text answers 503). Never the production key.
+2. **Vercel → Preview:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` must be there too (same pair as Production is fine), plus `ALERTS_SECRET` (the staging value).
+3. **Vercel Deployment Protection:** preview URLs are usually behind Vercel sign-in, so GitHub's call to `https://hayatzia-git-demo-preview-hayaziha.vercel.app/api/alerts/dispatch` would get a login page instead. Either turn protection off for previews, or (recommended) Vercel → Settings → Deployment Protection → **Protection Bypass for Automation** → create a secret, and paste it into the GitHub `staging` environment as secret `VERCEL_AUTOMATION_BYPASS_SECRET`. `web-ingest.yml` and the demo script then send it as the `x-vercel-protection-bypass` header (only when the secret exists). Production has no protection, so it needs nothing.
 
 ## Crowd-verdict demo (staging only)
 - `.github/workflows/web-demo-match.yml` (dispatch only, `environment: staging`) runs `scripts/demo-match.ts`: demo match `900000001` (`is_demo`, labelled "משחק לדוגמה · נתונים לדוגמה"), 30 demo fans (`demo-fan-NN@demo.hayatzia.test`, nicks `דמו·…`), a chat burst that opens a poll by itself, scripted events, demo votes; about 12 minutes. The script refuses the production ref.

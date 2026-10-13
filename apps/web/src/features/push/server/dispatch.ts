@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { freshInOrder } from '../alerts'
+import { freshInOrder, groupByMatch } from '../alerts'
 import { describeAlerts, type Admin } from './describe'
 import { pushConfigured, sendPush } from './send'
 
@@ -35,38 +35,69 @@ async function recipients(admin: Admin, fixtureId: number): Promise<string[]> {
   return out
 }
 
+/** The dispatch route's time limit (its `maxDuration`). 60 s is valid on Vercel Hobby and Pro with Fluid compute. */
+export const DISPATCH_MAX_SECONDS = 60
+/** Alerts claimed per round: small, so what is claimed is sent before the time runs out and the rest stays queued. */
+const CLAIM_BATCH = 5
+/** Stop claiming this long before the limit (a round of sends must still fit). */
+const SAFETY_MS = 20_000
+
 /**
- * Claims unsent match alerts and pushes them. Claiming marks them sent first, so a failed or concurrent run never
- * pushes one twice. Alerts older than 30 minutes are skipped (stale); the rest go out oldest first (by id), so the
- * lock screen (one tag per match) ends on the latest score or full time. The text comes from describeAlerts (shared
- * with the in-app banner; one read per batch); recipients are read once per match. Logs counts only.
+ * Claims unsent match alerts in small rounds while time remains, and pushes them. Claiming marks them sent first, so
+ * a failed or concurrent run never pushes one twice; alerts not yet claimed when time runs out stay for the next call
+ * (`more: true`). The database marks alerts older than 30 minutes as sent without claiming them (stale). Within a
+ * round, different matches go out in parallel and each match in id order, so its lock-screen notification (one tag per
+ * match) ends on the latest score or full time. The text comes from describeAlerts (shared with the in-app banner);
+ * recipients are read once per match per call. Logs counts only.
  */
-export async function dispatchAlerts(): Promise<{ sent: number; skipped: number }> {
+export async function dispatchAlerts(
+  opts: { budgetMs?: number; now?: () => number } = {},
+): Promise<{ sent: number; skipped: number; more: boolean }> {
+  const now = opts.now ?? Date.now
+  const deadline = now() + (opts.budgetMs ?? DISPATCH_MAX_SECONDS * 1000) - SAFETY_MS
   const admin = createAdminClient()
-  if (!admin) return { sent: 0, skipped: 0 }
-  const { data: claimed, error } = await admin.rpc('claim_alerts', { p_limit: CLAIM_LIMIT })
-  if (error) console.warn('claim alerts failed', error.code)
-  if (error || !claimed?.length) return { sent: 0, skipped: 0 }
+  if (!admin || !pushConfigured()) return { sent: 0, skipped: 0, more: false } // nothing claimed: nothing lost
 
-  const now = Date.now()
-  const fresh = freshInOrder(claimed, now)
-  let skipped = claimed.length - fresh.length
-  if (!fresh.length || !pushConfigured()) return { sent: 0, skipped: claimed.length }
-
-  const described = await describeAlerts(admin, fresh)
-  const fans = new Map<number, string[]>()
-  let sent = 0
-  for (const alert of fresh) {
-    const d = described.get(alert.id)
-    if (!d) {
-      skipped++
-      continue
+  const fans = new Map<number, Promise<string[]>>()
+  const audience = (fixtureId: number) => {
+    let p = fans.get(fixtureId)
+    if (!p) {
+      p = recipients(admin, fixtureId)
+      fans.set(fixtureId, p)
     }
-    if (!fans.has(alert.fixture_id)) fans.set(alert.fixture_id, await recipients(admin, alert.fixture_id))
-    const to = fans.get(alert.fixture_id)!
-    if (to.length) await sendPush(to, d.push)
-    sent++
+    return p
   }
-  console.info(`alerts dispatched: sent=${sent} skipped=${skipped}`)
-  return { sent, skipped }
+
+  let sent = 0
+  let skipped = 0
+  let more = false
+  for (;;) {
+    if (now() >= deadline) {
+      more = true
+      break
+    }
+    const { data: claimed, error } = await admin.rpc('claim_alerts', { p_limit: CLAIM_BATCH })
+    if (error) console.warn('claim alerts failed', error.code)
+    if (error || !claimed?.length) break
+    const fresh = freshInOrder(claimed, now())
+    skipped += claimed.length - fresh.length
+    const described = await describeAlerts(admin, fresh)
+    await Promise.all(
+      groupByMatch(fresh).map(async (group) => {
+        for (const alert of group) {
+          const d = described.get(alert.id)
+          if (!d) {
+            skipped++
+            continue
+          }
+          const to = await audience(alert.fixture_id)
+          if (to.length) await sendPush(to, d.push)
+          sent++
+        }
+      }),
+    )
+    if (claimed.length < CLAIM_BATCH) break
+  }
+  console.info(`alerts dispatched: sent=${sent} skipped=${skipped} more=${more}`)
+  return { sent, skipped, more }
 }

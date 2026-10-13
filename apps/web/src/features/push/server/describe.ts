@@ -5,6 +5,9 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { alertText, goalsSince, type MatchAlert } from '../alerts'
 import type { PushPayload } from '../schema'
 
+/** Title prefix for alerts of a demo match (project rule: demo content is always labelled). */
+export const DEMO_PREFIX = 'לדוגמה · '
+
 export type Admin = NonNullable<ReturnType<typeof createAdminClient>>
 
 export type DescribedAlert = {
@@ -31,7 +34,7 @@ export async function describeAlerts(
   if (!alerts.length) return out
   const fixtureIds = [...new Set(alerts.map((a) => a.fixture_id))]
   const [fixtures, details, earlier] = await Promise.all([
-    admin.from('fixtures').select('id,home_api_id,away_api_id').in('id', fixtureIds),
+    admin.from('fixtures').select('id,home_api_id,away_api_id,is_demo').in('id', fixtureIds),
     admin.from('fixture_details').select('fixture_id,events').in('fixture_id', fixtureIds),
     admin.from('match_alerts').select('id,fixture_id,home_goals,away_goals').in('fixture_id', fixtureIds).eq('kind', 'goal').order('id'),
   ])
@@ -61,8 +64,11 @@ export async function describeAlerts(
           )
         : { scorers: [], minute: null }
     const scorer = alert.kind === 'goal' && alert.scoring_api_id ? team(alert.scoring_api_id) : null
+    const push = alertText(alert, team(f.home_api_id).name, team(f.away_api_id).name, scorers, minute)
+    // Demo matches (staging only) are always labelled as such, in the push and in the banner.
+    if (f.is_demo) push.title = `${DEMO_PREFIX}${push.title}`
     out.set(alert.id, {
-      push: alertText(alert, team(f.home_api_id).name, team(f.away_api_id).name, scorers, minute),
+      push,
       homeApiId: f.home_api_id,
       awayApiId: f.away_api_id,
       bar: scorer?.bar ?? null,

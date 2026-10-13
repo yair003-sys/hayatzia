@@ -27,6 +27,8 @@ import { prefsSchema, type NotificationPrefs } from '../schema'
 import { BannerView, type ShownBanner } from './alert-banner-view'
 
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
+/** Up to this long a random wait before asking for an alert's text. */
+const FETCH_JITTER_MS = 1500
 
 type Content = Omit<ShownBanner, 'seq'>
 type Client = ReturnType<typeof createClient>
@@ -115,6 +117,9 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
       const href = bannerHref(event)
       switch (event.kind) {
         case 'match': {
+          // Every fan gets the broadcast at the same moment: a small random wait spreads the requests (the CDN then
+          // answers most of them from one cached copy).
+          await new Promise((r) => setTimeout(r, Math.random() * FETCH_JITTER_MS))
           const res = await fetch(`/api/alerts/${alertId}`).catch(() => null)
           if (!res?.ok) return null
           const a = bannerAlertSchema.safeParse(await res.json().catch(() => null))
@@ -180,18 +185,37 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
       if (!gate.claim(n)) return
       setBanner({ ...content, seq: n })
     }
-    const offAlerts = listenPrivate(supabase, 'alerts', (m) => {
-      if (m.event !== 'alert') return
-      const a = parseAlertPayload(m.payload)
-      if (a) void handle({ kind: 'match', fixtureId: a.fixtureId, homeApiId: 0, awayApiId: 0 }, a.id)
-    })
-    const offInbox = listenPrivate(supabase, `inbox:${meId}`, (m) => {
-      const e = parseInboxEvent(m.event, m.payload)
-      if (e) void handle(e)
-    })
+    // Listen only while the page is visible: a hidden tab or a phone in a pocket holds no Realtime join (the phone
+    // push covers that time). Leaving goes through listenPrivate's counted off, so the inbox page's own listener on
+    // inbox:<me> is unaffected.
+    let offs: (() => void)[] = []
+    const join = () => {
+      if (offs.length) return
+      offs = [
+        listenPrivate(supabase, 'alerts', (m) => {
+          if (m.event !== 'alert') return
+          const a = parseAlertPayload(m.payload)
+          if (a) void handle({ kind: 'match', fixtureId: a.fixtureId, homeApiId: 0, awayApiId: 0 }, a.id)
+        }),
+        listenPrivate(supabase, `inbox:${meId}`, (m) => {
+          const e = parseInboxEvent(m.event, m.payload)
+          if (e) void handle(e)
+        }),
+      ]
+    }
+    const leave = () => {
+      for (const off of offs) off()
+      offs = []
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') leave()
+      else join()
+    }
+    if (document.visibilityState !== 'hidden') join()
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
-      offAlerts()
-      offInbox()
+      document.removeEventListener('visibilitychange', onVisibility)
+      leave()
     }
   }, [supabase, meId, lookUp])
 
