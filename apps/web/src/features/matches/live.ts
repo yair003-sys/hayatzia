@@ -1,8 +1,8 @@
 // Live-centre helpers: Israel day buckets, the 7-day strip, live-now selection, line-up pitch, crest initials.
 // Pure (no "now" inside): callers pass the clock, so these are safe in cached server components and in tests.
-import { isTicketLive } from '@/features/stand-home/schema'
+import { isTicketLive, minuteLabel } from '@/features/stand-home/schema'
 import { currentRoundIndex, groupByRound } from './rounds'
-import type { Fixture } from './schema'
+import { DONE_STATUSES, LIVE_STATUSES, type Fixture } from './schema'
 import type { RoomState } from '@/features/match-room/schema'
 
 const TZ = 'Asia/Jerusalem'
@@ -130,4 +130,16 @@ const TABS: readonly MatchTab[] = ['game', 'lineup', 'room']
 export function pickTab(param: unknown, room: RoomState): MatchTab {
   if (typeof param === 'string' && (TABS as readonly string[]).includes(param)) return param as MatchTab
   return room === 'open' || room === 'closing' ? 'room' : 'game'
+}
+
+/**
+ * One rule for "is it live / is it over" on a tile and on the match hero. Before the clock is known (`now` null:
+ * prerender, hydration) the status decides; after, the 170′ rule turns a stale 1H/2H into a finished game,
+ * and a live game whose minute reads "הסתיים" is shown as a final score, never as "LIVE הסתיים".
+ */
+export function matchPhase(f: Fixture, now: number | null): { live: boolean; done: boolean; minute: string } {
+  const minute = now === null ? '' : minuteLabel(f, now)
+  const live = (now === null ? LIVE_STATUSES.has(f.st) : isTicketLive(f, now)) && minute !== 'הסתיים'
+  const done = DONE_STATUSES.has(f.st) || (LIVE_STATUSES.has(f.st) && !live)
+  return { live, done, minute: live ? minute : '' }
 }

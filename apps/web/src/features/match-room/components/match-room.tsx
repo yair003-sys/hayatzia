@@ -95,6 +95,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
       </div>
       <ChatRoom
         topic={`match:${fixtureId}`}
+        openAtEnd={false}
         inserts={inserts}
         onChannelEvent={c.onChannelEvent}
         pinned={

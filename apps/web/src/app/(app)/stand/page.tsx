@@ -92,7 +92,7 @@ async function StandHome() {
           <MatchTicket fixture={ticket} home={nameOf(ticket.h)} away={nameOf(ticket.a)} />
           {active && <CheckinButton fixtureId={ticket.id} done={checked} label={team.short} />}
           {active && DONE_STATUSES.has(ticket.st) && (
-            <Link href={`/matches/${ticket.id}#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-bold">
+            <Link href={`/matches/${ticket.id}?tab=room#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-bold">
               <Trophy className="size-4 text-warn" aria-hidden="true" />
               שחקן המשחק · דרג את השחקנים
             </Link>

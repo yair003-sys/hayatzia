@@ -58,3 +58,5 @@ export type League = z.infer<typeof leagueSchema>
 
 export const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'])
 export const DONE_STATUSES = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO'])
+/** Games not being played at their kick-off time (postponed, cancelled, abandoned, undated, awarded, walkover): never live. */
+export const NOT_PLAYED_STATUSES = new Set(['PST', 'CANC', 'ABD', 'TBD', 'AWD', 'WO'])

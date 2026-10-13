@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, parseDayKey, pickDay, pickTab, pitchSpots, sideScore, stripCentre } from './live'
+import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, matchPhase, parseDayKey, pickDay, pickTab, pitchSpots, sideScore, stripCentre } from './live'
 import type { Fixture } from './schema'
 
 const fx = (id: number, t: number, st = 'NS'): Fixture => ({
@@ -180,5 +180,28 @@ describe('pickTab', () => {
   it('ignores junk and arrays', () => {
     expect(pickTab('stats', 'closed')).toBe('game')
     expect(pickTab(['room'], 'closed')).toBe('game')
+  })
+})
+
+describe('matchPhase (tile and hero)', () => {
+  const now = Date.parse('2026-10-13T18:00:00Z')
+  const ago = (min: number) => (now - min * 60_000) / 1000
+  it('a game in play is live with its minute', () => {
+    expect(matchPhase(fx(1, ago(30), '1H'), now)).toEqual({ live: true, done: false, minute: "30'" })
+  })
+  it('a stale 1H/2H after the 170′ cut-off is finished, not live', () => {
+    expect(matchPhase(fx(1, ago(200), '1H'), now)).toEqual({ live: false, done: true, minute: '' })
+    expect(matchPhase(fx(1, ago(200), '2H'), now)).toEqual({ live: false, done: true, minute: '' })
+  })
+  it('a 2H past 110′ reads as finished, never "LIVE הסתיים"', () => {
+    expect(matchPhase(fx(1, ago(120), '2H'), now)).toEqual({ live: false, done: true, minute: '' })
+  })
+  it('before the clock is known the status decides', () => {
+    expect(matchPhase(fx(1, ago(30), '2H'), null)).toEqual({ live: true, done: false, minute: '' })
+    expect(matchPhase(fx(1, ago(30), 'FT'), null)).toEqual({ live: false, done: true, minute: '' })
+    expect(matchPhase(fx(1, ago(-60), 'NS'), null)).toEqual({ live: false, done: false, minute: '' })
+  })
+  it('a postponed game in its time slot is neither live nor finished', () => {
+    expect(matchPhase(fx(1, ago(30), 'PST'), now)).toEqual({ live: false, done: false, minute: '' })
   })
 })

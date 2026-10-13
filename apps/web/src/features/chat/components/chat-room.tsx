@@ -40,6 +40,12 @@ export type ChatRoomProps = {
   onChannelEvent?: (event: string, payload: unknown) => void
   /** Shown just above the composer (e.g. the open poll's jump button). */
   pinned?: ReactNode
+  /**
+   * Scroll the page to the newest message on mount (default, team chat). A room that sits under other
+   * content (the match page's hero and tabs) passes false: the page stays put and the fan catches up
+   * with the "jump to the end" button.
+   */
+  openAtEnd?: boolean
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -58,6 +64,7 @@ export function ChatRoom({
   inserts,
   onChannelEvent,
   pinned,
+  openAtEnd = true,
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
@@ -70,8 +77,10 @@ export function ChatRoom({
   const shown = useRef<ChatMessage[]>(initial)
   const shownInserts = useRef(inserts?.length ?? 0)
   // Whether the end of the conversation is on screen; the chat follows new messages only then.
-  const [atBottom, setAtBottom] = useState(true)
-  const atBottomRef = useRef(true)
+  // A room that does not open at the end starts as "not at the end", so nothing scrolls the page
+  // before the observer has reported where the end really is.
+  const [atBottom, setAtBottom] = useState(openAtEnd)
+  const atBottomRef = useRef(openAtEnd)
   const [seenId, setSeenId] = useState<string | null>(initial.at(-1)?.id ?? null)
   const followMine = useRef(false)
 
@@ -87,10 +96,12 @@ export function ChatRoom({
       { rootMargin: '0px 0px 160px 0px' },
     )
     io.observe(el)
-    // Open at the newest message, like any chat.
-    el.scrollIntoView({ block: 'end' })
+    // Open at the newest message, like any chat (unless the room sits under other content).
+    if (openAtEnd) {
+      el.scrollIntoView({ block: 'end' })
+    }
     return () => io.disconnect()
-  }, [])
+  }, [openAtEnd])
   const onExtra = useRef(onChannelEvent)
   useEffect(() => {
     onExtra.current = onChannelEvent

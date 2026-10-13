@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Fixture } from '@/features/matches/schema'
-import { cardTier, countUsers, minuteLabel, pickTicket, splitPitch, teamAccent, untilLabel } from './schema'
+import { cardTier, countUsers, isTicketLive, minuteLabel, pickTicket, splitPitch, teamAccent, untilLabel } from './schema'
 
 const MIN = 60_000
 const KICK = Date.parse('2026-10-17T17:00:00Z')
@@ -23,6 +23,23 @@ describe('teamAccent (legacy teamColors)', () => {
   it('lightens dark club colours until they read on the dark page', () => {
     expect(teamAccent('#3550B8')).toEqual({ accent: '#455ebe', accent2: '#667bca', rgb: '69 94 190', text: '#7285ce', on: '#ffffff' })
     expect(teamAccent('#111111').accent).toBe('#707070')
+  })
+})
+
+describe('isTicketLive: games that are not being played', () => {
+  const now = KICK + 30 * MIN // inside the 110′ window, where a game with no status would count as live
+  for (const st of ['PST', 'CANC', 'ABD', 'TBD', 'AWD', 'WO']) {
+    it(`${st} is never live, and has no minute`, () => {
+      expect(isTicketLive(fx(1, KICK, st), now)).toBe(false)
+      expect(minuteLabel(fx(1, KICK, st), now)).not.toMatch(/'/)
+    })
+  }
+  it('a game in play in the same window is still live', () => {
+    expect(isTicketLive(fx(1, KICK, '1H'), now)).toBe(true)
+  })
+  it('pickTicket skips a postponed game in its time slot and shows the next one', () => {
+    const next = fx(2, KICK + 7 * 24 * 60 * MIN)
+    expect(pickTicket([fx(1, KICK, 'PST'), next], [604], now)?.id).toBe(2)
   })
 })
 

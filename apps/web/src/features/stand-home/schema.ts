@@ -1,5 +1,5 @@
 // Stand home ("היציע שלי"): pure helpers ported from the legacy home tab (index.html).
-import { DONE_STATUSES, LIVE_STATUSES, type Fixture } from '@/features/matches/schema'
+import { DONE_STATUSES, LIVE_STATUSES, NOT_PLAYED_STATUSES, type Fixture } from '@/features/matches/schema'
 
 const MIN = 60_000
 const MATCH_MIN = 110 // 90′ + break + stoppage, as the match rooms use
@@ -44,15 +44,17 @@ export function teamAccent(bar: string): TeamAccent {
 const elapsedMin = (f: Fixture, nowMs: number) => (nowMs - f.t * 1000) / MIN
 
 // A "live" status from the data is trusted only within the room's window (extra time fits); after that it is stale.
+// A postponed, cancelled, abandoned or undated game is never live, whatever the clock says.
 function isLive(f: Fixture, nowMs: number): boolean {
   const e = elapsedMin(f, nowMs)
-  if (DONE_STATUSES.has(f.st) || e < 0) return false
+  if (DONE_STATUSES.has(f.st) || NOT_PLAYED_STATUSES.has(f.st) || e < 0) return false
   return e < MATCH_MIN || (LIVE_STATUSES.has(f.st) && e < ROOM_CLOSE_MIN)
 }
 
 /** Minute shown on the ticket: estimated from kick-off like the legacy app; the data wins for HT and full time. */
 export function minuteLabel(f: Fixture, nowMs: number): string {
   if (DONE_STATUSES.has(f.st)) return 'הסתיים'
+  if (NOT_PLAYED_STATUSES.has(f.st)) return ''
   if (f.st === 'HT') return 'מחצית'
   // Extra time and penalties run past the 110′ cutoff: the data wins, so a game still being played never reads "הסתיים".
   if (f.st === 'ET') return 'הארכה'
@@ -73,7 +75,7 @@ export function pickTicket(fixtures: Fixture[], clubApiIds: number[], nowMs: num
   const live = mine.find((f) => isLive(f, nowMs))
   if (live) return live
   const started = mine.filter((f) => f.t * 1000 <= nowMs)
-  const justDone = started.filter((f) => nowMs < f.t * 1000 + ROOM_CLOSE_MIN * MIN).at(-1)
+  const justDone = started.filter((f) => !NOT_PLAYED_STATUSES.has(f.st) && nowMs < f.t * 1000 + ROOM_CLOSE_MIN * MIN).at(-1)
   if (justDone) return justDone
   const next = mine.find((f) => f.t * 1000 > nowMs && !DONE_STATUSES.has(f.st))
   return next ?? started.at(-1) ?? null

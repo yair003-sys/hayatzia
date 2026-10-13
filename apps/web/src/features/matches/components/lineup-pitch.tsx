@@ -16,10 +16,19 @@ const POS_HE: Record<string, string> = { G: 'שוער', D: 'הגנה', M: 'קי�
 /** "E. Zahavi" → "Zahavi": the pitch has room for a surname only (full name stays in the title). */
 const pitchName = (name: string) => name.replace(/^(\p{L}\.\s*)+/u, '') || name
 
+const hasLineup = (s: PitchSide) => !!s.lu && (s.lu.xi.length > 0 || s.lu.sub.length > 0)
+
+/** The side shown until the fan picks one: the first that has a line-up (home when neither or both do). */
+export function defaultSideKey(sides: PitchSide[]): PitchSide['key'] {
+  return (sides.find(hasLineup) ?? sides[0])?.key ?? 'home'
+}
+
 /** The "הרכב" tab: each club's starting XI on a half-pitch (goalkeeper at the bottom), a club switch, the bench below. */
 export function LineupPitch({ sides }: { sides: PitchSide[] }) {
-  const [key, setKey] = useState<PitchSide['key']>('home')
+  // null until the fan picks: the default follows the data, so a line-up that arrives later is still opened.
+  const [picked, setKey] = useState<PitchSide['key'] | null>(null)
   if (sides.every((s) => !s.lu)) return <p className="lc-end">{NOT_YET}</p>
+  const key = picked ?? defaultSideKey(sides)
   const side = sides.find((s) => s.key === key) ?? sides[0]!
   return (
     <div className="space-y-3">
@@ -61,17 +70,25 @@ function SideLineup({ side: { team, lu } }: { side: PitchSide }) {
         </p>
       )}
       {spots ? (
-        <div className="lc-pitch" style={colours} role="img" aria-label={`ההרכב הפותח של ${team.name}`}>
-          <i className="lc-pitch-arc" />
-          <i className="lc-pitch-box" />
-          <i className="lc-pitch-six" />
-          {spots.map((s, i) => (
-            <span key={i} className="lc-p" style={{ left: `${s.x}%`, bottom: `${s.y}%` }} title={s.name}>
-              <i>{s.n ?? ''}</i>
-              <small>{pitchName(s.name)}</small>
-            </span>
-          ))}
-        </div>
+        <>
+          <div className="lc-pitch" style={colours} role="img" aria-label={`ההרכב הפותח של ${team.name}`}>
+            <i className="lc-pitch-arc" />
+            <i className="lc-pitch-box" />
+            <i className="lc-pitch-six" />
+            {spots.map((s, i) => (
+              <span key={i} className="lc-p" style={{ left: `${s.x}%`, bottom: `${s.y}%` }} title={s.name}>
+                <i>{s.n ?? ''}</i>
+                <small>{pitchName(s.name)}</small>
+              </span>
+            ))}
+          </div>
+          {/* The pitch is one picture for screen readers; this list reads the XI out to them. */}
+          <ul className="sr-only" aria-label={`שחקני ההרכב הפותח של ${team.name}`}>
+            {lu.xi.map((pl, i) => (
+              <li key={i}>{[pl.n, pl.p, pl.pos ? (POS_HE[pl.pos] ?? pl.pos) : null].filter((x) => x !== null && x !== '').join(', ')}</li>
+            ))}
+          </ul>
+        </>
       ) : (
         lu.xi.length > 0 && <PlayerList title="הרכב פותח" players={lu.xi} />
       )}

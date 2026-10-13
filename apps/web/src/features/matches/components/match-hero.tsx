@@ -1,10 +1,9 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { isTicketLive, minuteLabel } from '@/features/stand-home/schema'
 import type { DisplayTeam } from '../api-teams'
-import { sideScore } from '../live'
-import { DONE_STATUSES, type Fixture } from '../schema'
+import { matchPhase, sideScore } from '../live'
+import type { Fixture } from '../schema'
 import { Crest } from './crest'
 import { useNow } from './use-now'
 
@@ -17,9 +16,8 @@ const STATUS_HE: Record<string, string> = { PST: 'נדחה', CANC: 'בוטל', A
 export function MatchHero(props: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam; round: string; day: string; time: string }) {
   const { fixture: f, home, away, round, day, time } = props
   const now = useNow()
-  const minute = now !== null && isTicketLive(f, now) ? minuteLabel(f, now) : ''
-  const live = minute !== '' && minute !== 'הסתיים'
-  const done = DONE_STATUSES.has(f.st) || minute === 'הסתיים'
+  // Same rule as the Matches tiles: a stale 1H/2H after the 170′ cut-off reads "הסתיים", not its status or the date.
+  const { live, done, minute } = matchPhase(f, now)
   const hasScore = f.gh !== null || f.ga !== null
   const style = { '--h': home.bar, '--w': away.bar } as CSSProperties
   return (

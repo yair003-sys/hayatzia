@@ -22,7 +22,7 @@ export function LiveCard({ fixture: f, home, away }: { fixture: Fixture; home: D
       href={`/matches/${f.id}?tab=room`}
       className="lc-live"
       style={style}
-      aria-label={`${home.name} נגד ${away.name}, ${ended ? 'הסתיים' : 'חי'}, ${f.gh ?? 0} ${f.ga ?? 0}. כניסה לחדר המשחק`}
+      aria-label={`${home.name} נגד ${away.name}, ${ended ? 'הסתיים' : 'חי'}, ${home.name} ${f.gh ?? 0}, ${away.name} ${f.ga ?? 0}. כניסה לחדר המשחק`}
     >
       <div className="lc-row3">
         <div className="lc-team">
