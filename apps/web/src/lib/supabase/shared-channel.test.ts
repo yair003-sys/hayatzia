@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { listenPrivate } from './shared-channel'
 
 type Handler = (m: { event: string; payload: unknown }) => void
@@ -8,6 +8,7 @@ function fakeClient() {
   const log: string[] = []
   let channels: FakeChannel[] = []
   let removeGate: Promise<void> = Promise.resolve()
+  const faults = { channel: 0, remove: 0 }
   class FakeChannel {
     handlers: Handler[] = []
     subscribed = false
@@ -35,7 +36,12 @@ function fakeClient() {
     },
     realtime: { setAuth: async () => {} },
     getChannels: () => channels,
+    faults,
     channel(topic: string, opts: unknown) {
+      if (faults.channel > 0) {
+        faults.channel -= 1
+        throw new Error('socket down')
+      }
       const existing = channels.find((c) => c.topic === `realtime:${topic}`)
       if (existing) return existing
       const c = new FakeChannel(`realtime:${topic}`, opts)
@@ -46,6 +52,10 @@ function fakeClient() {
     async removeChannel(c: FakeChannel) {
       log.push(`remove ${c.topic}`)
       await removeGate
+      if (faults.remove > 0) {
+        faults.remove -= 1
+        throw new Error('leave failed')
+      }
       channels = channels.filter((x) => x !== c)
       return 'ok' as const
     },
@@ -127,5 +137,52 @@ describe('listenPrivate', () => {
     await tick()
     expect(c.log).not.toContain('subscribe realtime:alerts')
     expect(c.channels()).toEqual([])
+  })
+
+  it('one throwing listener does not starve the others', async () => {
+    const c = fakeClient()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const got: string[] = []
+    listenPrivate(c, 'alerts', () => {
+      throw new Error('boom')
+    })
+    listenPrivate(c, 'alerts', (m) => got.push(m.event))
+    await tick()
+    c.channels()[0]?.emit('alert', { secret: 'x' })
+    expect(got).toEqual(['alert'])
+    expect(warn).toHaveBeenCalledWith('realtime listener failed on alerts')
+    warn.mockRestore()
+  })
+
+  it('a failed open settles quietly and the next listener starts over', async () => {
+    const c = fakeClient()
+    c.faults.channel = 1
+    const off = listenPrivate(c, 'inbox:me', () => {})
+    await tick()
+    expect(c.channels()).toEqual([])
+    off() // releasing a listener whose open failed is harmless
+    await tick()
+    const got: string[] = []
+    listenPrivate(c, 'inbox:me', (m) => got.push(m.event))
+    await tick()
+    expect(c.channels()).toHaveLength(1)
+    expect(c.channels()[0]?.subscribed).toBe(true)
+    c.channels()[0]?.emit('message', {})
+    expect(got).toEqual(['message'])
+  })
+
+  it('a failed leave does not block the next open', async () => {
+    const c = fakeClient()
+    c.faults.remove = 1
+    const off = listenPrivate(c, 'alerts', () => {})
+    await tick()
+    off()
+    await tick()
+    listenPrivate(c, 'alerts', () => {})
+    await tick()
+    await tick()
+    // the leftover from the failed leave is dropped, then a fresh channel is subscribed
+    expect(c.channels()).toHaveLength(1)
+    expect(c.channels()[0]?.subscribed).toBe(true)
   })
 })

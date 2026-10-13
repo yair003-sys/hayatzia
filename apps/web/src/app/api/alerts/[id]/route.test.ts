@@ -30,7 +30,20 @@ describe('GET /api/alerts/[id]', () => {
   })
 
   it('404 for a malformed id without reading anything', async () => {
-    for (const id of ['abc', '0', '-1', '1.5', '9'.repeat(17)]) expect((await call(id)).status).toBe(404)
+    for (const id of ['abc', '0', '-1', '1.5', '9'.repeat(17)]) {
+      const res = await call(id)
+      expect(res.status).toBe(404)
+      expect(res.headers.get('cache-control')).toBe('no-store')
+    }
     expect(mocks.getBannerAlert).not.toHaveBeenCalled()
+  })
+
+  it('a database error is a 503 that nobody caches', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.getBannerAlert.mockRejectedValue(new Error('banner alert: read failed'))
+    const res = await call('42')
+    expect(res.status).toBe(503)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    warn.mockRestore()
   })
 })

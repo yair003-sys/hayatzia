@@ -19,8 +19,14 @@ export type DescribedAlert = {
  * The phone notification text of each alert, built once for both the push (dispatch) and the in-app banner
  * (/api/alerts/<id>), so the two always read the same. Fixtures, goal events, team names and earlier goal alerts are
  * read once per batch (four queries, whatever the batch size). Alerts of an unknown fixture are left out.
+ * A read error: `strict` throws (the cached banner must not keep a partial text); otherwise the text is built from what
+ * was read (dispatch has already claimed the alerts, so a push without the scorer beats no push).
  */
-export async function describeAlerts(admin: Admin, alerts: readonly MatchAlert[]): Promise<Map<number, DescribedAlert>> {
+export async function describeAlerts(
+  admin: Admin,
+  alerts: readonly MatchAlert[],
+  { strict = false }: { strict?: boolean } = {},
+): Promise<Map<number, DescribedAlert>> {
   const out = new Map<number, DescribedAlert>()
   if (!alerts.length) return out
   const fixtureIds = [...new Set(alerts.map((a) => a.fixture_id))]
@@ -29,10 +35,14 @@ export async function describeAlerts(admin: Admin, alerts: readonly MatchAlert[]
     admin.from('fixture_details').select('fixture_id,events').in('fixture_id', fixtureIds),
     admin.from('match_alerts').select('id,fixture_id,home_goals,away_goals').in('fixture_id', fixtureIds).eq('kind', 'goal').order('id'),
   ])
+  if (strict && (fixtures.error || details.error || earlier.error)) throw new Error('alert describe: read failed')
   const fixtureById = new Map((fixtures.data ?? []).map((f) => [f.id, f]))
   const eventsById = new Map((details.data ?? []).map((d) => [d.fixture_id, d.events as unknown as FixtureDetail['ev']]))
   const apiIds = [...new Set([...fixtureById.values()].flatMap((f) => [f.home_api_id, f.away_api_id]))]
-  const { data: teams } = apiIds.length ? await admin.from('api_teams').select('api_id,name').in('api_id', apiIds) : { data: [] }
+  const { data: teams, error: teamsError } = apiIds.length
+    ? await admin.from('api_teams').select('api_id,name').in('api_id', apiIds)
+    : { data: [], error: null }
+  if (strict && teamsError) throw new Error('alert describe: read failed')
   const team = (apiId: number) => displayTeam(apiId, teams?.find((t) => t.api_id === apiId)?.name)
 
   for (const alert of alerts) {

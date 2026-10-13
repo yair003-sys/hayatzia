@@ -36,23 +36,37 @@ export function listenPrivate<C extends ChannelLike>(client: ClientLike<C>, topi
   let entry = entries.get(topic)
   if (!entry) {
     const listeners = new Set<Listener>()
-    const open = (async () => {
-      await leaving.get(topic)?.catch(() => {})
-      if (listeners.size === 0) return null
-      // Only this helper opens these topics, so a channel still listed here is a leftover whose leave timed out.
-      const ch = await openChannel(client, topic, { private: true as const })
-      if (listeners.size === 0) {
-        await client.removeChannel(ch)
+    const created: Entry = { listeners, open: Promise.resolve(null) }
+    created.open = (async () => {
+      try {
+        await leaving.get(topic)
+        if (listeners.size === 0) return null
+        // Only this helper opens these topics, so a channel still listed here is a leftover whose leave timed out.
+        const ch = await openChannel(client, topic, { private: true as const })
+        if (listeners.size === 0) {
+          await client.removeChannel(ch)
+          return null
+        }
+        ch.on('broadcast', { event: '*' }, (m) => {
+          for (const l of [...listeners]) {
+            try {
+              l(m)
+            } catch {
+              // one failing listener must not starve the others (nothing from the payload is logged)
+              console.warn(`realtime listener failed on ${topic}`)
+            }
+          }
+        })
+        await client.realtime.setAuth().catch(() => {})
+        if (listeners.size > 0) ch.subscribe()
+        return ch
+      } catch {
+        // Could not open: forget this entry so the next listener starts over.
+        if (entries.get(topic) === created) entries.delete(topic)
         return null
       }
-      ch.on('broadcast', { event: '*' }, (m) => {
-        for (const l of [...listeners]) l(m)
-      })
-      await client.realtime.setAuth().catch(() => {})
-      if (listeners.size > 0) ch.subscribe()
-      return ch
     })()
-    entry = { listeners, open }
+    entry = created
     entries.set(topic, entry)
   }
   const mine = entry
@@ -61,9 +75,12 @@ export function listenPrivate<C extends ChannelLike>(client: ClientLike<C>, topi
   return () => {
     if (!mine.listeners.delete(listener) || mine.listeners.size > 0) return
     if (entries.get(topic) === mine) entries.delete(topic)
-    const gone = mine.open.then((ch) => (ch ? client.removeChannel(ch as C) : null)).finally(() => {
-      if (leaving.get(topic) === gone) leaving.delete(topic)
-    })
+    const gone: Promise<unknown> = mine.open
+      .then((ch) => (ch ? client.removeChannel(ch as C) : null))
+      .catch(() => null) // a failed leave is not fatal: the next open drops any leftover channel
+      .finally(() => {
+        if (leaving.get(topic) === gone) leaving.delete(topic)
+      })
     leaving.set(topic, gone)
   }
 }

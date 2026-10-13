@@ -67,4 +67,21 @@ describe('BannerView', () => {
     expect(card).toHaveAttribute('data-tone', 'message')
     expect(card.style.getPropertyValue('--ab-bg')).toBe('')
   })
+
+  it('a mouse hover and focus hold it, reported separately; a touch never holds it', () => {
+    const onHold = vi.fn()
+    render(<BannerView banner={goal} onOpen={() => {}} onDismiss={() => {}} onHold={onHold} />)
+    const card = screen.getByRole('link').closest('.ab') as HTMLElement
+    fireEvent.pointerEnter(card, { pointerType: 'touch' })
+    fireEvent.pointerLeave(card, { pointerType: 'touch' })
+    expect(onHold).not.toHaveBeenCalled()
+    fireEvent.pointerEnter(card, { pointerType: 'mouse' })
+    fireEvent.focus(screen.getByRole('link'))
+    fireEvent.pointerLeave(card, { pointerType: 'mouse' })
+    expect(onHold.mock.calls).toEqual([
+      ['hover', true],
+      ['focus', true],
+      ['hover', false],
+    ])
+  })
 })

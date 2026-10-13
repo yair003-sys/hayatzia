@@ -22,7 +22,7 @@ type Drag = { id: number; x: number; y: number; dx: number; horizontal: boolean 
 
 /**
  * The banner itself (pure view). A polite live region that is always present; the card is a real link (tap opens
- * the target), with a close button; Escape or a sideways swipe dismisses. Hover or focus holds it on screen.
+ * the target), with a close button; Escape or a sideways swipe dismisses. A mouse hover or focus holds it on screen.
  */
 export function BannerView({
   banner,
@@ -33,7 +33,8 @@ export function BannerView({
   banner: ShownBanner | null
   onOpen: (href: string) => void
   onDismiss: () => void
-  onHold?: (held: boolean) => void
+  /** A mouse over the card or focus inside it holds the banner; reported separately so neither can undo the other. */
+  onHold?: (kind: 'hover' | 'focus', held: boolean) => void
 }) {
   const drag = useRef<Drag | null>(null)
   const swiped = useRef(false)
@@ -126,11 +127,15 @@ export function BannerView({
           onPointerUp={up}
           onPointerCancel={cancel}
           onKeyDown={key}
-          onMouseEnter={() => onHold?.(true)}
-          onMouseLeave={() => onHold?.(false)}
-          onFocus={() => onHold?.(true)}
+          onPointerEnter={(e) => {
+            if (e.pointerType === 'mouse') onHold?.('hover', true) // a touch has no "leave": it must not stick the banner
+          }}
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'mouse') onHold?.('hover', false)
+          }}
+          onFocus={() => onHold?.('focus', true)}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onHold?.(false)
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onHold?.('focus', false)
           }}
         >
           <a href={banner.href} className="ab-main" onClick={open} draggable={false}>

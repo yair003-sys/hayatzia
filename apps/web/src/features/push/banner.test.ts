@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bannerHref, inviteLine, messageLine, parseAlertPayload, parseInboxEvent, shouldShow, type BannerContext } from './banner'
+import { arrivalGate, bannerHref, inviteLine, messageLine, parseAlertPayload, parseInboxEvent, shouldShow, type BannerContext } from './banner'
 
 const ME = '11111111-1111-4111-8111-111111111111'
 const OTHER = '22222222-2222-4222-8222-222222222222'
@@ -38,7 +38,7 @@ describe('shouldShow: matches', () => {
     expect(shouldShow(match, ctx({ prefs: team, myClubApiIds: [] }))).toBe(false)
   })
 
-  it('not shown on the open match page, including its tabs and sub-pages', () => {
+  it('not shown on the open match page (trailing slash, ?tab= query and #hash ignored)', () => {
     expect(shouldShow(match, ctx({ pathname: '/matches/77' }))).toBe(false)
     expect(shouldShow(match, ctx({ pathname: '/matches/77/' }))).toBe(false)
     expect(shouldShow(match, ctx({ pathname: '/matches/77?tab=events' }))).toBe(false)
@@ -157,5 +157,30 @@ describe('parseInboxEvent', () => {
     expect(parseInboxEvent('typing', { thread_id: THREAD, from: OTHER })).toBeNull()
     expect(parseInboxEvent('message', { thread_id: '../x', from: OTHER })).toBeNull()
     expect(parseInboxEvent('message', { from: OTHER })).toBeNull()
+  })
+})
+
+describe('arrivalGate', () => {
+  it('lookups finishing in order are each shown', () => {
+    const g = arrivalGate()
+    const a = g.arrive()
+    const b = g.arrive()
+    expect(g.claim(a)).toBe(true)
+    expect(g.claim(b)).toBe(true)
+  })
+
+  it('an older lookup finishing after a newer one is on screen never replaces it', () => {
+    const g = arrivalGate()
+    const older = g.arrive()
+    const newer = g.arrive()
+    expect(g.claim(newer)).toBe(true)
+    expect(g.claim(older)).toBe(false)
+  })
+
+  it('an older event is still shown when the newer one was filtered out (never claimed)', () => {
+    const g = arrivalGate()
+    const older = g.arrive()
+    g.arrive() // e.g. a muted group: dropped without claiming
+    expect(g.claim(older)).toBe(true)
   })
 })

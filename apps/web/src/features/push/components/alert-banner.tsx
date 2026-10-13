@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Route } from 'next'
 import { usePathname, useRouter } from 'next/navigation'
-import { useDeviceKey, type EncryptedRow } from '@/features/dm/use-device-key'
+import type { EncryptedRow } from '@/features/dm/use-device-key'
 import { teamAccent } from '@/features/stand-home/schema'
+import { decryptMessage } from '@/lib/e2e/crypto'
+import { peekDeviceKey } from '@/lib/e2e/keystore'
 import { createClient } from '@/lib/supabase/client'
 import { listenPrivate } from '@/lib/supabase/shared-channel'
 import {
   BANNER_MS,
   PREFS_EVENT,
+  arrivalGate,
   bannerAlertSchema,
   bannerHref,
   inviteLine,
@@ -26,14 +29,26 @@ import { BannerView, type ShownBanner } from './alert-banner-view'
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
 
 type Content = Omit<ShownBanner, 'seq'>
-type Reveal = ReturnType<typeof useDeviceKey>['reveal']
+type Client = ReturnType<typeof createClient>
+type Hold = { seq: number; hover: boolean; focus: boolean }
 
-/** Decrypts one message with this device's key; null (→ the fallback line) when it cannot. */
-async function decryptOne(reveal: Reveal, row: unknown): Promise<string | null> {
+/**
+ * Decrypts one message on this device, read only: the banner never creates a device key (the inbox and the threads
+ * do). No key on this device, a message not written for it, or any failure → null, and the fallback line is shown.
+ */
+async function decryptOne(supabase: Client, meId: string, row: unknown): Promise<string | null> {
   if (!row) return null
   try {
-    const [m] = await reveal([row as EncryptedRow])
-    return m?.text ?? null
+    const m = row as EncryptedRow
+    const key = await peekDeviceKey(meId)
+    if (!key || !m.wrapped_keys[key.id]) return null
+    const { data } = await supabase
+      .from('device_keys')
+      .select('public_jwk')
+      .eq('user_id', m.sender_id)
+      .eq('device_id', m.sender_device)
+      .maybeSingle()
+    return data ? await decryptMessage(m, key, data.public_jwk) : null
   } catch {
     return null
   }
@@ -48,11 +63,11 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
   const router = useRouter()
   const pathname = usePathname()
   const [supabase] = useState(() => createClient())
-  const { reveal } = useDeviceKey(meId)
   const [banner, setBanner] = useState<ShownBanner | null>(null)
-  // The banner the pointer or focus is on stays (keyed by banner, so a dismissed one never holds the next).
-  const [heldSeq, setHeldSeq] = useState<number | null>(null)
-  const held = banner !== null && heldSeq === banner.seq
+  // A mouse over the banner or focus inside it holds it. Kept per banner, so a dismissed one never holds the next,
+  // and hover and focus apart, so leaving with the mouse does not release a keyboard focus (or the reverse).
+  const [hold, setHold] = useState<Hold>({ seq: -1, hover: false, focus: false })
+  const held = banner !== null && hold.seq === banner.seq && (hold.hover || hold.focus)
 
   // Server settings win when they change (a refresh); in between, the settings card's live updates.
   const [prefs, setPrefs] = useState(serverPrefs)
@@ -75,11 +90,9 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
 
   // Live values for the Realtime handlers, which are set up once.
   const ctx = useRef<BannerContext>({ pathname, prefs, myClubApiIds, meId })
-  const revealRef = useRef(reveal)
   useEffect(() => {
     ctx.current = { pathname, prefs, myClubApiIds, meId }
-    revealRef.current = reveal
-  }, [pathname, prefs, myClubApiIds, meId, reveal])
+  }, [pathname, prefs, myClubApiIds, meId])
 
   // Opening the conversation or match the banner is about hides it.
   const [seenPath, setSeenPath] = useState(pathname)
@@ -124,7 +137,7 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
               .maybeSingle(),
           ])
           const nick = thread.data ? (thread.data.user_a === event.from ? thread.data.nick_a : thread.data.nick_b) : null
-          return { title: messageLine({ nick, text: await decryptOne(revealRef.current, msg.data) }), body: '', href, tone: 'message', accent: null }
+          return { title: messageLine({ nick, text: await decryptOne(supabase, meId, msg.data) }), body: '', href, tone: 'message', accent: null }
         }
         case 'group': {
           const [member, msg, sender] = await Promise.all([
@@ -141,7 +154,7 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
           ])
           if (member.data?.muted) return null // a muted group stays quiet, like its phone notifications
           const group = member.data?.dm_groups?.name ?? null
-          const text = await decryptOne(revealRef.current, msg.data)
+          const text = await decryptOne(supabase, meId, msg.data)
           return { title: messageLine({ nick: sender.data?.nick ?? null, text, group }), body: '', href, tone: 'message', accent: null }
         }
         case 'invite': {
@@ -154,18 +167,17 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
   )
 
   useEffect(() => {
-    let received = 0 // order of arrival
-    let shown = 0 // arrival number of the banner on screen: an older lookup that finishes late never replaces a newer one
+    const gate = arrivalGate() // newer replaces older, also when lookups finish out of order
     const handle = async (event: BannerEvent, alertId?: number) => {
-      const n = ++received
+      const n = gate.arrive()
       // "My club only" needs the two clubs, known only after the lookup: the first check leaves it out.
       const c = ctx.current
       const first = event.kind === 'match' && c.prefs?.matches === 'team' ? { ...c, prefs: { ...c.prefs, matches: 'all' as const } } : c
       if (!shouldShow(event, first)) return
       const content = await lookUp(event, alertId).catch(() => null)
       // Check again: the fan may have opened that screen or changed a setting while we were looking it up.
-      if (!content || n < shown || (event.kind !== 'match' && !shouldShow(event, ctx.current))) return
-      shown = n
+      if (!content || (event.kind !== 'match' && !shouldShow(event, ctx.current))) return
+      if (!gate.claim(n)) return
       setBanner({ ...content, seq: n })
     }
     const offAlerts = listenPrivate(supabase, 'alerts', (m) => {
@@ -191,5 +203,11 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
     [router],
   )
 
-  return <BannerView banner={banner} onOpen={open} onDismiss={() => setBanner(null)} onHold={(h) => setHeldSeq(h && banner ? banner.seq : null)} />
+  const onHold = (kind: 'hover' | 'focus', on: boolean) => {
+    if (!banner) return
+    const seq = banner.seq
+    setHold((h) => ({ ...(h.seq === seq ? h : { seq, hover: false, focus: false }), [kind]: on }))
+  }
+
+  return <BannerView banner={banner} onOpen={open} onDismiss={() => setBanner(null)} onHold={onHold} />
 }

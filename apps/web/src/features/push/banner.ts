@@ -111,3 +111,22 @@ export const bannerAlertSchema = z.object({
   bar: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
 })
 export type BannerAlert = z.infer<typeof bannerAlertSchema>
+
+/**
+ * "Newer replaces older" across async lookups: every event gets its arrival number; a finished lookup may show only if
+ * nothing that arrived later is already on screen. An older event is still shown when a newer one was filtered out.
+ */
+export function arrivalGate() {
+  let received = 0
+  let shown = 0
+  return {
+    /** Call when an event arrives; returns its arrival number. */
+    arrive: () => ++received,
+    /** Call when its lookup is done: true (and it becomes the one on screen) unless a later arrival is already shown. */
+    claim: (n: number) => {
+      if (n < shown) return false
+      shown = n
+      return true
+    },
+  }
+}
