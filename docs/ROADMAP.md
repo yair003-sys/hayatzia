@@ -22,7 +22,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 5. Terms of use and privacy pages before launch (the sign-up page does not mention them until they exist).
 
 ## Notes for the next session
-- All migrations through `20261012080000_stage4` are applied on staging and production (stage 4 on production 2026-10-13).
+- All migrations through `20261013090000_fan_card` are applied on staging and production (2026-10-13).
 - Club fan representatives (`club_reps`): none yet — the owner names them; add by SQL until an admin screen exists.
 - Staging demos: `web-demo-match.yml` (crowd verdict), `web-demo-predictions.yml` (needs the demo fans from the first).
 - Presence joins take ~2 s on the free staging DB, ~30 s while the demo match loads it: one more reason for Pro + compute before launch.
