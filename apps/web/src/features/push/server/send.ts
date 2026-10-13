@@ -59,6 +59,7 @@ export async function sendPush(userIds: readonly string[], payload: PushPayload)
         let q = admin.from('push_subscriptions').select('id,endpoint,p256dh,auth').in('user_id', ids)
         if (after) q = q.gt('id', after)
         const { data: subs, error } = await q.order('id').limit(SUB_PAGE)
+        if (error) console.warn('push subscriptions read failed', error.code)
         if (error || !subs?.length) break
         await eachLimited(subs, CONCURRENCY, async (s) => {
           try {
@@ -78,7 +79,7 @@ export async function sendPush(userIds: readonly string[], payload: PushPayload)
     }
     for (const ids of chunks(gone, USER_CHUNK)) await admin.from('push_subscriptions').delete().in('id', ids)
   } catch (e) {
-    console.warn('push failed', (e as Error)?.message ?? 'unknown')
+    console.warn('push failed', (e as { code?: string })?.code ?? 'unknown')
   }
   return delivered
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alertText, goalMinute, goalsSince, isStale } from './alerts'
+import { alertText, freshInOrder, goalMinute, goalsSince, isStale } from './alerts'
 
 const goal = { id: 1, fixture_id: 77, kind: 'goal', home_goals: 2, away_goals: 1, scoring_api_id: 604 }
 const ft = { ...goal, kind: 'ft', scoring_api_id: null }
@@ -82,5 +82,19 @@ describe('isStale', () => {
   })
   it('an unreadable date is stale', () => {
     expect(isStale('nope', now)).toBe(true)
+  })
+})
+
+describe('freshInOrder', () => {
+  const now = Date.parse('2026-10-13T12:00:00Z')
+  it('drops stale alerts and sends the rest oldest first, so full time is never replaced by an older goal', () => {
+    const claimed = [
+      { id: 12, created_at: '2026-10-13T11:59:00Z', kind: 'ft' },
+      { id: 10, created_at: '2026-10-13T11:50:00Z', kind: 'goal' },
+      { id: 3, created_at: '2026-10-13T10:00:00Z', kind: 'goal' },
+      { id: 11, created_at: '2026-10-13T11:55:00Z', kind: 'goal' },
+    ]
+    expect(freshInOrder(claimed, now).map((a) => a.id)).toEqual([10, 11, 12])
+    expect(claimed.map((a) => a.id)).toEqual([12, 10, 3, 11]) // input untouched
   })
 })

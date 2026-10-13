@@ -22,6 +22,14 @@ export function isStale(createdAt: string, now: number): boolean {
   return !Number.isFinite(t) || now - t > STALE_MS
 }
 
+/**
+ * The claimed alerts still worth pushing, oldest first. claim_alerts does not guarantee the order of its rows, and
+ * alerts of one match share a notification tag, so sending in id order makes the last one shown the newest.
+ */
+export function freshInOrder<T extends { id: number; created_at: string }>(claimed: readonly T[], now: number): T[] {
+  return claimed.filter((a) => !isStale(a.created_at, now)).sort((p, q) => p.id - q.id)
+}
+
 /** "45+2" for stoppage time, else "67". */
 export function goalMinute(m: number, x: number): string {
   return x > 0 ? `${m}+${x}` : `${m}`

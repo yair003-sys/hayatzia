@@ -1,7 +1,7 @@
 -- Notifications: per-fan settings, goal / full-time alerts written by a trigger on fixtures (no duplicates,
 -- no backfill floods), who receives them, message-push filtering, and the dispatch claim.
 begin;
-select plan(37);
+select plan(42);
 
 -- n1 mta (row 'all'), n2 hta ('team'), n3 mhf ('team'), n4 bei ('off', messages off), n5 mhf (no row),
 -- n6 mta (no row, no device). Everyone but n6 has a push device.
@@ -122,6 +122,16 @@ select ok(not exists (select 1 from public.alert_recipients(71) r where r = '000
   'a fan with matches off never gets a match push');
 select ok(not exists (select 1 from public.alert_recipients(71) r where r = '00000000-0000-0000-0000-0000000000e3'),
   '"my club only" skips other clubs'' matches');
+select hasnt_function('public', 'alert_recipients', array['bigint'], 'the unpaged recipients function is gone');
+select results_eq($$ select * from public.alert_recipients(71, null, 2) $$,
+  array['00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e2']::uuid[],
+  'recipients come in pages ordered by fan id');
+select results_eq($$ select * from public.alert_recipients(71, '00000000-0000-0000-0000-0000000000e2', 2) $$,
+  array['00000000-0000-0000-0000-0000000000e5']::uuid[],
+  'the next page starts after the last fan of the previous one');
+select is_empty($$ select * from public.alert_recipients(71, '00000000-0000-0000-0000-0000000000e5', 2) $$,
+  'after the last fan there is nothing more');
+select is((select count(*)::int from public.alert_recipients(71, null, 0)), 1, 'a page has at least one and at most 1000 fans');
 select set_eq($$ select * from public.message_push_allowed(array['00000000-0000-0000-0000-0000000000e1',
   '00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000e6']::uuid[]) $$,
   array['00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e6']::uuid[],

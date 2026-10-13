@@ -6,7 +6,10 @@ import { savePrefsAction } from '../server/actions'
 
 const MATCH_LABELS: Record<NotificationPrefs['matches'], string> = { all: 'כל הליגה', team: 'רק הקבוצה שלי', off: 'כבוי' }
 
-/** "התראות משחקים" (three-way) and "הודעות פרטיות וקבוצות" (on/off). Saved at once; reverts if saving fails. */
+/**
+ * "התראות משחקים" (three-way) and "הודעות פרטיות וקבוצות" (on/off). Saved at once; reverts if saving fails.
+ * Controls are disabled while a save is in flight, so saves never overlap or revert each other.
+ */
 export function NotificationSettings({ initial }: { initial: NotificationPrefs }) {
   const [prefs, setPrefs] = useState(initial)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +30,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
   }
 
   const pickMatches = (m: NotificationPrefs['matches']) => {
-    if (m !== prefs.matches) save({ ...prefs, matches: m })
+    if (!pending && m !== prefs.matches) save({ ...prefs, matches: m })
   }
 
   // Arrow keys move between the three choices (radio group pattern); in RTL, left is "next".
@@ -60,6 +63,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
               role="radio"
               aria-checked={prefs.matches === m}
               tabIndex={prefs.matches === m ? 0 : -1}
+              disabled={pending}
               onClick={() => pickMatches(m)}
               onKeyDown={(e) => onKey(e, i)}
             >
@@ -73,6 +77,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
         type="button"
         role="switch"
         aria-checked={prefs.messages}
+        disabled={pending}
         className="me-pref me-pref-row"
         onClick={() => save({ ...prefs, messages: !prefs.messages })}
       >

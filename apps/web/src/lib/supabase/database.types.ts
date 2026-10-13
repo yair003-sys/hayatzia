@@ -1044,7 +1044,7 @@ isOneToOne: false
           }
           Functions: {
             "alert_recipients":
-{ Args: { "p_fixture": number }; Returns: string[]
+{ Args: { "p_after"?: string,"p_fixture": number,"p_limit"?: number }; Returns: string[]
                            },
 "answer_invite":
 { Args: { "p_group": string,"p_yes": boolean }; Returns: undefined
