@@ -26,7 +26,10 @@ function TabBarView({ active }: { active: Route | null }) {
   return (
     <nav
       aria-label="ניווט ראשי"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line-soft bg-elev/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-xl',
+        active === '/square' ? 'border-white/10 bg-black' : 'border-line-soft bg-elev/85',
+      )}
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => {

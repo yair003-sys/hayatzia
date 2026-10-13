@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, ImagePlus, X } from 'lucide-react'
+import { Camera, ImagePlus, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { shrinkPhoto } from '../compress'
 import { ACCEPT, MAX_UPLOAD_MB, mediaOf, type Audience, type Clip } from '../schema'
@@ -16,10 +16,13 @@ type Props = {
   /** The post appears at once from the phone; `onDone` swaps in the published post (or removes it on failure). */
   onStart: (local: Clip) => void
   onDone: (localId: string, clip: Clip | null) => void
+  /** The "gallery or camera" sheet; the feed opens it too (from the empty state). */
+  choosing: boolean
+  setChoosing: (open: boolean) => void
 }
 
 /** Pick or shoot, write a caption, publish to the open tab. Photos are shrunk; the upload runs in the background. */
-export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone }: Props) {
+export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing }: Props) {
   const target = audience === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה'
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -35,6 +38,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     if (!f) return
     if (!mediaOf(f.type)) return setError('אפשר להעלות רק תמונה או סרטון')
     if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(`הקובץ גדול מ־${MAX_UPLOAD_MB}MB`)
+    setChoosing(false)
     setFile(f)
     setPreview(URL.createObjectURL(f))
   }
@@ -96,55 +100,67 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   }
 
   return (
-    <div className="space-y-2">
+    <>
       <input ref={gallery} type="file" accept={ACCEPT} hidden onChange={(e) => pick(e.target.files?.[0])} />
       <input ref={camera} type="file" accept="image/*,video/*" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0])} />
-      {!file && (
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => gallery.current?.click()} className="flex items-center justify-center gap-2 rounded-lg bg-accent py-3 font-semibold text-white">
-            <ImagePlus className="size-5" aria-hidden="true" />
-            העלאה {target}
-          </button>
-          <button type="button" onClick={() => camera.current?.click()} className="flex items-center justify-center gap-2 rounded-lg border border-line py-3 font-semibold">
-            <Camera className="size-5" aria-hidden="true" />
-            צילום עכשיו
-          </button>
+      <button type="button" className="sq-plus" aria-label={`פוסט חדש ${target}`} onClick={() => setChoosing(true)}>
+        <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
+      </button>
+
+      {choosing && !file && (
+        <div className="sq-sheet-wrap" onClick={() => setChoosing(false)}>
+          <div className="sq-sheet" role="dialog" aria-label="פוסט חדש" onClick={(e) => e.stopPropagation()}>
+            <span className="sq-grip" aria-hidden="true" />
+            <p className="text-sm text-muted">
+              פוסט חדש <b className="font-semibold text-fg">{target}</b> · נעלם אחרי 24 שעות
+            </p>
+            <button type="button" className="sq-choice" onClick={() => gallery.current?.click()}>
+              <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden="true" />
+              בחירה מהגלריה
+            </button>
+            <button type="button" className="sq-choice" onClick={() => camera.current?.click()}>
+              <Camera className="size-5" strokeWidth={1.75} aria-hidden="true" />
+              צילום עכשיו
+            </button>
+          </div>
         </div>
       )}
 
       {file && preview && (
-        <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
-          <div className="flex items-center justify-between">
-            <b>פוסט חדש {target} · 24 שעות</b>
-            <button type="button" aria-label="ביטול" onClick={close} className="text-muted">
-              <X className="size-5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="grid max-h-80 place-items-center overflow-hidden rounded-md bg-elev">
+        <div className="sq-compose" role="dialog" aria-label={`פוסט חדש ${target}`}>
+          <div className="sq-compose-media">
             {file.type.startsWith('video/') ? (
-              <video src={preview} controls playsInline className="max-h-80" />
+              <video src={preview} autoPlay muted loop playsInline />
             ) : (
               // Local preview (blob: URL).
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="תצוגה מקדימה" className="max-h-80 object-contain" />
+              <img src={preview} alt="תצוגה מקדימה" />
             )}
           </div>
-          <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="כיתוב (לא חובה)" aria-label="כיתוב" className="w-full rounded-md border border-line bg-elev px-3 py-2" />
-          <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #יציע" aria-label="תגיות" className="w-full rounded-md border border-line bg-elev px-3 py-2" />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
-            חד פעמי: כל אוהד יוכל לצפות פעם אחת בלבד
-          </label>
-          <button type="button" onClick={publish} className="w-full rounded-lg bg-accent py-3 font-semibold text-white">
-            פרסם {target}
-          </button>
+          <div className="sq-compose-top">
+            <button type="button" aria-label="ביטול" onClick={close} className="sq-round">
+              <X className="size-5" aria-hidden="true" />
+            </button>
+            <span className="text-sm text-white/80">{target} · 24 שעות</span>
+          </div>
+          <div className="sq-compose-bottom">
+            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="כיתוב (לא חובה)" aria-label="כיתוב" className="sq-input" />
+            <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
+            <label className="flex items-center gap-2 text-sm text-white/85">
+              <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
+              חד פעמי: כל אוהד יוכל לצפות פעם אחת
+            </label>
+            <button type="button" onClick={publish} className="su-btn su-btn-blue">
+              פרסום {target}
+            </button>
+          </div>
         </div>
       )}
       {error && (
-        <p role="alert" className="text-sm text-live">
+        <p role="alert" className="sq-toast">
           {error}
         </p>
       )}
-    </div>
+    </>
   )
 }

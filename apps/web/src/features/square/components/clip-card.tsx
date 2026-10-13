@@ -117,10 +117,10 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
         </div>
       )}
 
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
-      <header className="absolute inset-x-3 top-3 flex items-center gap-2 text-white">
+      <header className="absolute inset-x-3 top-16 flex items-center gap-2 text-white">
         {team && <TeamScarf team={team} />}
         <b className="text-sm drop-shadow">{clip.nick}</b>
         <span className="text-xs text-white/70">{team?.short}</span>
@@ -129,7 +129,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
       </header>
 
       {clip.kind === 'video' && url && (
-        <span className="pointer-events-none absolute top-12 end-3 grid size-8 place-items-center rounded-full bg-black/45 text-white" aria-hidden="true">
+        <span className="pointer-events-none absolute top-[6.5rem] end-3 grid size-8 place-items-center rounded-full bg-black/45 text-white" aria-hidden="true">
           {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
         </span>
       )}
