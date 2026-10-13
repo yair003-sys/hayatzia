@@ -1,9 +1,8 @@
 import 'server-only'
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { displayTeam } from '@/features/matches/api-teams'
-import type { FixtureDetail } from '@/features/matches/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { alertText, freshInOrder, goalsSince } from '../alerts'
+import { freshInOrder } from '../alerts'
+import { describeAlerts, type Admin } from './describe'
 import { pushConfigured, sendPush } from './send'
 
 /** Alerts claimed per dispatch call. */
@@ -18,8 +17,6 @@ export function bearerOk(header: string | null, secret: string | undefined): boo
   const want = createHash('sha256').update(secret).digest()
   return timingSafeEqual(given, want)
 }
-
-type Admin = NonNullable<ReturnType<typeof createAdminClient>>
 
 async function recipients(admin: Admin, fixtureId: number): Promise<string[]> {
   const out: string[] = []
@@ -41,8 +38,8 @@ async function recipients(admin: Admin, fixtureId: number): Promise<string[]> {
 /**
  * Claims unsent match alerts and pushes them. Claiming marks them sent first, so a failed or concurrent run never
  * pushes one twice. Alerts older than 30 minutes are skipped (stale); the rest go out oldest first (by id), so the
- * lock screen (one tag per match) ends on the latest score or full time. Fixtures, events, team names and earlier
- * alerts are read once per batch; recipients once per match. Logs counts only.
+ * lock screen (one tag per match) ends on the latest score or full time. The text comes from describeAlerts (shared
+ * with the in-app banner; one read per batch); recipients are read once per match. Logs counts only.
  */
 export async function dispatchAlerts(): Promise<{ sent: number; skipped: number }> {
   const admin = createAdminClient()
@@ -56,41 +53,18 @@ export async function dispatchAlerts(): Promise<{ sent: number; skipped: number 
   let skipped = claimed.length - fresh.length
   if (!fresh.length || !pushConfigured()) return { sent: 0, skipped: claimed.length }
 
-  const fixtureIds = [...new Set(fresh.map((a) => a.fixture_id))]
-  const [fixtures, details, earlier] = await Promise.all([
-    admin.from('fixtures').select('id,home_api_id,away_api_id').in('id', fixtureIds),
-    admin.from('fixture_details').select('fixture_id,events').in('fixture_id', fixtureIds),
-    admin.from('match_alerts').select('id,fixture_id,home_goals,away_goals').in('fixture_id', fixtureIds).eq('kind', 'goal').order('id'),
-  ])
-  const fixtureById = new Map((fixtures.data ?? []).map((f) => [f.id, f]))
-  const eventsById = new Map((details.data ?? []).map((d) => [d.fixture_id, d.events as unknown as FixtureDetail['ev']]))
-  const apiIds = [...new Set([...fixtureById.values()].flatMap((f) => [f.home_api_id, f.away_api_id]))]
-  const { data: teams } = apiIds.length ? await admin.from('api_teams').select('api_id,name').in('api_id', apiIds) : { data: [] }
-  const teamName = (apiId: number) => displayTeam(apiId, teams?.find((t) => t.api_id === apiId)?.name).name
-
+  const described = await describeAlerts(admin, fresh)
   const fans = new Map<number, string[]>()
   let sent = 0
   for (const alert of fresh) {
-    const f = fixtureById.get(alert.fixture_id)
-    if (!f) {
+    const d = described.get(alert.id)
+    if (!d) {
       skipped++
       continue
     }
-    // The previous goal alert of this match (by id); none → the match started 0:0. Full time lists no scorers.
-    const prev = (earlier.data ?? []).filter((e) => e.fixture_id === f.id && e.id < alert.id).at(-1)
-    const events = eventsById.get(f.id)
-    const { scorers, minute } =
-      alert.kind === 'goal'
-        ? goalsSince(
-            Array.isArray(events) ? events : [],
-            { home: f.home_api_id, away: f.away_api_id },
-            { h: prev?.home_goals ?? 0, a: prev?.away_goals ?? 0 },
-            { h: alert.home_goals, a: alert.away_goals },
-          )
-        : { scorers: [], minute: null }
-    if (!fans.has(f.id)) fans.set(f.id, await recipients(admin, f.id))
-    const to = fans.get(f.id)!
-    if (to.length) await sendPush(to, alertText(alert, teamName(f.home_api_id), teamName(f.away_api_id), scorers, minute))
+    if (!fans.has(alert.fixture_id)) fans.set(alert.fixture_id, await recipients(admin, alert.fixture_id))
+    const to = fans.get(alert.fixture_id)!
+    if (to.length) await sendPush(to, d.push)
     sent++
   }
   console.info(`alerts dispatched: sent=${sent} skipped=${skipped}`)

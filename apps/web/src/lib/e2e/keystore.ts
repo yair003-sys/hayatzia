@@ -37,8 +37,22 @@ export function e2eSupported(): boolean {
   return typeof window !== 'undefined' && !!window.crypto?.subtle && !!window.indexedDB
 }
 
-/** Loads this device's key for the fan, creating it on first use. */
-export async function loadDeviceKey(userId: string): Promise<{ key: DeviceKey; created: boolean }> {
+// Several screens can ask at once (the in-app banner and the inbox). Two first-time loads racing would each create a
+// key, publish both and keep only one: messages sent to the other would be unreadable. So they share one load.
+const loading = new Map<string, Promise<{ key: DeviceKey; created: boolean }>>()
+
+/** Loads this device's key for the fan, creating it on first use. Concurrent calls share one load. */
+export function loadDeviceKey(userId: string): Promise<{ key: DeviceKey; created: boolean }> {
+  let p = loading.get(userId)
+  if (!p) {
+    p = load(userId)
+    loading.set(userId, p)
+    p.catch(() => loading.delete(userId))
+  }
+  return p
+}
+
+async function load(userId: string): Promise<{ key: DeviceKey; created: boolean }> {
   const db = await open()
   const rec = await get<{ id: string; priv: CryptoKey; pub: string }>(db, `dev_${userId}`)
   if (rec?.priv) return { key: { id: rec.id, privateKey: rec.priv, publicJwk: rec.pub }, created: false }

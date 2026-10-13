@@ -24,7 +24,9 @@ describe('BannerView', () => {
     const link = screen.getByRole('link', { name: /שער! מכבי תל אביב 2:1 הפועל חיפה/ })
     expect(link).toHaveAttribute('href', '/matches/77')
     expect(link).toHaveTextContent('67′ · E. Zahavi')
-    expect(link.closest('.ab')).toHaveStyle({ '--ab-bg': '#FFD400', '--ab-on': '#0b0d12' })
+    const card = link.closest('.ab') as HTMLElement
+    expect(card.style.getPropertyValue('--ab-bg')).toBe('#FFD400')
+    expect(card.style.getPropertyValue('--ab-on')).toBe('#0b0d12')
   })
 
   it('tap opens the target through the router', () => {

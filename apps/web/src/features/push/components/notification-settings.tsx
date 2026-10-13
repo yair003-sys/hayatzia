@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition, type KeyboardEvent } from 'react'
+import { PREFS_EVENT } from '../banner'
 import { MATCH_PREFS, type NotificationPrefs } from '../schema'
 import { savePrefsAction } from '../server/actions'
 
@@ -25,7 +26,10 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
       if (!r.data?.ok) {
         setPrefs(before)
         setError(r.data?.error ?? r.serverError ?? 'השמירה נכשלה. נסה שוב')
+        return
       }
+      // The in-app banner follows the new settings at once, without a reload.
+      window.dispatchEvent(new CustomEvent<NotificationPrefs>(PREFS_EVENT, { detail: next }))
     })
   }
 
