@@ -3,6 +3,7 @@ import {
   avatarOf,
   createGroupSchema,
   filterInbox,
+  groupErrorHe,
   groupNameSchema,
   orderedPair,
   previewText,
@@ -70,5 +71,20 @@ describe('inbox helpers', () => {
     const rows = [row('מכבי בדרך'), row('חברים')]
     expect(filterInbox(rows, 'מכב').map((r) => r.name)).toEqual(['מכבי בדרך'])
     expect(filterInbox(rows, '  ')).toHaveLength(2)
+  })
+})
+
+describe('groupErrorHe', () => {
+  it('maps known codes to Hebrew messages', () => {
+    expect(groupErrorHe('group_full')).toBe('הקבוצה מלאה (עד 20 אוהדים)')
+    expect(groupErrorHe('not_admin')).toBe('רק מנהל הקבוצה יכול לעשות את זה')
+    expect(groupErrorHe('blocked')).toBe('אי אפשר להוסיף את האוהד הזה')
+    expect(groupErrorHe('not_same_team')).toBe('אפשר להזמין רק אוהדים מהקבוצה שלך')
+    expect(groupErrorHe('invite_expired')).toBe('ההזמנה פגה')
+    expect(groupErrorHe('no_members')).toBe('בחר לפחות אוהד אחד')
+  })
+  it('falls back for unknown codes', () => {
+    expect(groupErrorHe('bad_kind')).toBe('הפעולה נכשלה. נסה שוב')
+    expect(groupErrorHe('whatever')).toBe('הפעולה נכשלה. נסה שוב')
   })
 })
