@@ -16,7 +16,7 @@ test('first visit shows the intro once; skipping it remembers', async ({ page })
   await page.getByRole('button', { name: 'דלג' }).click()
   await expect(intro).toBeHidden()
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('כניסה')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('אוהד אחד, חשבון אחד')
   await expect(intro).toBeHidden()
 })
 

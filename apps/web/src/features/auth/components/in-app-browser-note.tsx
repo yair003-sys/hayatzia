@@ -12,7 +12,7 @@ export function InAppBrowserNote() {
   return (
     <p role="alert" className="rounded-md border border-warn/40 bg-warn/10 p-3 text-sm">
       נראה שפתחת את הקישור מתוך אפליקציה (אינסטגרם, פייסבוק…). גוגל חוסם שם התחברות. לחץ על ⋯ ובחר
-      &quot;פתח בדפדפן&quot;, או היכנס עם הטלפון.
+      &quot;פתח בדפדפן&quot;. אחר כך חזור לכאן.
     </p>
   )
 }

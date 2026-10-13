@@ -2,45 +2,42 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { GoogleSignIn } from '@/features/auth/components/google-sign-in'
 import { InAppBrowserNote } from '@/features/auth/components/in-app-browser-note'
-import { PhoneSignIn } from '@/features/auth/components/phone-sign-in'
+import { SignupHeader, SignupKicker } from '@/features/auth/components/signup-header'
 import { FirstRunIntro } from '@/features/first-run/components/first-run-intro'
-import { env } from '@/lib/env'
 import { supabaseConfig } from '@/lib/supabase/config'
 
 export const metadata: Metadata = { title: 'כניסה' }
 
+// Sign-up step 1 of 3 (owner, 2026-10-13): Google now; the phone check (step 2) prevents a second account.
 export default function LoginPage() {
   const enabled = supabaseConfig() !== null
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6">
+    <main className="su-page">
       <FirstRunIntro then="close" />
-      <div className="space-y-3">
-        <h1 className="t-page">כניסה ל-onefan</h1>
-        <p className="text-muted">כל אוהד מאומת. אחרי הכניסה בוחרים קבוצה, פעם אחת ולתמיד.</p>
+      <SignupHeader step={1} />
+      <div className="flex-1" />
+      <SignupKicker n="01">כניסה</SignupKicker>
+      <h1 className="su-title">
+        אוהד אחד, חשבון אחד
+        <span>מאמתים פעם אחת. נשארים לתמיד.</span>
+      </h1>
+      <p className="su-lead">כדי לשמור על הקהילה אמיתית, כל אוהד נכנס עם Google ומאמת את מספר הטלפון שלו.</p>
+      <div className="mt-7 space-y-4">
+        {enabled ? (
+          <>
+            <InAppBrowserNote />
+            <GoogleSignIn />
+          </>
+        ) : (
+          <p className="rounded-2xl bg-surface p-4 text-sm text-muted">
+            ההתחברות לא מחוברת בסביבה הזאת.{' '}
+            <Link href="/stand" className="text-accent-text underline">
+              המשך בלי חשבון
+            </Link>
+          </p>
+        )}
       </div>
-      {enabled ? (
-        <div className="space-y-4">
-          <InAppBrowserNote />
-          <GoogleSignIn />
-          {env.NEXT_PUBLIC_PHONE_AUTH === 'on' && (
-            <>
-              <div className="flex items-center gap-3 text-xs text-dim" aria-hidden="true">
-                <span className="h-px flex-1 bg-line" />
-                או
-                <span className="h-px flex-1 bg-line" />
-              </div>
-              <PhoneSignIn />
-            </>
-          )}
-        </div>
-      ) : (
-        <p className="rounded-md bg-surface p-4 text-sm text-muted">
-          ההתחברות לא מחוברת בסביבה הזאת.{' '}
-          <Link href="/stand" className="text-accent-text underline">
-            המשך בלי חשבון
-          </Link>
-        </p>
-      )}
+      <p className="su-fine">האוהדים האחרים רואים רק את הכינוי שלך.</p>
     </main>
   )
 }
