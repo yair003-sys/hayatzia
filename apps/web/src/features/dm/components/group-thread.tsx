@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage } from '@/lib/e2e/crypto'
 import { notifyGroupAction } from '@/features/push/server/actions'
-import { avatarOf, DM_PAGE, eventLine, recipientsFor, type GroupEventKind } from '../schema'
+import { avatarOf, DEVICES_PER_FAN, DM_PAGE, eventLine, pickDevices, recipientsFor, type GroupEventKind } from '../schema'
 import { markReadAction } from '../server/actions'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
 import { Bubble, Composer, E2eNote } from './thread-parts'
@@ -15,7 +15,6 @@ type Item = Msg | Ev
 type EventRow = { id: string; kind: string; subject: string | null; created_at: string }
 
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
-const MAX_WRAPPED = 60 // database cap on wrapped keys per message
 const byTime = (a: Item, b: Item) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
 
 // Group messages never pass through the app server: encrypted on this device for every device of every
@@ -52,13 +51,19 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   useEffect(() => {
     if (!key) return
     let cancelled = false
+    // My blocks first: the live channel does not know who I blocked, so it waits for this list.
+    const blocksReady = supabase
+      .from('blocks')
+      .select('blocked_id')
+      .then(({ data }) => {
+        blocked.current = new Set(data?.map((b) => b.blocked_id))
+      })
     void (async () => {
-      const [msgs, evs, blk] = await Promise.all([
+      const [msgs, evs] = await Promise.all([
         supabase.from('dm_group_messages').select(COLS).eq('group_id', groupId).order('created_at', { ascending: false }).limit(DM_PAGE),
         supabase.from('dm_group_events').select('id,kind,subject,created_at').eq('group_id', groupId).order('created_at', { ascending: false }).limit(DM_PAGE),
-        supabase.from('blocks').select('blocked_id'),
+        blocksReady,
       ])
-      blocked.current = new Set(blk.data?.map((b) => b.blocked_id))
       const rows = (msgs.data ?? []) as unknown as EncryptedRow[]
       // A full page of messages: show only the system lines from the same stretch of time.
       const since = rows.length === DM_PAGE ? rows[rows.length - 1]?.created_at : undefined
@@ -66,12 +71,12 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       const shown = await reveal(rows)
       void learnNicks([...rows.map((r) => r.sender_id), ...events.map((e) => e.subject)])
       if (cancelled) return
-      setItems(
-        [
-          ...shown.map((m): Item => ({ type: 'msg', id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text })),
-          ...events.map((e): Item => ({ type: 'event', id: e.id, kind: e.kind as GroupEventKind, subject: e.subject, created_at: e.created_at })),
-        ].sort(byTime),
-      )
+      const history: Item[] = [
+        ...shown.map((m): Item => ({ type: 'msg', id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text })),
+        ...events.map((e): Item => ({ type: 'event', id: e.id, kind: e.kind as GroupEventKind, subject: e.subject, created_at: e.created_at })),
+      ]
+      // Keep anything that arrived live while the history was loading.
+      setItems((cur) => [...history, ...cur.filter((x) => !history.some((h) => h.id === x.id))].sort(byTime))
     })()
 
     const channel = supabase.channel(`grp:${groupId}`, { config: { private: true } })
@@ -83,7 +88,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       if (m) setItems((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, { type: 'msg' as const, id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text }]))
       if (r.sender_id !== meId) void markReadAction({ kind: 'group', id: groupId })
     })
-    void supabase.realtime.setAuth().then(() => {
+    void Promise.all([supabase.realtime.setAuth(), blocksReady]).then(() => {
       if (!cancelled) channel.subscribe()
     })
     return () => {
@@ -114,12 +119,11 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
           [...blocked.current],
           meId,
         )
-        const devices = await devicesOf(ids)
-        if (devices.length > MAX_WRAPPED) {
-          setStatus('יותר מדי מכשירים בקבוצה. ההודעה לא נשלחה')
-          return resolve(false)
-        }
-        const enc = await encryptMessage(text, key, devices.some((d) => d.id === key.id) ? devices : [...devices, { id: key.id, publicJwk: key.publicJwk }])
+        const found = await devicesOf(ids)
+        // This device may not be listed yet if its key was published a moment ago.
+        const all = found.some((d) => d.id === key.id) ? found : [...found, { user_id: meId, id: key.id, publicJwk: key.publicJwk, created_at: new Date().toISOString() }]
+        const devices = pickDevices(all, DEVICES_PER_FAN, { user_id: meId, id: key.id })
+        const enc = await encryptMessage(text, key, devices)
         const { data, error } = await supabase.from('dm_group_messages').insert({ group_id: groupId, ...enc }).select('id,sender_id,created_at').single()
         if (error) {
           setStatus(error.message.includes('rate_limit') ? 'רגע, לאט יותר' : error.message.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : 'ההודעה לא נשלחה')

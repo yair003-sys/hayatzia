@@ -133,3 +133,31 @@ export function eventLine(kind: GroupEventKind, subjectNick: string): string {
       return 'שם הקבוצה שונה'
   }
 }
+
+/** Most device keys a group message is wrapped for per fan: 20 fans × 3 = 60, the database cap. */
+export const DEVICES_PER_FAN = 3
+
+/**
+ * Which devices a group message is wrapped for: each fan's newest `perUser` devices, so old keys that
+ * were never pruned cannot push a group over the cap. `mustInclude` (this device) is always kept.
+ */
+export function pickDevices<T extends { user_id: string; id: string; created_at: string }>(
+  devices: T[],
+  perUser: number,
+  mustInclude: { user_id: string; id: string },
+): T[] {
+  const byUser = new Map<string, T[]>()
+  for (const d of devices) byUser.set(d.user_id, [...(byUser.get(d.user_id) ?? []), d])
+  const out: T[] = []
+  for (const [user, list] of byUser) {
+    const newest = [...list].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    if (user !== mustInclude.user_id) {
+      out.push(...newest.slice(0, perUser))
+      continue
+    }
+    const mine = newest.find((d) => d.id === mustInclude.id)
+    const rest = newest.filter((d) => d.id !== mustInclude.id)
+    out.push(...(mine ? [mine, ...rest.slice(0, perUser - 1)] : rest.slice(0, perUser)))
+  }
+  return out
+}

@@ -44,12 +44,12 @@ export function useDeviceKey(meId: string) {
   }, [meId, supabase])
 
   const devicesOf = useCallback(
-    async (userIds: string[]): Promise<(PublicDevice & { user_id: string })[]> => {
+    async (userIds: string[]): Promise<(PublicDevice & { user_id: string; created_at: string })[]> => {
       if (userIds.length === 0) return []
-      const { data } = await supabase.from('device_keys').select('user_id,device_id,public_jwk').in('user_id', userIds)
+      const { data } = await supabase.from('device_keys').select('user_id,device_id,public_jwk,created_at').in('user_id', userIds)
       return (data ?? []).map((d) => {
         pubs.current.set(`${d.user_id}/${d.device_id}`, d.public_jwk)
-        return { user_id: d.user_id, id: d.device_id, publicJwk: d.public_jwk }
+        return { user_id: d.user_id, id: d.device_id, publicJwk: d.public_jwk, created_at: d.created_at }
       })
     },
     [supabase],

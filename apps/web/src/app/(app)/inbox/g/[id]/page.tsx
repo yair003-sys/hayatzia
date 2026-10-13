@@ -50,7 +50,7 @@ async function Group({ id }: { id: string }) {
           <span className="sr-only">פרטי הקבוצה</span>
         </Link>
       </header>
-      <GroupThread groupId={g.id} meId={s.userId} nicks={nicks} />
+      <GroupThread key={g.id} groupId={g.id} meId={s.userId} nicks={nicks} />
     </>
   )
 }
