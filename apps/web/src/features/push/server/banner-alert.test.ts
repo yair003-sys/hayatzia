@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALERT_NOT_FOUND, getBannerAlert } from './banner-alert'
+import { ALERT_NOT_FOUND, alertExists, getBannerAlert } from './banner-alert'
 
 const mocks = vi.hoisted(() => ({
   row: { data: null as unknown, error: null as unknown },
@@ -43,5 +43,18 @@ describe('getBannerAlert', () => {
     )
     await expect(getBannerAlert(9)).resolves.toEqual({ title: 'T', body: 'B', homeApiId: 604, awayApiId: 657, bar: '#FFD400' })
     expect(mocks.describeAlerts).toHaveBeenCalledWith(mocks.admin, [alert], { strict: true })
+  })
+})
+
+describe('alertExists (uncached, error path only)', () => {
+  it('true for a known alert, false for a miss, null when it cannot tell', async () => {
+    mocks.row = { data: { id: 9 }, error: null }
+    await expect(alertExists(9)).resolves.toBe(true)
+    mocks.row = { data: null, error: null }
+    await expect(alertExists(9)).resolves.toBe(false)
+    mocks.row = { data: null, error: { code: '57014' } }
+    await expect(alertExists(9)).resolves.toBeNull()
+    mocks.admin = null
+    await expect(alertExists(9)).resolves.toBeNull()
   })
 })

@@ -1,4 +1,4 @@
-import { ALERT_NOT_FOUND, getBannerAlert } from '@/features/push/server/banner-alert'
+import { ALERT_NOT_FOUND, alertExists, getBannerAlert } from '@/features/push/server/banner-alert'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
@@ -14,9 +14,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const alert = await getBannerAlert(Number(id))
     return Response.json(alert, { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' } })
   } catch (e) {
-    if (String(e instanceof Error ? e.message : e).includes(ALERT_NOT_FOUND)) {
-      return Response.json({ error: 'not_found' }, { status: 404, headers: NO_STORE })
-    }
+    // The sentinel's message survives in development and tests; a production build hides messages thrown inside
+    // 'use cache', so then one uncached lookup tells a miss (404) from a failure (503).
+    const missing =
+      String(e instanceof Error ? e.message : e).includes(ALERT_NOT_FOUND) || (await alertExists(Number(id))) === false
+    if (missing) return Response.json({ error: 'not_found' }, { status: 404, headers: NO_STORE })
     console.warn('banner alert failed')
     return Response.json({ error: 'unavailable' }, { status: 503, headers: NO_STORE })
   }

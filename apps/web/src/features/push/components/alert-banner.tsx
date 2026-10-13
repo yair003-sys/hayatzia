@@ -9,6 +9,7 @@ import { decryptMessage } from '@/lib/e2e/crypto'
 import { peekDeviceKey } from '@/lib/e2e/keystore'
 import { createClient } from '@/lib/supabase/client'
 import { listenPrivate } from '@/lib/supabase/shared-channel'
+import { whileVisible } from '@/lib/while-visible'
 import {
   BANNER_MS,
   PREFS_EVENT,
@@ -188,35 +189,21 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
     // Listen only while the page is visible: a hidden tab or a phone in a pocket holds no Realtime join (the phone
     // push covers that time). Leaving goes through listenPrivate's counted off, so the inbox page's own listener on
     // inbox:<me> is unaffected.
-    let offs: (() => void)[] = []
-    const join = () => {
-      if (offs.length) return
-      offs = [
-        listenPrivate(supabase, 'alerts', (m) => {
-          if (m.event !== 'alert') return
-          const a = parseAlertPayload(m.payload)
-          if (a) void handle({ kind: 'match', fixtureId: a.fixtureId, homeApiId: 0, awayApiId: 0 }, a.id)
-        }),
-        listenPrivate(supabase, `inbox:${meId}`, (m) => {
-          const e = parseInboxEvent(m.event, m.payload)
-          if (e) void handle(e)
-        }),
-      ]
-    }
-    const leave = () => {
-      for (const off of offs) off()
-      offs = []
-    }
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') leave()
-      else join()
-    }
-    if (document.visibilityState !== 'hidden') join()
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility)
-      leave()
-    }
+    return whileVisible(() => {
+      const offAlerts = listenPrivate(supabase, 'alerts', (m) => {
+        if (m.event !== 'alert') return
+        const a = parseAlertPayload(m.payload)
+        if (a) void handle({ kind: 'match', fixtureId: a.fixtureId, homeApiId: 0, awayApiId: 0 }, a.id)
+      })
+      const offInbox = listenPrivate(supabase, `inbox:${meId}`, (m) => {
+        const e = parseInboxEvent(m.event, m.payload)
+        if (e) void handle(e)
+      })
+      return () => {
+        offAlerts()
+        offInbox()
+      }
+    })
   }, [supabase, meId, lookUp])
 
   const open = useCallback(

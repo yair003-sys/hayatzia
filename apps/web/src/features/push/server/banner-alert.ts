@@ -4,7 +4,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { BannerAlert } from '../banner'
 import { describeAlerts } from './describe'
 
-/** Thrown (never returned) for an unknown alert: inside 'use cache' a throw is not cached, a null would be. */
+/**
+ * Thrown (never returned) for an unknown alert: inside 'use cache' a throw is not cached, a null would be. In a
+ * production build the error that leaves the cache arrives with its message hidden, so callers that must tell a miss
+ * from a failure also ask alertExists (below) when the message is not there.
+ */
 export const ALERT_NOT_FOUND = 'alert_not_found'
 
 /**
@@ -30,4 +34,16 @@ export async function getBannerAlert(id: number): Promise<BannerAlert> {
   const d = (await describeAlerts(admin, [alert], { strict: true })).get(alert.id)
   if (!d) throw new Error(ALERT_NOT_FOUND)
   return { title: d.push.title, body: d.push.body, homeApiId: d.homeApiId, awayApiId: d.awayApiId, bar: d.bar }
+}
+
+/**
+ * Uncached: does this alert exist? Only for the error path of the banner route (misses and failures are rare, and a
+ * lookup by primary key is cheap). null when it cannot tell (no server key, or a read error).
+ */
+export async function alertExists(id: number): Promise<boolean | null> {
+  const admin = createAdminClient()
+  if (!admin) return null
+  const { data, error } = await admin.from('match_alerts').select('id').eq('id', id).maybeSingle()
+  if (error) return null
+  return data !== null
 }

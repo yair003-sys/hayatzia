@@ -2,14 +2,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from './route'
 
-const mocks = vi.hoisted(() => ({ getBannerAlert: vi.fn() }))
-vi.mock('@/features/push/server/banner-alert', () => ({ getBannerAlert: mocks.getBannerAlert, ALERT_NOT_FOUND: 'alert_not_found' }))
+const mocks = vi.hoisted(() => ({ getBannerAlert: vi.fn(), alertExists: vi.fn() }))
+vi.mock('@/features/push/server/banner-alert', () => ({
+  getBannerAlert: mocks.getBannerAlert,
+  alertExists: mocks.alertExists,
+  ALERT_NOT_FOUND: 'alert_not_found',
+}))
 
 const call = (id: string) => GET(new Request(`http://localhost/api/alerts/${id}`), { params: Promise.resolve({ id }) })
 const alert = { title: '⚽ שער! א 1:0 ב', body: "12′", homeApiId: 604, awayApiId: 657, bar: '#FFD400' }
 
 beforeEach(() => {
   mocks.getBannerAlert.mockReset()
+  mocks.alertExists.mockReset()
+  mocks.alertExists.mockResolvedValue(true)
 })
 
 describe('GET /api/alerts/[id]', () => {
@@ -27,6 +33,16 @@ describe('GET /api/alerts/[id]', () => {
     const res = await call('42')
     expect(res.status).toBe(404)
     expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(mocks.alertExists).not.toHaveBeenCalled()
+  })
+
+  it('404 for an unknown alert when production hides the error message (one uncached lookup decides)', async () => {
+    mocks.getBannerAlert.mockRejectedValue(new Error('An error occurred in the Server Components render.'))
+    mocks.alertExists.mockResolvedValue(false)
+    const res = await call('43')
+    expect(res.status).toBe(404)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(mocks.alertExists).toHaveBeenCalledWith(43)
   })
 
   it('404 for a malformed id without reading anything', async () => {
@@ -44,6 +60,18 @@ describe('GET /api/alerts/[id]', () => {
     const res = await call('42')
     expect(res.status).toBe(503)
     expect(res.headers.get('cache-control')).toBe('no-store')
+    warn.mockRestore()
+  })
+
+  it('a hidden error for an alert that exists, or when the lookup cannot tell, is a 503', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.getBannerAlert.mockRejectedValue(new Error('An error occurred in the Server Components render.'))
+    for (const exists of [true, null]) {
+      mocks.alertExists.mockResolvedValue(exists)
+      const res = await call('42')
+      expect(res.status).toBe(503)
+      expect(res.headers.get('cache-control')).toBe('no-store')
+    }
     warn.mockRestore()
   })
 })
