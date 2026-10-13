@@ -9,8 +9,8 @@ create table public.notification_prefs (
   messages    boolean not null default true,
   updated_at  timestamptz not null default now()
 );
--- Fans who turned something off are few: these keep the recipient and message filters cheap.
-create index notification_prefs_matches_idx on public.notification_prefs (matches) where matches <> 'all';
+-- Fans who turned messages off are few: this keeps the message-push filter cheap. (Recipients of match alerts are
+-- read by primary key per profile, so the matches column needs no index.)
 create index notification_prefs_messages_off_idx on public.notification_prefs (user_id) where not messages;
 
 create function public.notification_prefs_touch() returns trigger
@@ -59,6 +59,8 @@ grant select, update on public.match_alerts to service_role;
 -- UPDATE only (a first insert / new season stays silent), and only for matches that kicked off in the last 4 hours
 -- (a late backfill stays silent). A score that goes up makes one alert for the new score; a score that drops
 -- (VAR) adds nothing and deletes nothing; reaching an already-alerted score again does nothing (unique key).
+-- A score corrected after full time (old status already FT/AET/PEN) is not a goal. When the last goal and full time
+-- arrive in the same update, both are announced: the goal first, then full time.
 create function public.fixtures_alerts() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -73,7 +75,7 @@ begin
     return null;
   end if;
 
-  if nh > oh or na > oa then
+  if (nh > oh or na > oa) and old.status not in ('FT', 'AET', 'PEN') then
     scorer := case when nh > oh and na <= oa then new.home_api_id when na > oa and nh <= oh then new.away_api_id end;
     insert into public.match_alerts (fixture_id, kind, home_goals, away_goals, scoring_api_id)
       values (new.id, 'goal', nh, na, scorer)
@@ -112,9 +114,11 @@ create policy alerts_channel_receive on realtime.messages for select to authenti
 );
 
 -- ---------- server functions (service_role only) ----------
--- Fans to push a match alert to: matches 'all' or no settings row, plus 'team' fans of either club.
--- Only fans with at least one push device are returned (nobody else can be reached).
-create function public.alert_recipients(p_fixture bigint) returns setof uuid
+-- Fans to push a match alert to: matches 'all' or no settings row, plus 'team' fans of either club. Only fans with
+-- at least one push device are returned (nobody else can be reached). Keyset pages ordered by user_id (the API
+-- returns at most 1000 rows per request; index-backed by the profiles primary key).
+create function public.alert_recipients(p_fixture bigint, p_after uuid default null, p_limit int default 1000)
+returns setof uuid
 language sql stable security definer set search_path = '' as $$
   with f as (
     select public.club_of_api(x.home_api_id) as home_club, public.club_of_api(x.away_api_id) as away_club
@@ -123,12 +127,15 @@ language sql stable security definer set search_path = '' as $$
   select p.user_id
   from f, public.profiles p
   left join public.notification_prefs n on n.user_id = p.user_id
-  where (coalesce(n.matches, 'all') = 'all'
+  where p.user_id > coalesce(p_after, '00000000-0000-0000-0000-000000000000'::uuid)
+    and (coalesce(n.matches, 'all') = 'all'
          or (n.matches = 'team' and p.team_id in (f.home_club, f.away_club)))
     and exists (select 1 from public.push_subscriptions s where s.user_id = p.user_id)
+  order by p.user_id
+  limit greatest(least(coalesce(p_limit, 1000), 1000), 1)
 $$;
-revoke all on function public.alert_recipients(bigint) from public, anon, authenticated;
-grant execute on function public.alert_recipients(bigint) to service_role;
+revoke all on function public.alert_recipients(bigint, uuid, int) from public, anon, authenticated;
+grant execute on function public.alert_recipients(bigint, uuid, int) to service_role;
 
 -- The given fans minus those who turned message notifications off.
 create function public.message_push_allowed(p_users uuid[]) returns setof uuid
@@ -139,10 +146,14 @@ $$;
 revoke all on function public.message_push_allowed(uuid[]) from public, anon, authenticated;
 grant execute on function public.message_push_allowed(uuid[]) to service_role;
 
--- Takes up to p_limit unsent alerts (oldest first) and marks them sent in the same statement; concurrent
--- dispatchers skip each other's rows.
+-- First marks every unsent alert older than 30 minutes as sent (stale: the in-app banner already showed it live), so
+-- a backlog (e.g. at go-live or after an outage) can never starve fresh goals; then takes up to p_limit fresh unsent
+-- alerts, oldest first, and marks them sent in the same statement. Concurrent dispatchers skip each other's rows.
 create function public.claim_alerts(p_limit int) returns setof public.match_alerts
 language sql volatile security definer set search_path = '' as $$
+  update public.match_alerts set sent_at = now()
+  where sent_at is null and created_at < now() - interval '30 minutes';
+
   with c as (
     select id from public.match_alerts
     where sent_at is null
@@ -152,7 +163,7 @@ language sql volatile security definer set search_path = '' as $$
   )
   update public.match_alerts m set sent_at = now()
   from c where m.id = c.id
-  returning m.*
+  returning m.*;
 $$;
 revoke all on function public.claim_alerts(int) from public, anon, authenticated;
 grant execute on function public.claim_alerts(int) to service_role;

@@ -1,7 +1,7 @@
 -- Notifications: per-fan settings, goal / full-time alerts written by a trigger on fixtures (no duplicates,
 -- no backfill floods), who receives them, message-push filtering, and the dispatch claim.
 begin;
-select plan(42);
+select plan(46);
 
 -- n1 mta (row 'all'), n2 hta ('team'), n3 mhf ('team'), n4 bei ('off', messages off), n5 mhf (no row),
 -- n6 mta (no row, no device). Everyone but n6 has a push device.
@@ -26,7 +26,13 @@ insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id, home_goals, away_goals) values
   (71, 383, 2026, 'R1', now() - interval '30 minutes', '1H', 604, 4486, 0, 0),     -- live
   (72, 383, 2025, 'R1', now() - interval '5 hours', 'NS', 604, 4486, null, null),  -- old match, backfilled late
-  (73, 383, 2026, 'R1', now() - interval '20 minutes', '1H', 4486, 604, null, null); -- live, no score yet
+  (73, 383, 2026, 'R1', now() - interval '20 minutes', '1H', 4486, 604, null, null), -- live, no score yet
+  (75, 383, 2026, 'R1', now() - interval '3 hours', 'FT', 604, 4486, 5, 5),        -- holds a stale backlog
+  (76, 383, 2026, 'R1', now() - interval '2 hours', '2H', 604, 4486, 0, 0),        -- last goal and full time together
+  (77, 383, 2026, 'R1', now() - interval '2 hours', 'FT', 604, 4486, 1, 0);        -- already finished
+-- A backlog of unsent alerts from 31+ minutes ago, older (lower ids) than every alert below.
+insert into public.match_alerts (fixture_id, kind, home_goals, away_goals, created_at)
+  select 75, 'goal', g, 0, now() - interval '31 minutes' from generate_series(1, 3) g;
 
 create function pg_temp.as_fan(p text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true)
@@ -106,6 +112,14 @@ select is((select count(*)::int from public.match_alerts where fixture_id = 71 a
 select is((select count(*)::int from realtime.messages where topic = 'alerts' and event = 'alert'
   and (payload ->> 'fixture_id')::bigint = 71), 4, 'every new alert is broadcast once on the alerts topic');
 
+update public.fixtures set home_goals = 1, status = 'FT' where id = 76;
+select results_eq($$ select kind, home_goals::int, away_goals::int from public.match_alerts where fixture_id = 76 order by id $$,
+  $$ values ('goal'::text, 1, 0), ('ft'::text, 1, 0) $$, 'the last goal and full time in one update: the goal, then full time');
+update public.fixtures set home_goals = 2 where id = 77;
+update public.fixtures set status = 'AET' where id = 77;
+select is((select count(*)::int from public.match_alerts where fixture_id = 77), 0,
+  'a score corrected after full time is not a goal, and a finished match is not finished again');
+
 -- ── no flood from old matches or first ingest ──
 update public.fixtures set home_goals = 3, away_goals = 0, status = 'FT' where id = 72;
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id, home_goals, away_goals)
@@ -122,7 +136,6 @@ select ok(not exists (select 1 from public.alert_recipients(71) r where r = '000
   'a fan with matches off never gets a match push');
 select ok(not exists (select 1 from public.alert_recipients(71) r where r = '00000000-0000-0000-0000-0000000000e3'),
   '"my club only" skips other clubs'' matches');
-select hasnt_function('public', 'alert_recipients', array['bigint'], 'the unpaged recipients function is gone');
 select results_eq($$ select * from public.alert_recipients(71, null, 2) $$,
   array['00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e2']::uuid[],
   'recipients come in pages ordered by fan id');
@@ -138,8 +151,15 @@ select set_eq($$ select * from public.message_push_allowed(array['00000000-0000-
   'message pushes skip fans who turned messages off');
 
 -- ── claim ──
-select is((select count(*)::int from public.claim_alerts(2) where sent_at is not null), 2, 'claiming marks the alerts sent');
-select is((select count(*)::int from public.claim_alerts(50)), 3, 'the next claim gets only the rest');
+reset role;
+create temp table c1 as select * from public.claim_alerts(2);
+select is((select count(*)::int from c1), 2, 'a claim takes fresh alerts');
+select is((select count(*)::int from c1 where fixture_id = 75), 0, 'an older stale backlog never takes the place of fresh goals');
+select is((select count(*)::int from public.match_alerts where fixture_id = 75 and sent_at is null), 0,
+  'stale alerts are marked sent without being claimed (no push)');
+select is((select count(*)::int from c1 where sent_at is not null), 2, 'claiming marks the alerts sent');
+set local role service_role;
+select is((select count(*)::int from public.claim_alerts(50)), 5, 'the next claim gets only the rest');
 select is((select count(*)::int from public.claim_alerts(50)), 0, 'nothing is claimed twice');
 reset role;
 
