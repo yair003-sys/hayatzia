@@ -17,7 +17,9 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 0. Done 2026-10-12: the new app is renamed **onefan** with the owner's logo and colours (see `docs/BRAND.md`).
 1. P5 cutover: when to point fans to the new site, and whether to buy a domain (otherwise `hayatzia-flame.vercel.app`).
 2. OK for the current Firebase users to sign up again (legacy data is local/demo apart from a few real profiles).
-3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider if phone sign-in is wanted; Sentry account.
+3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider for the phone check; Sentry account.
+4. Phone check (owner, 2026-10-13): sign-up step 2 is shown with "בקרוב". To switch it on: SMS provider in Supabase Auth, link the phone to the Google account (`updateUser({ phone })` + `verifyOtp` type `phone_change`), make it required before the club step, and keep one phone per account (Supabase already refuses a phone that belongs to another user).
+5. Terms of use and privacy pages before launch (the sign-up page does not mention them until they exist).
 
 ## Notes for the next session
 - All migrations through `20261012070000_predictions` are applied on staging and production; `20261012080000_stage4` on staging (production pending the owner's Run).
