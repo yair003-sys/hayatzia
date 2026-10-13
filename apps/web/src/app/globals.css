@@ -550,3 +550,28 @@
   @keyframes sq-fade { from { opacity: 0; } }
   @keyframes sq-up { from { transform: translateY(100%); } }
 }
+
+/* ── "הכרטיס שלי" (owner, 2026-10-13): a private fan card in the club's colours ─────────────────── */
+@layer components {
+  .me-card { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 1.4rem; min-height: 13.5rem; padding: 1.1rem 1.25rem 1.1rem 1.25rem;
+    padding-inline-start: 2.6rem; overflow: hidden; border: 1px solid rgb(var(--club-rgb) / 0.35); border-radius: 1.5rem;
+    background: radial-gradient(120% 90% at 100% 0%, rgb(var(--club-rgb) / 0.42), transparent 60%),
+      radial-gradient(80% 70% at 0% 100%, rgb(0 51 153 / 0.35), transparent 70%), linear-gradient(160deg, var(--color-surface-3), var(--color-elev));
+    box-shadow: 0 30px 60px -30px rgb(var(--club-rgb) / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.08); }
+  .me-card::after { content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.5;
+    background: repeating-linear-gradient(115deg, transparent 0 22px, rgb(255 255 255 / 0.025) 22px 23px); }
+  .me-scarf { position: absolute; inset-block: 0; inset-inline-start: 0; width: 1.15rem;
+    background: repeating-linear-gradient(180deg, var(--club) 0 18px, var(--club2) 18px 26px); box-shadow: inset -6px 0 12px rgb(0 0 0 / 0.25); }
+  .me-card-top { display: flex; align-items: center; justify-content: space-between; }
+  .me-private { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px;
+    background: rgb(0 0 0 / 0.25); color: rgb(255 255 255 / 0.8); font-size: 0.7rem; }
+  .me-nick { font-size: 2.1rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+  .me-club { margin-top: 0.25rem; color: var(--club-text); font-size: 0.95rem; font-weight: 500; }
+  .me-card-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; padding-top: 0.9rem; border-top: 1px solid rgb(255 255 255 / 0.1); }
+  .me-card-meta dt { color: rgb(255 255 255 / 0.55); font-size: 0.68rem; letter-spacing: 0.06em; }
+  .me-card-meta dd { margin-top: 0.15rem; font-size: 0.88rem; font-weight: 500; }
+  .me-label { color: var(--color-muted); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; }
+  .me-stat { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.95rem 1rem; border: 1px solid var(--color-line-soft); border-radius: 1.1rem;
+    background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); }
+  .me-stat b { margin-bottom: 0.2rem; font-size: 1.9rem; line-height: 1; }
+}
