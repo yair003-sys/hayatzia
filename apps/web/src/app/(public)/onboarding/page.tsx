@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'בחירת קבוצה' }
 export default function OnboardingPage() {
   return (
     <main className="mx-auto max-w-md space-y-6 px-6 pt-12 pb-16">
-      <h1 className="font-display text-4xl font-black">ברוך הבא ליציע</h1>
+      <h1 className="font-display text-4xl font-black">ברוך הבא ל-onefan</h1>
       <Suspense fallback={<div className="skeleton h-96 rounded-lg" aria-hidden="true" />}>
         <OnboardingGate />
       </Suspense>

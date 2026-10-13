@@ -11,7 +11,7 @@ export function TeamChat({ teamId, meId, initial, hidden }: { teamId: string; me
       meId={meId}
       initial={initial}
       hiddenUsers={hidden}
-      placeholder="כתוב ליציע…"
+      placeholder="כתוב לקבוצה…"
       emptyText="עוד אין הודעות. תפתח את הצ׳אט 👋"
       send={async (body) => {
         const r = await sendTeamMessageAction({ body })

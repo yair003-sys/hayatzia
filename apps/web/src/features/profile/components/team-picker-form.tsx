@@ -84,7 +84,7 @@ export function TeamPickerForm() {
         disabled={!teamId || !confirm || nick.trim().length < 2 || isPending}
         className="w-full rounded-lg bg-accent py-4 text-lg font-bold text-white disabled:opacity-40"
       >
-        {isPending ? 'שומר…' : 'נעילת הקבוצה וכניסה ליציע'}
+        {isPending ? 'שומר…' : 'נעילת הקבוצה וכניסה'}
       </button>
     </form>
   )

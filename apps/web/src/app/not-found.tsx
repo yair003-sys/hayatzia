@@ -6,7 +6,7 @@ export default function NotFound() {
       <h1 className="font-display text-3xl font-black">הדף לא נמצא</h1>
       <p className="text-muted">אולי הקישור ישן, או שהדף עבר מקום.</p>
       <Link href="/stand" className="rounded-lg bg-accent px-5 py-3 font-bold text-white">
-        חזרה ליציע
+        חזרה לדף הבית
       </Link>
     </main>
   )
