@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const created = vi.hoisted(() => ({ n: 0 }))
 vi.mock('./crypto', () => ({
   createDeviceKey: async () => {
-    created.n += 1
+    const n = ++created.n
     await new Promise((r) => setTimeout(r, 5))
-    return { id: `dev-${created.n}`, privateKey: { fake: created.n }, publicJwk: `pub-${created.n}` }
+    return { id: `dev-${n}`, privateKey: { fake: n }, publicJwk: `pub-${n}` }
   },
 }))
 

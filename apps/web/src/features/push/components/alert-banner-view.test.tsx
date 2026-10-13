@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BannerView, type ShownBanner } from './alert-banner-view'
 
 const goal: ShownBanner = {
@@ -12,6 +12,10 @@ const goal: ShownBanner = {
 }
 
 describe('BannerView', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('is a polite live region, empty when there is nothing to show', () => {
     render(<BannerView banner={null} onOpen={() => {}} onDismiss={() => {}} />)
     const region = screen.getByRole('status')
