@@ -1,6 +1,7 @@
 // Live-centre helpers: Israel day buckets, the 7-day strip, live-now selection, line-up pitch, crest initials.
 // Pure (no "now" inside): callers pass the clock, so these are safe in cached server components and in tests.
 import { isTicketLive } from '@/features/stand-home/schema'
+import { currentRoundIndex, groupByRound } from './rounds'
 import type { Fixture } from './schema'
 
 const TZ = 'Asia/Jerusalem'
@@ -36,6 +37,32 @@ export function dayStrip(todayKey: string, fixtures: Fixture[]): StripDay[] {
       today: offset === 0,
     }
   })
+}
+
+const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** A `?d=` value as a real calendar day key, or null (junk, "2026-02-30", arrays). */
+export function parseDayKey(v: unknown): string | null {
+  if (typeof v !== 'string' || !DAY_KEY_RE.test(v)) return null
+  const ms = keyToUtc(v)
+  return Number.isNaN(ms) || utcToKey(ms) !== v ? null : v
+}
+
+/** Centre of the strip: today, unless its week has no games; then the current round's first match day. */
+export function stripCentre(todayKey: string, fixtures: Fixture[]): string {
+  if (dayStrip(todayKey, fixtures).some((d) => d.hasGames)) return todayKey
+  const rounds = groupByRound(fixtures)
+  const first = rounds[currentRoundIndex(rounds)]?.fixtures[0]
+  return first ? israelDayKey(first.t) : todayKey
+}
+
+/** The Matches page's strip centre and selected day; a `?d=` outside the strip re-centres the strip on it. */
+export function pickDay(todayKey: string, fixtures: Fixture[], param: unknown): { centre: string; selected: string } {
+  const centre = stripCentre(todayKey, fixtures)
+  const wanted = parseDayKey(param)
+  if (!wanted) return { centre, selected: centre }
+  const inStrip = dayStrip(centre, []).some((d) => d.key === wanted)
+  return { centre: inStrip ? centre : wanted, selected: wanted }
 }
 
 /** That Israel day's fixtures, by kick-off. */

@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { CalendarDays, Car, ChevronLeft, Music, Shirt, Trophy } from 'lucide-react'
 import { displayTeam } from '@/features/matches/api-teams'
+import { LiveCard } from '@/features/matches/components/live-card'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
+import { liveNow } from '@/features/matches/live'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { FanPitch } from '@/features/stand-home/components/fan-pitch'
@@ -58,10 +60,28 @@ async function StandHome() {
   const acc = teamAccent(team.bar)
   const theme = { '--t-acc': acc.accent, '--t-acc2': acc.accent2, '--t-rgb': acc.rgb, '--t-text': acc.text, '--t-on': acc.on } as CSSProperties
   const nameOf = (apiId: number) => displayTeam(apiId, league?.teams[String(apiId)]?.name)
+  const live = league ? liveNow(league.fixtures, now) : []
 
   return (
     <div className="sh space-y-4" style={theme}>
       <Hero team={team} fans={data.fans} />
+
+      {live.length > 0 && (
+        <section aria-labelledby="live-title" className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="live-title" className="sh-sec flex-1">
+              <i className="sh-live-dot" aria-hidden="true" />
+              משחקים חיים
+            </h2>
+            <Link href="/matches" className="mt-2 shrink-0 rounded-full border border-line bg-white/4 px-3.5 py-1.5 text-[13px] font-bold">
+              הכול
+            </Link>
+          </div>
+          {live.map((f) => (
+            <LiveCard key={f.id} fixture={f} home={nameOf(f.h)} away={nameOf(f.a)} />
+          ))}
+        </section>
+      )}
 
       <h2 className="sh-sec">
         {ticket && isTicketLive(ticket, now) && <i className="sh-live-dot" aria-hidden="true" />}

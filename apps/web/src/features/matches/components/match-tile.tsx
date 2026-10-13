@@ -14,11 +14,13 @@ import { useNow } from './use-now'
 export function MatchTile({ fixture: f, home, away }: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam }) {
   const now = useNow()
   // Before the clock is known (prerender, hydration) the status decides; the 170′ rule corrects stale statuses after.
-  const live = now === null ? LIVE_STATUSES.has(f.st) : isTicketLive(f, now)
-  const done = DONE_STATUSES.has(f.st)
+  const minute = now === null ? '' : minuteLabel(f, now)
+  // A live game whose minute reads "הסתיים" is shown as a final score, never as "LIVE הסתיים".
+  const live = (now === null ? LIVE_STATUSES.has(f.st) : isTicketLive(f, now)) && minute !== 'הסתיים'
+  // A stale live status (no longer live by the clock) is a finished game too: show its score, not the kick-off time.
+  const done = DONE_STATUSES.has(f.st) || (LIVE_STATUSES.has(f.st) && !live)
 
   if (live) {
-    const minute = now === null ? '' : minuteLabel(f, now)
     return (
       <Link href={`/matches/${f.id}`} className="lc-tile" style={{ '--h': home.bar, '--w': away.bar } as CSSProperties}>
         <div className="lc-team">

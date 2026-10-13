@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, pitchSpots, sideScore } from './live'
+import { dayStrip, fixturesOn, initials, israelDayKey, liveNow, parseDayKey, pickDay, pitchSpots, sideScore, stripCentre } from './live'
 import type { Fixture } from './schema'
 
 const fx = (id: number, t: number, st = 'NS'): Fixture => ({
@@ -117,5 +117,50 @@ describe('sideScore', () => {
   it('puts the away score first for an LTR number in an RTL row', () => {
     expect(sideScore({ gh: 2, ga: 0 })).toBe('0 : 2')
     expect(sideScore({ gh: null, ga: null })).toBe('0 : 0')
+  })
+})
+
+describe('parseDayKey', () => {
+  it('accepts real calendar days only', () => {
+    expect(parseDayKey('2026-10-14')).toBe('2026-10-14')
+    expect(parseDayKey('2026-02-30')).toBeNull()
+    expect(parseDayKey('2026-13-01')).toBeNull()
+    expect(parseDayKey('14-10-2026')).toBeNull()
+    expect(parseDayKey('2026-10-14x')).toBeNull()
+    expect(parseDayKey(['2026-10-14'])).toBeNull()
+    expect(parseDayKey(undefined)).toBeNull()
+  })
+})
+
+describe('stripCentre / pickDay', () => {
+  const inRound = (id: number, iso: string, round: number, st = 'NS'): Fixture => ({
+    ...fx(id, sec(iso), st),
+    r: `Regular Season - ${round}`,
+  })
+  const season = [
+    inRound(1, '2026-09-20T17:00:00Z', 1, 'FT'),
+    inRound(2, '2026-09-21T17:00:00Z', 1, 'FT'),
+    inRound(3, '2026-11-02T16:00:00Z', 2), // after an international break
+    inRound(4, '2026-11-03T18:00:00Z', 2),
+  ]
+
+  it('stays on today when the week has games', () => {
+    expect(stripCentre('2026-11-01', season)).toBe('2026-11-01')
+  })
+  it('jumps to the current round\'s first match day when the week is empty', () => {
+    expect(stripCentre('2026-10-13', season)).toBe('2026-11-02')
+  })
+  it('stays on today with no fixtures at all', () => {
+    expect(stripCentre('2026-10-13', [])).toBe('2026-10-13')
+  })
+  it('defaults the selection to the centre', () => {
+    expect(pickDay('2026-10-13', season, undefined)).toEqual({ centre: '2026-11-02', selected: '2026-11-02' })
+    expect(pickDay('2026-10-13', season, 'junk')).toEqual({ centre: '2026-11-02', selected: '2026-11-02' })
+  })
+  it('keeps the strip when the chosen day is in it', () => {
+    expect(pickDay('2026-11-01', season, '2026-11-03')).toEqual({ centre: '2026-11-01', selected: '2026-11-03' })
+  })
+  it('re-centres on a chosen day outside the strip', () => {
+    expect(pickDay('2026-11-01', season, '2026-09-20')).toEqual({ centre: '2026-09-20', selected: '2026-09-20' })
   })
 })
