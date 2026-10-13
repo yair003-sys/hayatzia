@@ -44,11 +44,11 @@ export function SignupFlow() {
         </h1>
         <p className="su-lead">נשלח לך קוד ב-SMS. המספר נשמר אצלנו בלבד ולא מוצג לאף אוהד.</p>
         <div className="mt-6 space-y-3">
-          <label className="su-field" data-off="true">
-            <span className="cc" dir="ltr">
+          <label className="su-field" data-off="true" dir="ltr">
+            <span className="cc">
               +972
             </span>
-            <input type="tel" inputMode="tel" dir="ltr" placeholder="50-123-4567" disabled aria-label="מספר טלפון נייד" />
+            <input type="tel" inputMode="tel" placeholder="50-123-4567" disabled aria-label="מספר טלפון נייד" />
             <span className="su-soon">בקרוב</span>
           </label>
           <button type="button" className="su-btn su-btn-blue" disabled>

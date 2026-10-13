@@ -478,7 +478,7 @@
   .su-field { display: flex; align-items: center; gap: 10px; min-height: 3.4rem; padding-inline: 14px; border: 1px solid var(--color-line); border-radius: 1rem; background: var(--color-surface); }
   .su-field:focus-within { border-color: var(--color-accent); }
   .su-field[data-off='true'] { opacity: 0.55; }
-  .su-field .cc { padding-inline-end: 10px; border-inline-end: 1px solid var(--color-line); color: var(--color-muted); font: 500 0.95rem var(--font-brand); }
+  .su-field .cc { padding-inline-end: 10px; border-inline-end: 1px solid var(--color-line); direction: ltr; color: var(--color-muted); font: 500 0.95rem var(--font-brand); }
   .su-field input { flex: 1; min-width: 0; background: none; outline: none; font-size: 1.05rem; }
   .su-field input[type='tel'] { font-family: var(--font-brand); text-align: left; }
   .su-soon { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--color-line); border-radius: 999px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
