@@ -16,7 +16,7 @@ export function InviteCard({ invite }: { invite: Invite }) {
     start(async () => {
       setError(null)
       const r = await answerInviteAction({ groupId: invite.groupId, yes })
-      if (r?.data && 'error' in r.data) setError(r.data.error)
+      if (r?.data?.error) setError(r.data.error)
       else if (r?.serverError || r?.validationErrors) setError('הפעולה נכשלה. נסה שוב')
       else if (!yes) router.refresh()
     })
