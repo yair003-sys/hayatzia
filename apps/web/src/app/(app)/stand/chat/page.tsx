@@ -36,7 +36,7 @@ async function ChatScreen() {
       <header className="mb-4 flex items-center gap-3">
         <TeamScarf team={s.team} className="h-8 w-3" />
         <div>
-          <h1 className="font-display text-2xl font-black">צ׳אט {s.team.short}</h1>
+          <h1 className="t-page">צ׳אט {s.team.short}</h1>
           <p className="text-xs text-muted">רק אוהדי {s.team.short} רואים את הצ׳אט הזה</p>
         </div>
       </header>

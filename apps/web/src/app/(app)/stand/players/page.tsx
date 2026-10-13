@@ -15,7 +15,7 @@ export default function Page() {
         <ChevronRight className="size-4" aria-hidden="true" />
         onefan
       </Link>
-      <h1 className="font-display text-3xl font-black">דירוג שחקנים</h1>
+      <h1 className="t-page">דירוג שחקנים</h1>
       <p className="text-sm text-muted">הדירוגים והביקורות נשארים בתוך הקבוצה. אפשר לשנות דירוג מתי שרוצים.</p>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
         <Squad />

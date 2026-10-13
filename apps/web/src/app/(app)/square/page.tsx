@@ -33,7 +33,7 @@ async function SquareScreen({ team }: { team: boolean }) {
   return (
     <>
       <header className="flex items-center gap-3">
-        <h1 className="font-display text-2xl font-black">הכיכר</h1>
+        <h1 className="t-page">הכיכר</h1>
         <nav className="flex flex-1 gap-1 rounded-full bg-elev p-1" aria-label="לשוניות">
           <Link href="/square" aria-current={!team ? 'page' : undefined} className={tab(!team)}>
             כל הליגה
@@ -51,7 +51,7 @@ async function SquareScreen({ team }: { team: boolean }) {
         myNick={s.nick}
         teamShort={s.team.short}
         audience={audience}
-        empty={team ? `עוד אין רילס של ${s.team.short}. תעלה את הראשון 🎬` : 'הכיכר ריקה כרגע. תהיה הראשון להעלות 📸'}
+        empty={team ? `עוד אין רילס של ${s.team.short}. העלה את הראשון.` : 'הכיכר ריקה כרגע. העלה את הרגע הראשון.'}
       />
       <p className="text-center text-xs text-dim">
         {team ? `רק אוהדי ${s.team.short} רואים את הלשונית הזאת · ` : ''}כל פוסט נעלם אחרי 24 שעות

@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <section className="space-y-4">
       <header className="space-y-1">
-        <h1 className="font-display text-3xl font-black">הודעות</h1>
+        <h1 className="t-page">הודעות</h1>
         <p className="flex items-center gap-1.5 text-xs text-muted">
           <Lock className="size-3.5 text-ok" aria-hidden="true" />
           שיחות פרטיות עם אוהדי הקבוצה שלך, מוצפנות מקצה לקצה.

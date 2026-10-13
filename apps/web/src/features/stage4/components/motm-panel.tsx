@@ -22,16 +22,16 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
   return (
     <section id="motm" aria-labelledby="motm-title" className="space-y-3">
       <h3 id="motm-title" className="sh-sec">
-        🏆 שחקן המשחק
+        שחקן המשחק
       </h3>
       {top ? (
         <div className="relative overflow-hidden rounded-3xl border border-warn/40 bg-[radial-gradient(120%_80%_at_50%_0%,rgb(245_183_0/.28),transparent_60%),linear-gradient(180deg,var(--color-surface-2),var(--color-surface))] p-5 text-center">
           <span className="text-[11px] font-bold tracking-widest text-warn">שחקן המשחק של אוהדי {teamShort}</span>
           <div className="mx-auto my-3 grid size-28 place-items-center rounded-[28%] bg-[linear-gradient(160deg,#fceba8,#ddb04a_46%,#a0761f)] text-[#2b1d02] shadow-[0_18px_40px_-14px_rgb(245_183_0/.7)]">
-            <span className="font-display text-4xl font-black tabular-nums">{top.avg.toFixed(1)}</span>
+            <span className="text-4xl t-num">{top.avg.toFixed(1)}</span>
             <span className="-mt-3 text-xs font-bold">{top.number ?? ''}</span>
           </div>
-          <p className="font-display text-2xl font-black">{top.name}</p>
+          <p className="text-2xl font-semibold">{top.name}</p>
           <p className="text-xs text-muted">{top.count} מדרגים</p>
         </div>
       ) : (
@@ -42,7 +42,7 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
         <ol className="space-y-1.5">
           {ranking.map((r, i) => (
             <li key={r.playerId} className="flex items-center gap-3 rounded-xl border border-line-soft bg-surface px-3 py-2">
-              <span className="w-5 text-center font-display font-black text-muted tabular-nums">{i + 1}</span>
+              <span className="w-5 text-center t-num text-muted">{i + 1}</span>
               <span className="flex-1 truncate">
                 <b>{r.name}</b>
                 {r.mine !== null && <small className="ms-2 text-xs text-accent-text">שלך: {r.mine}</small>}
@@ -55,8 +55,8 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
       )}
 
       {canRate && !open && (
-        <button type="button" onClick={() => setOpen(true)} className="w-full rounded-2xl bg-accent py-3 font-extrabold text-white">
-          {rated ? '✏️ עדכון הדירוגים שלך' : '⭐ דרג את השחקנים (1–10)'}
+        <button type="button" onClick={() => setOpen(true)} className="w-full rounded-2xl bg-accent py-3 font-bold text-white">
+          {rated ? 'עדכון הדירוגים שלך' : 'דרג את השחקנים (1–10)'}
         </button>
       )}
 

@@ -15,13 +15,14 @@ export default function WelcomePage() {
       </header>
 
       <section className="space-y-4">
-        <p className="text-sm font-semibold text-ok">ליגת העל · 2026/27</p>
-        <h1 className="font-display text-5xl leading-[1.05] font-black">
-          רק אוהדים
-          <br />
-          אמיתיים.
+        <p className="text-xs font-medium tracking-[0.08em] text-muted">
+          <span className="t-num text-ok">26/27</span> · ליגת העל
+        </p>
+        <h1 className="text-[2.6rem] leading-[1.12] font-semibold tracking-[-0.015em] text-balance">
+          רק אוהדים אמיתיים
+          <span className="block font-light text-muted">הבית של האוהדים</span>
         </h1>
-        <p className="text-lg text-muted">קהילה פרטית לכל קבוצה. כל אוהד מאומת, וקבוצה אחת לכל החיים.</p>
+        <p className="text-base leading-relaxed text-muted">קהילה פרטית לכל קבוצה. כל אוהד מאומת, וקבוצה אחת לכל החיים.</p>
         <ul className="flex flex-wrap gap-1.5 pt-2" aria-label="קבוצות ליגת העל">
           {TEAMS.map((t) => (
             <li key={t.id} title={t.name}>

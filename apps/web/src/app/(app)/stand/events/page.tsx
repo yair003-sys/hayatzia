@@ -11,7 +11,7 @@ export default function Page() {
   return (
     <section className="space-y-4">
       <BackToStand />
-      <h1 className="font-display text-3xl font-black">אירועים</h1>
+      <h1 className="t-page">אירועים</h1>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
         <Events />
       </Suspense>

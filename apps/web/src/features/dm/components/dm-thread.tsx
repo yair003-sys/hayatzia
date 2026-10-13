@@ -125,7 +125,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         .select('id,sender_id,created_at')
         .single()
       if (error) {
-        setStatus(error.message.includes('blocked') ? 'אי אפשר לשלוח לאוהד הזה' : error.message.includes('rate_limit') ? 'לאט לאט 🙂' : 'ההודעה לא נשלחה')
+        setStatus(error.message.includes('blocked') ? 'אי אפשר לשלוח לאוהד הזה' : error.message.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
         return
       }
       setDraft('')
@@ -153,7 +153,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       </div>
       {code && (
         <div className="mb-3 space-y-1 rounded-lg border border-line bg-surface-2 p-3 text-center">
-          <p dir="ltr" className="font-display text-2xl font-black tracking-widest">
+          <p dir="ltr" className="text-2xl t-num tracking-widest">
             {code}
           </p>
           <p className="text-xs text-muted">השוו עם {otherNick} (פנים אל פנים או בטלפון). אם הקוד זהה, אף אחד לא מתחזה באמצע.</p>
@@ -161,13 +161,13 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       )}
 
       <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
-        {messages.length === 0 && <li className="py-10 text-center text-muted">תתחיל שיחה עם {otherNick} 👋</li>}
+        {messages.length === 0 && <li className="py-10 text-center text-muted">התחל שיחה עם {otherNick}</li>}
         {messages.map((m) => {
           const mine = m.sender_id === meId
           return (
             <li key={m.id} className={cn('flex max-w-[85%] flex-col', mine ? 'self-start' : 'self-end')}>
               <div className={cn('rounded-lg px-3 py-2 break-words whitespace-pre-wrap', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2')}>
-                {m.text ?? <span className="text-xs italic opacity-70">🔒 נשלח למכשיר אחר שלך</span>}
+                {m.text ?? <span className="inline-flex items-center gap-1 text-xs italic opacity-70"><Lock className="size-3" aria-hidden="true" /> נשלח למכשיר אחר שלך</span>}
               </div>
               <time dateTime={m.created_at} className="mt-0.5 px-1 text-[11px] text-dim">
                 {chatTime(m.created_at)}

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, MessageSquare, Trash2 } from 'lucide-react'
+import { Camera, MessageSquare, Shirt, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { openThreadAction } from '@/features/dm/server/actions'
@@ -362,7 +362,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
   return (
     <div className="space-y-4">
       <p className="rounded-md bg-surface p-3 text-sm text-muted">
-        🧣 חולצות, צעיפים ומזכרות בין אוהדי {teamShort}. <b>בלי כרטיסים.</b> התשלום ביד, לא דרך האפליקציה.
+        חולצות, צעיפים ומזכרות בין אוהדי {teamShort}. <b>בלי כרטיסים.</b> התשלום ביד, לא דרך האפליקציה.
       </p>
       {form ? (
         <form
@@ -461,7 +461,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={i.url} alt={i.title} loading="lazy" className="size-full object-cover" />
                 ) : (
-                  <span aria-hidden="true">🧣</span>
+                  <Shirt className="size-8 text-dim" strokeWidth={1.5} aria-hidden="true" />
                 )}
                 <span className="absolute bottom-1.5 start-1.5 rounded-full bg-canvas/85 px-2 py-0.5 text-sm font-bold">₪{i.price}</span>
                 {i.sold && <span className="absolute top-1.5 end-1.5 rounded-full bg-live px-2 py-0.5 text-xs text-white">נמכר</span>}

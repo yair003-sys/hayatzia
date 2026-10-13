@@ -24,7 +24,7 @@ export type SendResult = { message: ChatMessage } | { error: string }
 
 /** Hebrew text for the errors the database raises on insert. */
 export function chatErrorHe(message: string): string {
-  if (message.includes('rate_limit')) return 'לאט לאט 🙂 נסה שוב בעוד כמה שניות'
+  if (message.includes('rate_limit')) return 'רגע, לאט יותר. נסה שוב בעוד כמה שניות'
   if (message.includes('room_closed')) return 'החדר סגור כרגע'
   if (message.includes('not_playing')) return 'רק אוהדי שתי הקבוצות כותבים בחדר הזה'
   return 'ההודעה לא נשלחה. נסה שוב'

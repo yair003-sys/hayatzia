@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'משחקים' }
 export default function MatchesPage() {
   return (
     <section className="space-y-6">
-      <h1 className="font-display text-3xl font-black">משחקים</h1>
+      <h1 className="t-page">משחקים</h1>
       <Suspense fallback={<div className="skeleton h-20 rounded-2xl" aria-hidden="true" />}>
         <PredictCard />
       </Suspense>

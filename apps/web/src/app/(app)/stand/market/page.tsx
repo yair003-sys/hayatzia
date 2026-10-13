@@ -14,7 +14,7 @@ export default function Page({ searchParams }: PageProps<'/stand/market'>) {
   return (
     <section className="space-y-4">
       <BackToStand />
-      <h1 className="font-display text-3xl font-black">שוק אוהדים</h1>
+      <h1 className="t-page">שוק אוהדים</h1>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
         {searchParams.then((sp) => (
           <Market cat={typeof sp.c === 'string' && sp.c in MARKET_CAT ? sp.c : undefined} />

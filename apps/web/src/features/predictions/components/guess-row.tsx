@@ -33,13 +33,13 @@ export function GuessRow({ fixtureId, home, away, when, locked, result, initial,
       <span className="sh-scarf" style={{ '--a': t.bg, '--b': t.ring, '--h': '22px', width: 7 } as CSSProperties} aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate font-display font-bold">{t.short}</span>
       {locked ? (
-        <span className="w-8 text-center font-display text-xl font-black tabular-nums">{saved ? (t === home ? saved.home : saved.away) : '–'}</span>
+        <span className="w-8 text-center text-xl t-num">{saved ? (t === home ? saved.home : saved.away) : '–'}</span>
       ) : (
         <span className="flex items-center gap-1.5">
           <button type="button" aria-label={`פחות שערים ל${t.short}`} disabled={v === 0} onClick={() => set(v - 1)} className="grid size-9 place-items-center rounded-full border border-line disabled:opacity-30">
             <Minus className="size-4" aria-hidden="true" />
           </button>
-          <span className="w-7 text-center font-display text-xl font-black tabular-nums" aria-live="polite">
+          <span className="w-7 text-center text-xl t-num" aria-live="polite">
             {v}
           </span>
           <button type="button" aria-label={`עוד שער ל${t.short}`} disabled={v === 20} onClick={() => set(v + 1)} className="grid size-9 place-items-center rounded-full border border-line disabled:opacity-30">

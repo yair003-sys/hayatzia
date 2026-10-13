@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Heebo, Inter, Rubik } from 'next/font/google'
+import { Heebo, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { EnvBanner } from '@/components/env-banner'
 import { RegisterServiceWorker } from '@/features/pwa/register-sw'
 import './globals.css'
 
-const heebo = Heebo({ subsets: ['hebrew', 'latin'], variable: '--font-heebo', display: 'swap' })
-const rubik = Rubik({ subsets: ['hebrew', 'latin'], variable: '--font-rubik', display: 'swap' })
-// The onefan wordmark (brand guide: Inter, bold). Hebrew text stays in Heebo/Rubik.
-const inter = Inter({ subsets: ['latin'], weight: ['700', '800'], variable: '--font-inter', display: 'swap' })
+const heebo = Heebo({ subsets: ['hebrew', 'latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-heebo', display: 'swap' })
+// The onefan wordmark and numbers (brand guide: Inter). Hebrew text is Heebo.
+const inter = Inter({ subsets: ['latin'], weight: ['500', '600', '700', '800'], variable: '--font-inter', display: 'swap' })
 
 export const metadata: Metadata = {
   title: { default: 'onefan', template: '%s · onefan' },
@@ -35,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable} ${inter.variable}`}>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
         <EnvBanner />
         <RegisterServiceWorker />

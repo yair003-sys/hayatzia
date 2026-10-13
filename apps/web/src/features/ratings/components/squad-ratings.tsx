@@ -64,7 +64,7 @@ function PlayerItem(props: {
         }}
         className="flex w-full items-center gap-3 px-3 py-2.5 text-start"
       >
-        <span className="w-7 text-center font-display font-black tabular-nums text-muted">{p.number ?? ''}</span>
+        <span className="w-7 text-center t-num text-muted">{p.number ?? ''}</span>
         <span className="flex-1">
           <b>{p.name_he}</b>
           {p.injured && <span className="ms-2 text-xs text-live">פצוע</span>}

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Target } from 'lucide-react'
 import { groupByRound, predictRoundIndex } from '@/features/matches/rounds'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
@@ -21,9 +21,7 @@ export async function PredictCard() {
   return (
     <Link href="/matches/predict" className="sh-card">
       <span className="sh-card-h">
-        <span className="text-lg" aria-hidden="true">
-          🔮
-        </span>
+        <Target className="size-5 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
         <b>ניחושים</b>
         <span className={left > 0 ? 'sh-chip open' : 'sh-chip'}>{open.length === 0 ? 'אין משחקים פתוחים' : left > 0 ? `${left} פתוחים` : 'ניחשת הכול'}</span>
         <ChevronLeft className="size-4 text-dim" aria-hidden="true" />

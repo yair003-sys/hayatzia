@@ -46,11 +46,11 @@ async function MatchContent({ id }: { id: number }) {
           {roundLabelHe(f.r)} · {kickoffDay(f.t)} {kickoffTime(f.t)}
         </p>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <h1 className="font-display text-lg font-black">{home.name}</h1>
-          <span className="font-display text-4xl font-black tabular-nums" dir="ltr">
+          <h1 className="t-sec">{home.name}</h1>
+          <span className="text-4xl t-num" dir="ltr">
             {f.gh ?? '–'} : {f.ga ?? '–'}
           </span>
-          <h2 className="font-display text-lg font-black">{away.name}</h2>
+          <h2 className="t-sec">{away.name}</h2>
         </div>
         {f.v && <p className="text-xs text-dim">{f.v}</p>}
       </header>

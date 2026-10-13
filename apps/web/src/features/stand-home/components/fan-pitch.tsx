@@ -157,7 +157,7 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-black">
+          <h2 className="t-sec">
             {p.number !== null && <span className="me-2 text-muted tabular-nums">{p.number}</span>}
             {p.name_he}
           </h2>

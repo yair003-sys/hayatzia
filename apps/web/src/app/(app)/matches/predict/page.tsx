@@ -19,7 +19,7 @@ export default function Page() {
       <Link href="/matches" className="text-sm text-accent-text">
         → משחקים
       </Link>
-      <h1 className="font-display text-3xl font-black">🔮 ניחושים</h1>
+      <h1 className="t-page">ניחושים</h1>
       <p className="text-sm text-muted">הניחוש ננעל בשריקת הפתיחה. 3 נקודות על תוצאה מדויקת, נקודה על כיוון נכון.</p>
       <Suspense fallback={<div className="skeleton h-96 rounded-2xl" aria-hidden="true" />}>
         <Predict />
@@ -72,10 +72,10 @@ async function Predict() {
         <ol className="space-y-1.5">
           {shown.map((r) => (
             <li key={r.userId} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5', r.me ? 'border-accent/60 bg-accent-soft' : 'border-line-soft bg-surface')}>
-              <span className="w-6 text-center font-display font-black text-muted tabular-nums">{r.rank}</span>
+              <span className="w-6 text-center t-num text-muted">{r.rank}</span>
               <b className="flex-1 truncate">{r.me ? `${r.nick} (אתה)` : r.nick}</b>
               <span className="text-xs text-dim tabular-nums">{r.exact} מדויקים</span>
-              <span className="font-display font-black tabular-nums">{r.points} נק׳</span>
+              <span className="t-num">{r.points} נק׳</span>
             </li>
           ))}
         </ol>

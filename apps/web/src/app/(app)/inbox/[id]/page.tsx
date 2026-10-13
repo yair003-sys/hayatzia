@@ -35,7 +35,7 @@ async function Thread({ id }: { id: string }) {
   return (
     <>
       <header className="flex items-start justify-between gap-3">
-        <h1 className="font-display text-2xl font-black">{t.otherNick}</h1>
+        <h1 className="t-page">{t.otherNick}</h1>
         <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />
       </header>
       <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} />

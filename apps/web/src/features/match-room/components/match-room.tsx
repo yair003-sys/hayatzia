@@ -58,7 +58,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
       ),
     },
     ...(p.summary
-      ? [{ key: `sum-${p.id}`, at: p.closesAt, node: <p className="self-center py-0.5 text-xs text-dim">🗳️ {p.summary}</p> }]
+      ? [{ key: `sum-${p.id}`, at: p.closesAt, node: <p className="self-center py-0.5 text-xs text-dim">{p.summary}</p> }]
       : []),
   ])
 

@@ -17,7 +17,7 @@ export function FixtureRow({ fixture: f, teams }: { fixture: Fixture; teams: Lea
       <TeamBadge team={home} />
       <span className="min-w-16 text-center">
         {done || live ? (
-          <span className="font-display text-lg font-black tabular-nums" dir="ltr">
+          <span className="text-lg t-num" dir="ltr">
             {f.gh ?? 0} : {f.ga ?? 0}
           </span>
         ) : (

@@ -17,7 +17,7 @@ type Props = {
   onVote: (pollId: string, option: string, optionIn?: string) => Promise<string | null>
 }
 
-const SOURCE: Record<Poll['source'], string> = { chat: '⚡ דעת הקהל · מהצ׳אט', event: '🟨 אירוע במשחק', schedule: '⏱️ דעת הקהל' }
+const SOURCE: Record<Poll['source'], string> = { chat: 'דעת הקהל · מהצ׳אט', event: 'אירוע במשחק', schedule: 'דעת הקהל' }
 const pctStyle = (pct: number) => ({ '--pct': pct }) as CSSProperties
 
 /** One poll as a compact, tactile card inside the match-room chat (mockup v3, 3D pass). */
@@ -44,10 +44,10 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
   return (
     <article id={`poll-${poll.id}`} aria-label={poll.question} data-open={open} className="crowd-card my-1.5 grid gap-2.5 self-stretch p-3.5">
       <header className="flex items-center gap-2 text-[11px] font-bold">
-        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent-text">{club ? `🔁 רק אוהדי ${club.short}` : SOURCE[poll.source]}</span>
+        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent-text">{club ? `רק אוהדי ${club.short}` : SOURCE[poll.source]}</span>
         <span className="ms-auto">{open ? <Countdown poll={poll} now={now} /> : <span className="font-normal text-muted">נסגר</span>}</span>
       </header>
-      <h4 className="font-display text-lg leading-tight font-black text-balance">{poll.question}</h4>
+      <h4 className="t-sec">{poll.question}</h4>
 
       {poll.kind === 'sub60' ? (
         <>
@@ -95,7 +95,7 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
                     {o.emoji}
                   </span>
                   <span className="max-w-full truncate">{o.label}</span>
-                  {reveal && <span className="crowd-pct font-display text-sm font-black" style={pctStyle(r.pct)} aria-label={`${r.pct}%`} />}
+                  {reveal && <span className="crowd-pct text-sm t-num" style={pctStyle(r.pct)} aria-label={`${r.pct}%`} />}
                 </button>
                 {burst?.option === o.id && <Burst key={burst.n} emoji={o.emoji} />}
               </div>
@@ -109,7 +109,7 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
       <footer className="flex items-center justify-between gap-2 text-[11px] text-dim">
         <span className={cn(poll.summary && 'font-bold text-fg')}>
           {poll.summary
-            ? `🗳️ ${poll.summary}`
+            ? poll.summary
             : `${total.toLocaleString('he-IL')} הצביעו${mine && open ? ' · אפשר לשנות' : voter && !mine ? ' · הצבע כדי לראות תוצאות' : ''}`}
         </span>
         {reveal && poll.kind !== 'sub60' && (
@@ -197,11 +197,11 @@ function ChipRow(props: {
                 className="crowd-key flex min-h-11 items-center gap-1.5 ps-1.5 pe-2.5 text-xs font-semibold"
               >
                 <span aria-hidden="true" className="crowd-fill" style={{ width: props.reveal ? `${pct}%` : 0 }} />
-                <span className="grid size-7 place-items-center rounded-lg bg-black/30 font-display text-[11px] font-black shadow-[inset_0_1px_0_rgb(255_255_255/.12)]">
+                <span className="grid size-7 place-items-center rounded-lg bg-black/30 t-num text-[11px] shadow-[inset_0_1px_0_rgb(255_255_255/.12)]">
                   {o.emoji}
                 </span>
                 <span>{o.label}</span>
-                {props.reveal && <span className="crowd-pct font-display font-black" style={pctStyle(pct)} aria-label={`${pct}%`} />}
+                {props.reveal && <span className="crowd-pct t-num" style={pctStyle(pct)} aria-label={`${pct}%`} />}
               </button>
               {props.burst?.option === o.id && <Burst key={props.burst.n} emoji="⚽" />}
             </div>

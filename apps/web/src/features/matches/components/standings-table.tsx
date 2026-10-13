@@ -40,7 +40,7 @@ export function StandingsTable({ league }: { league: League }) {
                     <td className="text-center tabular-nums" dir="ltr">
                       {row.gd > 0 ? `+${row.gd}` : row.gd}
                     </td>
-                    <td className="text-center font-black tabular-nums">{row.pts}</td>
+                    <td className="text-center t-num">{row.pts}</td>
                     <td className="hidden rounded-e-md sm:table-cell">
                       <span className="flex justify-center gap-0.5" aria-label={`כושר: ${row.form}`}>
                         {row.form.split('').map((c, i) => (

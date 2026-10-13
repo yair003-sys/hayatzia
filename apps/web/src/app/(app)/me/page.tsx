@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'הכרטיס שלי' }
 export default function MePage() {
   return (
     <section className="space-y-5">
-      <h1 className="font-display text-3xl font-black">הכרטיס שלי</h1>
+      <h1 className="t-page">הכרטיס שלי</h1>
       <Suspense fallback={<div className="skeleton h-32 rounded-lg" aria-hidden="true" />}>
         <ProfileCard />
       </Suspense>
@@ -35,18 +35,18 @@ async function ProfileCard() {
       <div className="flex items-center gap-4 rounded-lg bg-surface p-5">
         <TeamScarf team={s.team} className="h-12 w-4" />
         <div>
-          <p className="font-display text-2xl font-black">{s.nick}</p>
+          <p className="text-2xl font-semibold">{s.nick}</p>
           <p className="text-muted">אוהד {s.team.name} · הקבוצה נעולה</p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-line-soft bg-surface p-4">
-          <b className="block font-display text-3xl font-black tabular-nums">{seen.games}</b>
-          <span className="text-sm text-muted">📍 משחקים שהייתי בהם העונה</span>
+          <b className="block text-3xl t-num">{seen.games}</b>
+          <span className="text-sm text-muted">משחקים שהייתי בהם העונה</span>
         </div>
         <div className="rounded-lg border border-line-soft bg-surface p-4">
-          <b className="block font-display text-3xl font-black tabular-nums">{seen.away}</b>
-          <span className="text-sm text-muted">🚌 מתוכם משחקי חוץ</span>
+          <b className="block text-3xl t-num">{seen.away}</b>
+          <span className="text-sm text-muted">מתוכם משחקי חוץ</span>
         </div>
       </div>
       <InstallApp />

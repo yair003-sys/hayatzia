@@ -48,7 +48,7 @@ export const decideSeatAction = actionClient.inputSchema(decideSchema).action(as
     .eq('user_id', p.userId)
   if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : 'לא הצלחנו לשמור' }
   await sendPush([p.userId], {
-    title: p.accept ? 'אושרת לנסיעה 🚗' : 'הבקשה לנסיעה נדחתה',
+    title: p.accept ? 'אושרת לנסיעה' : 'הבקשה לנסיעה נדחתה',
     body: p.accept ? 'יש לך מקום. תתאמו פרטים בהודעה.' : 'אפשר לחפש נסיעה אחרת',
     url: '/stand/trips',
     tag: `trip:${p.tripId}`,

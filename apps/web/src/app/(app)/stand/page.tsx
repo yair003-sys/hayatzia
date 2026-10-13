@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { Car, ChevronLeft } from 'lucide-react'
+import { CalendarDays, Car, ChevronLeft, Music, Shirt, Trophy } from 'lucide-react'
 import { displayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
@@ -40,7 +40,7 @@ const clock = () => Date.now()
 
 async function StandHome() {
   const s = await getSessionProfile()
-  if (s.status !== 'ready') return <h1 className="font-display text-3xl font-black">onefan</h1>
+  if (s.status !== 'ready') return <h1 className="t-page">onefan</h1>
   const team = s.team
   const league = await getLeague()
   const ids = clubApiIds(league, team.id)
@@ -72,8 +72,9 @@ async function StandHome() {
           <MatchTicket fixture={ticket} home={nameOf(ticket.h)} away={nameOf(ticket.a)} />
           {active && <CheckinButton fixtureId={ticket.id} done={checked} label={team.short} />}
           {active && DONE_STATUSES.has(ticket.st) && (
-            <Link href={`/matches/${ticket.id}#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-extrabold">
-              🏆 שחקן המשחק · דרג את השחקנים
+            <Link href={`/matches/${ticket.id}#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-bold">
+              <Trophy className="size-4 text-warn" aria-hidden="true" />
+              שחקן המשחק · דרג את השחקנים
             </Link>
           )}
         </>
@@ -102,19 +103,19 @@ async function StandHome() {
         <span className="sh-pv">מוצאים פרטנרים לנסיעה, ומתאמים בשיחה פרטית</span>
       </Link>
 
-      <nav className="sh-tiles" aria-label="עוד ביציע">
+      <nav className="sh-tiles" aria-label="עוד">
         <Link href="/stand/events" className="sh-tile">
-          <i aria-hidden="true">📅</i>
+          <i aria-hidden="true"><CalendarDays className="size-5" strokeWidth={1.75} /></i>
           <b>אירועים</b>
           <span>{data.events} קרובים</span>
         </Link>
         <Link href="/stand/market" className="sh-tile">
-          <i aria-hidden="true">🧣</i>
+          <i aria-hidden="true"><Shirt className="size-5" strokeWidth={1.75} /></i>
           <b>שוק אוהדים</b>
           <span>{data.market} מודעות</span>
         </Link>
         <Link href="/stand/chants" className="sh-tile">
-          <i aria-hidden="true">🎶</i>
+          <i aria-hidden="true"><Music className="size-5" strokeWidth={1.75} /></i>
           <b>שירי הקהל</b>
           <span>{data.chants} שירים</span>
         </Link>

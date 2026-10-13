@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Mic, Music } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Chant } from '../server/queries'
@@ -34,10 +34,8 @@ export function ChantsBoard({ initial, isRep, meId, teamShort }: { initial: Chan
               <li key={c.id} className="sh-card gap-2">
                 <div className="flex items-center gap-3">
                   <button type="button" aria-expanded={open} onClick={() => setOpenId(open ? null : c.id)} className="flex min-w-0 flex-1 items-center gap-2 text-start">
-                    <span className="text-xl" aria-hidden="true">
-                      🎶
-                    </span>
-                    <b className="truncate font-display text-lg">{c.title}</b>
+                    <Music className="size-5 shrink-0 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
+                    <b className="truncate text-base font-semibold">{c.title}</b>
                     {open ? <ChevronUp className="size-4 text-dim" aria-hidden="true" /> : <ChevronDown className="size-4 text-dim" aria-hidden="true" />}
                   </button>
                   <button
@@ -98,7 +96,7 @@ function AddChant({ meId }: { meId: string }) {
       <textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} maxLength={2000} rows={4} placeholder="המילים" aria-label="המילים" className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm" />
       <input ref={input} type="file" accept="audio/*" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       <button type="button" onClick={() => input.current?.click()} className="w-full rounded-md border border-line py-2 text-sm">
-        {file ? `🎙️ ${file.name}` : '🎙️ הקלטה (לא חובה)'}
+        <Mic className="inline size-4" aria-hidden="true" /> {file ? file.name : 'הקלטה (לא חובה)'}
       </button>
       <button type="submit" disabled={pending || !title.trim()} className="w-full rounded-xl bg-accent py-2.5 font-bold text-white disabled:opacity-40">
         {pending ? 'מוסיף…' : 'הוספת השיר'}

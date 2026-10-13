@@ -3,7 +3,7 @@ export function ScreenPlaceholder({ title, phase, note }: { title: string; phase
   return (
     <section className="space-y-5">
       <header className="flex items-baseline justify-between gap-3">
-        <h1 className="font-display text-3xl font-black">{title}</h1>
+        <h1 className="t-page">{title}</h1>
         <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">{phase}</span>
       </header>
       <p className="text-muted">{note}</p>

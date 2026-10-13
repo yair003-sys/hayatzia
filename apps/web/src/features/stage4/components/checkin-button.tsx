@@ -45,7 +45,7 @@ export function CheckinButton({ fixtureId, done, label }: { fixtureId: number; d
           type="button"
           onClick={go}
           disabled={state === 'locating'}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl font-extrabold shadow-[inset_0_1px_0_rgb(255_255_255/.35),0_10px_26px_-10px_var(--acc,#0066ff)] disabled:opacity-60"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold shadow-[inset_0_1px_0_rgb(255_255_255/.35),0_10px_26px_-10px_var(--acc,#0066ff)] disabled:opacity-60"
           style={{ background: 'linear-gradient(180deg, var(--acc2, #3385ff), var(--acc, #0066ff))', color: 'var(--acc-on, #fff)' }}
         >
           <MapPin className="size-5" aria-hidden="true" />
@@ -55,7 +55,7 @@ export function CheckinButton({ fixtureId, done, label }: { fixtureId: number; d
       {stub && (
         <div className="relative overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface-2 p-4 text-center motion-safe:animate-pop" role="status">
           <span className="text-[11px] font-bold tracking-widest text-muted">כרטיס נוכחות</span>
-          <p className="font-display text-xl font-black">✓ הייתי שם</p>
+          <p className="t-sec">✓ הייתי שם</p>
           <p className="text-sm text-muted">
             {stub.stadium} · {new Date().toLocaleDateString('he-IL')}
             {stub.away ? ' · משחק חוץ' : ''}
