@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Camera, ImagePlus, Plus, X } from 'lucide-react'
+import { Camera, ImagePlus, Plus, Video, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { shrinkPhoto } from '../compress'
 import { ACCEPT, MAX_UPLOAD_MB, mediaOf, type Audience, type Clip } from '../schema'
@@ -32,7 +32,10 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const [once, setOnce] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const gallery = useRef<HTMLInputElement>(null)
+  // Phones open the camera directly only when the input asks for ONE kind (photo or video) with `capture`;
+  // "image/*,video/*" makes Android fall back to the gallery. So: one input per kind.
   const camera = useRef<HTMLInputElement>(null)
+  const recorder = useRef<HTMLInputElement>(null)
 
   const pick = (f: File | undefined) => {
     setError(null)
@@ -102,8 +105,18 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
 
   return (
     <>
-      <input ref={gallery} type="file" accept={ACCEPT} hidden onChange={(e) => pick(e.target.files?.[0])} />
-      <input ref={camera} type="file" accept="image/*,video/*" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0])} />
+      <input ref={gallery} type="file" accept={ACCEPT} hidden onChange={(e) => {
+          pick(e.target.files?.[0])
+          e.target.value = '' // the same photo can be picked again
+        }} />
+      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
+          pick(e.target.files?.[0])
+          e.target.value = '' // the same photo can be picked again
+        }} />
+      <input ref={recorder} type="file" accept="video/*" capture="environment" hidden onChange={(e) => {
+          pick(e.target.files?.[0])
+          e.target.value = '' // the same photo can be picked again
+        }} />
       <button type="button" className="sq-plus" aria-label={`פוסט חדש ${target}`} onClick={() => setChoosing(true)}>
         <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
       </button>
@@ -123,7 +136,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             </button>
             <button type="button" className="sq-choice" onClick={() => camera.current?.click()}>
               <Camera className="size-5" strokeWidth={1.75} aria-hidden="true" />
-              צילום עכשיו
+              צילום תמונה
+            </button>
+            <button type="button" className="sq-choice" onClick={() => recorder.current?.click()}>
+              <Video className="size-5" strokeWidth={1.75} aria-hidden="true" />
+              צילום סרטון
             </button>
           </div>
         </div>,
