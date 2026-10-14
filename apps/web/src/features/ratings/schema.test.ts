@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { average, positionGroup, rateSchema } from './schema'
+import { applyLike, average, likeReviewSchema, positionGroup, rateSchema } from './schema'
 
 describe('positionGroup', () => {
   it('groups positions in pitch order', () => {
@@ -28,5 +28,20 @@ describe('rateSchema', () => {
     expect(rateSchema.safeParse({ playerId: 'mta_14', stars: 5 }).success).toBe(true)
     expect(rateSchema.safeParse({ playerId: 'mta_14', stars: 0 }).success).toBe(false)
     expect(rateSchema.safeParse({ playerId: "x'; drop", stars: 3 }).success).toBe(false)
+  })
+})
+
+describe('review likes', () => {
+  it('a like adds one, an unlike takes one, the same state again changes nothing, never below zero', () => {
+    expect(applyLike({ liked: false, likes_count: 3 }, true)).toEqual({ liked: true, likes_count: 4 })
+    expect(applyLike({ liked: true, likes_count: 4 }, false)).toEqual({ liked: false, likes_count: 3 })
+    expect(applyLike({ liked: true, likes_count: 4 }, true)).toEqual({ liked: true, likes_count: 4 })
+    expect(applyLike({ liked: true, likes_count: 0 }, false)).toEqual({ liked: false, likes_count: 0 })
+  })
+  it('the action input: a club player id, the author as a uuid, on or off', () => {
+    const authorId = '11111111-1111-4111-8111-111111111111'
+    expect(likeReviewSchema.safeParse({ playerId: 'mta_14', authorId, on: true }).success).toBe(true)
+    expect(likeReviewSchema.safeParse({ playerId: 'mta_14', authorId: 'bob', on: true }).success).toBe(false)
+    expect(likeReviewSchema.safeParse({ playerId: 'mta_14', authorId }).success).toBe(false)
   })
 })

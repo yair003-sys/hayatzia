@@ -16,9 +16,16 @@ import {
   toggleRespectAction,
 } from '../server/actions'
 
-type Props = { clip: Clip; meId: string; myTeamId: string; onRemoved: (id: string) => void }
+type Props = {
+  clip: Clip
+  meId: string
+  myTeamId: string
+  onRemoved: (id: string) => void
+  /** Inside the home story viewer: a video plays once (no loop), reports its progress and says when it ended. */
+  story?: { onEnded: () => void; onProgress: (fraction: number) => void }
+}
 
-export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
+export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const team = teamById(clip.team_id)
   const mine = clip.user_id === meId
   const rival = clip.team_id !== myTeamId
@@ -80,7 +87,17 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved }: Props) {
       {url ? (
         clip.kind === 'video' ? (
           <button type="button" onClick={() => setMuted((m) => !m)} className="absolute inset-0" aria-label={muted ? 'הפעל קול' : 'השתק'}>
-            <video ref={media} src={url} muted={muted} loop playsInline preload="metadata" className="size-full object-cover" />
+            <video
+              ref={media}
+              src={url}
+              muted={muted}
+              loop={!story}
+              playsInline
+              preload="metadata"
+              className="size-full object-cover"
+              onEnded={story?.onEnded}
+              onTimeUpdate={story ? (e) => story.onProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1)) : undefined}
+            />
           </button>
         ) : (
           // Signed, short-lived Storage URL: next/image optimisation would cache it past its lifetime.

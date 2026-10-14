@@ -5,10 +5,21 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell as BellIcon } from 'lucide-react'
 import { debounce } from '@/lib/debounce'
+import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { listenPrivate } from '@/lib/supabase/shared-channel'
 import { whileVisible } from '@/lib/while-visible'
 import { ACTIVITY_SEEN_EVENT, badgeLabel, bellLabel } from '../activity'
+
+/** Screens that place the bell in their own header (the home), so the floating one stays away: one bell per screen. */
+export const OWN_BELL_PATHS = new Set(['/stand'])
+
+/** The bell floating at the top corner, except on screens that carry it in their header. */
+export function FloatingBell(props: { meId: string; count: number }) {
+  const pathname = usePathname()
+  if (OWN_BELL_PATHS.has(pathname)) return null
+  return <Bell {...props} />
+}
 
 /** Several changes in a burst (a clip going viral) become one count request, at the latest after REFETCH_MAX_MS. */
 const REFETCH_MS = 600
@@ -22,7 +33,7 @@ export const ANNOUNCE_EVERY_MS = 10_000
  * and the inbox through listenPrivate) re-reads the count. Opening the list (ACTIVITY_SEEN_EVENT) clears it, then the
  * count is read again: the visit covers only the rows the list showed.
  */
-export function Bell({ meId, count: serverCount }: { meId: string; count: number }) {
+export function Bell({ meId, count: serverCount, inline = false }: { meId: string; count: number; inline?: boolean }) {
   const pathname = usePathname()
   const [supabase] = useState(() => createClient())
   const [count, setCount] = useState(serverCount)
@@ -54,11 +65,11 @@ export function Bell({ meId, count: serverCount }: { meId: string; count: number
       refetch.call()
     }
     window.addEventListener(ACTIVITY_SEEN_EVENT, onSeen)
-    let first = true
     const stop = whileVisible(() => {
-      // Back from the background: what changed meanwhile came by phone push only, so read the count again.
-      if (!first) refetch.call()
-      first = false
+      // On mount and back from the background, read the count: the server's number may be old (a bell mounted again
+      // after the home, whose header carries its own bell, starts from the layout's first-load count), and what changed
+      // while hidden came by phone push only.
+      refetch.call()
       const off = listenPrivate(supabase, `inbox:${meId}`, (m) => {
         if (m.event === 'activity') refetch.call()
       })
@@ -99,7 +110,7 @@ export function Bell({ meId, count: serverCount }: { meId: string; count: number
 
   return (
     <>
-      <Link href="/activity" className="bell" aria-label={bellLabel(shown)} aria-current={here ? 'page' : undefined}>
+      <Link href="/activity" className={cn('bell', inline && 'bell-inline')} aria-label={bellLabel(shown)} aria-current={here ? 'page' : undefined}>
         <span className="bell-face">
           <BellIcon aria-hidden="true" className="size-[1.3rem]" strokeWidth={2.1} />
           {badge && (

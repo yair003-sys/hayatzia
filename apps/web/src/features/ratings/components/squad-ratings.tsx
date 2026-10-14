@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '../schema'
 import { ratePlayerAction, reviewsAction } from '../server/actions'
+import { ReviewLike, useReviewLikes } from './review-like'
 
-export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
+export function SquadRatings({ initial, openId: firstOpen = null }: { initial: PlayerRow[]; openId?: string | null }) {
   const [players, setPlayers] = useState(initial)
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(() => (firstOpen && initial.some((p) => p.id === firstOpen) ? firstOpen : null))
+  // Opened from a link (?p=<id>): bring that player into view once the list is on screen.
+  useEffect(() => {
+    if (!firstOpen) {
+      return
+    }
+    document.getElementById(`p-${firstOpen}`)?.scrollIntoView?.({ block: 'start' })
+  }, [firstOpen])
 
   const groups = new Map<string, PlayerRow[]>()
   for (const p of players) {
@@ -23,10 +31,11 @@ export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
           <h2 className="text-sm font-bold text-muted">{label}</h2>
           <ul className="space-y-2">
             {list.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} id={`p-${p.id}`} className="scroll-mt-4">
                 <PlayerItem
                   player={p}
                   open={openId === p.id}
+                  loadNow={p.id === firstOpen}
                   onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                   onRated={(next) => setPlayers((cur) => cur.map((x) => (x.id === next.id ? next : x)))}
                 />
@@ -42,6 +51,8 @@ export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
 function PlayerItem(props: {
   player: PlayerRow
   open: boolean
+  /** Opened from a link: load the reviews at once (normally they load on the tap that opens the row). */
+  loadNow?: boolean
   onToggle: () => void
   onRated: (p: PlayerRow) => void
 }) {
@@ -51,7 +62,21 @@ function PlayerItem(props: {
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const likes = useReviewLikes()
   const coach = positionGroup(p.position).order === 4
+
+  useEffect(() => {
+    if (!props.loadNow) {
+      return
+    }
+    let alive = true
+    void reviewsAction({ playerId: p.id }).then((r) => {
+      if (alive) setReviews(r.data?.reviews ?? [])
+    })
+    return () => {
+      alive = false
+    }
+  }, [props.loadNow, p.id])
 
   return (
     <div className="rounded-lg border border-line-soft bg-surface">
@@ -128,13 +153,21 @@ function PlayerItem(props: {
             </p>
           )}
           {reviews && reviews.length > 0 && (
-            <ul className="space-y-1.5" aria-label="ביקורות אחרונות">
+            <ul className="space-y-1" aria-label="ביקורות אחרונות">
               {reviews.map((r) => (
-                <li key={r.user_id} className="text-sm">
-                  <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                <li key={r.user_id} className="flex items-start gap-2 text-sm">
+                  <span className="min-w-0 flex-1 py-2.5">
+                    <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                  </span>
+                  <ReviewLike nick={r.nick} mine={r.mine} state={likes.view(p.id, r)} onToggle={() => void likes.toggle(p.id, r)} />
                 </li>
               ))}
             </ul>
+          )}
+          {likes.error && (
+            <p role="alert" className="text-xs text-live">
+              {likes.error}
+            </p>
           )}
         </div>
       )}

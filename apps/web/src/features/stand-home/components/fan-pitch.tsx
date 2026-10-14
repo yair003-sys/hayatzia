@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '@/features/ratings/schema'
+import { ReviewLike, useReviewLikes } from '@/features/ratings/components/review-like'
 import { ratePlayerAction, reviewsAction } from '@/features/ratings/server/actions'
 import type { Team } from '@/features/teams/data'
 import { cardTier, splitPitch } from '../schema'
@@ -111,6 +112,7 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const likes = useReviewLikes()
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
 
@@ -209,13 +211,21 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
           </p>
         )}
         {reviews && reviews.length > 0 && (
-          <ul className="max-h-40 space-y-1.5 overflow-y-auto" aria-label="ביקורות אחרונות">
+          <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label="ביקורות אחרונות">
             {reviews.map((r) => (
-              <li key={r.user_id} className="text-sm">
-                <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+              <li key={r.user_id} className="flex items-start gap-2 text-sm">
+                <span className="min-w-0 flex-1 py-2.5">
+                  <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                </span>
+                <ReviewLike nick={r.nick} mine={r.mine} state={likes.view(p.id, r)} onToggle={() => void likes.toggle(p.id, r)} />
               </li>
             ))}
           </ul>
+        )}
+        {likes.error && (
+          <p role="alert" className="text-xs text-live">
+            {likes.error}
+          </p>
         )}
       </div>
     </div>

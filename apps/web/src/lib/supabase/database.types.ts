@@ -177,6 +177,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"clip_like_days": {
+                  Row: {
+                    "day": string,"likes": number,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "day": string,"likes"?: number,"team_id": string,"user_id": string
+                  }
+                  Update: {
+                    "day"?: string,"likes"?: number,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clip_like_days_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"clip_likes": {
                   Row: {
                     "clip_id": string,"user_id": string
@@ -807,6 +827,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"player_rating_likes": {
+                  Row: {
+                    "author_id": string,"created_at": string,"player_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_id": string,"created_at"?: string,"player_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "author_id"?: string,"created_at"?: string,"player_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "player_rating_likes_player_id_author_id_fkey"
+      columns: ["player_id","author_id"]
+isOneToOne: false
+      referencedRelation: "player_ratings"
+      referencedColumns: ["player_id","user_id"]
+    }
+                  ]
                 },"player_rating_stats": {
                   Row: {
                     "count": number,"d1": number,"d2": number,"d3": number,"d4": number,"d5": number,"player_id": string,"sum": number
@@ -829,14 +869,14 @@ isOneToOne: true
                   ]
                 },"player_ratings": {
                   Row: {
-                    "nick": string,"player_id": string,"review": string,"stars": number,"updated_at": string,"user_id": string
+                    "likes_count": number,"nick": string,"player_id": string,"review": string,"stars": number,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "nick"?: string,"player_id": string,"review"?: string,"stars": number,"updated_at"?: string,"user_id"?: string
+                    "likes_count"?: number,"nick"?: string,"player_id": string,"review"?: string,"stars": number,"updated_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "nick"?: string,"player_id"?: string,"review"?: string,"stars"?: number,"updated_at"?: string,"user_id"?: string
+                    "likes_count"?: number,"nick"?: string,"player_id"?: string,"review"?: string,"stars"?: number,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1264,6 +1304,27 @@ isOneToOne: false
                            },
 "group_push_targets":
 { Args: { "p_group": string }; Returns: string[]
+                           },
+"home_active_fans":
+{ Args: { "p_team": string }; Returns: number
+                           },
+"home_fans_of_week":
+{ Args: { "p_team": string }; Returns: {
+              "nick": string,
+"points": number
+            }[]
+                           },
+"home_player_reviews":
+{ Args: { "p_per_player"?: number }; Returns: {
+              "author_id": string,
+"liked": boolean,
+"likes_count": number,
+"nick": string,
+"player_id": string,
+"review": string,
+"stars": number,
+"updated_at": string
+            }[]
                            },
 "invite_to_group":
 { Args: { "p_group": string,"p_members": (string)[] }; Returns: (string)[]

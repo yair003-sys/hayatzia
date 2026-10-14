@@ -8,7 +8,7 @@ import { getSquadWithRatings } from '@/features/ratings/server/queries'
 
 export const metadata: Metadata = { title: 'דירוג שחקנים' }
 
-export default function Page() {
+export default function Page({ searchParams }: PageProps<'/stand/players'>) {
   return (
     <section className="space-y-4">
       <Link href="/stand" className="inline-flex items-center gap-1 text-sm text-muted">
@@ -18,15 +18,18 @@ export default function Page() {
       <h1 className="t-page">דירוג שחקנים</h1>
       <p className="text-sm text-muted">הדירוגים והביקורות נשארים בתוך הקבוצה. אפשר לשנות דירוג מתי שרוצים.</p>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
-        <Squad />
+        {searchParams.then((sp) => (
+          <Squad open={typeof sp.p === 'string' ? sp.p : null} />
+        ))}
       </Suspense>
     </section>
   )
 }
 
-async function Squad() {
+/** `?p=<player id>` (from the home's "היה הראשון לכתוב ביקורת") opens that player's rating form. */
+async function Squad({ open }: { open: string | null }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') return <p className="text-muted">הדירוג פועל רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
-  return <SquadRatings initial={await getSquadWithRatings(s.team.id, s.userId)} />
+  return <SquadRatings initial={await getSquadWithRatings(s.team.id, s.userId)} openId={open} />
 }

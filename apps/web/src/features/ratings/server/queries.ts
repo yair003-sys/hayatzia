@@ -32,15 +32,23 @@ export async function getSquadWithRatings(teamId: string, userId: string): Promi
     )
 }
 
+/** The newest reviews of a player with their ♥ count, my own ♥ and whether I wrote it. One round of two queries. */
 export async function getRecentReviews(playerId: string): Promise<Review[]> {
   const supabase = await createClient()
   if (!supabase) return []
-  const { data } = await supabase
-    .from('player_ratings')
-    .select('user_id,nick,stars,review,updated_at')
-    .eq('player_id', playerId)
-    .neq('review', '')
-    .order('updated_at', { ascending: false })
-    .limit(10)
-  return data ?? []
+  const [{ data: claims }, reviews, mine] = await Promise.all([
+    supabase.auth.getClaims(),
+    supabase
+      .from('player_ratings')
+      .select('user_id,nick,stars,review,updated_at,likes_count')
+      .eq('player_id', playerId)
+      .neq('review', '')
+      .order('updated_at', { ascending: false })
+      .limit(10),
+    // RLS: only my own likes come back.
+    supabase.from('player_rating_likes').select('author_id').eq('player_id', playerId),
+  ])
+  const me = claims?.claims.sub
+  const liked = new Set((mine.data ?? []).map((l) => l.author_id))
+  return (reviews.data ?? []).map((r) => ({ ...r, liked: liked.has(r.user_id), mine: r.user_id === me }))
 }
