@@ -15,7 +15,7 @@ Owner's standing rule: **local and test data never touch production.**
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | differs per environment |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client + server | safe to expose; RLS protects data |
-| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: only `lib/supabase/admin.ts` (reading push subscriptions to send notifications). Production: key `server_2026_10` (rotated 2026-10-12; the old `default` key is deleted). Preview: not set yet, so previews do not send notifications and the in-app goal banner gets no text; the owner must add the **staging** key there (see "Owner setup still needed" below) |
+| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: only `lib/supabase/admin.ts` (reading push subscriptions to send notifications). Production: key `server_2026_10` (rotated 2026-10-12; the old `default` key is deleted). Preview: the **staging** key `server_2026_10_14` (rotated 2026-10-14 after a malformed paste was echoed into a Vercel log; the old staging `default` key is deleted; the same key is in the GitHub `staging` environment). Whitespace in a pasted key is stripped by `admin.ts` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | client / server | Web Push pair, generated in the owner's browser (never seen by Claude), Production + Preview |
 | `NEXT_PUBLIC_PHONE_AUTH` | client | `on`/`off` (default off): SMS sign-in, needs an SMS provider |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
@@ -47,10 +47,10 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - The dispatch route runs up to 60 s (`maxDuration`, valid on Vercel Hobby and Pro with Fluid compute) and claims alerts in rounds of 5 while time remains; it answers `{sent, skipped, more}` (`more: true` = some alerts wait for the next call). The workflow's curl waits 75 s.
 - `/api/alerts` is outside the session proxy (no cookies), so the banner's `GET /api/alerts/<id>` can be shared by the CDN.
 
-### Owner setup still needed for alerts on staging (and the demo)
-1. **Vercel → Settings → Environment Variables → Preview:** add `SUPABASE_SECRET_KEY` with the **staging** project's `sb_secret_…` key (today it is not set, so on staging the dispatch sends nothing and the banner's goal text answers 503). Never the production key.
-2. **Vercel → Preview:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` must be there too (same pair as Production is fine), plus `ALERTS_SECRET` (the staging value).
-3. **Vercel Deployment Protection (check once):** until now nothing in GitHub called a preview URL (`web-load` and the demo scripts talk to the staging Supabase directly), so whether `https://hayatzia-git-demo-preview-hayaziha.vercel.app` is behind Vercel sign-in was never tested. After the first staging ingest, read the `alerts staging` notice: `HTTP 200` → nothing to do. `HTTP 401` (or a login page) → Vercel → Settings → Deployment Protection → **Protection Bypass for Automation** → create a secret and save it in the GitHub `staging` environment as secret `VERCEL_AUTOMATION_BYPASS_SECRET` (or turn protection off for previews). `web-ingest.yml` and the demo script already send it as the `x-vercel-protection-bypass` header, only when that secret exists. Production has no protection, so it needs nothing.
+### Alerts on staging: done (2026-10-14)
+- Vercel Preview: `SUPABASE_SECRET_KEY` (staging), `ALERTS_SECRET` (staging value), VAPID pair.
+- Vercel Deployment Protection stays on for previews; GitHub reaches the preview through **Protection Bypass for Automation** (secret noted "github"), saved in the GitHub `staging` environment as `VERCEL_AUTOMATION_BYPASS_SECRET`. Production has no protection, so it needs nothing.
+- Verified end to end with the demo match (run 38553994466): dispatch `sent=1` for the goal and for full time; the owner received both on his phone and saw the in-app banner.
 
 ## Crowd-verdict demo (staging only)
 - `.github/workflows/web-demo-match.yml` (dispatch only, `environment: staging`) runs `scripts/demo-match.ts`: demo match `900000001` (`is_demo`, labelled "משחק לדוגמה · נתונים לדוגמה"), 30 demo fans (`demo-fan-NN@demo.hayatzia.test`, nicks `דמו·…`), a chat burst that opens a poll by itself, scripted events, demo votes; about 12 minutes. The script refuses the production ref.
