@@ -1,1 +1,1 @@
-{"day":"2026-10-14","req":32,"season":2024,"fetched":1792011479531,"remaining":74,"lastStand":1792011479531,"lastFull":1792011479531}
+{"day":"2026-10-15","req":4,"season":2024,"fetched":1792021952523,"remaining":99,"lastStand":1792011479531,"lastFull":1792011479531,"lastError":{"at":1792021952523,"path":"/fixtures/events?fixture=1360216","errors":{"access":"Your account is suspended, check on https://dashboard.api-football.com."}}}
