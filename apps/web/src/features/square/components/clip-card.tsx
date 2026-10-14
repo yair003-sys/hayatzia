@@ -7,6 +7,7 @@ import { ReportBlock } from '@/features/safety/components/report-block'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { cn } from '@/lib/utils'
 import { shortCount, timeLeftHe, type Clip, type ClipComment } from '../schema'
+import { setSoundOn, useSoundOn } from '../sound'
 import {
   addCommentAction,
   deleteClipAction,
@@ -66,15 +67,37 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     })
   }
 
-  const [muted, setMuted] = useState(true)
+  // Sound follows the fan's last choice across videos. A phone may refuse sound before the first tap on the page:
+  // then the video plays silent and one tap turns the sound on (inside the tap, so the phone allows it).
+  const soundOn = useSoundOn()
+  const [blocked, setBlocked] = useState(false)
+  const muted = !soundOn || blocked
   const media = useRef<HTMLVideoElement>(null)
+  const toggleSound = () => {
+    const v = media.current
+    if (muted) {
+      setBlocked(false)
+      setSoundOn(true)
+      if (v) {
+        v.muted = false
+        void v.play().catch(() => {})
+      }
+    } else setSoundOn(false)
+  }
   const card = useRef<HTMLElement>(null)
   // A reel plays while it fills most of the screen and pauses when swiped away.
   useEffect(() => {
     const el = card.current
     const v = media.current
     if (!el || !v) return
-    const io = new IntersectionObserver(([e]) => (e && e.intersectionRatio > 0.7 ? void v.play().catch(() => {}) : v.pause()), {
+    const play = () =>
+      v.play().catch(() => {
+        if (v.muted) return
+        v.muted = true
+        setBlocked(true)
+        void v.play().catch(() => {})
+      })
+    const io = new IntersectionObserver(([e]) => (e && e.intersectionRatio > 0.7 ? void play() : v.pause()), {
       threshold: [0, 0.7, 1],
     })
     io.observe(el)
@@ -86,7 +109,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     <article ref={card} className="relative h-full snap-start snap-always overflow-hidden bg-black" aria-label={`פוסט של ${clip.nick}`}>
       {url ? (
         clip.kind === 'video' ? (
-          <button type="button" onClick={() => setMuted((m) => !m)} className="absolute inset-0" aria-label={muted ? 'הפעל קול' : 'השתק'}>
+          <button type="button" onClick={toggleSound} className="absolute inset-0" aria-label={muted ? 'הפעל קול' : 'השתק'}>
             <video
               ref={media}
               src={url}
@@ -94,15 +117,20 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               loop={!story}
               playsInline
               preload="metadata"
-              className="size-full object-cover"
+              className="size-full object-contain"
               onEnded={story?.onEnded}
               onTimeUpdate={story ? (e) => story.onProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1)) : undefined}
             />
           </button>
         ) : (
           // Signed, short-lived Storage URL: next/image optimisation would cache it past its lifetime.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={clip.caption || 'פוסט בכיכר'} className="absolute inset-0 size-full object-cover" loading="lazy" />
+          // The whole photo is shown (no cropping); a blurred copy fills the bars around it, like Instagram.
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" loading="lazy" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className="absolute inset-0 size-full object-contain" loading="lazy" />
+          </>
         )
       ) : (
         <div className="absolute inset-0 grid place-items-center bg-elev">

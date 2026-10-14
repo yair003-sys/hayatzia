@@ -32,7 +32,7 @@ describe('home sections always show (owner, 2026-10-14)', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'העלה את הראשון' }))
     })
-    expect(screen.getByRole('dialog', { name: 'פוסט חדש' })).toHaveTextContent('לאוהדי מכבי ת״א')
+    expect(screen.getByRole('dialog', { name: 'פוסט חדש' })).toHaveTextContent('נעלם אחרי 24 שעות')
     expect(screen.getByRole('button', { name: 'בחירה מהגלריה' })).toBeInTheDocument()
   })
 

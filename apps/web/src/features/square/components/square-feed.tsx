@@ -30,6 +30,11 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
       choosing={choosing}
       setChoosing={setChoosing}
       onStart={(local) => {
+        // A post sent to the other tab is not shown here (it lives in that tab).
+        if (local.audience !== audience) {
+          if (local.url?.startsWith('blob:')) URL.revokeObjectURL(local.url)
+          return
+        }
         setClips((cur) => [local, ...cur])
         scroller.current?.scrollTo({ top: 0, behavior: 'smooth' })
       }}

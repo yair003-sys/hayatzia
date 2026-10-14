@@ -27,7 +27,11 @@ type Props = {
 
 /** Pick or shoot, write a caption, publish to the open tab. Photos are shrunk; the upload runs in the background. */
 export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing, trigger }: Props) {
-  const target = audience === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה'
+  // The fan chooses who sees the post; the open tab is only the starting choice.
+  const [to, setTo] = useState<Audience>(audience)
+  const label = (a: Audience) => (a === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה')
+  const target = label(to)
+  const [sent, setSent] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [caption, setCaption] = useState('')
@@ -46,6 +50,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     if (!mediaOf(f.type)) return setError('אפשר להעלות רק תמונה או סרטון')
     if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(`הקובץ גדול מ־${MAX_UPLOAD_MB}MB`)
     setChoosing(false)
+    setTo(audience)
     setFile(f)
     setPreview(URL.createObjectURL(f))
   }
@@ -78,13 +83,14 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
       views_count: 0,
       created_at: now.toISOString(),
       expires_at: new Date(now.getTime() + 24 * 3600_000).toISOString(),
-      audience,
+      audience: to,
       url: preview,
       liked: false,
       respected: false,
       uploading: true,
     })
-    const input = { caption, tags, once, audience }
+    const input = { caption, tags, once, audience: to }
+    const elsewhere = to !== audience ? `הפוסט עלה ${label(to)} ✓` : null
     const original = file
     close()
     void (async () => {
@@ -100,7 +106,13 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         return onDone(localId, null)
       }
       const r = await createClipAction({ path, kind: media.kind, ...input })
-      if (r.data && 'clip' in r.data) return onDone(localId, r.data.clip ?? null)
+      if (r.data && 'clip' in r.data) {
+        if (elsewhere && r.data.clip) {
+          setSent(elsewhere)
+          setTimeout(() => setSent(null), 3000)
+        }
+        return onDone(localId, r.data.clip ?? null)
+      }
       setError((r.data && 'error' in r.data && r.data.error) || 'הפרסום נכשל. נסה שוב')
       onDone(localId, null)
     })()
@@ -121,7 +133,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           e.target.value = '' // the same photo can be picked again
         }} />
       {trigger ?? (
-        <button type="button" className="sq-plus" aria-label={`פוסט חדש ${target}`} onClick={() => setChoosing(true)}>
+        <button type="button" className="sq-plus" aria-label="פוסט חדש" onClick={() => setChoosing(true)}>
           <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
         </button>
       )}
@@ -132,9 +144,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         <div className="sq-sheet-wrap" onClick={() => setChoosing(false)}>
           <div className="sq-sheet" role="dialog" aria-label="פוסט חדש" onClick={(e) => e.stopPropagation()}>
             <span className="sq-grip" aria-hidden="true" />
-            <p className="text-sm text-muted">
-              פוסט חדש <b className="font-semibold text-fg">{target}</b> · נעלם אחרי 24 שעות
-            </p>
+            <p className="text-sm text-muted">פוסט חדש · נעלם אחרי 24 שעות</p>
             <button type="button" className="sq-choice" onClick={() => gallery.current?.click()}>
               <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden="true" />
               בחירה מהגלריה
@@ -174,6 +184,26 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           <div className="sq-compose-bottom">
             <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="כיתוב (לא חובה)" aria-label="כיתוב" className="sq-input" />
             <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className="mb-1.5 text-sm font-semibold text-white">למי לפרסם?</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {(['team', 'all'] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    aria-pressed={to === a}
+                    onClick={() => setTo(a)}
+                    className={
+                      to === a
+                        ? 'min-h-11 rounded-xl bg-accent px-3 text-sm font-bold text-white'
+                        : 'min-h-11 rounded-xl border border-white/25 bg-black/40 px-3 text-sm text-white/85'
+                    }
+                  >
+                    {a === 'team' ? `רק לאוהדי ${teamShort}` : 'לכל הליגה'}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <label className="flex items-center gap-2 text-sm text-white/85">
               <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
               חד פעמי: כל אוהד יוכל לצפות פעם אחת
@@ -185,6 +215,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         </div>,
           document.body,
         )}
+      {sent && (
+        <p role="status" className="sq-toast bg-ok/95 text-canvas">
+          {sent}
+        </p>
+      )}
       {error && (
         <p role="alert" className="sq-toast">
           {error}
