@@ -2,13 +2,13 @@
 -- the most-liked reviews per player, story seen-state from clip_views, and the club aggregates "active fans (7 days)"
 -- and "fans of the week" (own club only, nick + points only).
 begin;
-select plan(55);
+select plan(65);
 
 -- Likes part (mta): f1 author, f2 and f3 likers, f4 blocked by f1, f5 a rival (hta), f6 rated without words.
 -- Aggregates part (mhf): g1..g4, g7..g10; g5 is a Beitar fan.
 insert into auth.users (id, aud, role, email)
   select ('00000000-0000-0000-0000-0000000000' || x)::uuid, 'authenticated', 'authenticated', x || '@test.local'
-  from unnest(array['f1','f2','f3','f4','f5','f6','f7','a1','a2','a3','a4','a5','a7','a8','a9','b0','e9']) x;
+  from unnest(array['f1','f2','f3','f4','f5','f6','f7','f8','a1','a2','a3','a4','a5','a7','a8','a9','b0','e9']) x;
 insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000f1', 'כותב', 'mta'),
   ('00000000-0000-0000-0000-0000000000f2', 'אוהב', 'mta'),
@@ -17,6 +17,7 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000f5', 'יריב', 'hta'),
   ('00000000-0000-0000-0000-0000000000f6', 'שקט', 'mta'),
   ('00000000-0000-0000-0000-0000000000f7', 'שביעי', 'mta'),
+  ('00000000-0000-0000-0000-0000000000f8', 'שמיני', 'mta'),
   ('00000000-0000-0000-0000-0000000000a1', 'אלוף', 'mhf'),
   ('00000000-0000-0000-0000-0000000000a2', 'צלם', 'mhf'),
   ('00000000-0000-0000-0000-0000000000a3', 'מדרג', 'mhf'),
@@ -145,12 +146,42 @@ select pg_temp.as_fan('f1');
 set local role authenticated;
 update public.player_ratings set stars = 4 where player_id = 'mta_1';
 select is(pg_temp.likes('mta_1', 'f1'), 2, 'new stars, same words: likes kept');
+reset role;
+-- Updates of player_ratings so far in this transaction (the reset must add exactly one: the fan's own).
+create temp table upd0 as
+  select n_tup_upd from pg_stat_xact_user_tables where schemaname = 'public' and relname = 'player_ratings';
+select pg_temp.as_fan('f1');
+set local role authenticated;
 update public.player_ratings set review = 'קיר בטון' where player_id = 'mta_1';
 select is(pg_temp.likes('mta_1', 'f1'), 0, 'new words: likes start over');
 reset role;
 select is(pg_temp.like_rows('mta_1', 'f1'), 0, 'the old likes are gone');
+select is((select s.n_tup_upd - u.n_tup_upd from pg_stat_xact_user_tables s, upd0 u
+            where s.schemaname = 'public' and s.relname = 'player_ratings'), 1::bigint,
+  'the reset zeroes the count in the fan''s own update: no per-like update of the review');
 select results_eq($$ select sum, count from public.player_rating_stats where player_id = 'mta_1' $$, $$ values (8, 2) $$,
   'likes never touch the rating stats');
+
+-- After a reset the count starts from zero; a liker's account deletion still counts down (a delete from inside a
+-- trigger is not a reset).
+select pg_temp.as_fan('f8');
+set local role authenticated;
+insert into public.player_rating_likes (player_id, author_id) values ('mta_1', pg_temp.uid('f1'));
+reset role;
+select is(pg_temp.likes('mta_1', 'f1'), 1, 'a like after the reset: 1');
+delete from auth.users where id = pg_temp.uid('f8');
+select is(pg_temp.likes('mta_1', 'f1'), 0, 'the liker''s account deleted: 0');
+
+-- Narrowed stamp trigger (regression guard): a stars-only update still restamps updated_at and the nick.
+update public.player_ratings set updated_at = now() - interval '5 days' where player_id = 'mta_1' and user_id = pg_temp.uid('f6');
+update public.profiles set nick = 'שקט מאוד' where user_id = pg_temp.uid('f6');
+select pg_temp.as_fan('f6');
+set local role authenticated;
+update public.player_ratings set stars = 5 where player_id = 'mta_1';
+reset role;
+select results_eq($$ select updated_at = now(), nick::text from public.player_ratings
+                     where player_id = 'mta_1' and user_id = pg_temp.uid('f6') $$,
+  $$ values (true, 'שקט מאוד'::text) $$, 'new stars restamp updated_at and the nick');
 
 -- Deleting a review takes its likes with it.
 select pg_temp.as_fan('f2');
@@ -256,10 +287,19 @@ reset role;
 select pg_temp.as_fan('a5');
 set local role authenticated;
 insert into public.clip_likes (clip_id) select id from public.clips where user_id = pg_temp.uid('a2');
+reset role;
+select is((select likes from public.clip_like_days where user_id = pg_temp.uid('a2')), 3, 'likes received: 3 (own like not counted)');
 -- …and takes it back, then likes again (exact).
+select pg_temp.as_fan('a5');
+set local role authenticated;
 delete from public.clip_likes;
+reset role;
+select is((select likes from public.clip_like_days where user_id = pg_temp.uid('a2')), 2, 'an unlike counts down: 2');
+select pg_temp.as_fan('a5');
+set local role authenticated;
 insert into public.clip_likes (clip_id) select id from public.clips where user_id = pg_temp.uid('a2');
 reset role;
+select is((select likes from public.clip_like_days where user_id = pg_temp.uid('a2')), 3, 'a re-like: 3');
 
 -- Chat: a8 now, a9 eight days ago; a Beitar fan now. Check-in: b0.
 insert into public.team_messages (user_id, body) values (pg_temp.uid('a8'), 'יאללה'), (pg_temp.uid('a9'), 'ישן'), (pg_temp.uid('a5'), 'בית״ר');
@@ -283,6 +323,9 @@ reset role;
 select pg_temp.as_fan('e9');
 set local role authenticated;
 select throws_ok($$ select public.home_active_fans('mhf') $$, '42501', 'not_your_club', 'a fan without a club is refused');
+select throws_ok($$ select public.home_active_fans(null) $$, '42501', 'not_your_club', 'a fan without a club cannot pass a null club');
+select throws_ok($$ select * from public.home_fans_of_week(null) $$, '42501', 'not_your_club',
+  'fans of the week: a fan without a club cannot pass a null club');
 reset role;
 
 -- The cleanup job deleting the clip keeps the week's likes (counted when they happened).
@@ -295,6 +338,8 @@ reset role;
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 set local role service_role;
 select is(public.home_active_fans('mhf'), 6, 'the service role reads a club''s count');
+select results_eq($$ select * from public.home_fans_of_week('mhf') $$,
+  $$ values ('אלוף'::text, 5), ('צלם'::text, 4), ('שופט'::text, 2) $$, 'the service role reads a club''s fans of the week');
 reset role;
 
 select * from finish();

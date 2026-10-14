@@ -48,10 +48,17 @@ create trigger player_rating_likes_stamp before insert on public.player_rating_l
   for each row execute function public.player_rating_likes_stamp();
 
 -- Exact counts: +1 / -1 per row (the review row is locked by the update, so concurrent likes queue). When the review
--- itself is being deleted the update finds nothing.
+-- itself is being deleted the update finds nothing. While a review's likes are being reset (new words) the review
+-- row already says 0, so the per-row decrement is skipped: the reset marks the review in a transaction-local
+-- setting. (Not pg_trigger_depth(): a liker's account deletion also deletes likes from inside a trigger, and those
+-- must still count down.)
 create function public.player_rating_likes_count() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  if tg_op = 'DELETE'
+     and current_setting('hayatzia.rating_likes_reset', true) = old.player_id || '/' || old.author_id then
+    return null;
+  end if;
   if tg_op = 'INSERT' then
     update public.player_ratings set likes_count = likes_count + 1
      where player_id = new.player_id and user_id = new.author_id;
@@ -66,10 +73,26 @@ create trigger player_rating_likes_count after insert or delete on public.player
   for each row execute function public.player_rating_likes_count();
 
 -- New words, new likes: the old likes were for the old text (an emptied review cannot keep likes either).
+-- The count goes to 0 in the fan's own UPDATE (before trigger; named to sort after player_ratings_stamp, so it sees the trimmed
+-- words), then the after trigger deletes the like rows without touching the review row again.
+create function public.player_ratings_review_zero() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.review is distinct from old.review then
+    new.likes_count := 0;
+  end if;
+  return new;
+end $$;
+revoke all on function public.player_ratings_review_zero() from public, anon, authenticated;
+create trigger player_ratings_zero_likes_on_new_words before update of review on public.player_ratings
+  for each row execute function public.player_ratings_review_zero();
+
 create function public.player_ratings_review_reset() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform set_config('hayatzia.rating_likes_reset', new.player_id || '/' || new.user_id, true);
   delete from public.player_rating_likes where player_id = new.player_id and author_id = new.user_id;
+  perform set_config('hayatzia.rating_likes_reset', '', true);
   return null;
 end $$;
 revoke all on function public.player_ratings_review_reset() from public, anon, authenticated;
@@ -122,11 +145,12 @@ revoke all on function public.home_player_reviews(integer) from public, anon;
 grant execute on function public.home_player_reviews(integer) to authenticated;
 
 -- ---------- 3 + 4. club aggregates ----------
--- Indexes for the 7-day windows (team_messages and clips already have (team_id, created_at desc)).
+-- Indexes for the 7-day windows (clips already has (team_id, created_at desc); chat gets a covering one so the
+-- distinct-fans scan reads the index only).
+create index team_messages_team_active_idx on public.team_messages (team_id, created_at) include (user_id);
 create index predictions_team_updated_idx on public.predictions (team_id, updated_at);
 create index checkins_team_created_idx on public.checkins (team_id, created_at);
 create index fan_lineups_team_updated_idx on public.fan_lineups (team_id, updated_at);
-create index fixtures_kickoff_idx on public.fixtures (kickoff_at);
 -- "🔥 Hot in the Square today": the most-liked live posts.
 create index clips_hot_idx on public.clips (likes_count desc, created_at desc);
 
@@ -179,7 +203,8 @@ declare
   since timestamptz := now() - interval '7 days';
   n     integer;
 begin
-  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' and p_team is distinct from public.my_team() then
+  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role'
+     and (p_team is null or p_team is distinct from public.my_team()) then
     raise exception 'not_your_club' using errcode = '42501';
   end if;
   select count(*)::int into n from (
@@ -199,7 +224,7 @@ begin
     union
     select f.user_id from public.fan_lineups f where f.team_id = p_team and f.updated_at > since
   ) a;
-  return n;
+  return coalesce(n, 0);
 end $$;
 revoke all on function public.home_active_fans(text) from public, anon;
 grant execute on function public.home_active_fans(text) to authenticated, service_role;
@@ -212,7 +237,8 @@ declare
   since     timestamptz := now() - interval '7 days';
   since_day date := (now() at time zone 'Asia/Jerusalem')::date - 6;
 begin
-  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' and p_team is distinct from public.my_team() then
+  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role'
+     and (p_team is null or p_team is distinct from public.my_team()) then
     raise exception 'not_your_club' using errcode = '42501';
   end if;
   return query
