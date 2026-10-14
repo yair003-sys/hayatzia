@@ -217,11 +217,6 @@ export function StoryViewer({ items, start, meId, myTeamId, label, onSeen, onClo
       go(dx > 0 ? 1 : -1) // RTL: the next story comes in from the left
     }
   }
-  const tap = (dir: 1 | -1) => () => {
-    if (swiped.current) return
-    go(dir)
-  }
-
   if (!cur) return null
   const group = items.filter((i) => i.group === cur.group && !removed.has(i.clip.id))
   const at = group.findIndex((i) => i.clip.id === cur.clip.id)
@@ -253,8 +248,14 @@ export function StoryViewer({ items, start, meId, myTeamId, label, onSeen, onClo
           story={{ onEnded: () => go(1), onProgress: setProgress }}
         />
       </div>
-      <button type="button" className="hm-viewer-tap" data-side="start" aria-label="הסטורי הקודם" onClick={tap(-1)} />
-      <button type="button" className="hm-viewer-tap" data-side="end" aria-label="הסטורי הבא" onClick={tap(1)} />
+      <button type="button" className="hm-viewer-tap" data-side="start" aria-label="הסטורי הקודם" onClick={() => {
+          if (!swiped.current) go(-1)
+        }}
+      />
+      <button type="button" className="hm-viewer-tap" data-side="end" aria-label="הסטורי הבא" onClick={() => {
+          if (!swiped.current) go(1)
+        }}
+      />
       <div className="hm-viewer-top">
         <div className="hm-bars" aria-hidden="true">
           {group.map((g, i) => (
