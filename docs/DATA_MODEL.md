@@ -39,8 +39,9 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 | `team_photos` | `id`, `team_id`, `user_id`, `media_path`, `caption varchar(120)`, `likes_count`, `comments_count`, `created_at` | `(team_id, created_at desc)` |
 | `team_photo_likes` | `(photo_id, user_id) pk` | trigger keeps `likes_count` |
 | `team_photo_comments` | `id`, `photo_id`, `user_id`, `body varchar(120)`, `created_at` | trigger keeps `comments_count` |
-| `player_ratings` | `(player_id, user_id) pk`, `stars smallint check 1..5`, `review varchar(200)`, `updated_at` | trigger maintains `player_rating_stats` |
+| `player_ratings` | `(player_id, user_id) pk`, `stars smallint check 1..5`, `review varchar(200)`, `updated_at`, `likes_count` (trigger only) | trigger maintains `player_rating_stats`; stamped only on writes of stars/words (a like never moves `updated_at`); idx `(player_id, likes_count desc, updated_at desc) where review <> ''` |
 | `player_rating_stats` | `player_id pk`, `sum int`, `count int`, `d1..d5 int` | written by trigger only |
+| `player_rating_likes` | `(player_id, author_id, user_id) pk`, `created_at`; FK `(player_id, author_id)` → `player_ratings` on delete cascade | ♥ on a review (2026-10-14). select own; insert own only for a review with words of a player of the fan's club, not your own, no block either way (`blocked_between`); delete own. Trigger keeps `player_ratings.likes_count` exact (+1/−1). New words on a review delete its likes (new stars keep them). idx `(user_id, created_at desc)`, `(player_id, created_at desc)` |
 | `trips`, `events`, `market_items` | P4 | |
 
 ## Match rooms
@@ -119,6 +120,15 @@ RPCs (authenticated only): `activity_unread_count() → int` (rows with `updated
 | `fan_lineup_totals` | `(fixture_id, team_id) pk`, `fans`, `formations jsonb` (`{"4-3-3": 12, …}`) | read: authenticated; trigger-only; the row is locked on every change so a club's counts move one save at a time |
 
 RPCs (authenticated only): `save_fan_lineup(p_fixture, p_formation, p_slots) → fan_lineups` (upsert; errors `no profile`/`not_your_match`/`not_your_player` 42501, `locked` P0001, `bad_formation`/`bad_slots`/`bad_players` 22023) · `clear_fan_lineup(p_fixture) → boolean` (before kick-off only). Demo fixtures (`is_demo`) are treated like any other match (as predictions do).
+
+## Home (היציע, 2026-10-14)
+| Table | Columns | Rules |
+|---|---|---|
+| `clip_like_days` | `(team_id, day, user_id) pk`, `likes` | internal (no fan access): likes received per fan per day (the post's day, Israel time) from other fans, kept by trigger on `clip_likes`; survives the 24-hour Square cleanup (a post being deleted does not decrement); rows older than 14 days pruned on write |
+
+Functions (authenticated; the club ones also the service role, for a server-side cache keyed by club):
+`home_player_reviews(p_per_player = 5)` (invoker) → per player of the caller's club, the 1..20 most-liked reviews with words of the last 30 days (`player_id, author_id, nick, review, stars, likes_count, liked, updated_at`), authors with a block either way hidden, ordered by player then likes · `home_active_fans(p_team) → int` (definer) distinct club fans with a chat message, Square post, prediction saved, player rated, review liked, check-in or fan lineup in the last 7 days · `home_fans_of_week(p_team) → (nick, points)` (definer) top 3, points = prediction points of matches kicked off in the last 7 days + 1 per player rated in the last 7 days + likes received on Square posts of the last 7 days (`clip_like_days`); ties by nick. Both refuse any club but the caller's own (`not_your_club`, 42501) and return no fan ids.
+Story seen-state reuses `clip_views` (one row per clip and fan, own rows readable): "seen" = a `clip_views` row of mine. Note that viewing a view-once post hides it for that fan. "Online now" is Presence on `online:<club>` (see Stand home). New indexes: `predictions (team_id, updated_at)`, `checkins (team_id, created_at)`, `fan_lineups (team_id, updated_at)`, `fixtures (kickoff_at)`, `clips (likes_count desc, created_at desc)` (hot in the Square).
 
 ## Storage buckets
 | Bucket | Access | Path |
