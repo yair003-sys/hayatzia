@@ -21,6 +21,12 @@ type Props = {
 }
 type View = 'mine' | 'fans'
 
+const LOCK_LABEL: Record<Exclude<LineupPhase, 'open'>, string> = {
+  locked: 'ננעל בשריקת הפתיחה',
+  done: 'המשחק הסתיים',
+  off: 'המשחק נדחה',
+}
+
 async function saveWithAction(input: SaveLineupInput): Promise<{ ok: true } | { error: string }> {
   const r = await saveFanLineupAction(input)
   return r.data ?? { error: r.serverError ?? 'ההרכב לא נשמר. נסה שוב' }
@@ -75,7 +81,7 @@ export function FanLineup({ fixtureId, team, phase, squad, mine: savedMine, fans
         {phase !== 'open' && (
           <small className="lu-locked">
             <Lock className="size-3" aria-hidden="true" />
-            {phase === 'done' ? 'המשחק הסתיים' : 'ננעל בשריקת הפתיחה'}
+            {LOCK_LABEL[phase]}
           </small>
         )}
       </div>

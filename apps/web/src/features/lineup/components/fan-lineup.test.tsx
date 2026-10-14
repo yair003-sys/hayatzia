@@ -65,6 +65,13 @@ describe('FanLineup (match page, הרכב tab)', () => {
     expect(screen.queryByRole('button', { name: /בנה את ההרכב|ערוך/ })).toBeNull()
   })
 
+  it('a postponed match says so instead of "locked by the whistle"', () => {
+    render(<FanLineup fixtureId={7} team={team} phase="off" squad={squad} mine={null} fans={fans} ratings={null} />)
+    expect(screen.getByText('המשחק נדחה')).toBeInTheDocument()
+    expect(screen.queryByText('ננעל בשריקת הפתיחה')).toBeNull()
+    expect(screen.queryByRole('button', { name: /בנה את ההרכב|ערוך/ })).toBeNull()
+  })
+
   it('after the match: each player carries the fans’ average rating', () => {
     render(
       <FanLineup fixtureId={7} team={team} phase="done" squad={squad} mine={{ formation: '4-3-3', xi }} fans={null} ratings={{ mta_1: 7.5, mta_9: 8 }} />,

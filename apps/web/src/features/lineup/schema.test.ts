@@ -16,6 +16,7 @@ import {
   swapSlots,
   clearSlot,
   toPayload,
+  topFormation,
   xiFromSaved,
   type Tally,
 } from './schema'
@@ -68,6 +69,14 @@ describe('isFormation / parseFormations', () => {
     expect(parseFormations({ '4-3-3': 'x', '9-9-9': 2, '3-5-2': 0 })).toEqual({})
     expect(parseFormations(null)).toEqual({})
     expect(parseFormations([1, 2])).toEqual({})
+  })
+})
+
+describe('topFormation', () => {
+  it('is the most chosen formation, FORMATIONS order on a tie, null when empty', () => {
+    expect(topFormation({ '4-4-2': 3, '3-5-2': 5 })).toEqual({ formation: '3-5-2', count: 5 })
+    expect(topFormation({ '5-3-2': 2, '4-4-2': 2 })).toEqual({ formation: '4-4-2', count: 2 })
+    expect(topFormation({})).toBeNull()
   })
 })
 
@@ -185,6 +194,9 @@ describe('saveLineupSchema', () => {
   const slots = toPayload(full())
   it('takes a known formation and exactly 11 slots', () => {
     expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-3-3', slots }).success).toBe(true)
+    // Loose id shape only: the database checks that each id is a player of the fan's club.
+    expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-3-3', slots: slots.map((x, i) => ({ ...x, playerId: `club9_p${i}` })) }).success).toBe(true)
+    expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-3-3', slots: slots.map((x) => ({ ...x, playerId: 'DROP TABLE' })) }).success).toBe(false)
     expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-5-1', slots }).success).toBe(false)
     expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-3-3', slots: slots.slice(1) }).success).toBe(false)
     expect(saveLineupSchema.safeParse({ fixtureId: 5, formation: '4-3-3', slots: [...slots.slice(1), { slot: 11, playerId: 'mta_1' }] }).success).toBe(false)
@@ -234,5 +246,11 @@ describe('canBuild / lineupPhase', () => {
     expect(lineupPhase({ t: at(-5), st: '1H' }, now)).toBe('locked')
     expect(lineupPhase({ t: at(-5), st: 'NS' }, now)).toBe('locked')
     expect(lineupPhase({ t: at(-120), st: 'FT' }, now)).toBe('done')
+  })
+  it('is off (not "locked by the whistle") for a postponed, cancelled or abandoned match', () => {
+    expect(lineupPhase({ t: at(30), st: 'PST' }, now)).toBe('off')
+    expect(lineupPhase({ t: at(-30), st: 'CANC' }, now)).toBe('off')
+    expect(lineupPhase({ t: at(-30), st: 'ABD' }, now)).toBe('off')
+    expect(lineupPhase({ t: at(-30), st: 'TBD' }, now)).toBe('off')
   })
 })

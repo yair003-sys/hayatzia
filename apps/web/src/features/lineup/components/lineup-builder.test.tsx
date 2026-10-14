@@ -47,12 +47,18 @@ function drag(from: Element, to: () => Element | null, pointerType: 'touch' | 'm
   fireEvent.pointerUp(from, { pointerId: 3, pointerType, clientX: 120, clientY: 120 })
 }
 
+const realElementFromPoint = Object.getOwnPropertyDescriptor(document, 'elementFromPoint')
+
 beforeEach(() => {
   window.history.replaceState(null, '', '/matches/7?tab=lineup')
 })
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   document.body.style.overflow = ''
+  // Put back what jsdom had (usually nothing) so the stub never leaks into other test files.
+  if (realElementFromPoint) Object.defineProperty(document, 'elementFromPoint', realElementFromPoint)
+  else delete (document as { elementFromPoint?: unknown }).elementFromPoint
 })
 
 describe('LineupBuilder (overlay)', () => {
@@ -72,6 +78,49 @@ describe('LineupBuilder (overlay)', () => {
     await waitFor(() => expect(p.onClose).toHaveBeenCalledTimes(1))
     cleanup()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('opens a fresh entry even when a stale marker is left on the current one, keeping the router fields', async () => {
+    window.history.replaceState({ __NA: true, tree: 'x', lineupBuilder: true }, '')
+    const p = setup()
+    expect(window.history.state).toMatchObject({ __NA: true, tree: 'x', lineupBuilder: true })
+    fireEvent.click(screen.getByRole('button', { name: 'סגור' }))
+    await waitFor(() => expect(p.onClose).toHaveBeenCalledTimes(1))
+    // Back landed on the entry we came from, now clean.
+    expect(window.history.state).toEqual({ __NA: true, tree: 'x' })
+  })
+
+  it('goes back only once on a double close (Escape then the close button, or two taps)', async () => {
+    const back = vi.spyOn(window.history, 'back')
+    const p = setup()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'סגור' }))
+    await waitFor(() => expect(p.onClose).toHaveBeenCalledTimes(1))
+    expect(back).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes on the phone’s back button (popstate) without going back a second time', () => {
+    const back = vi.spyOn(window.history, 'back')
+    const p = setup()
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
+    expect(p.onClose).toHaveBeenCalledTimes(1)
+    // A late tap on close after back: our entry is already gone, so no extra history step.
+    fireEvent.click(screen.getByRole('button', { name: 'סגור' }))
+    expect(back).not.toHaveBeenCalled()
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
+    expect(p.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('covers the page with a backdrop and makes the page behind inert while open', () => {
+    const page = document.createElement('main')
+    document.body.appendChild(page)
+    setup()
+    expect(screen.getByRole('dialog').parentElement).toHaveClass('lu-backdrop')
+    expect(page.inert).toBe(true)
+    cleanup()
+    expect(page.inert).toBe(false)
+    page.remove()
   })
 
   it('keeps Tab inside the dialog', () => {
@@ -146,6 +195,19 @@ describe('LineupBuilder (overlay)', () => {
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
   })
 
+  it('ignores a second finger while one drag is under way', () => {
+    setup()
+    pointAt(() => slot(/^עמדת שוער/)[0]!)
+    fireEvent.pointerDown(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 400 })
+    fireEvent.pointerDown(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 400 })
+    fireEvent.pointerMove(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
+    fireEvent.pointerUp(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
+    expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
+    fireEvent.pointerMove(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 100 })
+    fireEvent.pointerUp(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 100 })
+    expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: שחקן 1')
+  })
+
   it('does not move anything on a small wobble or when the browser takes the gesture (strip scroll)', () => {
     setup()
     pointAt(() => slot(/^עמדת שוער/)[0]!)
@@ -159,7 +221,7 @@ describe('LineupBuilder (overlay)', () => {
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
   })
 
-  it('makes only filled slots and squad cards draggable surfaces (touch-action set in CSS by these hooks)', () => {
+  it('marks filled slots (the only slots that start a drag) and injured players for styling', () => {
     const xi = emptyXI()
     xi[0] = 'mta_1'
     setup({ initial: { formation: '4-3-3', xi } })

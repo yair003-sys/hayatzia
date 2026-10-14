@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DONE_STATUSES } from '@/features/matches/schema'
+import { DONE_STATUSES, NOT_PLAYED_STATUSES } from '@/features/matches/schema'
 
 // Fan lineup ("ההרכב של האוהדים"). Rules live in the database (20261014120000_fan_lineups.sql): own club's match,
 // before kick-off, 11 different players of the club. This file is the UI side: where the 11 slots sit on the pitch,
@@ -65,6 +65,16 @@ export function parseFormations(v: unknown): Record<string, number> {
   return out
 }
 
+/** The formation most fans chose (ties: the order of FORMATIONS); null when none. */
+export function topFormation(formations: Record<string, number>): { formation: Formation; count: number } | null {
+  let top: { formation: Formation; count: number } | null = null
+  for (const f of FORMATIONS) {
+    const n = formations[f] ?? 0
+    if (n > (top?.count ?? 0)) top = { formation: f, count: n }
+  }
+  return top
+}
+
 export const pct = (picks: number, fans: number) => (fans > 0 ? Math.round((picks * 100) / fans) : 0)
 
 /**
@@ -74,16 +84,9 @@ export const pct = (picks: number, fans: number) => (fans > 0 ? Math.round((pick
  */
 export function fansXI(tallies: Tally[], totals: Totals | null, known?: Set<string>): FansXI | null {
   if (!totals || totals.fans <= 0) return null
-  let formation: Formation | null = null
-  let best = 0
-  for (const f of FORMATIONS) {
-    const n = totals.formations[f] ?? 0
-    if (n > best) {
-      best = n
-      formation = f
-    }
-  }
-  if (!formation) return null
+  const top = topFormation(totals.formations)
+  if (!top) return null
+  const { formation, count: best } = top
   const rows = tallies
     .filter((t) => t.formation === formation && t.picks > 0 && t.slot >= 0 && t.slot < XI_SIZE && (!known || known.has(t.player_id)))
     .sort((a, b) => b.picks - a.picks || a.slot - b.slot || (a.player_id < b.player_id ? -1 : a.player_id > b.player_id ? 1 : 0))
@@ -160,7 +163,7 @@ export const saveLineupSchema = z.object({
   fixtureId: z.number().int().positive(),
   formation: z.enum(FORMATIONS),
   slots: z
-    .array(z.object({ slot: z.number().int().min(0).max(XI_SIZE - 1), playerId: z.string().regex(/^[a-z]{3}_[a-z0-9]+$/) }))
+    .array(z.object({ slot: z.number().int().min(0).max(XI_SIZE - 1), playerId: z.string().regex(/^[a-z0-9]{2,8}_[a-z0-9]+$/) }))
     .length(XI_SIZE),
 })
 export type SaveLineupInput = z.infer<typeof saveLineupSchema>
@@ -181,8 +184,9 @@ export function lineupErrorHe(message: string): string {
 // ── what the match page passes to the client ──────────────────────────────────────────────
 export type SquadPlayer = { id: string; number: number | null; name: string; short: string; role: Role; injured: boolean }
 export type SavedLineup = { formation: Formation; xi: XI }
-/** open: before kick-off, building allowed; locked: kicked off, not over; done: finished (ratings shown). */
-export type LineupPhase = 'open' | 'locked' | 'done'
+/** open: before kick-off, building allowed; locked: kicked off, not over; done: finished (ratings shown);
+ *  off: postponed, cancelled or abandoned (not "locked by the whistle"). */
+export type LineupPhase = 'open' | 'locked' | 'done' | 'off'
 
 /** The database accepts a lineup only before kick-off of a match not yet started (status NS or TBD). */
 export function canBuild(f: { t: number; st: string }, nowMs: number): boolean {
@@ -191,5 +195,6 @@ export function canBuild(f: { t: number; st: string }, nowMs: number): boolean {
 
 export function lineupPhase(f: { t: number; st: string }, nowMs: number): LineupPhase {
   if (canBuild(f, nowMs)) return 'open'
-  return DONE_STATUSES.has(f.st) ? 'done' : 'locked'
+  if (DONE_STATUSES.has(f.st)) return 'done'
+  return NOT_PLAYED_STATUSES.has(f.st) ? 'off' : 'locked'
 }

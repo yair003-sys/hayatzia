@@ -157,7 +157,7 @@ async function StandHome() {
       </nav>
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="sh-sec flex-1">ההרכב של האוהדים</h2>
+        <h2 className="sh-sec flex-1">הרכב לדוגמה</h2>
         <Link href="/stand/players" className="mt-2 shrink-0 rounded-full border border-line bg-white/4 px-3.5 py-1.5 text-[13px] font-bold">
           כל הדירוגים
         </Link>

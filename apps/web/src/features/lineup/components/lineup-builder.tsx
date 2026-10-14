@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import {
@@ -43,12 +43,13 @@ const DRAG_PX = 6
 const HISTORY_KEY = 'lineupBuilder'
 const FOCUSABLE = 'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
 
-const isOurEntry = (s: unknown) => !!s && typeof s === 'object' && (s as Record<string, unknown>)[HISTORY_KEY] === true
-
-/** Close through history when the overlay owns the current entry, so back and close behave the same. */
-function leave(fallback: () => void) {
-  if (isOurEntry(window.history.state)) window.history.back()
-  else fallback()
+/** The current history state as a plain object (Next keeps its router fields there), without our marker. */
+function baseState(): { state: Record<string, unknown>; stale: boolean } {
+  const cur = window.history.state
+  const state: Record<string, unknown> = cur && typeof cur === 'object' ? { ...(cur as Record<string, unknown>) } : {}
+  const stale = HISTORY_KEY in state
+  delete state[HISTORY_KEY]
+  return { state, stale }
 }
 
 /** What is under the finger: a slot (`data-drop="3"`), the squad strip (`data-drop="bench"`), or nothing. */
@@ -77,35 +78,60 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const backdrop = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const press = useRef<Press | null>(null)
   const droppedAt = useRef(-Infinity)
   const onCloseRef = useRef(onClose)
+  // The overlay's own history entry: pushed by this mount, popped by back (or by leave()), left at most once.
+  const pushed = useRef(false)
+  const popped = useRef(false)
+  const leaving = useRef(false)
+  const frame = useRef<number | null>(null)
+  const latest = useRef<Ghost | null>(null)
 
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
 
-  // Modal: own history entry (back closes), body scroll locked and restored, focus inside and trapped, Escape closes,
-  // focus back on the opener afterwards.
+  /** Every way out goes through here: back over our own entry when it is still there, else close directly. */
+  const leave = useCallback(() => {
+    if (leaving.current) return
+    leaving.current = true
+    if (pushed.current && !popped.current) window.history.back()
+    else onCloseRef.current()
+  }, [])
+
+  // Modal: a fresh history entry of its own (back closes), the page behind inert, body scroll locked and restored,
+  // focus inside and trapped, Escape closes, focus back on the opener afterwards.
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const scrollY = window.scrollY
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    if (!isOurEntry(window.history.state)) {
-      const prev = window.history.state && typeof window.history.state === 'object' ? (window.history.state as object) : {}
-      window.history.pushState({ ...prev, [HISTORY_KEY]: true }, '')
-    }
+    const root = backdrop.current
+    const madeInert = [...document.body.children].filter((el): el is HTMLElement => el instanceof HTMLElement && el !== root && !el.inert)
+    for (const el of madeInert) el.inert = true
+    // A marker left on the current entry (an earlier overlay whose entry was never popped) is stripped first, keeping
+    // Next's router fields, so it can never be mistaken for this mount's entry.
+    const { state, stale } = baseState()
+    if (stale) window.history.replaceState(state, '')
+    window.history.pushState({ ...state, [HISTORY_KEY]: true }, '')
+    pushed.current = true
+    popped.current = false
+    leaving.current = false
     closeBtn.current?.focus()
     const onPop = () => {
+      if (popped.current) return
+      popped.current = true
+      leaving.current = true // closing now: a late Escape or tap must not close (or go back) again
       onCloseRef.current()
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        leave(() => onCloseRef.current())
+        leave()
         return
       }
       if (e.key !== 'Tab' || !panel.current) return
@@ -129,11 +155,12 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
     return () => {
       window.removeEventListener('popstate', onPop)
       document.removeEventListener('keydown', onKey)
+      for (const el of madeInert) el.inert = false
       document.body.style.overflow = overflow
       if (window.scrollY !== scrollY) window.scrollTo(0, scrollY)
       opener?.focus()
     }
-  }, [])
+  }, [leave])
 
   const byId = new Map(squad.map((p) => [p.id, p]))
   const squadIds = new Set(byId.keys())
@@ -194,15 +221,40 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   }
 
   // ── drag (Pointer Events: mouse, touch, pen) ──
+  /** The ghost follows the finger at most once per frame. */
+  function showGhost(g: Ghost) {
+    latest.current = g
+    if (typeof requestAnimationFrame !== 'function') return setGhost(g)
+    if (frame.current !== null) return
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null
+      setGhost(latest.current)
+    })
+  }
+
+  function endDrag() {
+    press.current = null
+    latest.current = null
+    if (frame.current !== null) {
+      cancelAnimationFrame(frame.current)
+      frame.current = null
+    }
+    setGhost(null)
+  }
+
+  /** Only the pointer that started the press counts; a second finger is ignored. */
+  const mine = (e: PointerEvent<HTMLElement>) => press.current !== null && press.current.pointerId === e.pointerId
+
   function dragHandlers(id: string, from: number | null) {
     return {
       onPointerDown(e: PointerEvent<HTMLElement>) {
+        if (press.current) return
         if (e.pointerType === 'mouse' && e.button !== 0) return
         press.current = { id, from, x0: e.clientX, y0: e.clientY, pointerId: e.pointerId, active: false }
       },
       onPointerMove(e: PointerEvent<HTMLElement>) {
         const p = press.current
-        if (!p || p.pointerId !== e.pointerId) return
+        if (!p || !mine(e) || p.id !== id) return
         if (!p.active) {
           if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < DRAG_PX) return
           p.active = true
@@ -215,22 +267,21 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
             }
           }
         }
-        setGhost({ id, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY) })
+        showGhost({ id, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY) })
       },
       onPointerUp(e: PointerEvent<HTMLElement>) {
-        const p = press.current
-        press.current = null
-        if (!p || !p.active) return
+        if (!mine(e)) return
+        const p = press.current!
+        endDrag()
+        if (!p.active) return
         droppedAt.current = e.timeStamp
-        setGhost(null)
         const to = targetAt(e.clientX, e.clientY)
         if (typeof to === 'number') put(to, p.id)
         else if (to === 'bench' && p.from !== null) bench(p.from)
       },
-      onPointerCancel() {
+      onPointerCancel(e: PointerEvent<HTMLElement>) {
         // The browser took the gesture (e.g. the strip scrolls sideways): nothing moves.
-        press.current = null
-        setGhost(null)
+        if (mine(e)) endDrag()
       },
     }
   }
@@ -248,7 +299,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
         return
       }
       onSaved({ formation, xi })
-      leave(() => onCloseRef.current())
+      leave()
     })
   }
 
@@ -259,125 +310,129 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const ghostPlayer = ghost ? byId.get(ghost.id) : undefined
 
   return createPortal(
-    <div ref={panel} className="lu-overlay" role="dialog" aria-modal="true" aria-labelledby="lu-title" style={colours}>
-      <div className="lu-head">
-        <h2 id="lu-title">
-          ההרכב שלי <span>· {team.short}</span>
-        </h2>
-        <span className="lu-count t-num" aria-label={`${filled} מתוך 11 שחקנים`}>
-          {filled}/11
-        </span>
-        <button ref={closeBtn} type="button" className="lu-x" aria-label="סגור" onClick={() => leave(() => onCloseRef.current())}>
-          <X className="size-5" aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="lu-forms" role="group" aria-label="מערך">
-        {FORMATIONS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            aria-pressed={f === formation}
-            onClick={() => {
-              setFormation(f)
-              setNote(`מערך ${f}`)
-            }}
-          >
-            <bdi className="t-num">{f}</bdi>
+    // The backdrop covers the whole screen (wide screens too) so nothing behind can be clicked; the page itself is
+    // also made inert while the overlay is open.
+    <div ref={backdrop} className="lu-backdrop">
+      <div ref={panel} className="lu-overlay" role="dialog" aria-modal="true" aria-labelledby="lu-title" style={colours}>
+        <div className="lu-head">
+          <h2 id="lu-title">
+            ההרכב שלי <span>· {team.short}</span>
+          </h2>
+          <span className="lu-count t-num" aria-label={`${filled} מתוך 11 שחקנים`}>
+            {filled}/11
+          </span>
+          <button ref={closeBtn} type="button" className="lu-x" aria-label="סגור" onClick={() => leave()}>
+            <X className="size-5" aria-hidden="true" />
           </button>
-        ))}
-      </div>
-
-      <div className="lc-pitch lu-pitch">
-        <i className="lc-pitch-arc" />
-        <i className="lc-pitch-box" />
-        <i className="lc-pitch-six" />
-        {spots.map((s) => {
-          const id = xi[s.slot] ?? null
-          const p = id ? byId.get(id) : undefined
-          return (
-            <button
-              key={s.slot}
-              type="button"
-              className="lu-slot"
-              data-drop={s.slot}
-              data-filled={p ? '' : undefined}
-              data-over={ghost?.over === s.slot ? '' : undefined}
-              aria-pressed={selSlot === s.slot}
-              aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
-              style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
-              onClick={(e) => tapSlot(s.slot, e)}
-              {...(p ? dragHandlers(p.id, s.slot) : {})}
-            >
-              <i>{p ? (p.number ?? '') : '+'}</i>
-              <small>{p ? p.short : SLOT_HE[s.role]}</small>
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="lu-hint">
-        <p role="status">{note || 'גוררים שחקן למגרש, או מקישים על עמדה ואז על שחקן'}</p>
-        {selSlot !== null && xi[selSlot] && (
-          <button
-            type="button"
-            className="lu-bench-btn"
-            onClick={() => {
-              bench(selSlot)
-              setSel(null)
-            }}
-          >
-            הוצא לספסל
-          </button>
-        )}
-      </div>
-
-      <div className="lu-filter" role="group" aria-label="סינון לפי עמדה">
-        {(['ALL', 'GK', 'DEF', 'MID', 'FWD'] as const).map((r) => (
-          <button key={r} type="button" aria-pressed={filter === r} onClick={() => setFilter(r)}>
-            {r === 'ALL' ? 'הכול' : ROLE_HE[r]}
-          </button>
-        ))}
-      </div>
-
-      <ul className="lu-strip" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`הסגל של ${team.short}`}>
-        {shown.map((p) => (
-          <li key={p.id}>
-            <button
-              type="button"
-              className="lu-card"
-              data-in={onPitch.has(p.id) ? '' : undefined}
-              data-injured={p.injured ? '' : undefined}
-              aria-pressed={selPlayer === p.id}
-              aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, onPitch.has(p.id) ? 'בהרכב' : null].filter(Boolean).join(', ')}
-              onClick={(e) => tapPlayer(p.id, e)}
-              {...dragHandlers(p.id, xi.indexOf(p.id) >= 0 ? xi.indexOf(p.id) : null)}
-            >
-              <i className="t-num">{p.number ?? ''}</i>
-              <span>{p.short}</span>
-              <small>{p.injured ? 'פצוע' : ROLE_HE[p.role]}</small>
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="lu-foot">
-        {error && (
-          <p role="alert" className="lu-error">
-            {error}
-          </p>
-        )}
-        <button type="button" className="lu-save" data-ready={problem ? undefined : ''} disabled={pending} onClick={save}>
-          {pending ? 'שומר…' : 'שמור את ההרכב שלי'}
-        </button>
-      </div>
-
-      {ghost && ghostPlayer && (
-        <div className="lu-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
-          <i>{ghostPlayer.number ?? ''}</i>
-          <small>{ghostPlayer.short}</small>
         </div>
-      )}
+
+        <div className="lu-forms" role="group" aria-label="מערך">
+          {FORMATIONS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              aria-pressed={f === formation}
+              onClick={() => {
+                setFormation(f)
+                setNote(`מערך ${f}`)
+              }}
+            >
+              <bdi className="t-num">{f}</bdi>
+            </button>
+          ))}
+        </div>
+
+        <div className="lc-pitch lu-pitch">
+          <i className="lc-pitch-arc" />
+          <i className="lc-pitch-box" />
+          <i className="lc-pitch-six" />
+          {spots.map((s) => {
+            const id = xi[s.slot] ?? null
+            const p = id ? byId.get(id) : undefined
+            return (
+              <button
+                key={s.slot}
+                type="button"
+                className="lu-slot"
+                data-drop={s.slot}
+                data-filled={p ? '' : undefined}
+                data-over={ghost?.over === s.slot ? '' : undefined}
+                aria-pressed={selSlot === s.slot}
+                aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
+                style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
+                onClick={(e) => tapSlot(s.slot, e)}
+                {...(p ? dragHandlers(p.id, s.slot) : {})}
+              >
+                <i>{p ? (p.number ?? '') : '+'}</i>
+                <small>{p ? p.short : SLOT_HE[s.role]}</small>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="lu-hint">
+          <p role="status">{note || 'גוררים שחקן למגרש, או מקישים על עמדה ואז על שחקן'}</p>
+          {selSlot !== null && xi[selSlot] && (
+            <button
+              type="button"
+              className="lu-bench-btn"
+              onClick={() => {
+                bench(selSlot)
+                setSel(null)
+              }}
+            >
+              הוצא לספסל
+            </button>
+          )}
+        </div>
+
+        <div className="lu-filter" role="group" aria-label="סינון לפי עמדה">
+          {(['ALL', 'GK', 'DEF', 'MID', 'FWD'] as const).map((r) => (
+            <button key={r} type="button" aria-pressed={filter === r} onClick={() => setFilter(r)}>
+              {r === 'ALL' ? 'הכול' : ROLE_HE[r]}
+            </button>
+          ))}
+        </div>
+
+        <ul className="lu-strip" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`הסגל של ${team.short}`}>
+          {shown.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className="lu-card"
+                data-in={onPitch.has(p.id) ? '' : undefined}
+                data-injured={p.injured ? '' : undefined}
+                aria-pressed={selPlayer === p.id}
+                aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, onPitch.has(p.id) ? 'בהרכב' : null].filter(Boolean).join(', ')}
+                onClick={(e) => tapPlayer(p.id, e)}
+                {...dragHandlers(p.id, xi.indexOf(p.id) >= 0 ? xi.indexOf(p.id) : null)}
+              >
+                <i className="t-num">{p.number ?? ''}</i>
+                <span>{p.short}</span>
+                <small>{p.injured ? 'פצוע' : ROLE_HE[p.role]}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="lu-foot">
+          {error && (
+            <p role="alert" className="lu-error">
+              {error}
+            </p>
+          )}
+          <button type="button" className="lu-save" data-ready={problem ? undefined : ''} disabled={pending} onClick={save}>
+            {pending ? 'שומר…' : 'שמור את ההרכב שלי'}
+          </button>
+        </div>
+
+        {ghost && ghostPlayer && (
+          <div className="lu-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
+            <i>{ghostPlayer.number ?? ''}</i>
+            <small>{ghostPlayer.short}</small>
+          </div>
+        )}
+      </div>
     </div>,
     document.body,
   )
