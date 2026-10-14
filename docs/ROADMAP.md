@@ -33,6 +33,7 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 - League data stays on season 2024 for now (owner, 2026-10-12): "Trips" shows no upcoming matches until the API plan changes.
 - Owner's own production profile has no team yet (he chooses).
 - Preview deployments have the staging `SUPABASE_SECRET_KEY` (rotated 2026-10-14) and send notifications on staging; GitHub reaches previews through the Vercel automation bypass.
+- Next.js 16.4.1 security update (2026-10-14 advisory: 2 Critical incl. RCE with Cache Components, 1 High DoS on Server Actions) applied 2026-10-15 via web-deps; eslint-config-next 16.4.1.
 - Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 
 ## Load test results (staging, free plan, direct PostgREST reads of the league data, uncached)
