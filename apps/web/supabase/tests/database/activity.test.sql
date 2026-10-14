@@ -119,7 +119,8 @@ select is((select count(*)::int from public.activity where user_id = '00000000-0
 select ok((select count(*) from realtime.messages where topic = 'inbox:00000000-0000-0000-0000-0000000000c1' and event = 'activity') > 0,
   'changes are broadcast on the owner''s inbox topic, event activity');
 select is((select count(*)::int from realtime.messages m, jsonb_object_keys(m.payload) k
-  where m.event = 'activity' and k <> 'kind'), 0, 'the broadcast carries the kind only');
+  where m.event = 'activity' and k not in ('kind', 'id')), 0,
+  'the broadcast carries the kind only (plus Realtime''s own message id)');
 select is((select count(*)::int from realtime.messages where event = 'activity' and topic <> 'inbox:00000000-0000-0000-0000-0000000000c1'), 0,
   'nobody else''s topic is told about the owner''s likes');
 select ok((select qual from pg_policies where schemaname = 'realtime' and policyname = 'dm_channel_receive') like '%inbox:%',
