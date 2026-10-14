@@ -45,8 +45,8 @@ export async function alertExists(id: number): Promise<boolean | null> {
   if (!admin) return null
   const { data, error } = await admin.from('match_alerts').select('id').eq('id', id).maybeSingle()
   if (error) {
-    // Error code and a short reason only (no data): enough to tell a bad key from a missing table.
-    console.warn(`alert exists: read failed ${error.code ?? ''} ${(error.message ?? '').slice(0, 80)}`)
+    // Error code only: a message can echo request headers (a malformed key once ended up in the log).
+    console.warn(`alert exists: read failed ${error.code || 'no-code'}`)
     return null
   }
   return data !== null
