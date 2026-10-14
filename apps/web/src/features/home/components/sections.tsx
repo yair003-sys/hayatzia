@@ -144,12 +144,14 @@ export async function NextMatchSection({ team }: { team: Team }) {
         המשחק הבא · {kickoffDay(next.t)} {kickoffTime(next.t)}
         {next.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
       </p>
-      <Link href={`/matches/${next.id}`} className="hm-next-row" aria-label={`${home.short} נגד ${away.short}, לעמוד המשחק`}>
+      {/* No aria-label here: the link reads its content, so the live countdown (role=timer) is heard too. */}
+      <Link href={`/matches/${next.id}`} className="hm-next-row">
         <span className="hm-next-team" data-mine={atHome}>
           {home.short}
+          <span className="sr-only"> נגד {away.short},</span>
         </span>
         <Countdown at={next.t * 1000} />
-        <span className="hm-next-team" data-mine={!atHome}>
+        <span className="hm-next-team" data-mine={!atHome} aria-hidden="true">
           {away.short}
         </span>
       </Link>

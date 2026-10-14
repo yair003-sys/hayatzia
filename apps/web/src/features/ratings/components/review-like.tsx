@@ -7,6 +7,7 @@ import { applyLike, type LikeState } from '../schema'
 import { likeReviewAction } from '../server/actions'
 
 type Likeable = LikeState & { user_id: string }
+const FAILED = 'הלייק לא נשמר. נסה שוב'
 const keyOf = (playerId: string, authorId: string) => `${playerId}:${authorId}`
 
 /**
@@ -33,11 +34,19 @@ export function useReviewLikes() {
       busy.current.add(key)
       setError(null)
       setChanged((c) => ({ ...c, [key]: after }))
-      const res = await likeReviewAction({ playerId, authorId: r.user_id, on: after.liked })
-      busy.current.delete(key)
-      if (!res?.data || !('ok' in res.data)) {
+      let failure: string | null = null
+      try {
+        const res = await likeReviewAction({ playerId, authorId: r.user_id, on: after.liked })
+        if (!res?.data || !('ok' in res.data)) failure = (res?.data && 'error' in res.data && res.data.error) || FAILED
+      } catch {
+        // Offline or the server action threw: same as a refusal.
+        failure = FAILED
+      } finally {
+        busy.current.delete(key)
+      }
+      if (failure) {
         setChanged((c) => ({ ...c, [key]: before }))
-        setError((res?.data && 'error' in res.data && res.data.error) || 'הלייק לא נשמר. נסה שוב')
+        setError(failure)
       }
     },
     [view],
@@ -51,9 +60,10 @@ export function ReviewLike({ nick, mine, state, onToggle, className }: { nick: s
   const count = state.likes_count.toLocaleString('he-IL')
   if (mine)
     return (
-      <span className={cn('rv-like', className)} aria-label={`${count} לייקים לביקורת שלך`}>
+      <span className={cn('rv-like', className)}>
         <Heart className="size-3.5 text-live" aria-hidden="true" />
         <span className="t-num">{count}</span>
+        <span className="sr-only"> לייקים לביקורת שלך</span>
       </span>
     )
   return (

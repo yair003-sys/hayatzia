@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Plus, Shirt, Star } from 'lucide-react'
 import { UploadClip } from '@/features/square/components/upload-clip'
 import { flattenStories, initialOf, type StoryGroup } from '../schema'
 import type { StoryItem } from '../server/queries'
-import { markStorySeenAction } from '../server/actions'
+import { markSeen, useSeenNow } from './seen-store'
 import { StoryViewer } from './story-viewer'
 
 type Props = {
@@ -27,23 +27,30 @@ type Props = {
  * unseen post and plays on through the next fans. Circles keep their place while you watch; only the rings change.
  */
 export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNick, teamShort }: Props) {
-  const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set(groups.flatMap((g) => g.clips.filter((c) => c.seen).map((c) => c.id))))
+  const seenNow = useSeenNow()
   const [open, setOpen] = useState<number | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [upload, setUpload] = useState<'idle' | 'busy' | 'done'>('idle')
   const preview = useRef<string | null>(null)
 
   const now = groups.map((g) => {
-    const clips = g.clips.map((c) => ({ ...c, seen: seen.has(c.id) }))
+    const clips = g.clips.map((c) => ({ ...c, seen: c.seen || seenNow.has(c.id) }))
     return { ...g, clips, seen: clips.every((c) => c.seen) }
   })
   const { items, starts } = flattenStories(now)
 
-  const markSeen = useCallback((id: string) => {
-    setSeen((s) => (s.has(id) ? s : new Set(s).add(id)))
-    void markStorySeenAction({ clipId: id })
-  }, [])
   const close = useCallback(() => setOpen(null), [])
+
+  // "עלה לכיכר ✓" for a few seconds, then back to "הסטורי שלך".
+  useEffect(() => {
+    if (upload !== 'done') {
+      return
+    }
+    const t = setTimeout(() => setUpload('idle'), 4000)
+    return () => {
+      clearTimeout(t)
+    }
+  }, [upload])
 
   const label = upload === 'busy' ? 'מעלה…' : upload === 'done' ? 'עלה לכיכר ✓' : 'הסטורי שלך'
 

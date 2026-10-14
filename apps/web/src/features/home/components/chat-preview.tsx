@@ -6,6 +6,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { mergeMessages, messageFromBroadcast, type ChatMessage } from '@/features/chat/schema'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
+import { whileVisible } from '@/lib/while-visible'
 import { initialOf } from '../schema'
 
 const SHOWN = 3
@@ -17,24 +18,30 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
   useEffect(() => {
     hiddenRef.current = hidden
   }, [hidden])
+  // Live only while the page is visible (a phone in a pocket holds no socket); back in view it subscribes again.
   useEffect(() => {
     const supabase = createClient()
-    let cancelled = false
-    let channel: RealtimeChannel | null = null
-    void (async () => {
-      const ch = await openChannel(supabase, `team:${teamId}`, { private: true })
-      if (cancelled) return void supabase.removeChannel(ch)
-      channel = ch
-      ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
-        const m = messageFromBroadcast(payload)
-        if (m && !hiddenRef.current.includes(m.user_id)) setMsgs((cur) => mergeMessages(cur, [m]).slice(-SHOWN))
-      })
-      await supabase.realtime.setAuth()
-      if (!cancelled) ch.subscribe()
-    })()
+    const stop = whileVisible(() => {
+      let cancelled = false
+      let channel: RealtimeChannel | null = null
+      void (async () => {
+        const ch = await openChannel(supabase, `team:${teamId}`, { private: true })
+        if (cancelled) return void supabase.removeChannel(ch)
+        channel = ch
+        ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
+          const m = messageFromBroadcast(payload)
+          if (m && !hiddenRef.current.includes(m.user_id)) setMsgs((cur) => mergeMessages(cur, [m]).slice(-SHOWN))
+        })
+        await supabase.realtime.setAuth()
+        if (!cancelled) ch.subscribe()
+      })()
+      return () => {
+        cancelled = true
+        if (channel) void supabase.removeChannel(channel)
+      }
+    })
     return () => {
-      cancelled = true
-      if (channel) void supabase.removeChannel(channel)
+      stop()
     }
   }, [teamId])
 

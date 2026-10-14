@@ -101,6 +101,22 @@ describe('PlayerReviews rotation', () => {
     expect(line('mta_10')).toBe('״ביקורת 3״')
   })
 
+  it('paused in the middle of a fade: the line is back at once and stays visible when the rotation resumes', async () => {
+    render(<PlayerReviews players={players} />)
+    onScreen(true)
+    await wait(4100) // 100 ms into the fade
+    expect(screen.getByTestId('review-mta_10')).toHaveStyle({ opacity: '0' })
+    onScreen(false)
+    expect(screen.getByTestId('review-mta_10')).toHaveStyle({ opacity: '1' })
+    onScreen(true)
+    expect(screen.getByTestId('review-mta_10')).toHaveStyle({ opacity: '1' })
+    await wait(1000)
+    expect(screen.getByTestId('review-mta_10')).toHaveStyle({ opacity: '1' })
+    expect(line('mta_10')).toBe('״ביקורת 1״')
+    await wait(3350)
+    expect(line('mta_10')).toBe('״ביקורת 2״')
+  })
+
   it('never rotates under reduced motion', async () => {
     h.reduced = true
     render(<PlayerReviews players={players} />)

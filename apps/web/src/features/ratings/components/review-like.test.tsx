@@ -79,9 +79,28 @@ describe('review ♥', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('הלייק לא נשמר. נסה שוב')
   })
 
+  it('a rejected action (offline) rolls back, says so and frees the review for another try', async () => {
+    h.like.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ data: { ok: true } })
+    render(<Harness r={review()} />)
+    const btn = screen.getByRole('button')
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveTextContent('3')
+    expect(screen.getByRole('alert')).toHaveTextContent('הלייק לא נשמר. נסה שוב')
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+    expect(h.like).toHaveBeenCalledTimes(2)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveTextContent('4')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('my own review shows the count without a button', () => {
     render(<Harness r={review({ mine: true })} />)
     expect(screen.queryByRole('button')).toBeNull()
-    expect(screen.getByLabelText('3 לייקים לביקורת שלך')).toBeInTheDocument()
+    expect(screen.getByText('לייקים לביקורת שלך', { exact: false }).parentElement).toHaveTextContent('3 לייקים לביקורת שלך')
   })
 })

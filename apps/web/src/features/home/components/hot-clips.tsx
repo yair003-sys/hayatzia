@@ -3,16 +3,13 @@
 import { useCallback, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { shortCount, type Clip } from '@/features/square/schema'
-import { markStorySeenAction } from '../server/actions'
+import { markSeen } from './seen-store'
 import { StoryViewer } from './story-viewer'
 
 /** "🔥 החם בכיכר היום": reel cards of the most-liked posts; a card opens them full screen in the story viewer. */
 export function HotClips({ clips, meId, myTeamId }: { clips: Clip[]; meId: string; myTeamId: string }) {
   const [open, setOpen] = useState<number | null>(null)
   const items = clips.map((clip) => ({ clip, group: 0 }))
-  const seen = useCallback((id: string) => {
-    void markStorySeenAction({ clipId: id })
-  }, [])
   const close = useCallback(() => setOpen(null), [])
   return (
     <>
@@ -24,7 +21,7 @@ export function HotClips({ clips, meId, myTeamId }: { clips: Clip[]; meId: strin
               className="hm-reel"
               aria-label={`הפוסט של ${c.nick}, ${shortCount(c.likes_count)} לייקים`}
               onClick={() => {
-                seen(c.id)
+                markSeen(c.id)
                 setOpen(i)
               }}
             >
@@ -48,7 +45,7 @@ export function HotClips({ clips, meId, myTeamId }: { clips: Clip[]; meId: strin
           </li>
         ))}
       </ul>
-      {open !== null && <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label="החם בכיכר היום" onSeen={seen} onClose={close} />}
+      {open !== null && <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label="החם בכיכר היום" onSeen={markSeen} onClose={close} />}
     </>
   )
 }

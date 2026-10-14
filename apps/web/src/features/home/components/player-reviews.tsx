@@ -77,10 +77,11 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
     return () => {
       clearInterval(every)
       clearTimeout(swap)
+      // Stopped half-way through a fade: the line comes back now and stays visible when the rotation resumes.
+      setFading(false)
     }
   }, [rotate])
 
-  // Stopped half-way through a fade: show the line, never leave it invisible.
   const hiddenLine = fading && rotate
 
   return (
