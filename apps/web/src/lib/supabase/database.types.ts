@@ -5,7 +5,53 @@ export type Database = {
   
   "public": {
           Tables: {
-            "api_teams": {
+            "activity": {
+                  Row: {
+                    "actor_count": number,"actor_id": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"requester_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor_count"?: number,"actor_id"?: string | null,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind": string,"photo_id"?: string | null,"requester_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "actor_count"?: number,"actor_id"?: string | null,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind"?: string,"photo_id"?: string | null,"requester_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "activity_clip_id_fkey"
+      columns: ["clip_id"]
+isOneToOne: false
+      referencedRelation: "clips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activity_photo_id_fkey"
+      columns: ["photo_id"]
+isOneToOne: false
+      referencedRelation: "team_photos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activity_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"activity_seen": {
+                  Row: {
+                    "seen_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "seen_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "seen_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"api_teams": {
                   Row: {
                     "api_id": number,"logo": string,"name": string,"updated_at": string
                   }
@@ -465,6 +511,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"match_alerts": {
+                  Row: {
+                    "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "away_goals": number,"created_at"?: string,"fixture_id": number,"home_goals": number,"id"?: number,"kind": string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                  }
+                  Update: {
+                    "away_goals"?: number,"created_at"?: string,"fixture_id"?: number,"home_goals"?: number,"id"?: number,"kind"?: string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "match_alerts_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"match_chat_bursts": {
                   Row: {
                     "at": string,"fixture_id": number,"kind": string,"user_id": string
@@ -648,6 +714,20 @@ isOneToOne: false
       referencedRelation: "players"
       referencedColumns: ["id"]
     }
+                  ]
+                },"notification_prefs": {
+                  Row: {
+                    "matches": string,"messages": boolean,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "matches"?: string,"messages"?: boolean,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "matches"?: string,"messages"?: boolean,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"player_rating_stats": {
                   Row: {
@@ -1009,7 +1089,34 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "answer_invite":
+            "activity_broadcast":
+{ Args: { "p_kind": string,"p_user": string }; Returns: undefined
+                           },
+"activity_like":
+{ Args: { "p_kind": string,"p_liker": string,"p_subject": string,"p_user": string }; Returns: undefined
+                           },
+"activity_like_total":
+{ Args: { "p_kind": string,"p_subject": string,"p_user": string }; Returns: number
+                           },
+"activity_prune":
+{ Args: { "p_user": string }; Returns: undefined
+                           },
+"activity_trip_drop":
+{ Args: { "p_kind": string,"p_requester": string,"p_trip": string,"p_user": string }; Returns: undefined
+                           },
+"activity_trip_put":
+{ Args: { "p_actor": string,"p_kind": string,"p_trip": string,"p_user": string }; Returns: undefined
+                           },
+"activity_unlike":
+{ Args: { "p_kind": string,"p_liker": string,"p_subject": string,"p_user": string }; Returns: undefined
+                           },
+"activity_unread_count":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"alert_recipients":
+{ Args: { "p_after"?: string,"p_fixture": number,"p_limit"?: number }; Returns: string[]
+                           },
+"answer_invite":
 { Args: { "p_group": string,"p_yes": boolean }; Returns: undefined
                            },
 "blocked_between":
@@ -1017,6 +1124,9 @@ isOneToOne: false
                            },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
+                           },
+"claim_alerts":
+{ Args: { "p_limit": number }; Returns: { "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null }[]
                            },
 "clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
@@ -1069,11 +1179,17 @@ isOneToOne: false
 "leave_group":
 { Args: { "p_group": string }; Returns: undefined
                            },
+"mark_activity_seen":
+{ Args: { "p_upto": string }; Returns: undefined
+                           },
 "mark_read":
 { Args: { "p_id": string,"p_kind": string }; Returns: undefined
                            },
 "match_room_open":
 { Args: { "p_at"?: string,"p_kickoff": string }; Returns: boolean
+                           },
+"message_push_allowed":
+{ Args: { "p_users": (string)[] }; Returns: string[]
                            },
 "mute_group":
 { Args: { "p_group": string,"p_muted": boolean }; Returns: undefined

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { sendPush } from '@/features/push/server/send'
+import { sendMessagePush } from '@/features/push/server/send'
 import {
   createGroupSchema,
   groupErrorHe,
@@ -70,7 +70,7 @@ async function signedIn() {
 
 /**
  * Tells the fans just invited to a group. Carries no message content: the inviter's nickname and the group name.
- * sendPush never throws, so a failed notification never fails the invite.
+ * sendMessagePush never throws, so a failed notification never fails the invite; fans with messages off are skipped.
  */
 async function pushInvites(supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>, groupId: string, invited: string[]) {
   const me = await myId(supabase)
@@ -80,7 +80,7 @@ async function pushInvites(supabase: NonNullable<Awaited<ReturnType<typeof creat
     supabase.from('profiles').select('nick').eq('user_id', me).maybeSingle(),
   ])
   if (!group) return
-  await sendPush(invited, {
+  await sendMessagePush(invited, {
     title: 'הזמנה לקבוצה',
     body: `${profile?.nick ?? 'אוהד'} · ${group.name}`,
     url: '/inbox',

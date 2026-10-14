@@ -9,24 +9,27 @@ import { getSessionProfile } from '@/features/profile/server/queries'
 
 export const metadata: Metadata = { title: 'נוסעים למשחק' }
 
-export default function Page() {
+export default function Page({ searchParams }: PageProps<'/stand/trips'>) {
   return (
     <section className="space-y-4">
       <BackToStand />
       <h1 className="t-page">נוסעים למשחק</h1>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
-        <Trips />
+        {searchParams.then((sp) => (
+          <Trips focus={typeof sp.trip === 'string' ? sp.trip : undefined} />
+        ))}
       </Suspense>
     </section>
   )
 }
 
-async function Trips() {
+/** `focus`: a trip opened from the activity bell, a push or a banner (/stand/trips?trip=<id>). */
+async function Trips({ focus }: { focus?: string }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') return <p className="text-muted">פועל רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
   const league = await getLeague()
   const matches = upcomingTeamMatches(league, s.team.id)
   const trips = await getTrips(matches.map((m) => m.id))
-  return <TripsBoard matches={matches} trips={trips} meId={s.userId} />
+  return <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} />
 }

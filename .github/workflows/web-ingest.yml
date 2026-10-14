@@ -50,3 +50,19 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: ./scripts/ci-step.sh "ingest ${{ matrix.env }}" node scripts/ingest-league.ts
+      - name: Send goal alerts (${{ matrix.env }})
+        if: steps.pick.outputs.go == 'true'
+        continue-on-error: true
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          ALERTS_SECRET: ${{ secrets.ALERTS_SECRET }}
+          VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$ALERTS_SECRET" ]; then
+            echo "::notice title=alerts::APP_URL or ALERTS_SECRET not set for ${{ matrix.env }}; skipping goal alerts"
+            exit 0
+          fi
+          out=$(mktemp)
+          code=$(curl -sS --max-time 75 -X POST -H "Authorization: Bearer $ALERTS_SECRET" ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} -o "$out" -w '%{http_code}' "${APP_URL%/}/api/alerts/dispatch" || true)
+          echo "::notice title=alerts ${{ matrix.env }}::HTTP ${code:-none} $(head -c 300 "$out" 2>/dev/null)"
+          exit 0

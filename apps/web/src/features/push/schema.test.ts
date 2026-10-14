@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { subscriptionSchema, vapidKeyBytes } from './schema'
+import { DEFAULT_PREFS, prefsSchema, subscriptionSchema, toPrefs, vapidKeyBytes } from './schema'
 
 describe('push', () => {
   it('decodes a URL-safe base64 VAPID key', () => {
@@ -9,5 +9,20 @@ describe('push', () => {
     const keys = { p256dh: 'x'.repeat(20), auth: 'abcd' }
     expect(subscriptionSchema.safeParse({ endpoint: 'https://fcm.googleapis.com/x', keys }).success).toBe(true)
     expect(subscriptionSchema.safeParse({ endpoint: 'http://evil/x', keys }).success).toBe(false)
+  })
+})
+
+describe('notification prefs', () => {
+  it('no row → all matches, messages on', () => {
+    expect(toPrefs(null)).toEqual({ matches: 'all', messages: true })
+    expect(DEFAULT_PREFS).toEqual({ matches: 'all', messages: true })
+  })
+  it('keeps a stored row; an unknown matches value falls back to all', () => {
+    expect(toPrefs({ matches: 'team', messages: false })).toEqual({ matches: 'team', messages: false })
+    expect(toPrefs({ matches: 'weird', messages: false })).toEqual({ matches: 'all', messages: false })
+  })
+  it('only accepts the three match settings', () => {
+    expect(prefsSchema.safeParse({ matches: 'off', messages: true }).success).toBe(true)
+    expect(prefsSchema.safeParse({ matches: 'some', messages: true }).success).toBe(false)
   })
 })

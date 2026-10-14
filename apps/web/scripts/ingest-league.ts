@@ -11,11 +11,14 @@ const DATA_DIR = process.env.DATA_DIR ?? path.resolve(import.meta.dirname, '../.
 const CHUNK = 500
 const { rest } = supabaseFromEnv()
 
-async function upsert(table: string, rows: object[], onConflict: string): Promise<void> {
+/** Upsert in chunks. `insertOnly` adds missing rows and leaves existing ones untouched (no UPDATE, so no trigger). */
+async function upsert(table: string, rows: object[], onConflict: string, { insertOnly = false } = {}): Promise<void> {
+  const resolution = insertOnly ? 'resolution=ignore-duplicates' : 'resolution=merge-duplicates'
   for (let i = 0; i < rows.length; i += CHUNK) {
     const stamped = rows.slice(i, i + CHUNK).map((r) => ({ ...r, updated_at: runStartedAt }))
-    await rest('POST', `${table}?on_conflict=${onConflict}`, stamped, 'resolution=merge-duplicates,return=minimal')
+    await rest('POST', `${table}?on_conflict=${onConflict}`, stamped, `${resolution},return=minimal`)
   }
+  if (insertOnly) return
   console.log(`${table}: ${rows.length}`)
   counts.push(`${table}=${rows.length}`)
 }
@@ -35,9 +38,14 @@ for (const file of await readdir(fxDir).catch(() => [] as string[])) {
 
 const rows = toRows(league, details)
 await upsert('api_teams', rows.apiTeams, 'api_id')
+// Order matters for goal alerts: the fixtures trigger builds no text itself, but the banner and the push read the
+// goal events (fixture_details) right after it fires. So: (1) add only the new fixtures (insert, no trigger; the
+// details need them as a foreign key), (2) write the events, (3) then update scores and statuses (the trigger fires
+// with the scorers already in place).
+await upsert('fixtures', rows.fixtures, 'id', { insertOnly: true })
+await upsert('fixture_details', rows.details, 'fixture_id')
 await upsert('fixtures', rows.fixtures, 'id')
 await upsert('standings', rows.standings, 'season,group_name,api_team_id')
-await upsert('fixture_details', rows.details, 'fixture_id')
 
 // Rows of this season that the upstream table no longer contains (e.g. a group renamed) go away.
 if (rows.standings.length > 0) {

@@ -15,10 +15,11 @@ Owner's standing rule: **local and test data never touch production.**
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | differs per environment |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client + server | safe to expose; RLS protects data |
-| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: only `lib/supabase/admin.ts` (reading push subscriptions to send notifications). Production: key `server_2026_10` (rotated 2026-10-12; the old `default` key is deleted). Preview: not set yet, so previews do not send notifications |
+| `SUPABASE_SECRET_KEY` | server only | bypasses RLS: only `lib/supabase/admin.ts` (reading push subscriptions to send notifications). Production: key `server_2026_10` (rotated 2026-10-12; the old `default` key is deleted). Preview: the **staging** key `server_2026_10_14` (rotated 2026-10-14 after a malformed paste was echoed into a Vercel log; the old staging `default` key is deleted; the same key is in the GitHub `staging` environment). Whitespace in a pasted key is stripped by `admin.ts` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | client / server | Web Push pair, generated in the owner's browser (never seen by Claude), Production + Preview |
 | `NEXT_PUBLIC_PHONE_AUTH` | client | `on`/`off` (default off): SMS sign-in, needs an SMS provider |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
+| `ALERTS_SECRET` | server only | guards `POST /api/alerts/dispatch` (goal / full-time alerts, `Authorization: Bearer …`). Generate with `openssl rand -hex 32`. Vercel Production + Preview, and the same value in the matching GitHub environment. **Staging and production values must differ** |
 | `NEXT_PUBLIC_APP_ENV` | client + server | `local` / `preview` / `production`; shows a banner outside production |
 
 Set them in Vercel per environment (Production / Preview / Development). Production values exist **only** in Vercel's Production scope and in the GitHub `production` environment. `.env.local` is git-ignored; `.env.example` lists names only.
@@ -39,6 +40,17 @@ Set them in Vercel per environment (Production / Preview / Development). Product
 - `staging` and `Production` (shared with Vercel's deployment records; names are case-insensitive). Each has variable `SUPABASE_URL` and secret `SUPABASE_SECRET_KEY` (that project's `sb_secret_…`, pasted by the owner). Production uses key `server_2026_10` since 2026-10-12.
 - `.github/workflows/web-ingest.yml` runs per environment; the legacy `update.yml` calls it whenever `data/` changed. Manual run: dispatch with `inputs[target]=staging|production|both`.
 - The script strips whitespace and invisible direction marks from the key (pasting on a Hebrew keyboard adds them) and reports row counts as a `::notice` annotation.
+
+## Goal alerts wiring
+- Secret `ALERTS_SECRET` in GitHub environments `Production` and `staging` (each with its own value, equal to the Vercel Production / Preview value respectively), and variable `APP_URL` per environment: production `https://hayatzia-flame.vercel.app`, staging `https://hayatzia-git-demo-preview-hayaziha.vercel.app`.
+- `web-ingest.yml` calls `$APP_URL/api/alerts/dispatch` after each ingest; skipped with a notice when either is empty; never fails the job. `web-demo-match.yml` passes both so the demo script can trigger alerts (it refuses an `APP_URL` pointing at production).
+- The dispatch route runs up to 60 s (`maxDuration`, valid on Vercel Hobby and Pro with Fluid compute) and claims alerts in rounds of 5 while time remains; it answers `{sent, skipped, more}` (`more: true` = some alerts wait for the next call). The workflow's curl waits 75 s.
+- `/api/alerts` is outside the session proxy (no cookies), so the banner's `GET /api/alerts/<id>` can be shared by the CDN.
+
+### Alerts on staging: done (2026-10-14)
+- Vercel Preview: `SUPABASE_SECRET_KEY` (staging), `ALERTS_SECRET` (staging value), VAPID pair.
+- Vercel Deployment Protection stays on for previews; GitHub reaches the preview through **Protection Bypass for Automation** (secret noted "github"), saved in the GitHub `staging` environment as `VERCEL_AUTOMATION_BYPASS_SECRET`. Production has no protection, so it needs nothing.
+- Verified end to end with the demo match (run 38553994466): dispatch `sent=1` for the goal and for full time; the owner received both on his phone and saw the in-app banner.
 
 ## Crowd-verdict demo (staging only)
 - `.github/workflows/web-demo-match.yml` (dispatch only, `environment: staging`) runs `scripts/demo-match.ts`: demo match `900000001` (`is_demo`, labelled "משחק לדוגמה · נתונים לדוגמה"), 30 demo fans (`demo-fan-NN@demo.hayatzia.test`, nicks `דמו·…`), a chat burst that opens a poll by itself, scripted events, demo votes; about 12 minutes. The script refuses the production ref.

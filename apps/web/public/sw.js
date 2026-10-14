@@ -18,6 +18,8 @@ self.addEventListener('push', (event) => {
       lang: 'he',
       dir: 'rtl',
       tag: data.tag || undefined,
+      // A newer notification with the same tag (next goal, next message) replaces the old one and still alerts.
+      renotify: !!data.tag,
       data: { url: data.url || '/stand' },
     }),
   )

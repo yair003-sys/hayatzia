@@ -1,0 +1,77 @@
+// @vitest-environment node
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { GET } from './route'
+
+const mocks = vi.hoisted(() => ({ getBannerAlert: vi.fn(), alertExists: vi.fn() }))
+vi.mock('@/features/push/server/banner-alert', () => ({
+  getBannerAlert: mocks.getBannerAlert,
+  alertExists: mocks.alertExists,
+  ALERT_NOT_FOUND: 'alert_not_found',
+}))
+
+const call = (id: string) => GET(new Request(`http://localhost/api/alerts/${id}`), { params: Promise.resolve({ id }) })
+const alert = { title: '⚽ שער! א 1:0 ב', body: "12′", homeApiId: 604, awayApiId: 657, bar: '#FFD400' }
+
+beforeEach(() => {
+  mocks.getBannerAlert.mockReset()
+  mocks.alertExists.mockReset()
+  mocks.alertExists.mockResolvedValue(true)
+})
+
+describe('GET /api/alerts/[id]', () => {
+  it('returns the banner text, shareable by the CDN for a minute', async () => {
+    mocks.getBannerAlert.mockResolvedValue(alert)
+    const res = await call('42')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual(alert)
+    expect(res.headers.get('cache-control')).toContain('s-maxage=60')
+    expect(mocks.getBannerAlert).toHaveBeenCalledWith(42)
+  })
+
+  it('404 for an unknown alert (thrown, so the cache never keeps it), not cached by the CDN either', async () => {
+    mocks.getBannerAlert.mockRejectedValue(new Error('alert_not_found'))
+    const res = await call('42')
+    expect(res.status).toBe(404)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(mocks.alertExists).not.toHaveBeenCalled()
+  })
+
+  it('404 for an unknown alert when production hides the error message (one uncached lookup decides)', async () => {
+    mocks.getBannerAlert.mockRejectedValue(new Error('An error occurred in the Server Components render.'))
+    mocks.alertExists.mockResolvedValue(false)
+    const res = await call('43')
+    expect(res.status).toBe(404)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(mocks.alertExists).toHaveBeenCalledWith(43)
+  })
+
+  it('404 for a malformed id without reading anything', async () => {
+    for (const id of ['abc', '0', '-1', '1.5', '9'.repeat(17)]) {
+      const res = await call(id)
+      expect(res.status).toBe(404)
+      expect(res.headers.get('cache-control')).toBe('no-store')
+    }
+    expect(mocks.getBannerAlert).not.toHaveBeenCalled()
+  })
+
+  it('a database error is a 503 that nobody caches', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.getBannerAlert.mockRejectedValue(new Error('banner alert: read failed'))
+    const res = await call('42')
+    expect(res.status).toBe(503)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    warn.mockRestore()
+  })
+
+  it('a hidden error for an alert that exists, or when the lookup cannot tell, is a 503', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.getBannerAlert.mockRejectedValue(new Error('An error occurred in the Server Components render.'))
+    for (const exists of [true, null]) {
+      mocks.alertExists.mockResolvedValue(exists)
+      const res = await call('42')
+      expect(res.status).toBe(503)
+      expect(res.headers.get('cache-control')).toBe('no-store')
+    }
+    warn.mockRestore()
+  })
+})

@@ -1,0 +1,102 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { BannerView, type ShownBanner } from './alert-banner-view'
+
+const goal: ShownBanner = {
+  seq: 1,
+  title: '⚽ שער! מכבי תל אביב 2:1 הפועל חיפה',
+  body: '67′ · E. Zahavi',
+  href: '/matches/77',
+  tone: 'match',
+  accent: { accent: '#FFD400', accent2: '#ffdb2e', rgb: '255 212 0', text: '#FFD400', on: '#0b0d12' },
+}
+
+describe('BannerView', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('is a polite live region, empty when there is nothing to show', () => {
+    render(<BannerView banner={null} onOpen={() => {}} onDismiss={() => {}} />)
+    const region = screen.getByRole('status')
+    expect(region).toHaveAttribute('aria-live', 'polite')
+    expect(region).toBeEmptyDOMElement()
+  })
+
+  it('shows the text as a link to the target, in the club colours', () => {
+    render(<BannerView banner={goal} onOpen={() => {}} onDismiss={() => {}} />)
+    const link = screen.getByRole('link', { name: /שער! מכבי תל אביב 2:1 הפועל חיפה/ })
+    expect(link).toHaveAttribute('href', '/matches/77')
+    expect(link).toHaveTextContent('67′ · E. Zahavi')
+    const card = link.closest('.ab') as HTMLElement
+    expect(card.style.getPropertyValue('--ab-bg')).toBe('#FFD400')
+    expect(card.style.getPropertyValue('--ab-on')).toBe('#0b0d12')
+  })
+
+  it('tap opens the target through the router', () => {
+    const onOpen = vi.fn()
+    render(<BannerView banner={goal} onOpen={onOpen} onDismiss={() => {}} />)
+    fireEvent.click(screen.getByRole('link'))
+    expect(onOpen).toHaveBeenCalledWith('/matches/77')
+  })
+
+  it('dismisses with the close button and with Escape', () => {
+    const onDismiss = vi.fn()
+    render(<BannerView banner={goal} onOpen={() => {}} onDismiss={onDismiss} />)
+    fireEvent.click(screen.getByRole('button', { name: 'סגירת ההתראה' }))
+    fireEvent.keyDown(screen.getByRole('link'), { key: 'Escape' })
+    expect(onDismiss).toHaveBeenCalledTimes(2)
+  })
+
+  it('a sideways swipe dismisses without opening', () => {
+    const onOpen = vi.fn()
+    const onDismiss = vi.fn()
+    render(<BannerView banner={goal} onOpen={onOpen} onDismiss={onDismiss} />)
+    const card = screen.getByRole('link').closest('.ab') as HTMLElement
+    fireEvent.pointerDown(card, { clientX: 200, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(card, { clientX: 60, clientY: 14, pointerId: 1 })
+    fireEvent.pointerUp(card, { clientX: 60, clientY: 14, pointerId: 1 })
+    fireEvent.click(screen.getByRole('link'))
+    expect(onDismiss).toHaveBeenCalledOnce()
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('a message banner without club colours uses the neutral style', () => {
+    render(<BannerView banner={{ ...goal, tone: 'message', accent: null, title: 'דני: היי', body: '' }} onOpen={() => {}} onDismiss={() => {}} />)
+    const card = screen.getByRole('link').closest('.ab') as HTMLElement
+    expect(card).toHaveAttribute('data-tone', 'message')
+    expect(card.style.getPropertyValue('--ab-bg')).toBe('')
+  })
+
+  it('a trip banner (activity bell) links to the trip, neutral style with an icon', () => {
+    const TRIP = '55555555-5555-4555-8555-555555555555'
+    render(
+      <BannerView
+        banner={{ seq: 2, title: 'יוסי ביקש להצטרף לנסיעה שלך', body: '', href: `/stand/trips?trip=${TRIP}`, tone: 'trip', accent: null }}
+        onOpen={() => {}}
+        onDismiss={() => {}}
+      />,
+    )
+    const link = screen.getByRole('link', { name: 'יוסי ביקש להצטרף לנסיעה שלך' })
+    expect(link).toHaveAttribute('href', `/stand/trips?trip=${TRIP}`)
+    expect(link.querySelector('.ab-icon svg')).not.toBeNull()
+    expect(link.closest('.ab')).toHaveAttribute('data-tone', 'trip')
+  })
+
+  it('a mouse hover and focus hold it, reported separately; a touch never holds it', () => {
+    const onHold = vi.fn()
+    render(<BannerView banner={goal} onOpen={() => {}} onDismiss={() => {}} onHold={onHold} />)
+    const card = screen.getByRole('link').closest('.ab') as HTMLElement
+    fireEvent.pointerEnter(card, { pointerType: 'touch' })
+    fireEvent.pointerLeave(card, { pointerType: 'touch' })
+    expect(onHold).not.toHaveBeenCalled()
+    fireEvent.pointerEnter(card, { pointerType: 'mouse' })
+    fireEvent.focus(screen.getByRole('link'))
+    fireEvent.pointerLeave(card, { pointerType: 'mouse' })
+    expect(onHold.mock.calls).toEqual([
+      ['hover', true],
+      ['focus', true],
+      ['hover', false],
+    ])
+  })
+})

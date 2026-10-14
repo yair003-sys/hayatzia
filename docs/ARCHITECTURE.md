@@ -65,6 +65,7 @@ apps/web/
 | `/team/chat`, `/team/trips`, `/team/events`, `/team/market` | Team space tabs |
 | `/inbox`, `/inbox/[threadId]` | Private messages (E2EE) |
 | `/me` | הכרטיס שלי |
+| `/activity` | התראות (activity bell: likes on my posts, trip requests / acceptances; the bell sits on every in-app screen) |
 | `/fans/[userId]` | Fan card |
 
 ## Database workflow

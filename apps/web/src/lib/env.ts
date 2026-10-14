@@ -14,6 +14,8 @@ export const env = createEnv({
     SUPABASE_SECRET_KEY: z.string().min(20).optional(),
     /** Web Push (VAPID) private key. Server only. */
     VAPID_PRIVATE_KEY: z.string().min(20).optional(),
+    /** Shared secret the ingest workflow sends to POST /api/alerts/dispatch. Server only. Unset → dispatch refuses. */
+    ALERTS_SECRET: z.string().min(20).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_ENV: z.enum(APP_ENVS).default('local'),
@@ -34,6 +36,7 @@ export const env = createEnv({
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    ALERTS_SECRET: process.env.ALERTS_SECRET,
   },
   emptyStringAsUndefined: true,
 })

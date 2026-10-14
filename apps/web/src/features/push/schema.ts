@@ -16,3 +16,16 @@ export function vapidKeyBytes(base64Url: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
   return out
 }
+
+/** A fan's notification settings ("הכרטיס שלי" → הגדרות). No saved row = the defaults. */
+export const MATCH_PREFS = ['all', 'team', 'off'] as const
+export const prefsSchema = z.object({ matches: z.enum(MATCH_PREFS), messages: z.boolean() })
+export type NotificationPrefs = z.infer<typeof prefsSchema>
+export const DEFAULT_PREFS: NotificationPrefs = { matches: 'all', messages: true }
+
+/** Reads a stored row defensively (the column is text in the database). */
+export function toPrefs(row: { matches: string; messages: boolean } | null | undefined): NotificationPrefs {
+  if (!row) return DEFAULT_PREFS
+  const parsed = prefsSchema.safeParse(row)
+  return parsed.success ? parsed.data : { ...DEFAULT_PREFS, messages: row.messages !== false }
+}
