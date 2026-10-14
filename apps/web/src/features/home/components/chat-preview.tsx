@@ -50,19 +50,23 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
       <h2 id="hm-chat-h" className="hm-h2">
         עכשיו בצ׳אט של האוהדים
       </h2>
-      <ul className="space-y-2.5">
-        {msgs.map((m) => (
-          <li key={m.id} className="hm-msg">
-            <span className="hm-av" aria-hidden="true">
-              {initialOf(m.nick)}
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="hm-msg-by">{m.nick}</span>
-              <span className="hm-msg-body">{m.body}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {msgs.length === 0 ? (
+        <p className="hm-empty">הצ׳אט שקט כרגע — כתוב את ההודעה הראשונה</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {msgs.map((m) => (
+            <li key={m.id} className="hm-msg">
+              <span className="hm-av" aria-hidden="true">
+                {initialOf(m.nick)}
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="hm-msg-by">{m.nick}</span>
+                <span className="hm-msg-body">{m.body}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       <Link href="/stand/chat" className="hm-join">
         הצטרף לשיחה
       </Link>

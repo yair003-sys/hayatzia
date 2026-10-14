@@ -86,8 +86,11 @@ export type HomePlayer = {
   reviews: Review[]
 }
 
-/** Player cards on the home: rated players with their most-liked reviews. Two queries in parallel. */
-export async function getHomePlayers(teamId: string, me: string, max = 10): Promise<HomePlayer[]> {
+/**
+ * Player cards on the home: the club's squad, most-rated first then by shirt number (always shown, rated or not), with
+ * their most-liked reviews. Two queries in parallel.
+ */
+export async function getHomePlayers(teamId: string, me: string, max = 8): Promise<HomePlayer[]> {
   const supabase = await createClient()
   if (!supabase) return []
   const [players, reviews] = await Promise.all([
@@ -122,8 +125,7 @@ export async function getHomePlayers(teamId: string, me: string, max = 10): Prom
         reviews: byPlayer.get(p.id) ?? [],
       }
     })
-    .filter((p) => p.count > 0)
-    .sort((a, b) => Number(b.reviews.length > 0) - Number(a.reviews.length > 0) || b.count - a.count || (a.number ?? 999) - (b.number ?? 999))
+    .sort((a, b) => b.count - a.count || (a.number ?? 999) - (b.number ?? 999))
     .slice(0, max)
 }
 

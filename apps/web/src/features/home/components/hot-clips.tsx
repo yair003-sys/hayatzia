@@ -1,16 +1,49 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, ImagePlus } from 'lucide-react'
+import { UploadClip } from '@/features/square/components/upload-clip'
 import { shortCount, type Clip } from '@/features/square/schema'
 import { markSeen } from './seen-store'
 import { StoryViewer } from './story-viewer'
 
-/** "🔥 החם בכיכר היום": reel cards of the most-liked posts; a card opens them full screen in the story viewer. */
-export function HotClips({ clips, meId, myTeamId }: { clips: Clip[]; meId: string; myTeamId: string }) {
+type Props = { clips: Clip[]; meId: string; myTeamId: string; myNick: string; teamShort: string }
+
+/**
+ * "🔥 החם בכיכר היום": reel cards of the most-liked posts; a card opens them full screen in the story viewer. With none
+ * yet, an empty card of the row's size opens the Square upload sheet (as the stories "+" does).
+ */
+export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
   const [open, setOpen] = useState<number | null>(null)
+  const [choosing, setChoosing] = useState(false)
+  const [uploaded, setUploaded] = useState(false)
   const items = clips.map((clip) => ({ clip, group: 0 }))
   const close = useCallback(() => setOpen(null), [])
+  if (clips.length === 0)
+    return (
+      <div className="hm-reels-empty">
+        <ImagePlus className="size-6 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
+        <p>{uploaded ? 'הסרטון עלה לכיכר ✓' : 'עוד אין סרטונים היום'}</p>
+        <UploadClip
+          meId={meId}
+          myTeamId={myTeamId}
+          myNick={myNick}
+          audience="team"
+          teamShort={teamShort}
+          choosing={choosing}
+          setChoosing={setChoosing}
+          onStart={(local) => {
+            if (local.url?.startsWith('blob:')) URL.revokeObjectURL(local.url)
+          }}
+          onDone={(localId, clip) => setUploaded(clip !== null)}
+          trigger={
+            <button type="button" className="hm-empty-btn" onClick={() => setChoosing(true)}>
+              העלה את הראשון
+            </button>
+          }
+        />
+      </div>
+    )
   return (
     <>
       <ul className="hm-reels">

@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { whileVisible } from '@/lib/while-visible'
 import { countdownCells, countdownLabel } from '../schema'
 
@@ -28,22 +28,11 @@ export function Countdown({ at }: { at: number }) {
   }, [])
 
   if (now !== null && at - now <= 0) return <span className="hm-cd-go">המשחק התחיל</span>
-  const cells = now === null ? countdownCells(0).map((c) => ({ ...c, value: '––' })) : countdownCells(at - now)
+  // One big line like the sketch ("2 : 03 : 14"): days : hours : minutes, or hours : minutes : seconds under a day.
+  const text = now === null ? '– : –– : ––' : countdownCells(at - now).map((c) => c.value).join(' : ')
   return (
     <span className="hm-cd" dir="ltr" role="timer" aria-label={now === null ? 'הזמן עד שריקת הפתיחה' : `שריקת הפתיחה ${countdownLabel(at - now)}`}>
-      {cells.map((c, i) => (
-        <Fragment key={c.unit}>
-          {i > 0 && (
-            <span className="hm-cd-sep" aria-hidden="true">
-              :
-            </span>
-          )}
-          <span className="hm-cd-cell" aria-hidden="true">
-            <b className="t-num">{c.value}</b>
-            <small>{c.unit}</small>
-          </span>
-        </Fragment>
-      ))}
+      <span aria-hidden="true">{text}</span>
     </span>
   )
 }

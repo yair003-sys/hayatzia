@@ -31,6 +31,8 @@ const rv = (n: number, likes: number): Review => ({
 const players: HomePlayer[] = [
   { id: 'mta_10', number: 10, name_short: 'שחקן א', position: 'CM', avg: 4.6, count: 12, reviews: [rv(1, 9), rv(2, 5), rv(3, 1)] },
   { id: 'mta_9', number: 9, name_short: 'שחקן ב', position: 'ST', avg: 4.1, count: 8, reviews: [rv(4, 3), rv(5, 2)] },
+  { id: 'mta_4', number: 4, name_short: 'שחקן ג', position: 'CB', avg: 3.5, count: 2, reviews: [rv(6, 0)] },
+  { id: 'mta_1', number: 1, name_short: 'שחקן ד', position: 'GK', avg: null, count: 0, reviews: [] },
 ]
 
 const line = (id: string) => screen.getByTestId(`review-${id}`).querySelector('p')?.textContent
@@ -115,6 +117,20 @@ describe('PlayerReviews rotation', () => {
     expect(line('mta_10')).toBe('״ביקורת 1״')
     await wait(3350)
     expect(line('mta_10')).toBe('״ביקורת 2״')
+  })
+
+  it('every squad card shows: unrated says so, no review invites the first one, a single review never fades', async () => {
+    render(<PlayerReviews players={players} />)
+    const unrated = screen.getByRole('listitem', { name: 'שחקן ד' })
+    expect(unrated).toHaveTextContent('עוד לא דורג')
+    expect(screen.getByRole('link', { name: 'היה הראשון לכתוב ביקורת' })).toHaveAttribute('href', '/stand/players?p=mta_1#p-mta_1')
+    expect(screen.getByRole('listitem', { name: 'שחקן א' })).not.toHaveTextContent('עוד לא דורג')
+    onScreen(true)
+    await wait(4000) // in the fade
+    expect(screen.getByTestId('review-mta_10')).toHaveStyle({ opacity: '0' })
+    expect(screen.getByTestId('review-mta_4')).toHaveStyle({ opacity: '1' })
+    await wait(350)
+    expect(line('mta_4')).toBe('״ביקורת 6״')
   })
 
   it('never rotates under reduced motion', async () => {

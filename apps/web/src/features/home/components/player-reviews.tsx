@@ -116,19 +116,24 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
                   <span className="hm-pos">{positionHe(p.position)}</span>
                 </span>
               </div>
-              <div className="hm-rating">
-                <span className="hm-stars" aria-hidden="true">
-                  {'★'.repeat(filled)}
-                  {'☆'.repeat(5 - filled)}
-                </span>
-                <b className="t-num">{p.avg === null ? '–' : p.avg.toFixed(1)}</b>
-                <small className="t-num">({p.count.toLocaleString('he-IL')})</small>
-                <span className="sr-only">
-                  ממוצע {p.avg ?? '–'} מתוך 5, {p.count} מדרגים
-                </span>
-              </div>
+              {p.count === 0 ? (
+                <p className="hm-rating hm-unrated">עוד לא דורג</p>
+              ) : (
+                <div className="hm-rating">
+                  <span className="hm-stars" aria-hidden="true">
+                    {'★'.repeat(filled)}
+                    {'☆'.repeat(5 - filled)}
+                  </span>
+                  <b className="t-num">{p.avg === null ? '–' : p.avg.toFixed(1)}</b>
+                  <small className="t-num">({p.count.toLocaleString('he-IL')})</small>
+                  <span className="sr-only">
+                    ממוצע {p.avg ?? '–'} מתוך 5, {p.count} מדרגים
+                  </span>
+                </div>
+              )}
               {r ? (
-                <div className="hm-rv" style={{ opacity: hiddenLine ? 0 : 1 }} data-testid={`review-${p.id}`}>
+                // Only a player with two or more reviews changes line; one review stays put.
+                <div className="hm-rv" style={{ opacity: hiddenLine && p.reviews.length > 1 ? 0 : 1 }} data-testid={`review-${p.id}`}>
                   <p>״{r.review}״</p>
                   <span className="hm-rv-by">
                     <span className="truncate">{r.nick}</span>
@@ -136,7 +141,9 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
                   </span>
                 </div>
               ) : (
-                <p className="hm-rv-none">עוד אין ביקורות. היה הראשון</p>
+                <Link href={`/stand/players?p=${p.id}#p-${p.id}`} className="hm-rv-first">
+                  היה הראשון לכתוב ביקורת
+                </Link>
               )}
             </article>
           )

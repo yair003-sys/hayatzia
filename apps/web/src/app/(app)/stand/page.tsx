@@ -78,7 +78,7 @@ async function Home() {
         <PlayersSection team={team} userId={userId} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[210px]" />}>
-        <HotSection team={team} userId={userId} />
+        <HotSection team={team} userId={userId} nick={s.nick} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[220px]" />}>
         <ChatSection team={team} />

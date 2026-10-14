@@ -6,16 +6,17 @@ import { Users } from 'lucide-react'
 import { Brand } from '@/components/brand'
 import { Bell } from '@/features/activity/components/bell'
 import { getUnreadCount } from '@/features/activity/server/queries'
-import { LineupCta } from '@/features/lineup/components/lineup-cta'
 import { canBuild } from '@/features/lineup/schema'
 import { displayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { clubApiIds } from '@/features/stand-home/server/queries'
 import type { Team } from '@/features/teams/data'
-import { homeCircles, initialOf, MEDALS, nextClubFixture, tableWindow } from '../schema'
+import { homeCircles, nextClubFixture, tableWindow } from '../schema'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
 import { ChatPreview } from './chat-preview'
+import { FansOfWeek } from './fans-of-week'
+import { SectionHead } from './section-head'
 import { Countdown } from './countdown'
 import { HotClips } from './hot-clips'
 import { OnlineTile } from './online-tile'
@@ -29,22 +30,6 @@ type Fan = { team: Team; userId: string }
 
 // Request time only: every section that reads the clock awaits connection() first (never in a prerender).
 const clock = () => Date.now()
-
-function SectionHead({ id, title, emoji, more }: { id: string; title: string; emoji?: string; more?: { href: '/stand/players' | '/square' | '/matches'; label: string } }) {
-  return (
-    <div className="hm-sec-h">
-      <h2 id={id} className="hm-h2">
-        {emoji && <span aria-hidden="true">{emoji} </span>}
-        {title}
-      </h2>
-      {more && (
-        <Link href={more.href} className="hm-more">
-          {more.label}
-        </Link>
-      )}
-    </div>
-  )
-}
 
 // ── 1. header ─────────────────────────────────────────────────────────────────────────────
 /** onefan, "האוהדים של <club>" in the club's colour, and the activity bell (the only bell on this screen). */
@@ -111,14 +96,14 @@ export function ActivityTiles({ team }: { team: Team }) {
   )
 }
 
+/** Always shown (the sketch's place); a dash only where the number cannot be read (no service key in that environment). */
 async function ActiveFansTile({ teamId }: { teamId: string }) {
   const n = await getActiveFans(teamId)
-  if (!n) return null
   return (
     <div className="hm-tile">
       <Users className="hm-tile-ico" aria-hidden="true" />
       <span className="hm-tile-txt">
-        <b className="t-num">{n.toLocaleString('he-IL')}</b>
+        <b className="t-num">{n === null ? '—' : n.toLocaleString('he-IL')}</b>
         <span>אוהדים פעילים</span>
       </span>
     </div>
@@ -155,12 +140,17 @@ export async function NextMatchSection({ team }: { team: Team }) {
           {away.short}
         </span>
       </Link>
-      {canBuild(next, now) && <LineupCta fixtureId={next.id} detail={`מול ${(atHome ? away : home).short} · נסגר בשריקת הפתיחה`} />}
+      {canBuild(next, now) && (
+        <Link href={`/matches/${next.id}?tab=lineup`} className="hm-next-cta">
+          בנה את ההרכב שלך
+        </Link>
+      )}
     </section>
   )
 }
 
 // ── 5. players in the fans' eyes ──────────────────────────────────────────────────────────
+/** Always shown while the club has a squad (it always has): the cards say "not rated yet" / invite the first review. */
 export async function PlayersSection({ team, userId }: Fan) {
   const players = await getHomePlayers(team.id, userId)
   if (players.length === 0) return null
@@ -173,21 +163,21 @@ export async function PlayersSection({ team, userId }: Fan) {
 }
 
 // ── 6. hot in the Square ──────────────────────────────────────────────────────────────────
-export async function HotSection({ team, userId }: Fan) {
+/** Always shown; with no posts yet, an empty card the size of the row invites the first upload. */
+export async function HotSection({ team, userId, nick }: Fan & { nick: string }) {
   const clips = await getHotClips(userId)
-  if (clips.length === 0) return null
   return (
     <section aria-labelledby="hm-hot-h" className="hm-sec">
       <SectionHead id="hm-hot-h" emoji="🔥" title="החם בכיכר היום" more={{ href: '/square', label: 'לכיכר' }} />
-      <HotClips clips={clips} meId={userId} myTeamId={team.id} />
+      <HotClips clips={clips} meId={userId} myTeamId={team.id} myNick={nick} teamShort={team.short} />
     </section>
   )
 }
 
 // ── 7. team chat ──────────────────────────────────────────────────────────────────────────
+/** Always shown; an empty chat invites the first message. */
 export async function ChatSection({ team }: { team: Team }) {
   const { messages, hidden } = await getChatPreview(team.id)
-  if (messages.length === 0) return null
   return <ChatPreview teamId={team.id} initial={messages} hidden={hidden} />
 }
 
@@ -242,31 +232,9 @@ export async function MiniTableSection({ team }: { team: Team }) {
 }
 
 // ── 9. fans of the week ───────────────────────────────────────────────────────────────────
+/** Always shown; before anyone has points this week it says how to get in. */
 export async function FansOfWeekSection({ team }: { team: Team }) {
-  const fans = await getFansOfWeek(team.id)
-  if (fans.length === 0) return null
-  return (
-    <section aria-labelledby="hm-fans-h" className="hm-sec">
-      <SectionHead id="hm-fans-h" emoji="🏆" title="אוהדי השבוע" />
-      <ol className="hm-fans">
-        {fans.map((f, i) => (
-          <li key={f.nick} className="hm-fan">
-            <span className="text-xl" aria-hidden="true">
-              {MEDALS[i]}
-            </span>
-            <span className="sr-only">מקום {i + 1}:</span>
-            <span className="hm-fan-av" aria-hidden="true">
-              {initialOf(f.nick)}
-            </span>
-            <b className="hm-fan-nick">{f.nick}</b>
-            <span className="text-[11px] text-muted">
-              <span className="t-num">{f.points.toLocaleString('he-IL')}</span> נק׳
-            </span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
+  return <FansOfWeek fans={await getFansOfWeek(team.id)} />
 }
 
 /** A section's place while it loads: the shape of what comes, no text. */

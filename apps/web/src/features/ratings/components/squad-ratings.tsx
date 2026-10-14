@@ -7,9 +7,9 @@ import { average, positionGroup, type PlayerRow, type Review } from '../schema'
 import { ratePlayerAction, reviewsAction } from '../server/actions'
 import { ReviewLike, useReviewLikes } from './review-like'
 
-export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
+export function SquadRatings({ initial, openId: firstOpen = null }: { initial: PlayerRow[]; openId?: string | null }) {
   const [players, setPlayers] = useState(initial)
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(() => (firstOpen && initial.some((p) => p.id === firstOpen) ? firstOpen : null))
 
   const groups = new Map<string, PlayerRow[]>()
   for (const p of players) {
@@ -24,7 +24,7 @@ export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
           <h2 className="text-sm font-bold text-muted">{label}</h2>
           <ul className="space-y-2">
             {list.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} id={`p-${p.id}`} className="scroll-mt-4">
                 <PlayerItem
                   player={p}
                   open={openId === p.id}
