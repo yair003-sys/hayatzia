@@ -10,6 +10,7 @@ import {
   FORMATIONS,
   formationSlots,
   GROUP_HE,
+  labelWidth,
   placeAt,
   ROLE_HE,
   ROLES,
@@ -340,8 +341,6 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const selPlayer = sel && 'player' in sel ? sel.player : null
   const groups = Object.fromEntries(ROLES.map((r) => [r, squad.filter((p) => p.role === r)])) as Record<Role, SquadPlayer[]>
   const picked = (r: Role) => groups[r].filter((p) => onPitch.has(p.id)).length
-  // The grid keeps the height of the biggest group, so switching tabs never makes the pitch jump.
-  const rows = Math.max(1, ...ROLES.map((r) => Math.ceil(groups[r].length / 4)))
   const acc = teamAccent(team.bar)
   const colours = {
     '--a': team.bg,
@@ -401,50 +400,32 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           ))}
         </div>
 
-        <div className="lu-pitch-wrap">
-          <div className="lc-pitch lu-pitch">
-            <i className="lc-pitch-arc" />
-            <i className="lc-pitch-box" />
-            <i className="lc-pitch-six" />
-            {spots.map((s) => {
-              const id = xi[s.slot] ?? null
-              const p = id ? byId.get(id) : undefined
-              return (
-                <button
-                  key={s.slot}
-                  type="button"
-                  className="lu-slot"
-                  data-drop={s.slot}
-                  data-filled={p ? '' : undefined}
-                  data-over={ghost?.over === s.slot ? '' : undefined}
-                  aria-pressed={selSlot === s.slot}
-                  aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
-                  style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
-                  onClick={(e) => tapSlot(s.slot, e)}
-                  {...(p ? dragHandlers(p.id, s.slot) : {})}
-                >
-                  <i>{p ? (p.number ?? '') : '+'}</i>
-                  <small>{p ? p.short : SLOT_HE[s.role]}</small>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="lu-hint">
-          <p role="status">{note || 'גוררים שחקן למגרש, או מקישים על עמדה ואז על שחקן'}</p>
-          {selSlot !== null && xi[selSlot] && (
-            <button
-              type="button"
-              className="lu-bench-btn"
-              onClick={() => {
-                bench(selSlot)
-                setSel(null)
-              }}
-            >
-              הוצא לספסל
-            </button>
-          )}
+        <div className="lc-pitch lu-pitch">
+          <i className="lc-pitch-arc" />
+          <i className="lc-pitch-box" />
+          <i className="lc-pitch-six" />
+          {spots.map((s) => {
+            const id = xi[s.slot] ?? null
+            const p = id ? byId.get(id) : undefined
+            return (
+              <button
+                key={s.slot}
+                type="button"
+                className="lu-slot"
+                data-drop={s.slot}
+                data-filled={p ? '' : undefined}
+                data-over={ghost?.over === s.slot ? '' : undefined}
+                aria-pressed={selSlot === s.slot}
+                aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
+                style={{ left: `${s.x}%`, bottom: `${s.y}%`, maxWidth: `${labelWidth(s)}%` }}
+                onClick={(e) => tapSlot(s.slot, e)}
+                {...(p ? dragHandlers(p.id, s.slot) : {})}
+              >
+                <i>{p ? (p.number ?? '') : '+'}</i>
+                <small>{p ? p.short : SLOT_HE[s.role]}</small>
+              </button>
+            )
+          })}
         </div>
 
         <div className="lu-tabs" role="tablist" aria-label="הסגל לפי עמדה" onKeyDown={onTabKey}>
@@ -472,7 +453,23 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           ))}
         </div>
 
-        <div id="lu-squad" className="lu-squad" role="tabpanel" aria-labelledby={`lu-tab-${tab}`} style={{ '--rows': rows } as CSSProperties}>
+        <div className="lu-hint">
+          <p role="status">{note || 'גוררים שחקן למגרש, או מקישים על עמדה ואז על שחקן'}</p>
+          {selSlot !== null && xi[selSlot] && (
+            <button
+              type="button"
+              className="lu-bench-btn"
+              onClick={() => {
+                bench(selSlot)
+                setSel(null)
+              }}
+            >
+              הוצא לספסל
+            </button>
+          )}
+        </div>
+
+        <div id="lu-squad" className="lu-squad" role="tabpanel" aria-labelledby={`lu-tab-${tab}`}>
           <ul className="lu-grid" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`${GROUP_HE[tab]} של ${team.short}`}>
             {groups[tab].map((p) => {
               const inXI = onPitch.has(p.id)

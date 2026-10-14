@@ -10,7 +10,8 @@ export const FORMATIONS = ['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2'] as con
 export type Formation = (typeof FORMATIONS)[number]
 export type Role = 'GK' | 'DEF' | 'MID' | 'FWD'
 /** `x`: percent from the left; `y`: percent from the bottom (goalkeeper at the bottom), like `pitchSpots`. */
-export type SlotSpot = { slot: number; role: Role; x: number; y: number }
+/** `w`: the share of the pitch width (%) each player of that line has, for the name label. */
+export type SlotSpot = { slot: number; role: Role; x: number; y: number; w: number }
 /** One entry per slot (0..10), a player id or empty. */
 export type XI = (string | null)[]
 
@@ -33,7 +34,8 @@ export function formationSlots(f: Formation): SlotSpot[] {
   lines.forEach((count, row) => {
     const role: Role = row === 0 ? 'GK' : row === 1 ? 'DEF' : row === lines.length - 1 ? 'FWD' : 'MID'
     const y = GK_Y + (row * (TOP_Y - GK_Y)) / (lines.length - 1)
-    for (let col = 0; col < count; col++) out.push({ slot: out.length, role, x: round2(SIDE_X + ((col + 0.5) / count) * (100 - 2 * SIDE_X)), y: round2(y) })
+    const w = round2((100 - 2 * SIDE_X) / count)
+    for (let col = 0; col < count; col++) out.push({ slot: out.length, role, x: round2(SIDE_X + ((col + 0.5) / count) * (100 - 2 * SIDE_X)), y: round2(y), w })
   })
   return out
 }
@@ -51,6 +53,9 @@ const ROLE_BY_GROUP: (Role | null)[] = ['GK', 'DEF', 'MID', 'FWD', null]
 export function roleOf(position: string): Role | null {
   return ROLE_BY_GROUP[positionGroup(position).order] ?? null
 }
+
+/** Widest a slot's name may be (% of the pitch) so neighbours on a line never touch: ≤ 20%, a gap kept. */
+export const labelWidth = (s: SlotSpot) => Math.min(20, round2(s.w - 1.5))
 
 // ── the fans' XI ──────────────────────────────────────────────────────────────────────────
 export type Tally = { formation: string; slot: number; player_id: string; picks: number }

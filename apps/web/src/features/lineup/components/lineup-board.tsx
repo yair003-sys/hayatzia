@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { formationSlots, SLOT_HE, type Formation } from '../schema'
+import { formationSlots, labelWidth, SLOT_HE, type Formation } from '../schema'
 
 export type BoardCell = { number: number | null; name: string; pct?: number; rating?: number } | null
 
@@ -19,7 +19,7 @@ export function LineupBoard({ formation, cells, colours, label }: { formation: F
         {spots.map((s) => {
           const c = cells[s.slot] ?? null
           return (
-            <span key={s.slot} className="lc-p lu-cell" data-empty={c ? undefined : ''} style={{ left: `${s.x}%`, bottom: `${s.y}%` }}>
+            <span key={s.slot} className="lc-p lu-cell" data-empty={c ? undefined : ''} style={{ left: `${s.x}%`, bottom: `${s.y}%`, maxWidth: `${labelWidth(s)}%` }}>
               <i>{c ? (c.number ?? '') : ''}</i>
               <small>{c ? c.name : SLOT_HE[s.role]}</small>
               {c?.pct !== undefined && <b className="lu-pct t-num">{c.pct}%</b>}

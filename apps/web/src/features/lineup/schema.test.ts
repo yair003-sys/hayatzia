@@ -8,6 +8,7 @@ import {
   FORMATIONS,
   formationSlots,
   isFormation,
+  labelWidth,
   lineupErrorHe,
   parseFormations,
   placeAt,
@@ -46,6 +47,17 @@ describe('formationSlots', () => {
     expect(s[1]!.y).toBeLessThan(s[5]!.y)
     expect(s[5]!.y).toBeLessThan(s[8]!.y)
     expect(s.slice(1, 5).map((x) => x.x)).toEqual([18.5, 39.5, 60.5, 81.5])
+  })
+
+  it('keeps the names of neighbours apart: label width under the spacing, at most 20%', () => {
+    for (const f of FORMATIONS) {
+      const s = formationSlots(f)
+      for (const a of s)
+        for (const b of s)
+          if (a.slot < b.slot && a.y === b.y) expect(Math.abs(a.x - b.x)).toBeGreaterThan((labelWidth(a) + labelWidth(b)) / 2)
+      for (const a of s) expect(labelWidth(a)).toBeLessThanOrEqual(20)
+    }
+    expect(labelWidth(formationSlots('5-3-2')[1]!)).toBe(15.3)
   })
 
   it('treats both middle lines of 4-2-3-1 as midfield and the last as attack', () => {
