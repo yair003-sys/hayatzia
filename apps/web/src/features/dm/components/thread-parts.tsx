@@ -63,7 +63,7 @@ export function Composer({
   }
   return (
     <form
-      className="sticky bottom-24 mt-4 flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
+      className="sticky bottom-[calc(var(--tabbar-space)+0.75rem)] mt-4 flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
       onSubmit={(e) => {
         e.preventDefault()
         void send()

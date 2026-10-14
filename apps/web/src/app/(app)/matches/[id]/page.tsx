@@ -1,10 +1,18 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { displayTeam, roundLabelHe } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
+import { pickTab } from '@/features/matches/live'
+import { DONE_STATUSES } from '@/features/matches/schema'
 import { getFixtureDetail, getLeague } from '@/features/matches/server/queries'
+import { LineupPitch } from '@/features/matches/components/lineup-pitch'
+import { MatchEvents } from '@/features/matches/components/match-events'
+import { MatchHero } from '@/features/matches/components/match-hero'
+import { MatchTabs } from '@/features/matches/components/match-tabs'
 import { MatchRoom } from '@/features/match-room/components/match-room'
+import { roomState } from '@/features/match-room/schema'
 import { getMatchMessages } from '@/features/match-room/server/queries'
 import { getCrowd } from '@/features/crowd-verdict/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
@@ -12,22 +20,24 @@ import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 import { MatchExtras } from '@/features/stage4/components/match-extras'
 
-export default function MatchPage({ params }: PageProps<'/matches/[id]'>) {
+const clock = () => Date.now()
+
+export default function MatchPage({ params, searchParams }: PageProps<'/matches/[id]'>) {
   return (
     <section className="space-y-5">
       <Link href="/matches" className="text-sm text-accent-text">
         → כל המשחקים
       </Link>
       <Suspense fallback={<div className="skeleton h-40 rounded-lg" aria-hidden="true" />}>
-        {params.then(({ id }) => (
-          <MatchContent id={Number(id)} />
+        {Promise.all([params, searchParams]).then(([{ id }, sp]) => (
+          <MatchContent id={Number(id)} tab={sp.tab} />
         ))}
       </Suspense>
     </section>
   )
 }
 
-async function MatchContent({ id }: { id: number }) {
+async function MatchContent({ id, tab: tabParam }: { id: number; tab: string | string[] | undefined }) {
   if (!Number.isInteger(id)) notFound()
   const league = await getLeague()
   const f = league?.fixtures.find((x) => x.id === id)
@@ -35,48 +45,50 @@ async function MatchContent({ id }: { id: number }) {
   const home = displayTeam(f.h, league.teams[String(f.h)]?.name)
   const away = displayTeam(f.a, league.teams[String(f.a)]?.name)
   const detail = league.have.includes(id) ? await getFixtureDetail(id) : null
-  const goals = detail?.ev.filter((e) => e.type === 'Goal') ?? []
+  // The default tab depends on the room's clock (open → חדר), so this part is rendered per request.
+  await connection()
+  const tab = pickTab(tabParam, roomState(f.t, clock()))
+  const notStarted = f.st === 'NS' || f.st === 'TBD'
+  const noEvents = notStarted
+    ? 'האירועים יופיעו כאן כשהמשחק יתחיל.'
+    : !detail
+      ? 'פרטי המשחק עוד לא נטענו.'
+      : DONE_STATUSES.has(f.st)
+        ? 'לא נרשמו אירועים במשחק הזה.'
+        : 'עוד אין אירועים במשחק.'
+  const lineupOf = (apiId: number) => detail?.lu.find((l) => l.team === apiId) ?? null
   return (
     <>
-      <header className="space-y-3 rounded-lg bg-surface p-5 text-center">
-        {f.dm && (
-          <p className="mx-auto w-fit rounded-full bg-warn/15 px-3 py-1 text-xs font-bold text-warn">משחק לדוגמה · נתונים לדוגמה</p>
-        )}
-        <p className="text-xs text-muted">
-          {roundLabelHe(f.r)} · {kickoffDay(f.t)} {kickoffTime(f.t)}
-        </p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <h1 className="t-sec">{home.name}</h1>
-          <span className="text-4xl t-num" dir="ltr">
-            {f.gh ?? '–'} : {f.ga ?? '–'}
-          </span>
-          <h2 className="t-sec">{away.name}</h2>
-        </div>
-        {f.v && <p className="text-xs text-dim">{f.v}</p>}
-      </header>
-      <Suspense fallback={null}>
-        <MatchExtras fixture={f} home={home} away={away} />
-      </Suspense>
-      <section aria-labelledby="goals-title" className="space-y-2">
-        <h3 id="goals-title" className="font-bold">
-          שערים
-        </h3>
-        {goals.length ? (
-          <ul className="space-y-1.5">
-            {goals.map((g, i) => (
-              <li key={i} className="flex items-center justify-between rounded-md bg-surface px-3 py-2 text-sm">
-                <span>⚽ {g.p}</span>
-                <span className="tabular-nums text-muted">{g.m}′</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted">{detail ? 'אין שערים במשחק הזה.' : 'פרטי המשחק עוד לא נטענו.'}</p>
-        )}
-      </section>
-      <Suspense fallback={<div className="skeleton h-48 rounded-lg" aria-hidden="true" />}>
-        <MatchRoomSection fixtureId={id} kickoff={f.t} home={home} away={away} />
-      </Suspense>
+      <MatchHero fixture={f} home={home} away={away} round={roundLabelHe(f.r)} day={kickoffDay(f.t)} time={kickoffTime(f.t)} />
+      <MatchTabs
+        initial={tab}
+        game={
+          <MatchEvents
+            events={detail?.ev ?? []}
+            home={{ apiId: f.h, team: home }}
+            away={{ apiId: f.a, team: away }}
+            empty={noEvents}
+          />
+        }
+        lineup={
+          <LineupPitch
+            sides={[
+              { key: 'home', team: home, lu: lineupOf(f.h) },
+              { key: 'away', team: away, lu: lineupOf(f.a) },
+            ]}
+          />
+        }
+        room={
+          <div className="space-y-5">
+            <Suspense fallback={null}>
+              <MatchExtras fixture={f} home={home} away={away} />
+            </Suspense>
+            <Suspense fallback={<div className="skeleton h-48 rounded-lg" aria-hidden="true" />}>
+              <MatchRoomSection fixtureId={id} kickoff={f.t} home={home} away={away} />
+            </Suspense>
+          </div>
+        }
+      />
     </>
   )
 }

@@ -17,7 +17,7 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
         <BellGate />
       </Suspense>
       {/* The top strip (under the notch) is kept free for the bell, so it never sits on a page's first line. */}
-      <div className="app-main mx-auto min-h-dvh max-w-md px-4 pb-28">{children}</div>
+      <div className="app-main mx-auto min-h-dvh max-w-md px-4 pb-[calc(var(--tabbar-space)+1.5rem)]">{children}</div>
       <TabBar />
     </>
   )

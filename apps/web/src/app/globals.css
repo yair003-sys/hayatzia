@@ -55,7 +55,8 @@
 }
 
 @layer base {
-  :root { color-scheme: dark; }
+  /* Room the floating tab bar takes at the bottom (pill 3.875rem + its gap/safe area). Content and sticky composers sit above it. */
+  :root { color-scheme: dark; --tabbar-space: calc(max(0.75rem, env(safe-area-inset-bottom, 0px)) + 3.875rem); }
   html, body { background: var(--color-canvas); color: var(--color-fg); }
   body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -513,7 +514,7 @@
 
 /* ── The Square: one full screen, like reels (owner, 2026-10-13) ───────────────────────────────── */
 @layer components {
-  .sq-root { position: fixed; inset: 0 0 calc(3.65rem + env(safe-area-inset-bottom, 0px)) 0; z-index: 30; max-width: 28rem; margin-inline: auto; overflow: hidden; background: #000; }
+  .sq-root { position: fixed; inset: 0 0 var(--tabbar-space) 0; z-index: 30; max-width: 28rem; margin-inline: auto; overflow: hidden; background: #000; }
   .sq-scroller { height: 100%; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none; }
   .sq-top { position: absolute; inset: 0 0 auto; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 1rem; padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.5rem; pointer-events: none; }
   .sq-top > * { pointer-events: auto; }
@@ -546,7 +547,7 @@
     padding: 3rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem); background: linear-gradient(transparent, rgb(0 0 0 / 0.85) 35%); }
   .sq-input { width: 100%; min-height: 2.9rem; padding-inline: 0.9rem; border: 1px solid rgb(255 255 255 / 0.18); border-radius: 0.9rem; background: rgb(255 255 255 / 0.08); color: #fff; backdrop-filter: blur(8px); }
   .sq-input::placeholder { color: rgb(255 255 255 / 0.55); }
-  .sq-toast { position: fixed; inset-inline: 1rem; bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); z-index: 80; padding: 0.7rem 1rem; border-radius: 0.9rem; background: rgb(255 61 87 / 0.95); color: #fff; font-size: 0.875rem; text-align: center; }
+  .sq-toast { position: fixed; inset-inline: 1rem; bottom: calc(var(--tabbar-space) + 0.75rem); z-index: 80; padding: 0.7rem 1rem; border-radius: 0.9rem; background: rgb(255 61 87 / 0.95); color: #fff; font-size: 0.875rem; text-align: center; }
 
   @keyframes sq-fade { from { opacity: 0; } }
   @keyframes sq-up { from { transform: translateY(100%); } }
@@ -634,7 +635,7 @@
   .ib-pill:disabled { opacity: 0.5; }
   .ib-pill-blue { background: var(--color-accent); color: #fff; font-weight: 600; }
 
-  .ib-fab { position: fixed; z-index: 35; bottom: calc(3.65rem + env(safe-area-inset-bottom, 0px) + 1rem); inset-inline-end: max(1rem, calc((100vw - 28rem) / 2 + 1rem));
+  .ib-fab { position: fixed; z-index: 35; bottom: calc(var(--tabbar-space) + 1rem); inset-inline-end: max(1rem, calc((100vw - 28rem) / 2 + 1rem));
     display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px; color: #fff;
     background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 12px 28px -8px rgb(0 102 255 / 0.85);
     transition: transform 0.15s; }
@@ -658,6 +659,152 @@
   .ib-pick:disabled { opacity: 0.4; }
   .ib-check { display: grid; flex: none; place-items: center; width: 1.4rem; height: 1.4rem; margin-inline-start: auto; border: 1.5px solid var(--color-line-strong); border-radius: 999px; color: var(--color-canvas); }
   .ib-check[data-on='true'] { border-color: var(--color-ok); background: var(--color-ok); }
+}
+
+/* ── Floating tab bar (redesign 2026-10-13): a pill of icons, the active tab in a blue circle ─────── */
+@layer components {
+  .tb-pill { position: fixed; z-index: 40; bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
+    padding: 7px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.1);
+    background: color-mix(in srgb, var(--color-surface) 78%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 20px 40px -14px rgb(0 0 0 / 0.9); }
+  .tb-pill[data-dark='true'] { background: rgb(0 0 0 / 0.72); border-color: rgb(255 255 255 / 0.12); }
+  .tb-pill ul { display: flex; gap: 4px; }
+  .tb-link { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 999px; color: var(--color-muted);
+    transition: color 0.2s, background 0.3s var(--ease-spring), transform 0.3s var(--ease-spring), box-shadow 0.3s; }
+  .tb-link:hover { color: var(--color-fg); }
+  .tb-link[aria-current='page'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 10px 22px -8px rgb(0 102 255 / 0.95); transform: translateY(-2px); }
+  body:has(.sq-root) { background: #000; }
+}
+
+/* ── Live centre kit: crest discs, live cards, match tiles (redesign 2026-10-13) ───────────────────── */
+@layer components {
+  /* Club as a colour disc with initials (no crests): --a kit colour, --b ring colour, --t text on --a. */
+  .lc-crest { --s: 52px; position: relative; flex: none; display: grid; place-items: center; width: var(--s); height: var(--s); border-radius: 50%;
+    background: conic-gradient(from 200deg, var(--a) 0 50%, var(--b) 0 100%); box-shadow: 0 0 0 3px rgb(255 255 255 / 0.12), 0 10px 22px -8px rgb(0 0 0 / 0.8); }
+  .lc-crest::after { content: ''; position: absolute; inset: calc(var(--s) * 0.135); border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.25), transparent 60%), var(--a); }
+  .lc-crest > span { position: relative; z-index: 1; font: 700 calc(var(--s) * 0.27) / 1 var(--font-brand); color: var(--t); }
+  .lc-crest[data-size='sm'] { --s: 38px; }
+  .lc-crest[data-size='lg'] { --s: 62px; }
+
+  .lc-row3 { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+  .lc-team { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; text-align: center; }
+  .lc-team > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .lc-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .lc-tag { display: inline-flex; align-items: center; gap: 5px; font: 600 11px / 1.2 var(--font-brand); letter-spacing: 0.04em; color: var(--color-live); }
+  .lc-tag::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--color-live); box-shadow: 0 0 0 0 rgb(255 61 87 / 0.6); animation: lc-pulse 1.6s infinite; }
+  .lc-min { font: 600 11px / 1.2 var(--font-brand); color: var(--color-muted); }
+  .lc-score { direction: ltr; font: 700 34px / 1.1 var(--font-brand); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .lc-demo { font-size: 10.5px; font-weight: 700; color: var(--color-warn); }
+
+  /* Big live card: both clubs' colours blended. --h home colour, --w away colour. */
+  .lc-live { position: relative; isolation: isolate; display: block; overflow: hidden; padding: 16px 16px 12px; border-radius: 26px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--h) 55%, var(--color-canvas)) 0%, var(--color-surface) 48%, color-mix(in srgb, var(--w) 45%, var(--color-canvas)) 100%);
+    box-shadow: 0 22px 40px -24px color-mix(in srgb, var(--h) 70%, transparent); transition: transform 0.2s; }
+  .lc-live::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(60% 80% at 50% 0%, rgb(255 255 255 / 0.1), transparent 70%); }
+  .lc-live:active { transform: scale(0.985); }
+  .lc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgb(255 255 255 / 0.08); font-size: 12px; color: rgb(255 255 255 / 0.8); }
+
+  /* Compact tile on the Matches list: coloured while live, a plain row otherwise. */
+  .lc-tile { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; padding: 14px; border-radius: 22px;
+    border: 1px solid rgb(255 255 255 / 0.07); transition: transform 0.2s;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--h) 40%, var(--color-surface)), var(--color-surface) 50%, color-mix(in srgb, var(--w) 32%, var(--color-surface))); }
+  .lc-tile:active, .lc-row:active { transform: scale(0.985); }
+  .lc-tile .lc-score { font-size: 26px; }
+  .lc-tile .lc-team { font-size: 12.5px; }
+  .lc-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; border: 1px solid var(--color-line-soft);
+    background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); transition: transform 0.2s, border-color 0.2s; }
+  .lc-row:hover { border-color: var(--color-line); }
+  .lc-row-t { min-width: 0; flex: 1; font-size: 13.5px; font-weight: 500; line-height: 1.5; }
+  .lc-row-t > small { display: block; color: var(--color-muted); font-size: 12px; font-weight: 400; }
+  .lc-row-k { direction: ltr; font: 600 15px / 1.2 var(--font-brand); font-variant-numeric: tabular-nums; color: var(--color-accent-text); }
+  .lc-row-k[data-done='true'] { color: var(--color-fg); }
+
+  /* 7-day strip on the Matches page: --color-ok dot on days with games, the selected day in a blue pill. */
+  .lc-dates { display: flex; justify-content: space-between; gap: 2px; }
+  .lc-d { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 44px; padding: 9px 0; border-radius: 999px;
+    font-size: 11.5px; color: var(--color-muted); transition: background 0.25s, color 0.25s, box-shadow 0.25s; }
+  .lc-d > b { font: 600 15px / 1.1 var(--font-brand); color: var(--color-fg); }
+  .lc-d[data-today='true'] > b { color: var(--color-accent-text); }
+  .lc-d > i { width: 4px; height: 4px; border-radius: 50%; }
+  .lc-d > i[data-dot='true'] { background: var(--color-ok); }
+  .lc-d[data-on='true'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 12px 24px -10px rgb(0 102 255 / 0.9); }
+  .lc-d[data-on='true'] > b { color: #fff; }
+  .lc-d[data-on='true'] > i[data-dot='true'] { background: #fff; }
+  .lc-sec { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .lc-sec > small { font: 600 11.5px / 1.2 var(--font-brand); color: var(--color-muted); }
+  .lc-end { margin-top: 2px; font-size: 13px; color: var(--color-muted); }
+
+  /* Match page: hero in both clubs' colours, pill tabs, events timeline, line-up half-pitch. */
+  .lc-hero { position: relative; isolation: isolate; overflow: hidden; padding: 16px 14px; border-radius: 28px; border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--h) 60%, var(--color-canvas)), var(--color-surface) 50%, color-mix(in srgb, var(--w) 50%, var(--color-canvas))); }
+  .lc-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(60% 80% at 50% 0%, rgb(255 255 255 / 0.1), transparent 70%); }
+  .lc-hero .lc-score { font-size: 42px; }
+  .lc-hero .lc-team > b { white-space: normal; line-height: 1.35; }
+  .lc-hero-top { margin-bottom: 12px; text-align: center; font-size: 12px; color: rgb(255 255 255 / 0.72); }
+  .lc-hero-v { margin-top: 10px; text-align: center; font-size: 12px; color: rgb(255 255 255 / 0.6); }
+  .lc-hero-demo { width: fit-content; margin: 0 auto 8px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+    color: var(--color-warn); background: color-mix(in srgb, var(--color-warn) 15%, transparent); }
+
+  .lc-tabs { display: flex; gap: 6px; padding: 5px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.05); }
+  .lc-tab { flex: 1; padding: 8px 0; border-radius: 999px; font-size: 13.5px; font-weight: 500; color: var(--color-muted);
+    transition: background 0.25s, color 0.25s, box-shadow 0.25s; }
+  .lc-tab:hover { color: var(--color-fg); }
+  .lc-tab[aria-selected='true'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 8px 18px -8px rgb(0 102 255 / 0.9); }
+
+  .lc-evs { display: grid; gap: 8px; }
+  .lc-ev { --c: var(--color-line-strong); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px;
+    border: 1px solid var(--color-line-soft); border-inline-start: 3px solid var(--c); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); font-size: 13.5px; }
+  .lc-ev-m { flex: none; width: 42px; direction: ltr; text-align: end; font: 600 12px / 1.2 var(--font-brand); font-variant-numeric: tabular-nums; color: var(--color-muted); }
+  .lc-ev-ico { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--color-muted); background: rgb(255 255 255 / 0.06); }
+  .lc-ev[data-kind='goal'] .lc-ev-ico, .lc-ev[data-kind='penalty'] .lc-ev-ico { background: color-mix(in srgb, var(--color-ok) 16%, transparent); }
+  .lc-ev[data-kind='missed-penalty'] .lc-ev-ico { color: var(--color-live); }
+  .lc-ev-ball { width: 11px; height: 11px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 8px rgb(0 255 102 / 0.6); }
+  .lc-ev-ball[data-kind='own-goal'] { background: var(--color-muted); box-shadow: none; }
+  .lc-ev-card { width: 10px; height: 14px; border-radius: 2px; background: var(--color-warn); transform: rotate(8deg); }
+  .lc-ev-card[data-kind='red'] { background: var(--color-live); }
+  .lc-ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-muted); }
+  .lc-ev-t { min-width: 0; flex: 1; line-height: 1.45; }
+  .lc-ev-t strong { font-weight: 600; }
+  .lc-ev-t > small { display: block; font-size: 12px; color: var(--color-muted); }
+
+  .lc-switch { display: flex; gap: 6px; padding: 4px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.04); }
+  .lc-switch > button { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px 8px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--color-muted); transition: background 0.25s, color 0.25s; }
+  .lc-switch > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-switch > button .lc-crest { --s: 26px; }
+  .lc-switch > button[aria-pressed='true'] { color: var(--color-fg); background: rgb(255 255 255 / 0.1); }
+  .lc-formation { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--color-muted); }
+
+  .lc-pitch { position: relative; isolation: isolate; aspect-ratio: 3 / 4.1; overflow: hidden; border-radius: 22px; border: 1px solid rgb(255 255 255 / 0.08);
+    background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-ok) 9%, var(--color-pitch)) 0 12.5%, color-mix(in srgb, var(--color-ok) 12%, var(--color-pitch)) 12.5% 25%); }
+  .lc-pitch::before { content: ''; position: absolute; inset: 8px; z-index: -1; border: 1.5px solid rgb(255 255 255 / 0.18); border-radius: 12px; }
+  .lc-pitch > i { position: absolute; z-index: -1; border: 1.5px solid rgb(255 255 255 / 0.18); }
+  .lc-pitch > .lc-pitch-arc { left: 50%; top: 8px; width: 34%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
+  .lc-pitch > .lc-pitch-box { left: 22%; right: 22%; bottom: 8px; height: 17%; border-bottom: 0; }
+  .lc-pitch > .lc-pitch-six { left: 37%; right: 37%; bottom: 8px; height: 6.5%; border-bottom: 0; }
+  .lc-p { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 24%; transform: translate(-50%, 50%); }
+  .lc-p > i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font: 700 11.5px / 1 var(--font-brand); font-style: normal;
+    color: var(--t); background: var(--a); box-shadow: 0 0 0 2px var(--b), 0 6px 12px -4px rgb(0 0 0 / 0.7); }
+  .lc-p > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: rgb(255 255 255 / 0.88); text-shadow: 0 1px 3px #000; }
+
+  .lc-list-h { font-size: 13px; font-weight: 600; color: var(--color-muted); }
+  .lc-list { overflow: hidden; border-radius: 18px; border: 1px solid var(--color-line-soft); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); }
+  .lc-list > li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13.5px; }
+  .lc-list > li + li { border-top: 1px solid var(--color-line-soft); }
+  .lc-list > li > b { width: 22px; text-align: center; font-weight: 600; color: var(--color-muted); }
+  .lc-list > li > bdi { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-list > li > small { font-size: 12px; color: var(--color-dim); }
+
+  @keyframes lc-pulse {
+    70% { box-shadow: 0 0 0 7px rgb(255 61 87 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(255 61 87 / 0); }
+  }
 }
 
 /* In-app banner (notifications): one alert at a time at the top of any screen, under the notch. */
