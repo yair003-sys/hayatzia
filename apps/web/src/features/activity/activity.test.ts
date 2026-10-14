@@ -7,6 +7,7 @@ import {
   decodeCursor,
   encodeCursor,
   isUnseen,
+  mergeItems,
   parseActivityEvent,
   relativeTime,
   tripAcceptedLine,
