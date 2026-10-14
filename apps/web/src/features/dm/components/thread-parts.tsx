@@ -62,8 +62,9 @@ export function Composer({
     if (await onSend(text)) setDraft('')
   }
   return (
+    <div className="chat-dock z-10">
     <form
-      className="sticky bottom-[calc(var(--tabbar-space)+0.75rem)] mt-4 flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
+      className="flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
       onSubmit={(e) => {
         e.preventDefault()
         void send()
@@ -92,6 +93,7 @@ export function Composer({
         <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
       </button>
     </form>
+    </div>
   )
 }
 

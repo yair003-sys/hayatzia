@@ -209,7 +209,7 @@ export function ChatRoom({
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
 
-      <div className="sticky bottom-[calc(var(--tabbar-space)+0.75rem)] z-10 mt-4 grid gap-2">
+      <div className="chat-dock z-10 grid gap-2">
       {!atBottom && (
         <button
           type="button"
