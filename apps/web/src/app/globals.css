@@ -1130,9 +1130,10 @@
   .hm-table { width: 100%; overflow: hidden; border-collapse: separate; border-spacing: 0; border: 1px solid var(--color-line-soft); border-radius: 18px; table-layout: fixed; }
   .hm-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-line-soft); font-size: 14px; }
   .hm-table tr:last-child td { border-bottom: 0; }
-  .hm-table td:first-child { width: 40px; color: var(--color-muted); font-size: 13px; }
-  .hm-table td:nth-child(3) { width: 48px; font-size: 13px; }
-  .hm-table td:nth-child(4) { width: 52px; }
+  .hm-table :is(td, th):first-child { width: 40px; color: var(--color-muted); font-size: 13px; }
+  .hm-table :is(td, th):nth-child(3) { width: 48px; font-size: 13px; }
+  .hm-table :is(td, th):nth-child(4) { width: 52px; }
+  /* table-layout: fixed sizes columns from the FIRST row, which is the sr-only header: widths must apply to th too. */
   .hm-table tr[data-mine='true'] td { background: var(--acc-soft); font-weight: 800; }
   .hm-tdot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--a); box-shadow: 0 0 0 2px var(--b); }
 
