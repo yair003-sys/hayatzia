@@ -1192,15 +1192,13 @@
     -webkit-mask: url('/patterns/football.svg') 0 0 / 120px 120px repeat; mask: url('/patterns/football.svg') 0 0 / 120px 120px repeat; }
 }
 
-/* Chat screens: like Instagram, the typing box docks at the very bottom of the screen and the floating tab bar steps aside
-   (every chat page has its own back link). */
+/* Chat screens: the typing box docks right on top of the bottom bar, which always stays (owner, 2026-10-15). */
 @layer components {
-  .chat-dock { position: sticky; bottom: 0; margin-inline: -1rem; padding: 0.75rem 0.75rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+  .chat-dock { position: sticky; bottom: var(--tabbar-space); margin-inline: -1rem; padding: 0.75rem 0.75rem 0.4rem;
     background: linear-gradient(to top, var(--color-canvas) 72%, transparent); }
 }
-/* Unlayered on purpose, so it beats the page's padding utility. */
-body:has(.chat-dock) .tb-pill { display: none; }
-body:has(.chat-dock) .app-main { padding-bottom: 0; }
+/* Unlayered on purpose, so it beats the page's padding utility: the chat ends just above the bottom bar. */
+body:has(.chat-dock) .app-main { padding-bottom: var(--tabbar-space); }
 /* Even with few messages the box sits at the bottom: the chain from the page down to the chat fills the screen. */
 body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex-direction: column; }
 .app-main :has(.chat-dock) { flex: 1 0 auto; }
