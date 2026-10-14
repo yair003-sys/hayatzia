@@ -19,6 +19,7 @@ import { getSessionProfile } from '@/features/profile/server/queries'
 import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 import { MatchExtras } from '@/features/stage4/components/match-extras'
+import { FanLineupSection } from '@/features/lineup/components/fan-lineup-section'
 
 const clock = () => Date.now()
 
@@ -71,12 +72,18 @@ async function MatchContent({ id, tab: tabParam }: { id: number; tab: string | s
           />
         }
         lineup={
-          <LineupPitch
-            sides={[
-              { key: 'home', team: home, lu: lineupOf(f.h) },
-              { key: 'away', team: away, lu: lineupOf(f.a) },
-            ]}
-          />
+          <div className="space-y-6">
+            {/* Only fans of the two clubs get it, so no placeholder for everyone else. */}
+            <Suspense fallback={null}>
+              <FanLineupSection fixture={f} home={home} away={away} />
+            </Suspense>
+            <LineupPitch
+              sides={[
+                { key: 'home', team: home, lu: lineupOf(f.h) },
+                { key: 'away', team: away, lu: lineupOf(f.a) },
+              ]}
+            />
+          </div>
         }
         room={
           <div className="space-y-5">

@@ -885,3 +885,89 @@
     .bell-badge { animation: none; }
   }
 }
+
+/* Fan lineup ("ההרכב של האוהדים"): the read-only board on the match page's "הרכב" tab, the home call to action and the
+   full-screen builder. Brand tokens; logical properties except pitch and pointer coordinates (a picture, like .lc-p);
+   every control is at least 44px; only filled slots block touch scrolling (touch-action: none), squad cards let the
+   strip scroll sideways (pan-x) and start a drag on a vertical move. */
+@layer components {
+  .lu-sec-h { font: 700 16px / 1.3 var(--font-display); }
+  .lu-locked { display: inline-flex; align-items: center; gap: 4px; }
+  .lu-cell[data-empty] > i { background: transparent; box-shadow: none; border: 1.5px dashed rgb(255 255 255 / 0.35); }
+  .lu-cell[data-empty] > small { color: rgb(255 255 255 / 0.55); }
+  .lu-pct, .lu-rate { padding: 1px 6px; border-radius: 999px; font: 700 10px / 1.3 var(--font-brand); white-space: nowrap; }
+  .lu-pct { color: var(--color-canvas); background: var(--color-ok); }
+  .lu-rate { color: var(--color-canvas); background: var(--color-warn); }
+  .lu-note { font-size: 12px; color: var(--color-muted); }
+  .lu-cta { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 3rem; border-radius: 16px;
+    font-weight: 700; color: var(--color-canvas); background: var(--color-ok); box-shadow: 0 10px 26px -12px rgb(0 255 102 / 0.55);
+    transition: transform 0.15s var(--ease-spring); }
+  .lu-cta:active { transform: scale(0.98); }
+
+  .lu-home { display: flex; align-items: center; gap: 12px; min-height: 3.5rem; padding: 12px 14px; border-radius: 18px;
+    border: 1px solid rgb(0 255 102 / 0.3); background: linear-gradient(180deg, rgb(0 255 102 / 0.1), rgb(0 255 102 / 0.03)), var(--color-surface);
+    transition: border-color 0.2s; }
+  .lu-home:hover { border-color: rgb(0 255 102 / 0.55); }
+  .lu-home > i { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: var(--color-ok); background: rgb(0 255 102 / 0.12); }
+  .lu-home > span { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+  .lu-home small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--color-muted); }
+
+  /* ── builder overlay ── */
+  .lu-overlay { position: fixed; z-index: 50; inset: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; overscroll-behavior: contain;
+    max-width: 28rem; margin-inline: auto; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+    background: var(--color-canvas); box-shadow: 0 0 0 100vmax var(--color-canvas); animation: lu-in 0.22s var(--ease-soft); }
+  .lu-head { display: flex; align-items: center; gap: 10px; }
+  .lu-head > h2 { flex: 1; min-width: 0; font: 700 18px / 1.3 var(--font-display); }
+  .lu-head > h2 > span { font-weight: 500; color: var(--color-muted); }
+  .lu-count { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--color-muted); background: rgb(255 255 255 / 0.06); }
+  .lu-x { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px; color: var(--color-muted); }
+  .lu-forms, .lu-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .lu-forms > button, .lu-filter > button { flex: none; min-height: 2.75rem; padding: 0 14px; border-radius: 999px; border: 1px solid var(--color-line);
+    font-size: 13px; font-weight: 600; color: var(--color-muted); background: rgb(255 255 255 / 0.03); }
+  .lu-forms > button[aria-pressed='true'], .lu-filter > button[aria-pressed='true'] { color: #fff; border-color: transparent;
+    background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent)); }
+  .lu-pitch { flex: none; width: min(100%, calc((100dvh - 22rem) * 3 / 4.1)); min-width: 15rem; margin-inline: auto; }
+  .lu-slot { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 2.75rem; min-height: 2.75rem;
+    max-width: 24%; padding: 2px; transform: translate(-50%, 50%); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .lu-slot[data-filled] { touch-action: none; cursor: grab; }
+  .lu-slot > i, .lu-ghost > i, .lu-card > i { display: grid; place-items: center; border-radius: 50%; font: 700 12px / 1 var(--font-brand); font-style: normal;
+    color: var(--t); background: var(--a); box-shadow: 0 0 0 2px var(--b), 0 6px 12px -4px rgb(0 0 0 / 0.7); }
+  .lu-slot > i { width: 34px; height: 34px; transition: transform 0.15s var(--ease-spring), box-shadow 0.15s; }
+  .lu-slot:not([data-filled]) > i { color: rgb(255 255 255 / 0.7); background: rgb(0 0 0 / 0.2); box-shadow: none; border: 1.5px dashed rgb(255 255 255 / 0.4); font-size: 16px; }
+  .lu-slot > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: rgb(255 255 255 / 0.9); text-shadow: 0 1px 3px #000; }
+  .lu-slot[aria-pressed='true'] > i { box-shadow: 0 0 0 3px var(--color-ok), 0 0 18px rgb(0 255 102 / 0.5); }
+  .lu-slot[data-over] > i { transform: scale(1.18); box-shadow: 0 0 0 3px var(--color-accent-2), 0 0 18px rgb(0 102 255 / 0.6); }
+  .lu-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 2.75rem; }
+  .lu-hint > p { min-width: 0; font-size: 13px; color: var(--color-muted); }
+  .lu-bench-btn { flex: none; min-height: 2.75rem; padding: 0 14px; border-radius: 999px; border: 1px solid var(--color-line-strong); font-size: 13px; font-weight: 600; }
+  .lu-strip { display: flex; gap: 8px; min-height: 6rem; overflow-x: auto; overscroll-behavior-x: contain; padding: 8px; border-radius: 18px;
+    border: 1px dashed transparent; background: var(--color-surface); scrollbar-width: none; }
+  .lu-strip[data-over] { border-color: var(--color-accent-2); background: var(--color-accent-soft); }
+  .lu-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 4.5rem; min-height: 5rem; padding: 8px 4px 6px;
+    border-radius: 14px; border: 1px solid var(--color-line-soft); background: var(--color-surface-2);
+    touch-action: pan-x; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
+  .lu-card > i { width: 30px; height: 30px; }
+  .lu-card > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 600; }
+  .lu-card > small { font-size: 10px; color: var(--color-dim); }
+  .lu-card[data-in] { opacity: 0.45; }
+  .lu-card[data-in]::after { content: '✓'; position: absolute; top: 4px; inset-inline-end: 6px; font-size: 11px; font-weight: 800; color: var(--color-ok); }
+  .lu-card[data-injured] { filter: grayscale(1); }
+  .lu-card[data-injured] > small { color: var(--color-live); }
+  .lu-card[aria-pressed='true'] { border-color: var(--color-ok); box-shadow: 0 0 0 2px var(--color-ok); opacity: 1; }
+  .lu-foot { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+  .lu-error { font-size: 13px; font-weight: 600; color: var(--color-live); }
+  .lu-save { min-height: 3rem; border-radius: 16px; font-weight: 800; color: var(--color-canvas); background: var(--color-ok); }
+  .lu-save:not([data-ready]) { opacity: 0.55; }
+  .lu-save:disabled { opacity: 0.7; }
+  .lu-ghost { position: fixed; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none;
+    transform: translate(-50%, -60%) scale(1.12); }
+  .lu-ghost > i { width: 38px; height: 38px; }
+  .lu-ghost > small { padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgb(0 0 0 / 0.6); }
+  @keyframes lu-in { from { opacity: 0; transform: translateY(12px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lu-overlay { animation: none; }
+    .lu-slot > i, .lu-cta, .lu-home { transition: none; }
+    .lu-ghost { transform: translate(-50%, -60%); }
+  }
+}
