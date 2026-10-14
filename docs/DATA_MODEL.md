@@ -111,6 +111,15 @@ Counters: `dm_group_members.unread` grows for every other member without a block
 
 RPCs (authenticated only): `activity_unread_count() → int` (rows with `updated_at > seen_at` within 60 days, capped at 100 = "99+"; requests from fans the viewer blocked are left out, as in the list) · `mark_activity_seen(p_upto)` (seen up to the newest row the list showed, clamped to the clock, never backwards).
 
+## Fan lineup (ההרכב של האוהדים, 2026-10-14)
+| Table | Columns | Rules |
+|---|---|---|
+| `fan_lineups` | `(fixture_id, user_id) pk`, `team_id` (stamped: the fan's club), `formation` (`4-3-3`/`4-4-2`/`3-5-2`/`4-2-3-1`/`5-3-2`), `slots jsonb` (`[{slot 0..10, player_id}]` × 11, stored in slot order), `updated_at` | select own only; no direct client writes (RPCs only). Stamp trigger on every insert/update: profile required, the match involves the fan's club (`club_of_api`), `now() < kickoff_at` and status `NS`/`TBD` (else `locked`), 11 distinct players of the fan's club (coach excluded), slots 0..10 once each. idx `(user_id, fixture_id)` |
+| `fan_lineup_tallies` | `(fixture_id, team_id, formation, slot, player_id) pk`, `picks > 0` | read: authenticated (counts only); trigger-only; old XI −1 / new XI +1 netted per slot, rows at 0 removed; no FK to players |
+| `fan_lineup_totals` | `(fixture_id, team_id) pk`, `fans`, `formations jsonb` (`{"4-3-3": 12, …}`) | read: authenticated; trigger-only; the row is locked on every change so a club's counts move one save at a time |
+
+RPCs (authenticated only): `save_fan_lineup(p_fixture, p_formation, p_slots) → fan_lineups` (upsert; errors `no profile`/`not_your_match`/`not_your_player` 42501, `locked` P0001, `bad_formation`/`bad_slots`/`bad_players` 22023) · `clear_fan_lineup(p_fixture) → boolean` (before kick-off only). Demo fixtures (`is_demo`) are treated like any other match (as predictions do).
+
 ## Storage buckets
 | Bucket | Access | Path |
 |---|---|---|
