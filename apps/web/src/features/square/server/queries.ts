@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
 import { FEED_SIZE, type Audience, type Clip, type ClipComment } from '../schema'
 
-const COLUMNS =
+export const CLIP_COLUMNS =
   'id,user_id,team_id,nick,media_path,kind,caption,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
+const COLUMNS = CLIP_COLUMNS
 const URL_TTL = 60 * 60 // seconds; feed pages are short-lived anyway
 
 type Cursor = { createdAt: string; id: string }
@@ -39,14 +40,14 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
   return decorate(supabase, rows, me)
 }
 
-type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>
-type Row = { id: string; user_id: string; media_path: string; once: boolean; kind: string; audience: string } & Omit<
+export type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>
+export type ClipRow = { id: string; user_id: string; media_path: string; once: boolean; kind: string; audience: string } & Omit<
   Clip,
   'kind' | 'audience' | 'url' | 'liked' | 'respected' | 'uploading'
 >
 
 /** Likes, respects and signed URLs for a set of posts: three requests for the whole set, never per post. */
-async function decorate(supabase: Db, rows: Row[], me: string): Promise<Clip[]> {
+export async function decorate(supabase: Db, rows: ClipRow[], me: string): Promise<Clip[]> {
   const ids = rows.map((r) => r.id)
   const signable = rows.filter((r) => !r.once || r.user_id === me).map((r) => r.media_path)
   const [likes, respects, signed] = await Promise.all([

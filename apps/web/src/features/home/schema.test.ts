@@ -8,6 +8,7 @@ import {
   groupStories,
   homeCircles,
   initialOf,
+  nextClubFixture,
   reviewIndex,
   shouldRotate,
   storyStart,
@@ -146,6 +147,15 @@ describe('homeCircles', () => {
   it('nothing when the last match is older than 3 days or not finished, and no open match ahead', () => {
     const out = homeCircles([f(1, -80 * H, 'FT'), f(2, -1 * H, '1H'), f(3, -10 * H, 'PST', 9, 2)], [2], now)
     expect(out).toEqual({ lineup: null, rate: null })
+  })
+})
+
+describe('nextClubFixture', () => {
+  const now = 1_800_000_000_000
+  const f = (id: number, dt: number, st = 'NS', h = 1, a = 2): Fixture => ({ id, t: now / 1000 + dt, st, r: 'R', h, a, gh: null, ga: null, v: '' })
+  it("the club's earliest match still ahead, not another club's, not one already played", () => {
+    expect(nextClubFixture([f(1, 9000), f(2, 3600, 'NS', 7, 8), f(3, 7200, 'FT'), f(4, 5000), f(5, -60)], [1], now)?.id).toBe(4)
+    expect(nextClubFixture([f(5, -60)], [1], now)).toBeNull()
   })
 })
 

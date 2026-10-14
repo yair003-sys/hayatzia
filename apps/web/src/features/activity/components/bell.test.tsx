@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACTIVITY_SEEN_EVENT } from '../activity'
-import { Bell } from './bell'
+import { Bell, FloatingBell } from './bell'
 
 type Listener = (m: { event: string; payload: unknown }) => void
 const h = vi.hoisted(() => ({
@@ -145,5 +145,19 @@ describe('Bell', () => {
     render(<Bell meId={ME} count={5} />)
     const link = screen.getByRole('link', { name: 'התראות' })
     expect(link).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('the floating bell stays away from the home, which has the bell in its header (one bell per screen)', () => {
+    h.pathname = '/stand'
+    const { container, rerender } = render(<FloatingBell meId={ME} count={2} />)
+    expect(container).toBeEmptyDOMElement()
+    h.pathname = '/square'
+    rerender(<FloatingBell meId={ME} count={2} />)
+    expect(screen.getByRole('link', { name: 'התראות, 2 חדשות' })).toBeInTheDocument()
+  })
+
+  it('in a header it is inline, not floating', () => {
+    render(<Bell meId={ME} count={0} inline />)
+    expect(screen.getByRole('link', { name: 'התראות' })).toHaveClass('bell', 'bell-inline')
   })
 })

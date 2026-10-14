@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Camera, ImagePlus, Plus, Video, X } from 'lucide-react'
@@ -20,10 +21,12 @@ type Props = {
   /** The "gallery or camera" sheet; the feed opens it too (from the empty state). */
   choosing: boolean
   setChoosing: (open: boolean) => void
+  /** Hide the Square's own "+" button (the home stories row opens the sheet from its own circle). */
+  trigger?: ReactNode
 }
 
 /** Pick or shoot, write a caption, publish to the open tab. Photos are shrunk; the upload runs in the background. */
-export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing }: Props) {
+export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing, trigger }: Props) {
   const target = audience === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה'
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -117,9 +120,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           pick(e.target.files?.[0])
           e.target.value = '' // the same photo can be picked again
         }} />
-      <button type="button" className="sq-plus" aria-label={`פוסט חדש ${target}`} onClick={() => setChoosing(true)}>
-        <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
-      </button>
+      {trigger ?? (
+        <button type="button" className="sq-plus" aria-label={`פוסט חדש ${target}`} onClick={() => setChoosing(true)}>
+          <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}
 
       {choosing &&
         !file &&

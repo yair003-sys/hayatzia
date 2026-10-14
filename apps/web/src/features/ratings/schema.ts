@@ -24,7 +24,28 @@ export type PlayerRow = {
   myReview: string
 }
 
-export type Review = { user_id: string; nick: string; stars: number; review: string; updated_at: string }
+/** A review as fans see it: `user_id` is the author; `liked` = my own ♥; `mine` = I wrote it (no ♥ on your own). */
+export type Review = {
+  user_id: string
+  nick: string
+  stars: number
+  review: string
+  updated_at: string
+  likes_count: number
+  liked: boolean
+  mine: boolean
+}
+
+/** ♥ on a review (one per fan; the database refuses your own review, other clubs and blocked fans). */
+export const likeReviewSchema = playerIdSchema.extend({ authorId: z.uuid(), on: z.boolean() })
+
+export type LikeState = { liked: boolean; likes_count: number }
+
+/** My ♥ turned on or off: the count moves by exactly one, never below zero; the same state again changes nothing. */
+export function applyLike(s: LikeState, on: boolean): LikeState {
+  if (s.liked === on) return s
+  return { liked: on, likes_count: Math.max(0, s.likes_count + (on ? 1 : -1)) }
+}
 
 /** Position code → Hebrew group, in pitch order (coach last). Covers the long codes DF / MF / FW in the squad data too. */
 export function positionGroup(position: string): { order: number; label: string } {

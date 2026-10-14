@@ -5,6 +5,7 @@ import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '../schema'
 import { ratePlayerAction, reviewsAction } from '../server/actions'
+import { ReviewLike, useReviewLikes } from './review-like'
 
 export function SquadRatings({ initial }: { initial: PlayerRow[] }) {
   const [players, setPlayers] = useState(initial)
@@ -51,6 +52,7 @@ function PlayerItem(props: {
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const likes = useReviewLikes()
   const coach = positionGroup(p.position).order === 4
 
   return (
@@ -128,13 +130,21 @@ function PlayerItem(props: {
             </p>
           )}
           {reviews && reviews.length > 0 && (
-            <ul className="space-y-1.5" aria-label="ביקורות אחרונות">
+            <ul className="space-y-1" aria-label="ביקורות אחרונות">
               {reviews.map((r) => (
-                <li key={r.user_id} className="text-sm">
-                  <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                <li key={r.user_id} className="flex items-start gap-2 text-sm">
+                  <span className="min-w-0 flex-1 py-2.5">
+                    <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                  </span>
+                  <ReviewLike nick={r.nick} mine={r.mine} state={likes.view(p.id, r)} onToggle={() => void likes.toggle(p.id, r)} />
                 </li>
               ))}
             </ul>
+          )}
+          {likes.error && (
+            <p role="alert" className="text-xs text-live">
+              {likes.error}
+            </p>
           )}
         </div>
       )}
