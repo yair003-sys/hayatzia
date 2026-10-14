@@ -161,11 +161,17 @@ export const TRIP_FRESH_MS = 10 * 60_000
  */
 export function tripRowGate(freshMs = TRIP_FRESH_MS) {
   const handled = new Map<string, number>()
+  // Rows older than the moment the app started listening are never news: a removal broadcast (take-back, withdraw)
+  // makes the banner look up the newest remaining row, which the fan may already have seen before opening the app.
+  let floor = -Infinity
   return {
+    since(ms: number): void {
+      floor = ms
+    },
     take(kind: string, updatedAt: string, nowMs: number): boolean {
       const t = Date.parse(updatedAt)
       if (Number.isNaN(t)) return false
-      const prev = handled.get(kind) ?? -Infinity
+      const prev = Math.max(handled.get(kind) ?? -Infinity, floor)
       if (t <= prev) return false
       handled.set(kind, t)
       return nowMs - t <= freshMs

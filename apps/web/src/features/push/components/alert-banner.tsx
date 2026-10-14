@@ -121,6 +121,9 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
 
   // Which trip rows are news (newer than any handled before; see tripRowGate).
   const [trips] = useState(() => tripRowGate())
+  useEffect(() => {
+    trips.since(Date.now())
+  }, [trips])
 
   const lookUp = useCallback(
     async (event: BannerEvent, alertId?: number): Promise<Content | null> => {

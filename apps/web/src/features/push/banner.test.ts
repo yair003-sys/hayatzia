@@ -251,5 +251,9 @@ describe('tripRowGate', () => {
     expect(g.take('trip_accepted', at(2), now)).toBe(true)
     expect(tripRowGate().take('trip_accepted', at(11), now)).toBe(false)
     expect(tripRowGate().take('trip_accepted', 'x', now)).toBe(false)
+    const f = tripRowGate()
+    f.since(now - 60_000)
+    expect(f.take('trip_accepted', at(2), now)).toBe(false) // before the app started listening: already known
+    expect(f.take('trip_accepted', new Date(now - 30_000).toISOString(), now)).toBe(true)
   })
 })

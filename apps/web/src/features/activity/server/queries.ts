@@ -44,6 +44,7 @@ const COLUMNS =
   'id,kind,actor_id,actor_count,updated_at,trip_id,clips(media_path,kind,audience),team_photos(media_path),trips(nick,from_city)'
 const URL_TTL = 60 * 60
 const clock = () => Date.now()
+const ACTIVITY_KEEP_MS = 60 * 24 * 60 * 60 * 1000
 
 /** The badge: the fan's rows changed since the last visit, capped at 100 ("99+"). 0 when anything fails. */
 export async function getUnreadCount(): Promise<number> {
@@ -69,6 +70,8 @@ export async function getActivityPage(me: string, before?: Cursor | null): Promi
     .from('activity')
     .select(COLUMNS)
     .eq('user_id', me)
+    // Same 60-day window as the badge (rows are pruned on write only).
+    .gt('updated_at', new Date(clock() - ACTIVITY_KEEP_MS).toISOString())
     .order('updated_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(ACTIVITY_PAGE + 1)
