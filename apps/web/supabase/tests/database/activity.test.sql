@@ -2,21 +2,26 @@
 -- exact like counts, never about your own actions, blocked fans never surface, badge = rows after "seen",
 -- own rows only, no client writes, ids-only broadcast on inbox:<fan>, 60-day prune.
 begin;
-select plan(46);
+select plan(54);
 
--- c1 owner / driver (mta), c2 and c3 teammates, c4 a teammate c1 blocked, c5 a rival.
+-- c1 owner / driver (mta), c2 and c3 teammates, c4 a teammate c1 blocked, c5 a rival, c6 and c7 teammates whose
+-- accounts are deleted near the end.
 insert into auth.users (id, aud, role, email) values
   ('00000000-0000-0000-0000-0000000000c1', 'authenticated', 'authenticated', 'c1@test.local'),
   ('00000000-0000-0000-0000-0000000000c2', 'authenticated', 'authenticated', 'c2@test.local'),
   ('00000000-0000-0000-0000-0000000000c3', 'authenticated', 'authenticated', 'c3@test.local'),
   ('00000000-0000-0000-0000-0000000000c4', 'authenticated', 'authenticated', 'c4@test.local'),
-  ('00000000-0000-0000-0000-0000000000c5', 'authenticated', 'authenticated', 'c5@test.local');
+  ('00000000-0000-0000-0000-0000000000c5', 'authenticated', 'authenticated', 'c5@test.local'),
+  ('00000000-0000-0000-0000-0000000000c6', 'authenticated', 'authenticated', 'c6@test.local'),
+  ('00000000-0000-0000-0000-0000000000c7', 'authenticated', 'authenticated', 'c7@test.local');
 insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000c1', 'בעלים', 'mta'),
   ('00000000-0000-0000-0000-0000000000c2', 'אוהד', 'mta'),
   ('00000000-0000-0000-0000-0000000000c3', 'שני', 'mta'),
   ('00000000-0000-0000-0000-0000000000c4', 'חסום', 'mta'),
-  ('00000000-0000-0000-0000-0000000000c5', 'זר', 'hta');
+  ('00000000-0000-0000-0000-0000000000c5', 'זר', 'hta'),
+  ('00000000-0000-0000-0000-0000000000c6', 'שישי', 'mta'),
+  ('00000000-0000-0000-0000-0000000000c7', 'שביעי', 'mta');
 insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4500, 'Hapoel Hadera')
   on conflict (api_id) do nothing;
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id)
@@ -216,9 +221,9 @@ reset role;
 insert into auth.users (id, aud, role, email)
   select ('00000000-0000-0000-0001-' || lpad(to_hex(g), 12, '0'))::uuid, 'authenticated', 'authenticated', 'bulk' || g || '@test.local'
   from generate_series(1, 120) g;
-insert into public.activity (user_id, kind, trip_id, actor_id)
+insert into public.activity (user_id, kind, trip_id, requester_id, actor_id)
   select '00000000-0000-0000-0000-0000000000c5', 'trip_request', (select id from public.trips),
-    ('00000000-0000-0000-0001-' || lpad(to_hex(g), 12, '0'))::uuid
+    ('00000000-0000-0000-0001-' || lpad(to_hex(g), 12, '0'))::uuid, ('00000000-0000-0000-0001-' || lpad(to_hex(g), 12, '0'))::uuid
   from generate_series(1, 120) g;
 select pg_temp.as_fan('c5');
 set local role authenticated;
@@ -226,8 +231,8 @@ select is(public.activity_unread_count(), 100, 'the badge count stops at 100');
 reset role;
 
 -- ── 60-day prune on write ──
-insert into public.activity (user_id, kind, trip_id, actor_id, created_at, updated_at)
-  select '00000000-0000-0000-0000-0000000000c1', 'trip_request', id, '00000000-0000-0000-0000-0000000000c5',
+insert into public.activity (user_id, kind, trip_id, requester_id, actor_id, created_at, updated_at)
+  select '00000000-0000-0000-0000-0000000000c1', 'trip_request', id, '00000000-0000-0000-0000-0000000000c5', '00000000-0000-0000-0000-0000000000c5',
     now() - interval '61 days', now() - interval '61 days' from public.trips;
 select pg_temp.as_fan('c3');
 set local role authenticated;
@@ -236,6 +241,55 @@ reset role;
 select is((select count(*)::int from public.activity where updated_at < now() - interval '60 days'), 0,
   'rows older than 60 days are removed when new activity arrives');
 select is(pg_temp.rows_of('clip_like'), 'c3:1', 'the new like is recorded');
+
+-- ── a post liked before this feature existed: the first new like shows the full count ──
+select pg_temp.as_fan('c1');
+set local role authenticated;
+insert into public.team_photos (media_path) values ('00000000-0000-0000-0000-0000000000c1/p2.jpg');
+reset role;
+create function pg_temp.photo2() returns text language sql as $$
+  select coalesce(string_agg(coalesce(right(a.actor_id::text, 2), '?') || ':' || a.actor_count, ','), 'none')
+  from public.activity a join public.team_photos t on t.id = a.photo_id
+  where t.media_path = '00000000-0000-0000-0000-0000000000c1/p2.jpg'
+$$;
+alter table public.team_photo_likes disable trigger team_photo_likes_notify;
+insert into public.team_photo_likes (photo_id, user_id)
+  select t.id, u.id from public.team_photos t, (values
+    ('00000000-0000-0000-0000-0000000000c1'::uuid), ('00000000-0000-0000-0000-0000000000c2'::uuid),
+    ('00000000-0000-0000-0000-0000000000c3'::uuid), ('00000000-0000-0000-0000-0000000000c4'::uuid)) u(id)
+  where t.media_path = '00000000-0000-0000-0000-0000000000c1/p2.jpg';
+alter table public.team_photo_likes enable trigger team_photo_likes_notify;
+select is(pg_temp.photo2(), 'none', 'old likes (from before the feature) made no row and lit no badge');
+select pg_temp.as_fan('c6');
+set local role authenticated;
+insert into public.team_photo_likes (photo_id) select id from public.team_photos where media_path like '%/p2.jpg';
+reset role;
+select is(pg_temp.photo2(), 'c6:3',
+  'the first new like counts every earlier like too (not the owner''s own, not a blocked fan''s)');
+select pg_temp.as_fan('c2');
+set local role authenticated;
+delete from public.team_photo_likes where photo_id = (select id from public.team_photos where media_path like '%/p2.jpg');
+reset role;
+select is(pg_temp.photo2(), 'c6:2', 'an unlike gives the exact remaining count');
+
+-- ── deleted accounts: two requesters of one trip at once, and the shown liker ──
+select pg_temp.as_fan('c6');
+set local role authenticated;
+insert into public.trip_requests (trip_id) select id from public.trips;
+reset role;
+select pg_temp.as_fan('c7');
+set local role authenticated;
+insert into public.trip_requests (trip_id) select id from public.trips;
+insert into public.team_photo_likes (photo_id) select id from public.team_photos where media_path like '%/p2.jpg';
+reset role;
+select lives_ok($$ delete from auth.users where id in ('00000000-0000-0000-0000-0000000000c6', '00000000-0000-0000-0000-0000000000c7') $$,
+  'two requesters of the same trip (one of them the shown liker) delete their accounts in one statement');
+select is(pg_temp.rows_of('trip_request'), 'c2:1', 'their request rows are gone, the remaining request stays');
+select is(pg_temp.photo2(), 'c3:1', 'the photo row shows a remaining liker with the right count');
+select is((select count(*)::int from public.activity where actor_id is null), 0, 'no row is left without an actor');
+
+select is((select provolatile::text from pg_proc where proname = 'activity_unread_count'), 'v',
+  'the badge count is volatile (it reads the clock)');
 
 -- ── a deleted post takes its row with it ──
 select pg_temp.as_fan('c1');

@@ -7,14 +7,14 @@ export type Database = {
           Tables: {
             "activity": {
                   Row: {
-                    "actor_count": number,"actor_id": string | null,"actor_key": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
+                    "actor_count": number,"actor_id": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"requester_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "actor_count"?: number,"actor_id"?: string | null,"actor_key"?: never,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind": string,"photo_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id": string
+                    "actor_count"?: number,"actor_id"?: string | null,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind": string,"photo_id"?: string | null,"requester_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "actor_count"?: number,"actor_id"?: string | null,"actor_key"?: never,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind"?: string,"photo_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id"?: string
+                    "actor_count"?: number,"actor_id"?: string | null,"clip_id"?: string | null,"created_at"?: string,"id"?: number,"kind"?: string,"photo_id"?: string | null,"requester_id"?: string | null,"subject"?: never,"trip_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1092,11 +1092,20 @@ isOneToOne: false
             "activity_broadcast":
 { Args: { "p_kind": string,"p_user": string }; Returns: undefined
                            },
-"activity_drop":
-{ Args: { "p_actor_key": string,"p_kind": string,"p_subject": string,"p_user": string }; Returns: undefined
+"activity_like":
+{ Args: { "p_kind": string,"p_liker": string,"p_subject": string,"p_user": string }; Returns: undefined
                            },
-"activity_put":
-{ Args: { "p_actor": string,"p_kind": string,"p_subject": string,"p_user": string }; Returns: undefined
+"activity_like_total":
+{ Args: { "p_kind": string,"p_subject": string,"p_user": string }; Returns: number
+                           },
+"activity_prune":
+{ Args: { "p_user": string }; Returns: undefined
+                           },
+"activity_trip_drop":
+{ Args: { "p_kind": string,"p_requester": string,"p_trip": string,"p_user": string }; Returns: undefined
+                           },
+"activity_trip_put":
+{ Args: { "p_actor": string,"p_kind": string,"p_trip": string,"p_user": string }; Returns: undefined
                            },
 "activity_unlike":
 { Args: { "p_kind": string,"p_liker": string,"p_subject": string,"p_user": string }; Returns: undefined
