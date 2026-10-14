@@ -2,7 +2,7 @@
 -- exact like counts, never about your own actions, blocked fans never surface, badge = rows after "seen",
 -- own rows only, no client writes, ids-only broadcast on inbox:<fan>, 60-day prune.
 begin;
-select plan(54);
+select plan(58);
 
 -- c1 owner / driver (mta), c2 and c3 teammates, c4 a teammate c1 blocked, c5 a rival, c6 and c7 teammates whose
 -- accounts are deleted near the end.
@@ -181,14 +181,19 @@ select is(pg_temp.rows_of('trip_request'), 'c2:1', 'a withdrawn request disappea
 select pg_temp.as_fan('c1');
 set local role authenticated;
 select is(public.activity_unread_count(), 2, 'the badge counts the owner''s rows (photo like + request) before any visit');
-select lives_ok($$ select public.mark_activity_seen() $$, 'opening the list marks it seen');
+select lives_ok($$ select public.mark_activity_seen((select min(updated_at) from public.activity)) $$,
+  'the list marks seen up to the newest row it showed (here: only the older one)');
+select is(public.activity_unread_count(), 1, 'a row updated after p_upto still counts as unread');
+select lives_ok($$ select public.mark_activity_seen(clock_timestamp() + interval '1 day') $$, 'opening the list marks it seen');
 select is(public.activity_unread_count(), 0, 'after opening the list the badge is empty');
+select public.mark_activity_seen('2000-01-01');
+select is(public.activity_unread_count(), 0, 'an older mark never moves the seen time backwards');
 select is((select count(*)::int from public.activity_seen), 1, 'the fan reads their own seen time');
 reset role;
 
 select pg_temp.as_fan('c2');
 set local role authenticated;
-select lives_ok($$ select public.mark_activity_seen() $$, 'another fan marks their own list seen');
+select lives_ok($$ select public.mark_activity_seen(clock_timestamp()) $$, 'another fan marks their own list seen');
 select is((select count(*)::int from public.activity_seen), 1, 'a fan sees only their own seen row');
 select is((select count(*)::int from public.activity), 1, 'a fan reads only their own activity (the acceptance)');
 select is((select count(*)::int from public.activity where user_id = '00000000-0000-0000-0000-0000000000c1'), 0,
@@ -209,12 +214,22 @@ insert into public.team_photo_likes (photo_id) select id from public.team_photos
 reset role;
 select pg_temp.as_fan('c1');
 set local role authenticated;
-select is(public.activity_unread_count(), 1, 'a new like after the visit lights the badge again (another fan''s visit does not clear it)');
+select is(public.activity_unread_count(), 1,
+  'a new like after the visit lights the badge again (the visit was clamped to the clock; another fan''s visit does not clear it)');
 reset role;
+-- A request left from a fan the owner blocked afterwards: the list hides it, so the badge does not count it.
+insert into public.activity (user_id, kind, trip_id, requester_id, actor_id)
+  select '00000000-0000-0000-0000-0000000000c1', 'trip_request', id, '00000000-0000-0000-0000-0000000000c4',
+    '00000000-0000-0000-0000-0000000000c4' from public.trips;
+select pg_temp.as_fan('c1');
+set local role authenticated;
+select is(public.activity_unread_count(), 1, 'a request from a blocked fan is not counted (the list hides it too)');
+reset role;
+delete from public.activity where requester_id = '00000000-0000-0000-0000-0000000000c4';
 
 set local role anon;
 select throws_ok($$ select public.activity_unread_count() $$, '42501', null, 'signed-out visitors have no badge');
-select throws_ok($$ select public.mark_activity_seen() $$, '42501', null, 'signed-out visitors cannot mark seen');
+select throws_ok($$ select public.mark_activity_seen(now()) $$, '42501', null, 'signed-out visitors cannot mark seen');
 reset role;
 
 -- ── the badge stops at 100 (shown as 99+) ──

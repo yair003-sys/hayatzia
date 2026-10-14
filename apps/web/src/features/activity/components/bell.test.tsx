@@ -75,6 +75,37 @@ describe('Bell', () => {
     expect(h.rpc).toHaveBeenCalledTimes(1)
     expect(h.rpc).toHaveBeenCalledWith('activity_unread_count')
     expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 7 חדשות')
+    // Screen readers hear the new count politely (the region has no role, so it is not another status).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('7 התראות חדשות')
+  })
+
+  it('announcements are throttled: a second rise within 10 s waits', async () => {
+    h.rpc.mockResolvedValueOnce({ data: 2, error: null }).mockResolvedValueOnce({ data: 3, error: null })
+    render(<Bell meId={ME} count={1} />)
+    const region = () => document.querySelector('[aria-live="polite"]')
+    expect(region()).toHaveTextContent('') // nothing said on the first render
+    act(() => {
+      emit('activity')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700)
+    })
+    expect(region()).toHaveTextContent('2 התראות חדשות')
+    act(() => {
+      emit('activity')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700)
+    })
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 3 חדשות')
+    expect(region()).toHaveTextContent('2 התראות חדשות')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+    expect(region()).toHaveTextContent('3 התראות חדשות')
   })
 
   it('opening the list clears it, and a count read that started before cannot bring it back', async () => {
@@ -94,6 +125,13 @@ describe('Bell', () => {
       resolve({ data: 4, error: null })
     })
     expect(screen.getByRole('link')).toHaveAccessibleName('התראות')
+    // Then the count is read again: rows that changed after what the list showed still count.
+    h.rpc.mockResolvedValue({ data: 1, error: null })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(h.rpc).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 1 חדשות')
   })
 
   it('no badge while the list itself is open', () => {

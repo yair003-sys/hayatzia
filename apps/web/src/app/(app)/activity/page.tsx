@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Bell } from 'lucide-react'
-import { ActivityLive } from '@/features/activity/components/activity-live'
-import { ActivityRows } from '@/features/activity/components/activity-rows'
-import { LoadMore } from '@/features/activity/components/load-more'
+import { ActivityFeed } from '@/features/activity/components/activity-feed'
 import { getActivityPage } from '@/features/activity/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 
@@ -25,11 +23,14 @@ async function Activity() {
   if (s.status === 'disabled') return <p className="text-muted">ההתראות פועלות רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
   const page = await getActivityPage(s.userId)
-  const newest = page.items[0]
   return (
-    <>
-      <ActivityLive meId={s.userId} stamp={newest ? `${newest.id}:${newest.updatedAt}` : ''} />
-      {page.items.length === 0 ? (
+    <ActivityFeed
+      meId={s.userId}
+      items={page.items}
+      next={page.next}
+      seenAt={page.seenAt}
+      newestAt={page.newestAt}
+      empty={
         <div className="act-empty">
           <span className="act-empty-ico" aria-hidden="true">
             <Bell className="size-6" strokeWidth={1.6} />
@@ -37,13 +38,8 @@ async function Activity() {
           <p className="font-semibold">עוד אין התראות</p>
           <p className="text-sm text-muted">כאן יופיעו לייקים על הפוסטים שלך ובקשות להצטרף לנסיעות שלך.</p>
         </div>
-      ) : (
-        <>
-          <ActivityRows items={page.items} />
-          {page.next && <LoadMore key={page.next} cursor={page.next} seenAt={page.seenAt} />}
-        </>
-      )}
-    </>
+      }
+    />
   )
 }
 

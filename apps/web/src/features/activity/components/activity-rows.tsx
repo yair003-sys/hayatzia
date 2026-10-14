@@ -2,17 +2,22 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { Car, Heart, Play } from 'lucide-react'
 import { Avatar } from '@/features/dm/components/avatar'
+import { isUnseen } from '../activity'
 import type { ActivityItem } from '../server/queries'
 
-/** Rows of the list (pure view; used by the server page and by "load more"). No message text anywhere. */
-export function ActivityRows({ items }: { items: ActivityItem[] }) {
+/**
+ * Rows of the list (pure view). Rows changed after `seenAt` (the fan's previous visit, kept for the whole visit) are
+ * highlighted. No message text anywhere.
+ */
+export function ActivityRows({ items, seenAt }: { items: ActivityItem[]; seenAt: string | null }) {
   return (
     <ul className="act-list">
       {items.map((a) => {
         const trip = a.kind === 'trip_request' || a.kind === 'trip_accepted'
+        const unseen = isUnseen(a.updatedAt, seenAt)
         return (
           <li key={a.id}>
-            <Link href={a.href as Route} className="act-row" data-unseen={a.unseen ? '' : undefined}>
+            <Link href={a.href as Route} className="act-row" data-unseen={unseen ? '' : undefined}>
               <span className="act-who">
                 <Avatar id={a.actorId ?? ''} name={a.nick?.trim() || 'אוהד'} size="sm" />
                 <span className="act-kind" data-kind={trip ? 'trip' : 'like'} aria-hidden="true">
@@ -26,7 +31,7 @@ export function ActivityRows({ items }: { items: ActivityItem[] }) {
                   {a.when}
                 </span>
               </span>
-              {a.unseen && <span className="sr-only">חדש</span>}
+              {unseen && <span className="sr-only">חדש</span>}
               {!trip && (
                 <span className="act-thumb" aria-hidden="true">
                   {a.thumb ? (

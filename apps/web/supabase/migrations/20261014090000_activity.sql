@@ -275,7 +275,8 @@ create trigger trip_requests_status_activity after update of status on public.tr
 
 -- ---------- badge ----------
 -- Rows changed since the fan last opened the list (and within 60 days), up to 100 (the UI shows 100 as "99+").
--- volatile: it reads clock_timestamp().
+-- A request from a fan the viewer has since blocked is left out, as the list leaves it out (same rule: the viewer's own
+-- blocks, by the blocks primary key). volatile: it reads clock_timestamp().
 create function public.activity_unread_count() returns integer
 language sql volatile security definer set search_path = '' as $$
   select count(*)::int from (
@@ -284,20 +285,27 @@ language sql volatile security definer set search_path = '' as $$
       and a.updated_at > greatest(
         coalesce((select s.seen_at from public.activity_seen s where s.user_id = auth.uid()), '-infinity'),
         clock_timestamp() - interval '60 days')
+      and not (a.kind = 'trip_request'
+               and exists (select 1 from public.blocks k where k.user_id = auth.uid() and k.blocked_id = a.actor_id))
     limit 100
   ) x
 $$;
 revoke all on function public.activity_unread_count() from public, anon, authenticated;
 grant execute on function public.activity_unread_count() to authenticated;
 
-create function public.mark_activity_seen() returns void
+-- The fan saw their list up to p_upto: the newest updated_at the page actually showed. Rows that change after it
+-- (even while the page is open) stay unread. Never ahead of the clock, never backwards.
+create function public.mark_activity_seen(p_upto timestamptz) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   if auth.uid() is null then
     raise exception 'not signed in' using errcode = '42501';
   end if;
-  insert into public.activity_seen (user_id, seen_at) values (auth.uid(), clock_timestamp())
-  on conflict (user_id) do update set seen_at = excluded.seen_at;
+  if p_upto is null then
+    return;
+  end if;
+  insert into public.activity_seen (user_id, seen_at) values (auth.uid(), least(p_upto, clock_timestamp()))
+  on conflict (user_id) do update set seen_at = greatest(public.activity_seen.seen_at, excluded.seen_at);
 end $$;
-revoke all on function public.mark_activity_seen() from public, anon, authenticated;
-grant execute on function public.mark_activity_seen() to authenticated;
+revoke all on function public.mark_activity_seen(timestamptz) from public, anon, authenticated;
+grant execute on function public.mark_activity_seen(timestamptz) to authenticated;

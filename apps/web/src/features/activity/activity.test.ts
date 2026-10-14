@@ -141,3 +141,23 @@ describe('parseActivityEvent', () => {
     expect(parseActivityEvent('activity', null)).toBeNull()
   })
 })
+
+describe('mergeItems (live refresh over loaded pages)', () => {
+  const at = (min: number) => new Date(Date.UTC(2026, 9, 14, 10, min)).toISOString()
+  const row = (id: number, min: number) => ({ id, updatedAt: at(min) })
+
+  it('keeps older pages already loaded; a changed row moves up, a removed one goes', () => {
+    const held = [row(5, 50), row(4, 40), row(3, 30), row(2, 20), row(1, 10)]
+    // New like on #2 (moved to the top), #4 removed (unliked); the first page now ends at #3.
+    const fresh = [row(2, 60), row(5, 50), row(3, 30)]
+    expect(mergeItems(fresh, held, false).map((r) => r.id)).toEqual([2, 5, 3, 1])
+  })
+
+  it('the whole list in the first page → exactly it', () => {
+    expect(mergeItems([row(9, 90)], [row(9, 80), row(1, 10)], true).map((r) => r.id)).toEqual([9])
+  })
+
+  it('ties on time are ordered by id, newest first', () => {
+    expect(mergeItems([row(7, 50)], [row(6, 50), row(8, 50)], false).map((r) => r.id)).toEqual([7, 6])
+  })
+})

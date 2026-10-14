@@ -18,6 +18,7 @@ import {
   bannerAlertSchema,
   bannerHref,
   inviteLine,
+  tripRowGate,
   messageLine,
   parseAlertPayload,
   parseInboxEvent,
@@ -31,11 +32,6 @@ import { BannerView, type ShownBanner } from './alert-banner-view'
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
 /** Up to this long a random wait before asking for an alert's text. */
 const FETCH_JITTER_MS = 1500
-/**
- * A trip broadcast also comes when a request is withdrawn (the row is removed): only a row changed this recently is
- * news. Generous, because the phone's clock may be off a little; each row is shown once anyway.
- */
-const TRIP_FRESH_MS = 10 * 60_000
 
 type Content = Omit<ShownBanner, 'seq'>
 type Client = ReturnType<typeof createClient>
@@ -123,8 +119,8 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
     }
   }, [banner, held])
 
-  // Trip rows already shown (id + time), so a later broadcast about the same row never repeats it.
-  const shownTrips = useRef(new Set<string>())
+  // Which trip rows are news (newer than any handled before; see tripRowGate).
+  const [trips] = useState(() => tripRowGate())
 
   const lookUp = useCallback(
     async (event: BannerEvent, alertId?: number): Promise<Content | null> => {
@@ -191,25 +187,27 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
             .order('id', { ascending: false })
             .limit(1)
             .maybeSingle()
-          if (!row?.trip_id) return null
-          const key = `${row.id}:${row.updated_at}`
-          if (shownTrips.current.has(key) || Date.now() - Date.parse(row.updated_at) > TRIP_FRESH_MS) return null
+          if (!row?.trip_id || !trips.take(event.activity, row.updated_at, Date.now())) return null
           const full: BannerEvent = { ...event, tripId: row.trip_id }
           if (!shouldShow(full, withSearch(ctx.current))) return null
-          // Accepted: the actor is the driver, whose nick the trip carries. A request: the requester (same club).
-          const nick =
-            event.activity === 'trip_accepted'
-              ? (row.trips?.nick ?? null)
-              : row.actor_id
-                ? ((await supabase.from('profiles').select('nick').eq('user_id', row.actor_id).maybeSingle()).data?.nick ?? null)
-                : null
-          shownTrips.current.add(key)
+          // Accepted: the actor is the driver, whose nick the trip carries. A request: the requester (same club),
+          // unless the fan has blocked them since (the list and the badge leave those out too).
+          let nick: string | null = null
+          if (event.activity === 'trip_accepted') nick = row.trips?.nick ?? null
+          else if (row.actor_id) {
+            const [profile, block] = await Promise.all([
+              supabase.from('profiles').select('nick').eq('user_id', row.actor_id).maybeSingle(),
+              supabase.from('blocks').select('blocked_id').eq('blocked_id', row.actor_id).maybeSingle(),
+            ])
+            if (block.data || block.error) return null
+            nick = profile.data?.nick ?? null
+          }
           const title = event.activity === 'trip_accepted' ? tripAcceptedLine(nick) : tripRequestLine(nick)
           return { title, body: '', href: bannerHref(full), tone: 'trip', accent: null }
         }
       }
     },
-    [supabase, meId],
+    [supabase, meId, trips],
   )
 
   useEffect(() => {

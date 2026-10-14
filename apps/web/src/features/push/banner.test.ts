@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { arrivalGate, bannerHref, inviteLine, messageLine, parseAlertPayload, parseInboxEvent, shouldShow, type BannerContext } from './banner'
+import {
+  arrivalGate,
+  bannerHref,
+  inviteLine,
+  messageLine,
+  parseAlertPayload,
+  parseInboxEvent,
+  shouldShow,
+  tripRowGate,
+  type BannerContext,
+} from './banner'
 
 const ME = '11111111-1111-4111-8111-111111111111'
 const OTHER = '22222222-2222-4222-8222-222222222222'
@@ -216,5 +226,30 @@ describe('trip events (activity bell)', () => {
   it('tap → the trip', () => {
     expect(bannerHref(acc)).toBe(`/stand/trips?trip=${TRIP}`)
     expect(bannerHref(req)).toBe('/stand/trips')
+  })
+})
+
+describe('tripRowGate', () => {
+  const now = Date.parse('2026-10-14T12:00:00Z')
+  const at = (min: number) => new Date(now - min * 60_000).toISOString()
+
+  it('a new row is news once', () => {
+    const g = tripRowGate()
+    expect(g.take('trip_request', at(0), now)).toBe(true)
+    expect(g.take('trip_request', at(0), now)).toBe(false)
+  })
+
+  it('a withdrawal leaves an older row on top: never shown', () => {
+    const g = tripRowGate()
+    expect(g.take('trip_request', at(1), now)).toBe(true) // B arrives
+    expect(g.take('trip_request', at(3), now)).toBe(false) // B withdrawn: A (older) is the newest again
+  })
+
+  it('kinds are apart; an old row (beyond 10 minutes) is not news', () => {
+    const g = tripRowGate()
+    expect(g.take('trip_request', at(1), now)).toBe(true)
+    expect(g.take('trip_accepted', at(2), now)).toBe(true)
+    expect(tripRowGate().take('trip_accepted', at(11), now)).toBe(false)
+    expect(tripRowGate().take('trip_accepted', 'x', now)).toBe(false)
   })
 })

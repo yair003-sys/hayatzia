@@ -124,3 +124,22 @@ export function parseActivityEvent(event: string, payload: unknown): ActivityKin
 }
 
 export const isActivityKind = (k: string): k is ActivityKind => (ACTIVITY_KINDS as readonly string[]).includes(k)
+
+type Keyed = { id: number; updatedAt: string }
+
+/** Newest first: (updated_at desc, id desc), the list's keyset order. */
+const newerFirst = (a: Keyed, b: Keyed) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || b.id - a.id
+
+/**
+ * A refreshed first page over what is already on screen (pages loaded with "עוד" included), so a live refresh never
+ * drops loaded pages. The first page is a contiguous slice from the top: within it, it is the truth (changed rows
+ * move up, removed rows go); older rows already held are kept. `complete`: the first page is the whole list.
+ */
+export function mergeItems<T extends Keyed>(fresh: readonly T[], held: readonly T[], complete: boolean): T[] {
+  if (complete) return [...fresh]
+  const last = fresh[fresh.length - 1]
+  if (!last) return [...held]
+  const ids = new Set(fresh.map((f) => f.id))
+  const older = held.filter((h) => !ids.has(h.id) && newerFirst(last, h) < 0)
+  return [...fresh, ...older].sort(newerFirst)
+}

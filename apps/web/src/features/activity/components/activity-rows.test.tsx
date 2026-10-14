@@ -19,7 +19,6 @@ const base: ActivityItem = {
   nick: 'דני',
   line: 'דני ועוד 12 אהבו את הסרטון שלך',
   when: 'לפני 5 דק׳',
-  unseen: true,
   href: '/square',
   thumb: 'https://example.test/x.jpg',
   video: false,
@@ -32,7 +31,7 @@ describe('ActivityRows', () => {
   })
 
   it('a row is one link with the sentence, the time and a "new" mark when unseen', () => {
-    render(<ActivityRows items={[base]} />)
+    render(<ActivityRows items={[base]} seenAt="2026-10-14T09:00:00+00:00" />)
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/square')
     expect(link).toHaveTextContent('דני ועוד 12 אהבו את הסרטון שלך')
@@ -43,8 +42,8 @@ describe('ActivityRows', () => {
   })
 
   it('a seen trip row: the trip summary, no thumbnail, no "new" mark; unknown fan → "א"', () => {
-    const trip: ActivityItem = { ...base, id: 2, kind: 'trip_request', actorId: null, nick: null, line: 'אוהד ביקש להצטרף לנסיעה שלך', unseen: false, href: '/stand/trips?trip=t', thumb: null, sub: 'נסיעה מחיפה' }
-    render(<ActivityRows items={[trip]} />)
+    const trip: ActivityItem = { ...base, id: 2, kind: 'trip_request', actorId: null, nick: null, line: 'אוהד ביקש להצטרף לנסיעה שלך', href: '/stand/trips?trip=t', thumb: null, sub: 'נסיעה מחיפה' }
+    render(<ActivityRows items={[trip]} seenAt="2026-10-14T10:00:00+00:00" />)
     const link = screen.getByRole('link')
     expect(link).toHaveTextContent('נסיעה מחיפה · לפני 5 דק׳')
     expect(link).not.toHaveTextContent('חדש')

@@ -8,7 +8,6 @@ import {
   activityLine,
   encodeCursor,
   isActivityKind,
-  isUnseen,
   relativeTime,
   type ActivityKind,
   type Cursor,
@@ -23,7 +22,6 @@ export type ActivityItem = {
   nick: string | null
   line: string
   when: string
-  unseen: boolean
   href: string
   /** The post's picture (signed URL); null for a video, a trip, or a post that is gone. */
   thumb: string | null
@@ -33,7 +31,14 @@ export type ActivityItem = {
   sub: string | null
 }
 
-export type ActivityPage = { items: ActivityItem[]; next: string | null; seenAt: string | null }
+export type ActivityPage = {
+  items: ActivityItem[]
+  next: string | null
+  /** First page only: the fan's previous visit (rows changed after it are highlighted). */
+  seenAt: string | null
+  /** The newest updated_at among the rows shown: the visit is recorded up to it, not up to "now". */
+  newestAt: string | null
+}
 
 const COLUMNS =
   'id,kind,actor_id,actor_count,updated_at,trip_id,clips(media_path,kind,audience),team_photos(media_path),trips(nick,from_city)'
@@ -52,11 +57,11 @@ export async function getUnreadCount(): Promise<number> {
  * One page of the fan's list, newest first, keyset on (updated_at, id) over activity_feed_idx. A fixed number of
  * requests whatever the page holds (Review Focus 4): the rows with their post / trip joined in (one query, with the
  * fan's last visit read alongside), then the actors' nicks (one `in` on the profiles key) and the thumbnails (one
- * signing call per bucket), in parallel. Never a lookup per row.
- * `seenAt`: highlight against this visit time instead of the stored one (later pages keep the first page's view).
+ * signing call per bucket), in parallel. Never a lookup per row. Highlighting is left to the client, which keeps the
+ * first render's `seenAt` for the whole visit.
  */
-export async function getActivityPage(me: string, opts: { before?: Cursor | null; seenAt?: string | null } = {}): Promise<ActivityPage> {
-  const empty: ActivityPage = { items: [], next: null, seenAt: null }
+export async function getActivityPage(me: string, before?: Cursor | null): Promise<ActivityPage> {
+  const empty: ActivityPage = { items: [], next: null, seenAt: null, newestAt: null }
   const supabase = await createClient()
   if (!supabase) return empty
 
@@ -67,15 +72,13 @@ export async function getActivityPage(me: string, opts: { before?: Cursor | null
     .order('updated_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(ACTIVITY_PAGE + 1)
-  if (opts.before) {
-    const b = opts.before
+  if (before) {
+    const b = before
     q = q.or(`updated_at.lt."${b.updatedAt}",and(updated_at.eq."${b.updatedAt}",id.lt.${b.id})`)
   }
   const [{ data, error }, seen, blocked] = await Promise.all([
     q,
-    opts.seenAt !== undefined
-      ? Promise.resolve({ data: opts.seenAt ? { seen_at: opts.seenAt } : null })
-      : supabase.from('activity_seen').select('seen_at').eq('user_id', me).maybeSingle(),
+    before ? Promise.resolve({ data: null }) : supabase.from('activity_seen').select('seen_at').eq('user_id', me).maybeSingle(),
     getBlockedIds(),
   ])
   if (error || !data?.length) return { ...empty, seenAt: seen.data?.seen_at ?? null }
@@ -108,14 +111,18 @@ export async function getActivityPage(me: string, opts: { before?: Cursor | null
       nick,
       line: activityLine({ kind, nick, count: r.actor_count }),
       when: relativeTime(r.updated_at, now),
-      unseen: isUnseen(r.updated_at, seenAt),
       href: activityHref({ kind, tripId: r.trip_id, clipAudience: r.clips?.audience ?? null }),
       thumb: r.clips ? (clipUrls.get(r.clips.media_path) ?? null) : r.team_photos ? (photoUrls.get(r.team_photos.media_path) ?? null) : null,
       video: r.clips?.kind === 'video',
       sub: r.trips ? `נסיעה מ${r.trips.from_city}` : null,
     }
   })
-  return { items, next: more ? encodeCursor({ updatedAt: last.updated_at, id: last.id }) : null, seenAt }
+  return {
+    items,
+    next: more ? encodeCursor({ updatedAt: last.updated_at, id: last.id }) : null,
+    seenAt,
+    newestAt: rows[0]?.updated_at ?? null,
+  }
 }
 
 type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>

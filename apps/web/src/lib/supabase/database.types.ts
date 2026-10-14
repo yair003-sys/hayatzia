@@ -1180,7 +1180,7 @@ isOneToOne: false
 { Args: { "p_group": string }; Returns: undefined
                            },
 "mark_activity_seen":
-{ Args: Record<PropertyKey, never>; Returns: undefined
+{ Args: { "p_upto": string }; Returns: undefined
                            },
 "mark_read":
 { Args: { "p_id": string,"p_kind": string }; Returns: undefined

@@ -147,3 +147,28 @@ export function arrivalGate() {
     },
   }
 }
+
+/**
+ * A trip broadcast also comes when a request is withdrawn or an acceptance taken back (the row is removed), and then
+ * the newest remaining row is an older one. Generous (the phone's clock may be off a little).
+ */
+export const TRIP_FRESH_MS = 10 * 60_000
+
+/**
+ * Which trip rows are news. Per kind, a row shows only when it is newer than every row an earlier trip event of that
+ * kind led to (handled, whether or not it won the screen), and recent. So a withdrawal never brings back an older
+ * request, and the same row never shows twice.
+ */
+export function tripRowGate(freshMs = TRIP_FRESH_MS) {
+  const handled = new Map<string, number>()
+  return {
+    take(kind: string, updatedAt: string, nowMs: number): boolean {
+      const t = Date.parse(updatedAt)
+      if (Number.isNaN(t)) return false
+      const prev = handled.get(kind) ?? -Infinity
+      if (t <= prev) return false
+      handled.set(kind, t)
+      return nowMs - t <= freshMs
+    },
+  }
+}
