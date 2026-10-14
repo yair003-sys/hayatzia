@@ -4,13 +4,14 @@ import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { loadOlderTeamMessagesAction, sendTeamMessageAction } from '../server/actions'
 
-export function TeamChat({ teamId, meId, initial, hidden }: { teamId: string; meId: string; initial: ChatMessage[]; hidden: string[] }) {
+export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: string; meId: string; initial: ChatMessage[]; hidden: string[]; color?: string }) {
   return (
     <ChatRoom
       topic={`team:${teamId}`}
       meId={meId}
       initial={initial}
       hiddenUsers={hidden}
+      doodle={color}
       placeholder="כתוב לקבוצה…"
       emptyText="עוד אין הודעות. כתוב את הראשונה."
       send={async (body) => {

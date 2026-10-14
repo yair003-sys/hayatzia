@@ -1174,3 +1174,12 @@
     .hm-bar-run { animation: none; width: 100%; }
   }
 }
+
+/* Chat backdrop (owner, 2026-10-15, option 1 of the "רקע לצ׳אט" sketch): a faint repeating football doodle in the
+   club colour (--doodle, falls back to the brand accent) behind every chat. A mask, so one SVG serves every club. */
+@layer components {
+  .chat-doodle { position: relative; isolation: isolate; }
+  .chat-doodle::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: var(--doodle, var(--color-accent)); opacity: 0.09;
+    -webkit-mask: url('/patterns/football.svg') 0 0 / 120px 120px repeat; mask: url('/patterns/football.svg') 0 0 / 120px 120px repeat; }
+}

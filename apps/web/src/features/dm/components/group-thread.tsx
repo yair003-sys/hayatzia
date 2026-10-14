@@ -152,7 +152,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   const nickOf = (id: string | null) => (id && nicks[id]) || 'אוהד'
 
   return (
-    <div className="flex min-h-[65dvh] flex-col">
+    <div className="chat-doodle flex min-h-[65dvh] flex-col">
       <E2eNote />
       <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
         {items.length === 0 && <li className="py-10 text-center text-muted">עוד אין הודעות. כתוב ראשון</li>}

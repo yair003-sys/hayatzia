@@ -101,7 +101,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   const shownStatus = status ?? keyStatus
 
   return (
-    <div className="flex min-h-[65dvh] flex-col">
+    <div className="chat-doodle flex min-h-[65dvh] flex-col">
       <E2eNote>
         <button
           type="button"

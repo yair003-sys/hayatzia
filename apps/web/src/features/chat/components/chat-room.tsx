@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
 import { ArrowDown, SendHorizontal } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
@@ -32,6 +32,8 @@ export type ChatRoomProps = {
   emptyText?: string
   /** Optional colour for the nickname / bubble edge of other fans' messages (e.g. by side in a match room). */
   tint?: (m: ChatMessage) => string | undefined
+  /** Colour of the faint football doodle behind the chat (the club colour); the brand accent when unset. */
+  doodle?: string
   /** Fans the viewer blocked: their messages are not shown. */
   hiddenUsers?: string[]
   /** Extra items shown in the stream by time (e.g. crowd-verdict polls), `at` = ISO time. */
@@ -60,6 +62,7 @@ export function ChatRoom({
   placeholder,
   emptyText,
   tint,
+  doodle,
   hiddenUsers,
   inserts,
   onChannelEvent,
@@ -173,7 +176,7 @@ export function ChatRoom({
   const first = messages[0]
 
   return (
-    <div className="flex min-h-[60dvh] flex-col">
+    <div className="chat-doodle flex min-h-[60dvh] flex-col" style={doodle ? ({ '--doodle': doodle } as CSSProperties) : undefined}>
       <div className="mb-2 flex items-center gap-2 text-xs text-muted" aria-live="polite">
         <span className={cn('size-2 rounded-full', live ? 'bg-ok' : 'bg-dim')} aria-hidden="true" />
         {live ? 'מחובר בזמן אמת' : 'מתחבר…'}
