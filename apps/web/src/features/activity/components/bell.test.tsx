@@ -34,6 +34,16 @@ const emit = (event: string) => {
   for (const l of h.listeners) l.fn({ event, payload: { kind: 'clip_like' } })
 }
 
+/** Let timers run, then the effects they caused (and the timers those effects set up at once). */
+const tick = async (ms: number) => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms)
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0)
+  })
+}
+
 describe('Bell', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -90,16 +100,12 @@ describe('Bell', () => {
     act(() => {
       emit('activity')
     })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700)
-    })
+    await tick(700)
     expect(region()).toHaveTextContent('2 התראות חדשות')
     act(() => {
       emit('activity')
     })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700)
-    })
+    await tick(700)
     expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 3 חדשות')
     expect(region()).toHaveTextContent('2 התראות חדשות')
     await act(async () => {
