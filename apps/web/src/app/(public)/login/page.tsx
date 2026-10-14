@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { BrandBackdrop } from '@/components/brand-backdrop'
 import { GoogleSignIn } from '@/features/auth/components/google-sign-in'
 import { InAppBrowserNote } from '@/features/auth/components/in-app-browser-note'
 import { SignupHeader, SignupKicker } from '@/features/auth/components/signup-header'
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const enabled = supabaseConfig() !== null
   return (
     <main className="su-page">
+      <BrandBackdrop />
       <FirstRunIntro then="close" />
       <SignupHeader step={1} />
       <div className="flex-1" />

@@ -56,7 +56,7 @@
 
 @layer base {
   /* Room the floating tab bar takes at the bottom (pill 3.875rem + its gap/safe area). Content and sticky composers sit above it. */
-  :root { color-scheme: dark; --tabbar-space: calc(max(0.75rem, env(safe-area-inset-bottom, 0px)) + 3.875rem); }
+  :root { color-scheme: dark; --tabbar-space: calc(max(0.6rem, env(safe-area-inset-bottom, 0px)) + 4.1rem); }
   html, body { background: var(--color-canvas); color: var(--color-fg); }
   body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -661,19 +661,29 @@
   .ib-check[data-on='true'] { border-color: var(--color-ok); background: var(--color-ok); }
 }
 
-/* ── Floating tab bar (redesign 2026-10-13): a pill of icons, the active tab in a blue circle ─────── */
+/* ── Bottom bar (owner, 2026-10-15): a floating rectangle of five tiles, icon over label; the Square in the middle
+   is a raised blue-green tile. Matches the top bar. ─────── */
 @layer components {
-  .tb-pill { position: fixed; z-index: 40; bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
-    padding: 7px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.1);
-    background: color-mix(in srgb, var(--color-surface) 78%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  .tb-pill { position: fixed; z-index: 40; bottom: max(0.6rem, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
+    width: calc(min(100vw, 28rem) - 1.5rem); padding: 0.3rem; border-radius: 1.25rem; border: 1px solid rgb(255 255 255 / 0.1);
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     box-shadow: 0 20px 40px -14px rgb(0 0 0 / 0.9); }
   .tb-pill[data-dark='true'] { background: rgb(0 0 0 / 0.72); border-color: rgb(255 255 255 / 0.12); }
-  .tb-pill ul { display: flex; gap: 4px; }
-  .tb-link { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 999px; color: var(--color-muted);
-    transition: color 0.2s, background 0.3s var(--ease-spring), transform 0.3s var(--ease-spring), box-shadow 0.3s; }
+  .tb-pill ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.2rem; }
+  .tb-link { display: flex; min-height: 3.3rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem;
+    border-radius: 0.95rem; color: var(--color-muted); transition: color 0.2s, background 0.25s; }
   .tb-link:hover { color: var(--color-fg); }
-  .tb-link[aria-current='page'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
-    box-shadow: 0 10px 22px -8px rgb(0 102 255 / 0.95); transform: translateY(-2px); }
+  .tb-label { max-width: 100%; overflow: hidden; font-size: 10.5px; font-weight: 500; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+  .tb-icon { display: grid; place-items: center; }
+  .tb-link[aria-current='page'] { color: #fff; background: var(--color-accent-soft); }
+  .tb-link[aria-current='page'] .tb-icon { color: var(--color-accent-text); }
+  .tb-link[aria-current='page'] .tb-label { font-weight: 700; }
+  /* The Square: a raised tile in the logo's blue-to-green. */
+  .tb-link[data-main] .tb-icon { width: 2.6rem; height: 2.6rem; margin-top: -1.15rem; border-radius: 0.9rem; color: #fff;
+    background: linear-gradient(135deg, var(--color-accent-2), var(--color-accent) 55%, #00b85a); border: 2px solid var(--color-canvas);
+    box-shadow: 0 10px 22px -8px rgb(0 102 255 / 0.9); transition: transform 0.3s var(--ease-spring); }
+  .tb-link[data-main][aria-current='page'] { background: transparent; }
+  .tb-link[data-main][aria-current='page'] .tb-icon { color: #fff; transform: translateY(-2px); box-shadow: 0 10px 26px -6px rgb(0 255 102 / 0.6); }
   body:has(.sq-root) { background: #000; }
 }
 
@@ -1206,4 +1216,15 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .topbar-home { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: 18px; color: var(--color-fg); }
   .topbar-home:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 0.6rem; }
   .topbar .bell-face { border-color: transparent; background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Sign-up background (owner, 2026-10-15): the onefan mark, faint and large, in a glow of the logo's blue and green. */
+@layer components {
+  .brand-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: radial-gradient(70% 45% at 90% 8%, rgb(0 102 255 / 0.42), transparent 70%),
+      radial-gradient(60% 40% at 5% 95%, rgb(0 255 102 / 0.2), transparent 70%), var(--color-canvas); }
+  .brand-bg-mark { position: absolute; top: 46%; left: 50%; width: min(115vw, 32rem); aspect-ratio: 52 / 72;
+    background: url('/icons/mark.svg') center / contain no-repeat; opacity: 0.12; transform: translate(-50%, -50%) rotate(-8deg);
+    filter: drop-shadow(0 0 48px rgb(0 102 255 / 0.7)); animation: brand-float 12s ease-in-out infinite alternate; }
+  @keyframes brand-float { to { transform: translate(-50%, -53%) rotate(-4deg) scale(1.05); } }
 }

@@ -3,12 +3,14 @@ import { supabaseConfig } from '@/lib/supabase/config'
 import { TEAMS } from '@/features/teams/data'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { Brand } from '@/components/brand'
+import { BrandBackdrop } from '@/components/brand-backdrop'
 import { FirstRunIntro } from '@/features/first-run/components/first-run-intro'
 
 export default function WelcomePage() {
   const enabled = supabaseConfig() !== null
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-16 pb-10">
+    <main className="relative isolate mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-16 pb-10">
+      <BrandBackdrop />
       <FirstRunIntro then="login" />
       <header>
         <Brand className="text-2xl" size={36} />

@@ -3,16 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Suspense } from 'react'
-import { House, MessageCircle, Trophy, Clapperboard, IdCard, type LucideIcon } from 'lucide-react'
+import { Clapperboard, IdCard, Mail, MessagesSquare, Trophy, type LucideIcon } from 'lucide-react'
 import type { Route } from 'next'
 
 type Tab = { href: Route; label: string; icon: LucideIcon }
 
+/** Owner, 2026-10-15: five tiles, the Square in the middle; the home is the onefan logo in the top bar. */
 export const TABS: readonly Tab[] = [
-  { href: '/stand', label: 'onefan', icon: House },
   { href: '/matches', label: 'משחקים', icon: Trophy },
+  { href: '/stand/chat', label: 'צ׳אט', icon: MessagesSquare },
   { href: '/square', label: 'הכיכר', icon: Clapperboard },
-  { href: '/inbox', label: 'הודעות', icon: MessageCircle },
+  { href: '/inbox', label: 'הודעות', icon: Mail },
   { href: '/me', label: 'הכרטיס שלי', icon: IdCard },
 ]
 
@@ -20,8 +21,8 @@ export function activeTab(pathname: string): Route | null {
   return TABS.find((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))?.href ?? null
 }
 
-/** Pure view: the same markup is the static shell (no active tab) and the live bar. A floating pill of icons;
- *  each link is named by its Hebrew label (aria-label), and the active one sits in a blue circle. */
+/** Pure view: the same markup is the static shell (no active tab) and the live bar. A floating rectangle of tiles,
+ *  each an icon over its Hebrew label; the Square, in the middle, is the raised one. */
 function TabBarView({ active }: { active: Route | null }) {
   return (
     <nav aria-label="ניווט ראשי" className="tb-pill" data-dark={active === '/square'}>
@@ -30,8 +31,11 @@ function TabBarView({ active }: { active: Route | null }) {
           const on = active === href
           return (
             <li key={href}>
-              <Link href={href} aria-label={label} title={label} aria-current={on ? 'page' : undefined} className="tb-link">
-                <Icon aria-hidden className="size-[1.3rem]" strokeWidth={2} />
+              <Link href={href} aria-current={on ? 'page' : undefined} className="tb-link" data-main={href === '/square' || undefined}>
+                <span className="tb-icon">
+                  <Icon aria-hidden className="size-[1.25rem]" strokeWidth={2} />
+                </span>
+                <span className="tb-label">{label}</span>
               </Link>
             </li>
           )
