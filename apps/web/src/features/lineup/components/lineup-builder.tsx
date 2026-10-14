@@ -36,7 +36,17 @@ type Props = {
 }
 type Sel = { slot: number } | { player: string } | null
 type Target = number | 'bench' | null
-type Press = { id: string; from: number | null; x0: number; y0: number; pointerId: number; active: boolean }
+type Press = {
+  id: string
+  from: number | null
+  card: boolean
+  x0: number
+  y0: number
+  lastX: number
+  pointerId: number
+  /** pending: not moved enough yet; drag: carrying a player; scroll: a sideways swipe on the squad strip. */
+  mode: 'pending' | 'drag' | 'scroll'
+}
 type Ghost = { id: string; x: number; y: number; over: Target }
 
 const DRAG_PX = 6
@@ -82,6 +92,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const press = useRef<Press | null>(null)
+  const strip = useRef<HTMLUListElement>(null)
   const droppedAt = useRef(-Infinity)
   const onCloseRef = useRef(onClose)
   // The overlay's own history entry: pushed by this mount, popped by back (or by leave()), left at most once.
@@ -245,43 +256,61 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   /** Only the pointer that started the press counts; a second finger is ignored. */
   const mine = (e: PointerEvent<HTMLElement>) => press.current !== null && press.current.pointerId === e.pointerId
 
-  function dragHandlers(id: string, from: number | null) {
+  // Drag model (fixed 2026-10-14 after the owner found drag dead): the pointer is captured on press, so every move
+  // reaches the pressed element even when the first move lands elsewhere (fast mouse, jumpy touch). Squad cards are
+  // touch-action: none; a mostly sideways first move on a card scrolls the strip by hand instead of starting a drag.
+  function dragHandlers(id: string, from: number | null, card: boolean) {
     return {
       onPointerDown(e: PointerEvent<HTMLElement>) {
         if (press.current) return
         if (e.pointerType === 'mouse' && e.button !== 0) return
-        press.current = { id, from, x0: e.clientX, y0: e.clientY, pointerId: e.pointerId, active: false }
+        press.current = { id, from, card, x0: e.clientX, y0: e.clientY, lastX: e.clientX, pointerId: e.pointerId, mode: 'pending' }
+        if (typeof e.currentTarget.setPointerCapture === 'function') {
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId)
+          } catch {
+            // Without capture the moves still arrive while the pointer stays over the element.
+          }
+        }
       },
       onPointerMove(e: PointerEvent<HTMLElement>) {
         const p = press.current
         if (!p || !mine(e) || p.id !== id) return
-        if (!p.active) {
-          if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < DRAG_PX) return
-          p.active = true
-          setSel(null)
-          if (typeof e.currentTarget.setPointerCapture === 'function') {
-            try {
-              e.currentTarget.setPointerCapture(e.pointerId)
-            } catch {
-              // An already released pointer: the drag still works from the moves we get.
-            }
-          }
+        if (p.mode === 'pending') {
+          const dx = e.clientX - p.x0
+          const dy = e.clientY - p.y0
+          if (Math.hypot(dx, dy) < DRAG_PX) return
+          p.mode = p.card && Math.abs(dx) > Math.abs(dy) * 1.5 ? 'scroll' : 'drag'
+          if (p.mode === 'drag') setSel(null)
         }
+        if (p.mode === 'scroll') {
+          if (strip.current) strip.current.scrollLeft += p.lastX - e.clientX
+          p.lastX = e.clientX
+          return
+        }
+        e.preventDefault()
         showGhost({ id, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY) })
       },
       onPointerUp(e: PointerEvent<HTMLElement>) {
         if (!mine(e)) return
         const p = press.current!
         endDrag()
-        if (!p.active) return
-        droppedAt.current = e.timeStamp
+        if (p.mode === 'pending') return // a tap: the click handler does the work
+        droppedAt.current = e.timeStamp // swallow the click that ends a drag or a swipe
+        if (p.mode !== 'drag') return
         const to = targetAt(e.clientX, e.clientY)
         if (typeof to === 'number') put(to, p.id)
         else if (to === 'bench' && p.from !== null) bench(p.from)
       },
       onPointerCancel(e: PointerEvent<HTMLElement>) {
-        // The browser took the gesture (e.g. the strip scrolls sideways): nothing moves.
         if (mine(e)) endDrag()
+      },
+      onLostPointerCapture(e: PointerEvent<HTMLElement>) {
+        // Capture lost without an up (window blur, element re-rendered away): never leave a stuck press behind.
+        if (mine(e)) endDrag()
+      },
+      onDragStart(e: { preventDefault(): void }) {
+        e.preventDefault()
       },
     }
   }
@@ -361,7 +390,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                 aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
                 style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
                 onClick={(e) => tapSlot(s.slot, e)}
-                {...(p ? dragHandlers(p.id, s.slot) : {})}
+                {...(p ? dragHandlers(p.id, s.slot, false) : {})}
               >
                 <i>{p ? (p.number ?? '') : '+'}</i>
                 <small>{p ? p.short : SLOT_HE[s.role]}</small>
@@ -394,7 +423,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           ))}
         </div>
 
-        <ul className="lu-strip" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`הסגל של ${team.short}`}>
+        <ul ref={strip} className="lu-strip" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`הסגל של ${team.short}`}>
           {shown.map((p) => (
             <li key={p.id}>
               <button
@@ -405,7 +434,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                 aria-pressed={selPlayer === p.id}
                 aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, onPitch.has(p.id) ? 'בהרכב' : null].filter(Boolean).join(', ')}
                 onClick={(e) => tapPlayer(p.id, e)}
-                {...dragHandlers(p.id, xi.indexOf(p.id) >= 0 ? xi.indexOf(p.id) : null)}
+                {...dragHandlers(p.id, xi.indexOf(p.id) >= 0 ? xi.indexOf(p.id) : null, true)}
               >
                 <i className="t-num">{p.number ?? ''}</i>
                 <span>{p.short}</span>

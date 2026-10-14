@@ -221,6 +221,30 @@ describe('LineupBuilder (overlay)', () => {
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
   })
 
+  it('drags even when the first move jumps straight onto the slot (fast mouse)', () => {
+    setup()
+    const target = () => slot(/^עמדת שוער/)[0]!
+    pointAt(target)
+    fireEvent.pointerDown(card(1), { pointerId: 7, pointerType: 'mouse', button: 0, clientX: 300, clientY: 700 })
+    // With the pointer captured on press, the far move still reaches the card.
+    fireEvent.pointerMove(card(1), { pointerId: 7, pointerType: 'mouse', clientX: 200, clientY: 500 })
+    fireEvent.pointerUp(card(1), { pointerId: 7, pointerType: 'mouse', clientX: 200, clientY: 500 })
+    expect(target()).toHaveAccessibleName('עמדת שוער: שחקן 1')
+  })
+
+  it('a sideways swipe on a squad card scrolls the strip instead of dragging', () => {
+    setup()
+    pointAt(() => slot(/^עמדת שוער/)[0]!)
+    const s = strip()
+    Object.defineProperty(s, 'scrollLeft', { value: 100, writable: true, configurable: true })
+    fireEvent.pointerDown(card(1), { pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 700 })
+    fireEvent.pointerMove(card(1), { pointerId: 8, pointerType: 'touch', clientX: 170, clientY: 702 })
+    fireEvent.pointerMove(card(1), { pointerId: 8, pointerType: 'touch', clientX: 150, clientY: 703 })
+    fireEvent.pointerUp(card(1), { pointerId: 8, pointerType: 'touch', clientX: 150, clientY: 703 })
+    expect(s.scrollLeft).toBe(150)
+    expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
+  })
+
   it('marks filled slots (the only slots that start a drag) and injured players for styling', () => {
     const xi = emptyXI()
     xi[0] = 'mta_1'
