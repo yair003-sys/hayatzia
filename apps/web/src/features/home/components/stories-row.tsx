@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus, Shirt, Star } from 'lucide-react'
 import { UploadClip } from '@/features/square/components/upload-clip'
 import { flattenStories, initialOf, type StoryGroup } from '../schema'
@@ -31,6 +32,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
   const [open, setOpen] = useState<number | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [upload, setUpload] = useState<'idle' | 'busy' | 'done'>('idle')
+  const router = useRouter()
   const preview = useRef<string | null>(null)
 
   const now = groups.map((g) => {
@@ -73,6 +75,8 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
             if (preview.current?.startsWith('blob:')) URL.revokeObjectURL(preview.current)
             preview.current = null
             setUpload(clip ? 'done' : 'idle')
+            // The new post joins the home sections (the stories and "החם בכיכר") without reloading the page.
+            if (clip) router.refresh()
           }}
           trigger={
             <button type="button" className="hm-story-btn" aria-label={`סטורי חדש לאוהדי ${teamShort}`} onClick={() => setChoosing(true)}>

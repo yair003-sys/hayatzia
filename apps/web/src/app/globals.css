@@ -838,7 +838,7 @@
 /* Activity bell ("התראות"): a round button at the top end (left in RTL) corner of every in-app screen, under the
    in-app banner (z 60) and the sheets, over the Square (z 30) and the tab bar (z 40). */
 @layer components {
-  .app-main { padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem); }
+  .app-main { padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem); }
   /* The link is the 44px touch target; the round face inside is what shows. */
   .bell { position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 0.5rem); inset-inline-end: max(0.875rem, calc((100vw - 28rem) / 2 + 0.875rem));
     display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px; color: var(--color-fg); }
@@ -1017,8 +1017,6 @@
 /* ── Home (redesign 2026-10-14, owner's sketch "onefan — דף ראשי עם סטוריז"). Inside .sh, so --acc* are the club's
    colours (teamAccent). Logical properties for RTL; 44px touch targets; reduced motion stops every animation. ──── */
 @layer components {
-  /* The home carries the bell in its own header: no strip kept free for the floating one. */
-  .app-main:has(.hm) { padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem); }
   .bell.bell-inline { position: relative; top: auto; inset-inline-end: auto; z-index: auto; flex: none; }
 
   .hm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-block: 6px 2px; }
@@ -1209,5 +1207,3 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .topbar-home:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 0.6rem; }
   .topbar .bell-face { border-color: transparent; background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
-/* Room for the bar on every screen but the home (own header) and the Square (full screen). */
-.app-main:not(:has(.hm)) { padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem); }

@@ -64,7 +64,7 @@ export async function getHotClips(me: string, limit = 4): Promise<Clip[]> {
       .from('clips')
       .select(CLIP_COLUMNS)
       .eq('once', false)
-      .gt('likes_count', 0)
+      // Most-liked first, then the newest: a fresh post shows here at once even before its first like (owner, 2026-10-15).
       .order('likes_count', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit * 2),

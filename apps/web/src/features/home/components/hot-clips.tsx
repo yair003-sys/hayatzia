@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Heart, ImagePlus } from 'lucide-react'
 import { UploadClip } from '@/features/square/components/upload-clip'
 import { shortCount, type Clip } from '@/features/square/schema'
@@ -17,6 +18,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
   const [open, setOpen] = useState<number | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [uploaded, setUploaded] = useState(false)
+  const router = useRouter()
   const items = clips.map((clip) => ({ clip, group: 0 }))
   const close = useCallback(() => setOpen(null), [])
   if (clips.length === 0)
@@ -35,7 +37,11 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
           onStart={(local) => {
             if (local.url?.startsWith('blob:')) URL.revokeObjectURL(local.url)
           }}
-          onDone={(localId, clip) => setUploaded(clip !== null)}
+          onDone={(localId, clip) => {
+            setUploaded(clip !== null)
+            // The new post joins the home sections (this row and the stories) without reloading the page.
+            if (clip) router.refresh()
+          }}
           trigger={
             <button type="button" className="hm-empty-btn" onClick={() => setChoosing(true)}>
               העלה את הראשון

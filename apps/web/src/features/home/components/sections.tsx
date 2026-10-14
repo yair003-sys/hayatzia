@@ -36,8 +36,11 @@ const clock = () => Date.now()
 /** onefan, "האוהדים של <club>" in the club's colour, and the activity bell (the only bell on this screen). */
 export function HomeHeader({ team, userId }: Fan) {
   return (
-    <header className="hm-head">
-      <Brand size={26} className="hm-brand" />
+    // The same pinned top bar as every screen (owner, 2026-10-15): it stays while the home scrolls.
+    <header className="hm-head topbar">
+      <Link href="/stand" aria-label="onefan, למסך הראשי" className="topbar-home">
+        <Brand size={24} className="hm-brand" />
+      </Link>
       <h1 className="hm-club">
         <span>האוהדים של</span>
         <b>{team.name}</b>

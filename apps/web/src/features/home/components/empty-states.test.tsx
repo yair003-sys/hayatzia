@@ -13,6 +13,7 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => '/stand' }))
 vi.mock('@/lib/while-visible', () => ({ whileVisible: () => () => {} }))
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({}) }))
 vi.mock('@/lib/supabase/channel', () => ({ openChannel: vi.fn() }))
