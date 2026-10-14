@@ -1310,20 +1310,12 @@ isOneToOne: false
                            },
 "home_fans_of_week":
 { Args: { "p_team": string }; Returns: {
-              "nick": string,
-"points": number
+              "nick": string,"points": number
             }[]
                            },
 "home_player_reviews":
 { Args: { "p_per_player"?: number }; Returns: {
-              "author_id": string,
-"liked": boolean,
-"likes_count": number,
-"nick": string,
-"player_id": string,
-"review": string,
-"stars": number,
-"updated_at": string
+              "author_id": string,"liked": boolean,"likes_count": number,"nick": string,"player_id": string,"review": string,"stars": number,"updated_at": string
             }[]
                            },
 "invite_to_group":
