@@ -2,7 +2,7 @@
 -- the most-liked reviews per player, story seen-state from clip_views, and the club aggregates "active fans (7 days)"
 -- and "fans of the week" (own club only, nick + points only).
 begin;
-select plan(52);
+select plan(55);
 
 -- Likes part (mta): f1 author, f2 and f3 likers, f4 blocked by f1, f5 a rival (hta), f6 rated without words.
 -- Aggregates part (mhf): g1..g4, g7..g10; g5 is a Beitar fan.
