@@ -1126,8 +1126,22 @@ isOneToOne: false
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
                            },
 "claim_alerts":
-{ Args: { "p_limit": number }; Returns: { "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null }[]
-                           },
+{ Args: { "p_limit": number }; Returns: {
+              "away_goals": number,
+"created_at": string,
+"fixture_id": number,
+"home_goals": number,
+"id": number,
+"kind": string,
+"scoring_api_id": number | null,
+"sent_at": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "match_alerts"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
                            },
