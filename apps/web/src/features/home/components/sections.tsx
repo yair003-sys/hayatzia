@@ -203,6 +203,12 @@ export async function MiniTableSection({ team }: { team: Team }) {
     <section aria-labelledby="hm-table-h" className="hm-sec">
       <SectionHead id="hm-table-h" title="הטבלה" more={{ href: '/matches', label: 'לטבלה המלאה' }} />
       <table className="hm-table">
+        <colgroup>
+          <col style={{ width: 40 }} />
+          <col />
+          <col style={{ width: 48 }} />
+          <col style={{ width: 52 }} />
+        </colgroup>
         <thead className="sr-only">
           <tr>
             <th scope="col">מקום</th>
