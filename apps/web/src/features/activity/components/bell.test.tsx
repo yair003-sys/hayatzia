@@ -156,6 +156,13 @@ describe('Bell', () => {
     expect(screen.getByRole('link', { name: 'התראות, 2 חדשות' })).toBeInTheDocument()
   })
 
+  it('elsewhere a top bar carries the onefan logo (to the home) and the bell (owner, 2026-10-15)', () => {
+    h.pathname = '/matches'
+    render(<FloatingBell meId={ME} count={0} />)
+    expect(screen.getByRole('link', { name: 'onefan, למסך הראשי' })).toHaveAttribute('href', '/stand')
+    expect(screen.getByRole('link', { name: 'התראות' })).toHaveClass('bell-inline')
+  })
+
   it('in a header it is inline, not floating', () => {
     render(<Bell meId={ME} count={0} inline />)
     expect(screen.getByRole('link', { name: 'התראות' })).toHaveClass('bell', 'bell-inline')

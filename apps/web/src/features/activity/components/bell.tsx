@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell as BellIcon } from 'lucide-react'
+import { Brand } from '@/components/brand'
 import { debounce } from '@/lib/debounce'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -14,11 +15,24 @@ import { ACTIVITY_SEEN_EVENT, badgeLabel, bellLabel } from '../activity'
 /** Screens that place the bell in their own header (the home), so the floating one stays away: one bell per screen. */
 export const OWN_BELL_PATHS = new Set(['/stand'])
 
-/** The bell floating at the top corner, except on screens that carry it in their header. */
+/** Full-screen reels keep their own top row (tabs and "+"), so there the bell floats alone in the corner. */
+const IMMERSIVE = (pathname: string) => pathname === '/square' || pathname.startsWith('/square/')
+
+/** The top bar of every in-app screen (owner, 2026-10-15): a floating rectangle that stays while the page scrolls,
+ *  with the onefan logo (back to the home) at one end and the bell at the other. Not on screens that carry both in
+ *  their own header (the home). */
 export function FloatingBell(props: { meId: string; count: number }) {
   const pathname = usePathname()
   if (OWN_BELL_PATHS.has(pathname)) return null
-  return <Bell {...props} />
+  if (IMMERSIVE(pathname)) return <Bell {...props} />
+  return (
+    <header className="topbar">
+      <Link href="/stand" aria-label="onefan, למסך הראשי" className="topbar-home">
+        <Brand size={24} />
+      </Link>
+      <Bell {...props} inline />
+    </header>
+  )
 }
 
 /** Several changes in a burst (a clip going viral) become one count request, at the latest after REFETCH_MAX_MS. */
