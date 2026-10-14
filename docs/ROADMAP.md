@@ -26,12 +26,14 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 ## Notes for the next session
 - All migrations through `20261013090000_fan_card` are applied on staging and production (2026-10-13).
 - All migrations through `20261013110000_dm_groups_blocks` are applied on staging and production (2026-10-13).
+- All migrations through `20261014150000_home` (notifications, activity bell, fan lineups, home redesign) are applied on staging and production (2026-10-14).
 - Club fan representatives (`club_reps`): none yet — the owner names them; add by SQL until an admin screen exists.
 - Staging demos: `web-demo-match.yml` (crowd verdict), `web-demo-predictions.yml` (needs the demo fans from the first).
 - Presence joins take ~2 s on the free staging DB, ~30 s while the demo match loads it: one more reason for Pro + compute before launch.
 - League data stays on season 2024 for now (owner, 2026-10-12): "Trips" shows no upcoming matches until the API plan changes.
 - Owner's own production profile has no team yet (he chooses).
-- Preview deployments have no `SUPABASE_SECRET_KEY`, so they do not send notifications (by design for now).
+- Preview deployments have the staging `SUPABASE_SECRET_KEY` (rotated 2026-10-14) and send notifications on staging; GitHub reaches previews through the Vercel automation bypass.
+- Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 
 ## Load test results (staging, free plan, direct PostgREST reads of the league data, uncached)
 | Peak simultaneous fans | Requests | Median | p95 | Failed |
