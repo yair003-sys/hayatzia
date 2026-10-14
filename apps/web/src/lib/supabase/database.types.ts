@@ -473,14 +473,14 @@ isOneToOne: false
                   ]
                 },"fan_lineup_totals": {
                   Row: {
-                    "fans": number,"fixture_id": number,"formations": Json,"team_id": string
+                    "fans": number,"fixture_id": number,"formations": NonNullable<Json>,"team_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "fans"?: number,"fixture_id": number,"formations"?: Json,"team_id": string
+                    "fans"?: number,"fixture_id": number,"formations"?: NonNullable<Json>,"team_id": string
                   }
                   Update: {
-                    "fans"?: number,"fixture_id"?: number,"formations"?: Json,"team_id"?: string
+                    "fans"?: number,"fixture_id"?: number,"formations"?: NonNullable<Json>,"team_id"?: string
                   }
                   Relationships: [
                     {
@@ -499,14 +499,14 @@ isOneToOne: false
                   ]
                 },"fan_lineups": {
                   Row: {
-                    "fixture_id": number,"formation": string,"slots": Json,"team_id": string,"updated_at": string,"user_id": string
+                    "fixture_id": number,"formation": string,"slots": NonNullable<Json>,"team_id": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "fixture_id": number,"formation": string,"slots": Json,"team_id": string,"updated_at"?: string,"user_id"?: string
+                    "fixture_id": number,"formation": string,"slots": NonNullable<Json>,"team_id": string,"updated_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "fixture_id"?: number,"formation"?: string,"slots"?: Json,"team_id"?: string,"updated_at"?: string,"user_id"?: string
+                    "fixture_id"?: number,"formation"?: string,"slots"?: NonNullable<Json>,"team_id"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1311,7 +1311,7 @@ isOneToOne: false
 { Args: { "p_fixture": number,"p_formation": string,"p_slots": Json }; Returns: {
               "fixture_id": number,
 "formation": string,
-"slots": Json,
+"slots": NonNullable<Json>,
 "team_id": string,
 "updated_at": string,
 "user_id": string
