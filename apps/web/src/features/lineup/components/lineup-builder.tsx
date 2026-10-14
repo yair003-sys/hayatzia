@@ -9,6 +9,7 @@ import {
   clearSlot,
   FORMATIONS,
   formationSlots,
+  edgeScrollStep,
   GROUP_HE,
   labelWidth,
   placeAt,
@@ -109,6 +110,8 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const leaving = useRef(false)
   const frame = useRef<number | null>(null)
   const latest = useRef<Ghost | null>(null)
+  const pos = useRef<{ x: number; y: number } | null>(null)
+  const scrollFrame = useRef<number | null>(null)
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -253,9 +256,34 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
     })
   }
 
+  /**
+   * While a drag is on, every frame: near the top or bottom edge of the panel (the scroll container), scroll it a few
+   * px and re-aim the ghost at what is now under the finger. Stops by itself when the drag ends.
+   */
+  function autoScroll() {
+    scrollFrame.current = null
+    const p = press.current
+    const el = panel.current
+    const at = pos.current
+    if (!p || p.mode !== 'drag' || !el || !at) return
+    const r = el.getBoundingClientRect()
+    const step = edgeScrollStep(at.y, r.top, r.bottom)
+    if (step !== 0) {
+      const before = el.scrollTop
+      el.scrollTop = before + step
+      if (el.scrollTop !== before) showGhost({ id: p.id, x: at.x, y: at.y, over: targetAt(at.x, at.y) })
+    }
+    scrollFrame.current = requestAnimationFrame(autoScroll)
+  }
+
   function endDrag() {
     press.current = null
     latest.current = null
+    pos.current = null
+    if (scrollFrame.current !== null) {
+      cancelAnimationFrame(scrollFrame.current)
+      scrollFrame.current = null
+    }
     if (frame.current !== null) {
       cancelAnimationFrame(frame.current)
       frame.current = null
@@ -266,10 +294,10 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   /** Only the pointer that started the press counts; a second finger is ignored. */
   const mine = (e: PointerEvent<HTMLElement>) => press.current !== null && press.current.pointerId === e.pointerId
 
-  // Drag model (fixed 2026-10-14 after the owner found drag dead): the pointer is captured on press, so every move
-  // reaches the pressed element even when the first move lands elsewhere (fast mouse, jumpy touch). Cards and filled
-  // slots are touch-action: none; any move past the threshold, in any direction, starts a drag (the grid has no
-  // sideways scrolling to compete with).
+  // Drag model: the pointer is captured on press, so every move reaches the pressed element even when the first move
+  // lands elsewhere (fast mouse, jumpy touch). Only cards and filled slots are touch-action: none; any move past the
+  // threshold starts a drag. Everything else in the panel (tabs, hint, gaps, pitch background, empty slots) scrolls
+  // it, and dragging near its top or bottom edge scrolls it too (autoScroll).
   function dragHandlers(id: string, from: number | null) {
     return {
       onPointerDown(e: PointerEvent<HTMLElement>) {
@@ -293,7 +321,9 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           if (Math.hypot(dx, dy) < DRAG_PX) return
           p.mode = 'drag'
           setSel(null)
+          if (scrollFrame.current === null && typeof requestAnimationFrame === 'function') scrollFrame.current = requestAnimationFrame(autoScroll)
         }
+        pos.current = { x: e.clientX, y: e.clientY }
         e.preventDefault()
         showGhost({ id, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY) })
       },
@@ -483,7 +513,9 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                     aria-pressed={selPlayer === p.id}
                     aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, inXI ? 'בהרכב' : null].filter(Boolean).join(', ')}
                     onClick={(e) => tapPlayer(p.id, e)}
-                    {...dragHandlers(p.id, inXI ? xi.indexOf(p.id) : null)}
+                    /* from = null: a card is never a pitch drag source, so a swipe that ends over the grid changes
+                       nothing. Benching is dragging the pitch player onto the grid, or "הוצא לספסל". */
+                    {...dragHandlers(p.id, null)}
                   >
                     <span className="lu-card-face" aria-hidden="true">
                       <b className="lu-card-n t-num">{p.number ?? '–'}</b>

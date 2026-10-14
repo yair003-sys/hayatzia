@@ -203,6 +203,16 @@ describe('LineupBuilder (overlay)', () => {
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
   })
 
+  it('a swipe on a picked (✓) card that ends over the grid changes nothing (scroll attempts never bench)', () => {
+    const xi = emptyXI()
+    xi[0] = 'mta_1'
+    setup({ initial: { formation: '4-3-3', xi } })
+    showTab('שוערים')
+    expect(card(1)).toHaveAccessibleName(/בהרכב/)
+    drag(card(1), () => within(grid()).getAllByRole('listitem')[1]!, 'touch')
+    expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: שחקן 1')
+  })
+
   it('ignores a second finger while one drag is under way', () => {
     setup()
     pointAt(() => slot(/^עמדת שוער/)[0]!)

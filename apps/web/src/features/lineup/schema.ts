@@ -57,6 +57,17 @@ export function roleOf(position: string): Role | null {
 /** Widest a slot's name may be (% of the pitch) so neighbours on a line never touch: ≤ 20%, a gap kept. */
 export const labelWidth = (s: SlotSpot) => Math.min(20, round2(s.w - 1.5))
 
+/**
+ * Auto-scroll while dragging near an edge of the scroll container: px to scroll this frame (negative = up), 0 outside
+ * the edge zones. Faster the deeper the finger is in the zone, capped at `max`.
+ */
+export function edgeScrollStep(y: number, top: number, bottom: number, zone = 56, max = 14): number {
+  if (bottom - top <= 2 * zone) return 0
+  if (y < top + zone) return -Math.ceil((Math.min(zone, top + zone - y) / zone) * max)
+  if (y > bottom - zone) return Math.ceil((Math.min(zone, y - (bottom - zone)) / zone) * max)
+  return 0
+}
+
 // ── the fans' XI ──────────────────────────────────────────────────────────────────────────
 export type Tally = { formation: string; slot: number; player_id: string; picks: number }
 export type Totals = { fans: number; formations: Record<string, number> }
@@ -192,8 +203,8 @@ export function lineupErrorHe(message: string): string {
 export type SquadPlayer = { id: string; number: number | null; name: string; short: string; pos: string; role: Role; injured: boolean }
 export type SavedLineup = { formation: Formation; xi: XI }
 /** open: before kick-off, building allowed; locked: kicked off, not over; done: finished (ratings shown);
- *  off: postponed, cancelled or abandoned (not "locked by the whistle"). */
-export type LineupPhase = 'open' | 'locked' | 'done' | 'off'
+ *  off: postponed, cancelled or abandoned (not "locked by the whistle"); unscheduled: TBD past its placeholder time. */
+export type LineupPhase = 'open' | 'locked' | 'done' | 'off' | 'unscheduled'
 
 /** The database accepts a lineup only before kick-off of a match not yet started (status NS or TBD). */
 export function canBuild(f: { t: number; st: string }, nowMs: number): boolean {
@@ -203,5 +214,6 @@ export function canBuild(f: { t: number; st: string }, nowMs: number): boolean {
 export function lineupPhase(f: { t: number; st: string }, nowMs: number): LineupPhase {
   if (canBuild(f, nowMs)) return 'open'
   if (DONE_STATUSES.has(f.st)) return 'done'
+  if (f.st === 'TBD') return 'unscheduled' // past its placeholder time, no date yet
   return NOT_PLAYED_STATUSES.has(f.st) ? 'off' : 'locked'
 }

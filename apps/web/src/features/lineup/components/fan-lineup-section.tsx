@@ -14,7 +14,7 @@ export async function FanLineupSection({ fixture: f, home, away }: { fixture: Fi
   const side = s.team.id === home.id ? home : s.team.id === away.id ? away : null
   if (!side) return null
   const phase = lineupPhase(f, clock())
-  const data = await getFanLineup(f.id, s.team.id, DONE_STATUSES.has(f.st))
+  const data = await getFanLineup(f.id, s.team.id, s.userId, DONE_STATUSES.has(f.st))
   if (data.squad.length === 0) return null
   return (
     <FanLineup

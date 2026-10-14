@@ -25,6 +25,7 @@ const LOCK_LABEL: Record<Exclude<LineupPhase, 'open'>, string> = {
   locked: 'ננעל בשריקת הפתיחה',
   done: 'המשחק הסתיים',
   off: 'המשחק נדחה',
+  unscheduled: 'מועד המשחק טרם נקבע',
 }
 
 async function saveWithAction(input: SaveLineupInput): Promise<{ ok: true } | { error: string }> {

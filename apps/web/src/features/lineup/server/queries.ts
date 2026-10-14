@@ -24,12 +24,12 @@ const ROLE_ORDER: Record<Role, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 }
  * (pk prefix fixture, team, formation; at most 11 slots × squad ≈ 275 rows, well under the 1000-row API cap), in a
  * fixed order. Reads the session (RLS): never cached. Read errors are logged by code and read as "nothing yet".
  */
-export async function getFanLineup(fixtureId: number, teamId: string, withRatings: boolean): Promise<FanLineupData> {
+export async function getFanLineup(fixtureId: number, teamId: string, userId: string, withRatings: boolean): Promise<FanLineupData> {
   const supabase = await createClient()
   if (!supabase) return { squad: [], mine: null, fans: null, ratings: null }
   const [players, mine, totals, stats] = await Promise.all([
     supabase.from('players').select('id,number,name_he,name_short,position,injured').eq('team_id', teamId),
-    supabase.from('fan_lineups').select('formation,slots').eq('fixture_id', fixtureId).maybeSingle(),
+    supabase.from('fan_lineups').select('formation,slots').eq('fixture_id', fixtureId).eq('user_id', userId).maybeSingle(),
     supabase.from('fan_lineup_totals').select('fans,formations').eq('fixture_id', fixtureId).eq('team_id', teamId).maybeSingle(),
     withRatings
       ? supabase.from('match_rating_stats').select('player_id,sum,count').eq('fixture_id', fixtureId)

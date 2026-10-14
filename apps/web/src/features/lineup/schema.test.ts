@@ -8,6 +8,7 @@ import {
   FORMATIONS,
   formationSlots,
   isFormation,
+  edgeScrollStep,
   labelWidth,
   lineupErrorHe,
   parseFormations,
@@ -81,6 +82,27 @@ describe('isFormation / parseFormations', () => {
     expect(parseFormations({ '4-3-3': 'x', '9-9-9': 2, '3-5-2': 0 })).toEqual({})
     expect(parseFormations(null)).toEqual({})
     expect(parseFormations([1, 2])).toEqual({})
+  })
+})
+
+describe('edgeScrollStep', () => {
+  // Container from y=100 to y=700, 56px zones.
+  it('is 0 in the middle and scrolls up near the top, down near the bottom', () => {
+    expect(edgeScrollStep(400, 100, 700)).toBe(0)
+    expect(edgeScrollStep(156, 100, 700)).toBe(0)
+    expect(edgeScrollStep(644, 100, 700)).toBe(0)
+    expect(edgeScrollStep(150, 100, 700)).toBeLessThan(0)
+    expect(edgeScrollStep(650, 100, 700)).toBeGreaterThan(0)
+  })
+  it('goes faster deeper in the zone, capped, also past the edge', () => {
+    expect(Math.abs(edgeScrollStep(110, 100, 700))).toBeGreaterThan(Math.abs(edgeScrollStep(150, 100, 700)))
+    expect(edgeScrollStep(100, 100, 700)).toBe(-14)
+    expect(edgeScrollStep(40, 100, 700)).toBe(-14)
+    expect(edgeScrollStep(760, 100, 700)).toBe(14)
+    expect(edgeScrollStep(690, 100, 700, 56, 8)).toBeLessThanOrEqual(8)
+  })
+  it('does nothing in a container too short for two zones', () => {
+    expect(edgeScrollStep(105, 100, 200)).toBe(0)
   })
 })
 
@@ -263,6 +285,6 @@ describe('canBuild / lineupPhase', () => {
     expect(lineupPhase({ t: at(30), st: 'PST' }, now)).toBe('off')
     expect(lineupPhase({ t: at(-30), st: 'CANC' }, now)).toBe('off')
     expect(lineupPhase({ t: at(-30), st: 'ABD' }, now)).toBe('off')
-    expect(lineupPhase({ t: at(-30), st: 'TBD' }, now)).toBe('off')
+    expect(lineupPhase({ t: at(-30), st: 'TBD' }, now)).toBe('unscheduled')
   })
 })

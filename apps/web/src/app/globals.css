@@ -888,8 +888,8 @@
 
 /* Fan lineup ("ההרכב של האוהדים"): the read-only board on the match page's "הרכב" tab, the home call to action and the
    full-screen builder. Brand tokens; logical properties except pitch and pointer coordinates (a picture, like .lc-p);
-   every control is at least 44px; only filled slots block touch scrolling (touch-action: none), squad cards let the
-   strip scroll sideways (pan-x) and start a drag on a vertical move. */
+   touch targets of 44px. Only squad cards and filled slots are touch-action: none (they drag); nothing above them is,
+   so the panel scrolls from the tabs, the hint, the gaps between cards, the pitch background and empty slots. */
 @layer components {
   .lu-sec-h { font: 700 16px / 1.3 var(--font-display); }
   .lu-locked { display: inline-flex; align-items: center; gap: 4px; }
@@ -914,8 +914,8 @@
 
   /* ── builder overlay ── */
   .lu-backdrop { position: fixed; z-index: 50; inset: 0; background: rgb(10 14 26 / 0.94); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-  .lu-overlay { position: fixed; z-index: 50; inset: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; overscroll-behavior: contain;
-    max-width: 28rem; margin-inline: auto; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 0;
+  .lu-overlay { position: fixed; z-index: 50; inset: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overscroll-behavior: contain;
+    max-width: 28rem; margin-inline: auto; padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 0;
     background: var(--color-canvas); animation: lu-in 0.22s var(--ease-soft); }
   /* The panel scrolls as one column (pitch first, then tabs and grid); no row is ever squeezed to fit. */
   .lu-overlay > * { flex: none; }
@@ -929,11 +929,18 @@
     font-size: 13px; font-weight: 600; color: var(--color-muted); background: rgb(255 255 255 / 0.03); }
   .lu-forms > button[aria-pressed='true'] { color: #fff; border-color: transparent;
     background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent)); }
-  /* The pitch takes what the squad grid leaves (container units), keeping its shape. */
-  /* A real portrait pitch (3:4), wide enough to read: never shrunk to fit the screen. */
-  .lu-pitch { width: min(92%, 420px); aspect-ratio: 3 / 4; margin-inline: auto; }
-  .lu-slot { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 2.75rem; min-height: 2.75rem;
+  /* A real portrait pitch (3:4), as wide as the screen allows (92%, max 420px) but also short enough that the first row
+     of cards shows above the save bar on a 375×667 phone. 22rem is the rest of that first screen, from the rules
+     below: top padding 8 + head 44 + formations 44 + tabs 50 + hint 20 + grid padding 6 + one card row 66
+     + 5 gaps of 8 + the sticky save bar 68 = 346px, rounded up. 375×667 → 236px wide; 390×750 → 298px; never under 13rem. */
+  .lu-pitch { width: max(13rem, min(92%, 420px, calc((100vh - 22rem) * 0.75))); aspect-ratio: 3 / 4; margin-inline: auto; }
+  @supports (height: 100dvh) {
+    .lu-pitch { width: max(13rem, min(92%, 420px, calc((100dvh - 22rem) * 0.75))); }
+  }
+  .lu-slot { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 2.375rem; min-height: 2.75rem;
     max-width: 20%; padding: 2px; transform: translate(-50%, 50%); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  /* The label may be narrower than 44px on a 5-wide line; the hit area still is 44px. */
+  .lu-slot::before { content: ''; position: absolute; inset: 0 -3px; }
   .lu-slot[data-filled] { touch-action: none; cursor: grab; }
   .lu-slot > i { display: grid; place-items: center; border-radius: 50%; font: 700 12px / 1 var(--font-brand); font-style: normal;
     color: var(--t); background: var(--a); box-shadow: 0 0 0 2px var(--b), 0 6px 12px -4px rgb(0 0 0 / 0.7); }
@@ -942,17 +949,17 @@
   .lu-slot > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: rgb(255 255 255 / 0.9); text-shadow: 0 1px 3px #000; }
   .lu-slot[aria-pressed='true'] > i { box-shadow: 0 0 0 3px var(--color-ok), 0 0 18px rgb(0 255 102 / 0.5); }
   .lu-slot[data-over] > i { transform: scale(1.18); box-shadow: 0 0 0 3px var(--color-accent-2), 0 0 18px rgb(0 102 255 / 0.6); }
-  .lu-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 1.75rem; margin-top: -2px; }
+  .lu-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 1.25rem; }
   .lu-hint > p { min-width: 0; font-size: 12px; line-height: 1.4; color: var(--color-muted); }
   .lu-bench-btn { flex: none; min-height: 2.75rem; padding: 0 14px; border-radius: 999px; border: 1px solid var(--color-line-strong); font-size: 13px; font-weight: 600; }
   /* Squad picker: a segmented control by line, then the line's players as FIFA-style cards in the club's colours
      (--lu-acc / --lu-acc2 / --lu-on from teamAccent), 4 to a row, no sideways scrolling. */
-  .lu-tabs { flex: none; display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.04); }
+  .lu-tabs { flex: none; display: flex; gap: 4px; padding: 2px; border-radius: 999px; border: 1px solid var(--color-line); background: rgb(255 255 255 / 0.04); }
   .lu-tabs > button { flex: 1; min-width: 0; min-height: 2.75rem; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 999px;
     font-size: 13.5px; font-weight: 600; color: var(--color-muted); transition: background 0.2s, color 0.2s; }
   .lu-tabs > button > small { min-width: 18px; padding: 1px 5px; border-radius: 999px; font: 700 10.5px / 1.4 var(--font-brand); color: var(--color-canvas); background: var(--color-ok); }
   .lu-tabs > button[aria-selected='true'] { color: #fff; background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent)); box-shadow: 0 6px 16px -8px rgb(0 102 255 / 0.8); }
-  .lu-squad { --card-h: 4.5rem; }
+  .lu-squad { --card-h: 4.125rem; }
   .lu-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 6px 4px; border-radius: 16px; transition: background 0.2s; }
   .lu-grid[data-over] { background: var(--color-accent-soft); outline: 1.5px dashed var(--color-accent-2); outline-offset: -1px; }
   .lu-grid-empty { grid-column: 1 / -1; padding: 12px; text-align: center; font-size: 13px; color: var(--color-muted); }
@@ -972,8 +979,8 @@
     transform: translateX(-38%); transition: transform 0.7s var(--ease-soft); pointer-events: none; }
   .lu-card:hover .lu-card-face::before, .lu-card:focus-visible .lu-card-face::before, .lu-card[aria-pressed='true'] .lu-card-face::before { transform: translateX(38%); }
   .lu-card-face::after { content: ''; position: absolute; inset: 2px; clip-path: inherit; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4); pointer-events: none; }
-  .lu-card-n { position: relative; font: 800 25px / 1 var(--font-brand); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 rgb(0 0 0 / 0.18); }
-  .lu-card-pos { position: absolute; top: 8px; inset-inline-start: 8px; padding: 1.5px 4px; border-radius: 4px;
+  .lu-card-n { position: relative; font: 800 23px / 1 var(--font-brand); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 rgb(0 0 0 / 0.18); }
+  .lu-card-pos { position: absolute; top: 6px; inset-inline-start: 8px; padding: 1.5px 4px; border-radius: 4px;
     font: 800 8.5px / 1.2 var(--font-brand); letter-spacing: 0.08em; color: #fff; background: rgb(0 0 0 / 0.32); }
   .lu-card-name { position: relative; max-width: 100%; padding-top: 3px; border-top: 1px solid color-mix(in srgb, currentColor 35%, transparent);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; line-height: 1.2; }
@@ -988,11 +995,11 @@
   .lu-card[aria-pressed='true'] { transform: translateY(-3px);
     filter: drop-shadow(0 0 1.5px var(--color-ok)) drop-shadow(0 0 1.5px var(--color-ok)) drop-shadow(0 10px 16px rgb(0 255 102 / 0.32)); }
   .lu-card[aria-pressed='true'] .lu-card-face { opacity: 1; filter: none; }
-  .lu-ghost { position: fixed; z-index: 3; width: 4.75rem; height: 4.5rem; pointer-events: none;
+  .lu-ghost { position: fixed; z-index: 3; width: 4.75rem; height: 4.125rem; pointer-events: none;
     transform: translate(-50%, -60%) rotate(-5deg) scale(1.06); filter: drop-shadow(0 14px 20px rgb(0 0 0 / 0.6)); }
   /* Save stays reachable while the panel scrolls: stuck to the bottom, above the home indicator. */
   .lu-foot { position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px; margin-top: auto; margin-inline: -16px;
-    padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px); background: linear-gradient(to top, var(--color-canvas) 70%, rgb(10 14 26 / 0)); }
+    padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 10px); background: linear-gradient(to top, var(--color-canvas) 70%, rgb(10 14 26 / 0)); }
   .lu-error { font-size: 13px; font-weight: 600; color: var(--color-live); }
   .lu-save { min-height: 3rem; border-radius: 16px; font-weight: 800; color: var(--color-canvas); background: var(--color-ok); }
   .lu-save:not([data-ready]) { opacity: 0.55; }
