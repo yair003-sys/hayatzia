@@ -26,13 +26,13 @@ export type PlayerRow = {
 
 export type Review = { user_id: string; nick: string; stars: number; review: string; updated_at: string }
 
-/** Position code → Hebrew group, in pitch order (coach last). */
+/** Position code → Hebrew group, in pitch order (coach last). Covers the long codes DF / MF / FW in the squad data too. */
 export function positionGroup(position: string): { order: number; label: string } {
   const p = position.toUpperCase()
   if (p === 'GK' || p === 'G') return { order: 0, label: 'שוערים' }
-  if (/^(CB|LB|RB|LWB|RWB|D)$/.test(p)) return { order: 1, label: 'הגנה' }
-  if (/^(CM|DM|CDM|AM|CAM|LM|RM|M)$/.test(p)) return { order: 2, label: 'קישור' }
-  if (/^(ST|CF|LW|RW|F|SS)$/.test(p)) return { order: 3, label: 'התקפה' }
+  if (/^(CB|LB|RB|LWB|RWB|DF|D)$/.test(p)) return { order: 1, label: 'הגנה' }
+  if (/^(CM|DM|CDM|AM|CAM|LM|RM|MF|M)$/.test(p)) return { order: 2, label: 'קישור' }
+  if (/^(ST|CF|LW|RW|FW|F|SS)$/.test(p)) return { order: 3, label: 'התקפה' }
   return { order: 4, label: 'צוות' }
 }
 

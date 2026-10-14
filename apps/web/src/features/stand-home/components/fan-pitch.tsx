@@ -9,7 +9,7 @@ import { ratePlayerAction, reviewsAction } from '@/features/ratings/server/actio
 import type { Team } from '@/features/teams/data'
 import { cardTier, splitPitch } from '../schema'
 
-/** Legacy "ההרכב של האוהדים": the sample XI on a pitch as rating cards, the rest on a bench. Tap to rate. */
+/** Home "הרכב לדוגמה" (legacy "ההרכב של האוהדים"; that name now belongs to features/lineup): the sample XI on a pitch as rating cards, the rest on a bench. Tap to rate. */
 export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }) {
   const [players, setPlayers] = useState(initial)
   const [open, setOpen] = useState<PlayerRow | null>(null)

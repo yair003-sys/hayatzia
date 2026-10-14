@@ -445,6 +445,84 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"fan_lineup_tallies": {
+                  Row: {
+                    "fixture_id": number,"formation": string,"picks": number,"player_id": string,"slot": number,"team_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fixture_id": number,"formation": string,"picks": number,"player_id": string,"slot": number,"team_id": string
+                  }
+                  Update: {
+                    "fixture_id"?: number,"formation"?: string,"picks"?: number,"player_id"?: string,"slot"?: number,"team_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fan_lineup_tallies_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fan_lineup_tallies_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"fan_lineup_totals": {
+                  Row: {
+                    "fans": number,"fixture_id": number,"formations": Json,"team_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fans"?: number,"fixture_id": number,"formations"?: Json,"team_id": string
+                  }
+                  Update: {
+                    "fans"?: number,"fixture_id"?: number,"formations"?: Json,"team_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fan_lineup_totals_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fan_lineup_totals_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"fan_lineups": {
+                  Row: {
+                    "fixture_id": number,"formation": string,"slots": Json,"team_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fixture_id": number,"formation": string,"slots": Json,"team_id": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "fixture_id"?: number,"formation"?: string,"slots"?: Json,"team_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fan_lineups_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fan_lineups_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fixture_details": {
                   Row: {
                     "events": NonNullable<Json>,"fixture_id": number,"lineups": NonNullable<Json>,"updated_at": string
@@ -1142,6 +1220,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"clear_fan_lineup":
+{ Args: { "p_fixture": number }; Returns: boolean
+                           },
 "clip_seen":
 { Args: { "p_clip": string }; Returns: boolean
                            },
@@ -1226,6 +1307,21 @@ isOneToOne: false
 "same_team":
 { Args: { "other": string }; Returns: boolean
                            },
+"save_fan_lineup":
+{ Args: { "p_fixture": number,"p_formation": string,"p_slots": Json }; Returns: {
+              "fixture_id": number,
+"formation": string,
+"slots": Json,
+"team_id": string,
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "fan_lineups"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "score_fixture":
 { Args: { "p_fixture": number }; Returns: undefined
                            }

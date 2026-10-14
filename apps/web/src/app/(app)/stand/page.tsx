@@ -19,6 +19,7 @@ import { CheckinButton } from '@/features/stage4/components/checkin-button'
 import { getCheckedIn } from '@/features/stage4/server/queries'
 import { DONE_STATUSES } from '@/features/matches/schema'
 import { roomState } from '@/features/match-room/schema'
+import { canBuild } from '@/features/lineup/schema'
 
 export const metadata: Metadata = { title: { absolute: 'onefan' } }
 
@@ -101,6 +102,20 @@ async function StandHome() {
       ) : (
         <p className="sh-card text-sm text-muted">אין כרגע משחקים בלוח.</p>
       )}
+      {next && canBuild(next, now) && (
+        <Link href={`/matches/${next.id}?tab=lineup`} className="lu-home">
+          <i aria-hidden="true">
+            <Shirt className="size-5" strokeWidth={1.75} />
+          </i>
+          <span>
+            <b>בנה את ההרכב שלך</b>
+            <small>
+              מול {nameOf(ids.includes(next.h) ? next.a : next.h).short} · {kickoffDay(next.t)} {kickoffTime(next.t)} · נסגר בשריקת הפתיחה
+            </small>
+          </span>
+          <ChevronLeft className="size-4 text-dim" aria-hidden="true" />
+        </Link>
+      )}
 
       <h2 className="sh-sec">הצ׳אט של הקבוצה</h2>
       <TeamChatCard teamId={team.id} short={team.short} initial={data.chat} hidden={data.hidden} />
@@ -142,7 +157,7 @@ async function StandHome() {
       </nav>
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="sh-sec flex-1">ההרכב של האוהדים</h2>
+        <h2 className="sh-sec flex-1">הרכב לדוגמה</h2>
         <Link href="/stand/players" className="mt-2 shrink-0 rounded-full border border-line bg-white/4 px-3.5 py-1.5 text-[13px] font-bold">
           כל הדירוגים
         </Link>

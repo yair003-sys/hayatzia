@@ -9,6 +9,11 @@ describe('positionGroup', () => {
     expect(positionGroup('ST').label).toBe('התקפה')
     expect(positionGroup('מאמן').order).toBe(4)
   })
+  it('knows the long codes used in the squad data (DF, MF, FW), not as staff', () => {
+    expect(positionGroup('DF').label).toBe('הגנה')
+    expect(positionGroup('MF').label).toBe('קישור')
+    expect(positionGroup('FW').label).toBe('התקפה')
+  })
 })
 
 describe('average', () => {
