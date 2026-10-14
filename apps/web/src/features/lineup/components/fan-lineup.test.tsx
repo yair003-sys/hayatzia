@@ -8,8 +8,8 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
 vi.mock('../server/actions', () => ({ saveFanLineupAction: vi.fn() }))
 
 const ROLES: Role[] = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD', 'FWD', 'MID']
-const squad: SquadPlayer[] = ROLES.map((role, i) => ({ id: `mta_${i + 1}`, number: i + 1, name: `שחקן ${i + 1}`, short: `ש${i + 1}`, role, injured: false }))
-const team = { name: 'מכבי תל אביב', short: 'מכבי ת״א', bg: '#FFD400', ring: '#1D3FA8' }
+const squad: SquadPlayer[] = ROLES.map((role, i) => ({ id: `mta_${i + 1}`, number: i + 1, name: `שחקן ${i + 1}`, short: `ש${i + 1}`, pos: 'CM', role, injured: false }))
+const team = { name: 'מכבי תל אביב', short: 'מכבי ת״א', bg: '#FFD400', ring: '#1D3FA8', bar: '#FFD400' }
 const xi = squad.slice(0, 11).map((p) => p.id)
 const fans: FansXI = {
   formation: '4-3-3',

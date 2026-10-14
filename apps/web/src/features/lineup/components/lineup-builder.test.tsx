@@ -9,10 +9,11 @@ const squad: SquadPlayer[] = ROLES.map((role, i) => ({
   number: i + 1,
   name: `שחקן ${i + 1}`,
   short: `ש${i + 1}`,
+  pos: { GK: 'GK', DEF: 'CB', MID: 'CM', FWD: 'ST' }[role],
   role,
   injured: i === 13,
 }))
-const team = { short: 'מכבי ת״א', bg: '#FFD400', ring: '#1D3FA8' }
+const team = { short: 'מכבי ת״א', bg: '#FFD400', ring: '#1D3FA8', bar: '#FFD400' }
 const fullXI = (): XI => squad.slice(0, 11).map((p) => p.id)
 
 function setup(over: Partial<Parameters<typeof LineupBuilder>[0]> = {}) {
@@ -32,7 +33,9 @@ function setup(over: Partial<Parameters<typeof LineupBuilder>[0]> = {}) {
 
 const slot = (role: RegExp) => screen.getAllByRole('button', { name: role })
 const card = (n: number) => screen.getByRole('button', { name: new RegExp(`^שחקן ${n},`) })
-const strip = () => screen.getByRole('list', { name: /הסגל של/ })
+const grid = () => screen.getByRole('tabpanel').querySelector('ul')!
+const tab = (name: string) => screen.getByRole('tab', { name })
+const showTab = (name: string) => fireEvent.click(tab(name))
 
 /** jsdom has no layout: say which element is under the pointer. */
 function pointAt(el: () => Element | null) {
@@ -141,12 +144,16 @@ describe('LineupBuilder (overlay)', () => {
     fireEvent.click(card(1))
     expect(screen.getByRole('button', { name: 'עמדת שוער: שחקן 1' })).toBeInTheDocument()
     expect(slot(/^עמדת מגן/)[0]).toHaveAttribute('aria-pressed', 'true')
-    expect(card(1)).toHaveAccessibleName(/בהרכב/)
+    // The next slot is a defender's, so the picker moved to the defenders.
+    expect(tab('הגנה')).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('status')).toHaveTextContent('ש1 בשוער')
+    showTab('שוערים')
+    expect(card(1)).toHaveAccessibleName(/בהרכב/)
   })
 
   it('tap a player, then a slot', () => {
     setup()
+    showTab('התקפה')
     fireEvent.click(card(9))
     expect(card(9)).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(slot(/^עמדת חלוץ: ריקה/)[1]!)
@@ -172,6 +179,7 @@ describe('LineupBuilder (overlay)', () => {
   it('drags a player from the squad onto a slot with touch', () => {
     setup()
     const target = () => slot(/^עמדת קשר/)[1]!
+    showTab('קישור')
     drag(card(6), target, 'touch')
     expect(target()).toHaveAccessibleName('עמדת קשר: שחקן 6')
   })
@@ -187,11 +195,11 @@ describe('LineupBuilder (overlay)', () => {
     expect(fwd[2]).toHaveAccessibleName('עמדת חלוץ: שחקן 9')
   })
 
-  it('drags a pitch player off onto the squad strip: back to the bench', () => {
+  it('drags a pitch player off onto the squad grid: back to the bench', () => {
     const xi = emptyXI()
     xi[0] = 'mta_1'
     setup({ initial: { formation: '4-3-3', xi } })
-    drag(screen.getByRole('button', { name: 'עמדת שוער: שחקן 1' }), () => within(strip()).getAllByRole('listitem')[4]!, 'touch')
+    drag(screen.getByRole('button', { name: 'עמדת שוער: שחקן 1' }), () => within(grid()).getAllByRole('listitem')[2]!, 'touch')
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
   })
 
@@ -199,16 +207,16 @@ describe('LineupBuilder (overlay)', () => {
     setup()
     pointAt(() => slot(/^עמדת שוער/)[0]!)
     fireEvent.pointerDown(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 400 })
-    fireEvent.pointerDown(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 400 })
-    fireEvent.pointerMove(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
-    fireEvent.pointerUp(card(2), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
+    fireEvent.pointerDown(card(12), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 400 })
+    fireEvent.pointerMove(card(12), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
+    fireEvent.pointerUp(card(12), { pointerId: 2, pointerType: 'touch', clientX: 50, clientY: 100 })
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
     fireEvent.pointerMove(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 100 })
     fireEvent.pointerUp(card(1), { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 100 })
     expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: שחקן 1')
   })
 
-  it('does not move anything on a small wobble or when the browser takes the gesture (strip scroll)', () => {
+  it('does not move anything on a small wobble or when the browser cancels the gesture', () => {
     setup()
     pointAt(() => slot(/^עמדת שוער/)[0]!)
     fireEvent.pointerDown(card(1), { pointerId: 4, pointerType: 'touch', clientX: 10, clientY: 10 })
@@ -232,17 +240,14 @@ describe('LineupBuilder (overlay)', () => {
     expect(target()).toHaveAccessibleName('עמדת שוער: שחקן 1')
   })
 
-  it('a sideways swipe on a squad card scrolls the strip instead of dragging', () => {
+  it('a sideways first move on a card drags too (no strip to scroll any more)', () => {
     setup()
-    pointAt(() => slot(/^עמדת שוער/)[0]!)
-    const s = strip()
-    Object.defineProperty(s, 'scrollLeft', { value: 100, writable: true, configurable: true })
+    const target = () => slot(/^עמדת שוער/)[0]!
+    pointAt(target)
     fireEvent.pointerDown(card(1), { pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 700 })
     fireEvent.pointerMove(card(1), { pointerId: 8, pointerType: 'touch', clientX: 170, clientY: 702 })
-    fireEvent.pointerMove(card(1), { pointerId: 8, pointerType: 'touch', clientX: 150, clientY: 703 })
-    fireEvent.pointerUp(card(1), { pointerId: 8, pointerType: 'touch', clientX: 150, clientY: 703 })
-    expect(s.scrollLeft).toBe(150)
-    expect(slot(/^עמדת שוער/)[0]).toHaveAccessibleName('עמדת שוער: ריקה')
+    fireEvent.pointerUp(card(1), { pointerId: 8, pointerType: 'touch', clientX: 170, clientY: 702 })
+    expect(target()).toHaveAccessibleName('עמדת שוער: שחקן 1')
   })
 
   it('marks filled slots (the only slots that start a drag) and injured players for styling', () => {
@@ -251,7 +256,60 @@ describe('LineupBuilder (overlay)', () => {
     setup({ initial: { formation: '4-3-3', xi } })
     expect(slot(/^עמדת שוער/)[0]).toHaveAttribute('data-filled')
     expect(slot(/^עמדת מגן/)[0]).not.toHaveAttribute('data-filled')
+    showTab('התקפה')
     expect(card(14)).toHaveAttribute('data-injured')
+  })
+
+  it('shows the squad by line in four tabs, one line at a time, as a grid with no strip', () => {
+    setup()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['שוערים', 'הגנה', 'קישור', 'התקפה'])
+    expect(tab('שוערים')).toHaveAttribute('aria-selected', 'true')
+    expect(within(grid()).getAllByRole('button').map((b) => b.getAttribute('aria-label')?.split(',')[0])).toEqual(['שחקן 1', 'שחקן 12'])
+    showTab('הגנה')
+    expect(within(grid()).getAllByRole('button')).toHaveLength(4)
+    expect(screen.queryByRole('button', { name: /^שחקן 1,/ })).toBeNull()
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'lu-tab-DEF')
+  })
+
+  it('tapping a slot opens the tab of that slot’s line', () => {
+    setup()
+    fireEvent.click(slot(/^עמדת חלוץ/)[0]!)
+    expect(tab('התקפה')).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(card(9))
+    expect(slot(/^עמדת חלוץ/)[0]).toHaveAccessibleName('עמדת חלוץ: שחקן 9')
+  })
+
+  it('opens on the line of the first empty slot', () => {
+    const xi = emptyXI()
+    xi[0] = 'mta_1'
+    setup({ initial: { formation: '4-3-3', xi } })
+    expect(tab('הגנה')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('keyboard: arrows move between the tabs (RTL: left is next), and every card and slot is a focusable button', () => {
+    setup()
+    tab('שוערים').focus()
+    fireEvent.keyDown(tab('שוערים'), { key: 'ArrowLeft' })
+    expect(tab('הגנה')).toHaveAttribute('aria-selected', 'true')
+    expect(tab('הגנה')).toHaveFocus()
+    expect(tab('שוערים')).toHaveAttribute('tabindex', '-1')
+    fireEvent.keyDown(tab('הגנה'), { key: 'End' })
+    expect(tab('התקפה')).toHaveFocus()
+    fireEvent.keyDown(tab('התקפה'), { key: 'ArrowRight' })
+    expect(tab('קישור')).toHaveFocus()
+    // Enter/Space on a native button is a click: slot, then card.
+    const s0 = slot(/^עמדת קשר/)[0]!
+    s0.focus()
+    fireEvent.click(s0)
+    card(6).focus()
+    expect(card(6)).toHaveFocus()
+    fireEvent.click(card(6))
+    expect(slot(/^עמדת קשר/)[0]).toHaveAccessibleName('עמדת קשר: שחקן 6')
+  })
+
+  it('counts the picked players of each line on its tab', () => {
+    setup({ initial: { formation: '4-3-3', xi: fullXI() } })
+    expect(tab('הגנה')).toHaveTextContent('4')
   })
 
   it('changes formation and keeps the picked players', () => {

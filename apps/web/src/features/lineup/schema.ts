@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { DONE_STATUSES, NOT_PLAYED_STATUSES } from '@/features/matches/schema'
+import { positionGroup } from '@/features/ratings/schema'
 
 // Fan lineup ("ההרכב של האוהדים"). Rules live in the database (20261014120000_fan_lineups.sql): own club's match,
 // before kick-off, 11 different players of the club. This file is the UI side: where the 11 slots sit on the pitch,
@@ -38,17 +39,17 @@ export function formationSlots(f: Formation): SlotSpot[] {
 }
 
 export const ROLE_HE: Record<Role, string> = { GK: 'שוער', DEF: 'הגנה', MID: 'קישור', FWD: 'התקפה' }
+/** The squad picker's tabs (the groups' plural names). */
+export const GROUP_HE: Record<Role, string> = { GK: 'שוערים', DEF: 'הגנה', MID: 'קישור', FWD: 'התקפה' }
+export const ROLES: readonly Role[] = ['GK', 'DEF', 'MID', 'FWD']
 /** The word on an empty slot. */
 export const SLOT_HE: Record<Role, string> = { GK: 'שוער', DEF: 'מגן', MID: 'קשר', FWD: 'חלוץ' }
 
-/** Squad position code → line; null for staff (the coach is not a player the fans can pick). */
+const ROLE_BY_GROUP: (Role | null)[] = ['GK', 'DEF', 'MID', 'FWD', null]
+
+/** Squad position code → line, by the app's one position grouping (ratings' positionGroup); null for staff. */
 export function roleOf(position: string): Role | null {
-  const p = position.toUpperCase()
-  if (p === 'GK' || p === 'G') return 'GK'
-  if (/^(CB|LB|RB|LWB|RWB|DF|D)$/.test(p)) return 'DEF'
-  if (/^(CM|DM|CDM|AM|CAM|LM|RM|MF|M)$/.test(p)) return 'MID'
-  if (/^(ST|CF|LW|RW|FW|F|SS)$/.test(p)) return 'FWD'
-  return null
+  return ROLE_BY_GROUP[positionGroup(position).order] ?? null
 }
 
 // ── the fans' XI ──────────────────────────────────────────────────────────────────────────
@@ -182,7 +183,8 @@ export function lineupErrorHe(message: string): string {
 }
 
 // ── what the match page passes to the client ──────────────────────────────────────────────
-export type SquadPlayer = { id: string; number: number | null; name: string; short: string; role: Role; injured: boolean }
+/** `pos`: the squad's position code (CB, LW…), shown on the card's badge. */
+export type SquadPlayer = { id: string; number: number | null; name: string; short: string; pos: string; role: Role; injured: boolean }
 export type SavedLineup = { formation: Formation; xi: XI }
 /** open: before kick-off, building allowed; locked: kicked off, not over; done: finished (ratings shown);
  *  off: postponed, cancelled or abandoned (not "locked by the whistle"). */

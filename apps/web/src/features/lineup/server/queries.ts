@@ -55,7 +55,7 @@ export async function getFanLineup(fixtureId: number, teamId: string, withRating
   const squad: SquadPlayer[] = []
   for (const p of players.data ?? []) {
     const role = roleOf(p.position)
-    if (role) squad.push({ id: p.id, number: p.number, name: p.name_he, short: p.name_short, role, injured: p.injured })
+    if (role) squad.push({ id: p.id, number: p.number, name: p.name_he, short: p.name_short, pos: p.position, role, injured: p.injured })
   }
   squad.sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || (a.number ?? 999) - (b.number ?? 999))
   const known = new Set(squad.map((p) => p.id))

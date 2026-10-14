@@ -1,15 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { teamAccent } from '@/features/stand-home/schema'
 import {
   checkXI,
   clearSlot,
   FORMATIONS,
   formationSlots,
+  GROUP_HE,
   placeAt,
   ROLE_HE,
+  ROLES,
   SLOT_HE,
   swapSlots,
   toPayload,
@@ -26,7 +29,8 @@ import {
 type Saved = SavedLineup
 type Props = {
   fixtureId: number
-  team: { short: string; bg: string; ring: string }
+  /** `bar`: the club's bright colour, made readable on the dark page by teamAccent for the squad cards. */
+  team: { short: string; bg: string; ring: string; bar: string }
   squad: SquadPlayer[]
   initial: Saved
   onSave: (input: SaveLineupInput) => Promise<{ ok: true } | { error: string }>
@@ -39,13 +43,11 @@ type Target = number | 'bench' | null
 type Press = {
   id: string
   from: number | null
-  card: boolean
   x0: number
   y0: number
-  lastX: number
   pointerId: number
-  /** pending: not moved enough yet; drag: carrying a player; scroll: a sideways swipe on the squad strip. */
-  mode: 'pending' | 'drag' | 'scroll'
+  /** pending: not moved enough yet (a tap if released now); drag: carrying a player. */
+  mode: 'pending' | 'drag'
 }
 type Ghost = { id: string; x: number; y: number; over: Target }
 
@@ -62,7 +64,7 @@ function baseState(): { state: Record<string, unknown>; stale: boolean } {
   return { state, stale }
 }
 
-/** What is under the finger: a slot (`data-drop="3"`), the squad strip (`data-drop="bench"`), or nothing. */
+/** What is under the finger: a slot (`data-drop="3"`), the squad grid (`data-drop="bench"`), or nothing. */
 function targetAt(x: number, y: number): Target {
   if (typeof document.elementFromPoint !== 'function') return null
   const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-drop]')
@@ -74,16 +76,22 @@ function targetAt(x: number, y: number): Target {
 }
 
 /**
- * Full-screen builder (an in-app overlay, not the Fullscreen API): the pitch on top, the club's squad below.
- * Drag with Pointer Events (mouse and touch, no long press): a strip player onto a slot, a pitch player onto another
- * slot (swap) or back onto the strip (bench). Without dragging: tap a slot then a player, or a player then a slot;
+ * Full-screen builder (an in-app overlay, not the Fullscreen API): the pitch on top, below it the club's squad as
+ * FIFA-style cards in the club's colours, one line at a time (tabs שוערים · הגנה · קישור · התקפה, a 4-wide grid, no
+ * sideways scrolling). Drag with Pointer Events (mouse and touch, no long press): a card onto a slot, a pitch player
+ * onto another slot (swap) or back onto the grid (bench). Without dragging: tap a slot then a player, or a player then a slot;
  * every target is a real button, so the keyboard does the same with Tab and Enter.
  */
 export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved, onClose }: Props) {
   const [formation, setFormation] = useState<Formation>(initial.formation)
   const [xi, setXI] = useState<XI>(initial.xi)
   const [sel, setSel] = useState<Sel>(null)
-  const [filter, setFilter] = useState<Role | 'ALL'>('ALL')
+  // The squad picker's tab: the line of the first empty slot (a fresh XI starts with the goalkeepers).
+  const [tab, setTab] = useState<Role>(() => {
+    const spots0 = formationSlots(initial.formation)
+    return spots0[initial.xi.findIndex((p) => !p)]?.role ?? 'GK'
+  })
+  const tabRefs = useRef<Partial<Record<Role, HTMLButtonElement | null>>>({})
   const [ghost, setGhost] = useState<Ghost | null>(null)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +100,6 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const press = useRef<Press | null>(null)
-  const strip = useRef<HTMLUListElement>(null)
   const droppedAt = useRef(-Infinity)
   const onCloseRef = useRef(onClose)
   // The overlay's own history entry: pushed by this mount, popped by back (or by leave()), left at most once.
@@ -210,6 +217,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
       setSel(null)
     } else {
       setSel({ slot })
+      setTab(spots[slot]!.role) // the squad picker opens on the players for that line
       setNote(`בחר שחקן לעמדת ${SLOT_HE[spots[slot]!.role]}`)
     }
   }
@@ -223,6 +231,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
       const empty = next.findIndex((p, i) => !p && i > at)
       const nextSlot = empty >= 0 ? empty : next.indexOf(null)
       setSel(nextSlot >= 0 ? { slot: nextSlot } : null)
+      if (nextSlot >= 0) setTab(spots[nextSlot]!.role)
     } else if (sel && 'player' in sel && sel.player === id) {
       setSel(null)
     } else {
@@ -257,14 +266,15 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
   const mine = (e: PointerEvent<HTMLElement>) => press.current !== null && press.current.pointerId === e.pointerId
 
   // Drag model (fixed 2026-10-14 after the owner found drag dead): the pointer is captured on press, so every move
-  // reaches the pressed element even when the first move lands elsewhere (fast mouse, jumpy touch). Squad cards are
-  // touch-action: none; a mostly sideways first move on a card scrolls the strip by hand instead of starting a drag.
-  function dragHandlers(id: string, from: number | null, card: boolean) {
+  // reaches the pressed element even when the first move lands elsewhere (fast mouse, jumpy touch). Cards and filled
+  // slots are touch-action: none; any move past the threshold, in any direction, starts a drag (the grid has no
+  // sideways scrolling to compete with).
+  function dragHandlers(id: string, from: number | null) {
     return {
       onPointerDown(e: PointerEvent<HTMLElement>) {
         if (press.current) return
         if (e.pointerType === 'mouse' && e.button !== 0) return
-        press.current = { id, from, card, x0: e.clientX, y0: e.clientY, lastX: e.clientX, pointerId: e.pointerId, mode: 'pending' }
+        press.current = { id, from, x0: e.clientX, y0: e.clientY, pointerId: e.pointerId, mode: 'pending' }
         if (typeof e.currentTarget.setPointerCapture === 'function') {
           try {
             e.currentTarget.setPointerCapture(e.pointerId)
@@ -280,13 +290,8 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           const dx = e.clientX - p.x0
           const dy = e.clientY - p.y0
           if (Math.hypot(dx, dy) < DRAG_PX) return
-          p.mode = p.card && Math.abs(dx) > Math.abs(dy) * 1.5 ? 'scroll' : 'drag'
-          if (p.mode === 'drag') setSel(null)
-        }
-        if (p.mode === 'scroll') {
-          if (strip.current) strip.current.scrollLeft += p.lastX - e.clientX
-          p.lastX = e.clientX
-          return
+          p.mode = 'drag'
+          setSel(null)
         }
         e.preventDefault()
         showGhost({ id, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY) })
@@ -296,8 +301,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
         const p = press.current!
         endDrag()
         if (p.mode === 'pending') return // a tap: the click handler does the work
-        droppedAt.current = e.timeStamp // swallow the click that ends a drag or a swipe
-        if (p.mode !== 'drag') return
+        droppedAt.current = e.timeStamp // swallow the click that ends a drag
         const to = targetAt(e.clientX, e.clientY)
         if (typeof to === 'number') put(to, p.id)
         else if (to === 'bench' && p.from !== null) bench(p.from)
@@ -334,8 +338,34 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
 
   const selSlot = sel && 'slot' in sel ? sel.slot : null
   const selPlayer = sel && 'player' in sel ? sel.player : null
-  const shown = filter === 'ALL' ? squad : squad.filter((p) => p.role === filter)
-  const colours = { '--a': team.bg, '--b': team.ring, '--t': team.ring } as CSSProperties
+  const groups = Object.fromEntries(ROLES.map((r) => [r, squad.filter((p) => p.role === r)])) as Record<Role, SquadPlayer[]>
+  const picked = (r: Role) => groups[r].filter((p) => onPitch.has(p.id)).length
+  // The grid keeps the height of the biggest group, so switching tabs never makes the pitch jump.
+  const rows = Math.max(1, ...ROLES.map((r) => Math.ceil(groups[r].length / 4)))
+  const acc = teamAccent(team.bar)
+  const colours = {
+    '--a': team.bg,
+    '--b': team.ring,
+    '--t': team.ring,
+    '--lu-acc': acc.accent,
+    '--lu-acc2': acc.accent2,
+    '--lu-rgb': acc.rgb,
+    '--lu-on': acc.on,
+  } as CSSProperties
+
+  // RTL: the next tab sits to the left.
+  function onTabKey(e: ReactKeyboardEvent<HTMLDivElement>) {
+    const i = ROLES.indexOf(tab)
+    const step = e.key === 'ArrowLeft' ? 1 : e.key === 'ArrowRight' ? -1 : 0
+    let next: Role | undefined
+    if (e.key === 'Home') next = ROLES[0]
+    else if (e.key === 'End') next = ROLES[ROLES.length - 1]
+    else if (step) next = ROLES[(i + step + ROLES.length) % ROLES.length]
+    if (!next) return
+    e.preventDefault()
+    setTab(next)
+    tabRefs.current[next]?.focus()
+  }
   const ghostPlayer = ghost ? byId.get(ghost.id) : undefined
 
   return createPortal(
@@ -371,32 +401,34 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           ))}
         </div>
 
-        <div className="lc-pitch lu-pitch">
-          <i className="lc-pitch-arc" />
-          <i className="lc-pitch-box" />
-          <i className="lc-pitch-six" />
-          {spots.map((s) => {
-            const id = xi[s.slot] ?? null
-            const p = id ? byId.get(id) : undefined
-            return (
-              <button
-                key={s.slot}
-                type="button"
-                className="lu-slot"
-                data-drop={s.slot}
-                data-filled={p ? '' : undefined}
-                data-over={ghost?.over === s.slot ? '' : undefined}
-                aria-pressed={selSlot === s.slot}
-                aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
-                style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
-                onClick={(e) => tapSlot(s.slot, e)}
-                {...(p ? dragHandlers(p.id, s.slot, false) : {})}
-              >
-                <i>{p ? (p.number ?? '') : '+'}</i>
-                <small>{p ? p.short : SLOT_HE[s.role]}</small>
-              </button>
-            )
-          })}
+        <div className="lu-pitch-wrap">
+          <div className="lc-pitch lu-pitch">
+            <i className="lc-pitch-arc" />
+            <i className="lc-pitch-box" />
+            <i className="lc-pitch-six" />
+            {spots.map((s) => {
+              const id = xi[s.slot] ?? null
+              const p = id ? byId.get(id) : undefined
+              return (
+                <button
+                  key={s.slot}
+                  type="button"
+                  className="lu-slot"
+                  data-drop={s.slot}
+                  data-filled={p ? '' : undefined}
+                  data-over={ghost?.over === s.slot ? '' : undefined}
+                  aria-pressed={selSlot === s.slot}
+                  aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
+                  style={{ left: `${s.x}%`, bottom: `${s.y}%` }}
+                  onClick={(e) => tapSlot(s.slot, e)}
+                  {...(p ? dragHandlers(p.id, s.slot) : {})}
+                >
+                  <i>{p ? (p.number ?? '') : '+'}</i>
+                  <small>{p ? p.short : SLOT_HE[s.role]}</small>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <div className="lu-hint">
@@ -415,34 +447,65 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           )}
         </div>
 
-        <div className="lu-filter" role="group" aria-label="סינון לפי עמדה">
-          {(['ALL', 'GK', 'DEF', 'MID', 'FWD'] as const).map((r) => (
-            <button key={r} type="button" aria-pressed={filter === r} onClick={() => setFilter(r)}>
-              {r === 'ALL' ? 'הכול' : ROLE_HE[r]}
+        <div className="lu-tabs" role="tablist" aria-label="הסגל לפי עמדה" onKeyDown={onTabKey}>
+          {ROLES.map((r) => (
+            <button
+              key={r}
+              ref={(el) => {
+                tabRefs.current[r] = el
+              }}
+              type="button"
+              role="tab"
+              id={`lu-tab-${r}`}
+              aria-controls="lu-squad"
+              aria-selected={tab === r}
+              tabIndex={tab === r ? 0 : -1}
+              onClick={() => setTab(r)}
+            >
+              {GROUP_HE[r]}
+              {picked(r) > 0 && (
+                <small className="t-num" aria-hidden="true">
+                  {picked(r)}
+                </small>
+              )}
             </button>
           ))}
         </div>
 
-        <ul ref={strip} className="lu-strip" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`הסגל של ${team.short}`}>
-          {shown.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                className="lu-card"
-                data-in={onPitch.has(p.id) ? '' : undefined}
-                data-injured={p.injured ? '' : undefined}
-                aria-pressed={selPlayer === p.id}
-                aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, onPitch.has(p.id) ? 'בהרכב' : null].filter(Boolean).join(', ')}
-                onClick={(e) => tapPlayer(p.id, e)}
-                {...dragHandlers(p.id, xi.indexOf(p.id) >= 0 ? xi.indexOf(p.id) : null, true)}
-              >
-                <i className="t-num">{p.number ?? ''}</i>
-                <span>{p.short}</span>
-                <small>{p.injured ? 'פצוע' : ROLE_HE[p.role]}</small>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div id="lu-squad" className="lu-squad" role="tabpanel" aria-labelledby={`lu-tab-${tab}`} style={{ '--rows': rows } as CSSProperties}>
+          <ul className="lu-grid" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`${GROUP_HE[tab]} של ${team.short}`}>
+            {groups[tab].map((p) => {
+              const inXI = onPitch.has(p.id)
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    className="lu-card"
+                    data-in={inXI ? '' : undefined}
+                    data-injured={p.injured ? '' : undefined}
+                    aria-pressed={selPlayer === p.id}
+                    aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, inXI ? 'בהרכב' : null].filter(Boolean).join(', ')}
+                    onClick={(e) => tapPlayer(p.id, e)}
+                    {...dragHandlers(p.id, inXI ? xi.indexOf(p.id) : null)}
+                  >
+                    <span className="lu-card-face" aria-hidden="true">
+                      <b className="lu-card-n t-num">{p.number ?? '–'}</b>
+                      <span className="lu-card-pos">{p.pos}</span>
+                      <span className="lu-card-name">{p.short}</span>
+                    </span>
+                    {inXI && (
+                      <span className="lu-card-in" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                    {p.injured && <span className="lu-card-inj" aria-hidden="true" />}
+                  </button>
+                </li>
+              )
+            })}
+            {groups[tab].length === 0 && <li className="lu-grid-empty">אין שחקנים בעמדה הזאת</li>}
+          </ul>
+        </div>
 
         <div className="lu-foot">
           {error && (
@@ -457,8 +520,11 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
 
         {ghost && ghostPlayer && (
           <div className="lu-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
-            <i>{ghostPlayer.number ?? ''}</i>
-            <small>{ghostPlayer.short}</small>
+            <span className="lu-card-face">
+              <b className="lu-card-n t-num">{ghostPlayer.number ?? '–'}</b>
+              <span className="lu-card-pos">{ghostPlayer.pos}</span>
+              <span className="lu-card-name">{ghostPlayer.short}</span>
+            </span>
           </div>
         )}
       </div>

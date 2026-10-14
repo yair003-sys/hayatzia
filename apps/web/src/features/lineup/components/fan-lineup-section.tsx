@@ -19,7 +19,7 @@ export async function FanLineupSection({ fixture: f, home, away }: { fixture: Fi
   return (
     <FanLineup
       fixtureId={f.id}
-      team={{ name: s.team.name, short: s.team.short, bg: s.team.bg, ring: s.team.ring }}
+      team={{ name: s.team.name, short: s.team.short, bg: s.team.bg, ring: s.team.ring, bar: s.team.bar }}
       phase={phase}
       squad={data.squad}
       mine={data.mine}

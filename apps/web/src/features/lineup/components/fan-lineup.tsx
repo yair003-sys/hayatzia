@@ -10,7 +10,7 @@ import { LineupBuilder } from './lineup-builder'
 
 type Props = {
   fixtureId: number
-  team: { name: string; short: string; bg: string; ring: string }
+  team: { name: string; short: string; bg: string; ring: string; bar: string }
   phase: LineupPhase
   squad: SquadPlayer[]
   mine: SavedLineup | null
