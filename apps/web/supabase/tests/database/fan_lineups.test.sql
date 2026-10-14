@@ -1,17 +1,19 @@
 -- Fan lineup ("ההרכב של האוהדים"): a fan's XI for their own club's next match, saved only through
 -- save_fan_lineup before kick-off, counted by trigger into per-slot tallies and per-club totals (counts only).
 begin;
-select plan(49);
+select plan(55);
 
 insert into auth.users (id, aud, role, email) values
   ('00000000-0000-0000-0000-0000000000e1', 'authenticated', 'authenticated', 'e1@test.local'),
   ('00000000-0000-0000-0000-0000000000e2', 'authenticated', 'authenticated', 'e2@test.local'),
   ('00000000-0000-0000-0000-0000000000e3', 'authenticated', 'authenticated', 'e3@test.local'),
-  ('00000000-0000-0000-0000-0000000000e4', 'authenticated', 'authenticated', 'e4@test.local');
+  ('00000000-0000-0000-0000-0000000000e4', 'authenticated', 'authenticated', 'e4@test.local'),
+  ('00000000-0000-0000-0000-0000000000e5', 'authenticated', 'authenticated', 'e5@test.local');
 insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000e1', 'צהוב', 'mta'),
   ('00000000-0000-0000-0000-0000000000e2', 'כחול', 'mta'),
-  ('00000000-0000-0000-0000-0000000000e3', 'אדום', 'hta');
+  ('00000000-0000-0000-0000-0000000000e3', 'אדום', 'hta'),
+  ('00000000-0000-0000-0000-0000000000e5', 'ירוק', 'mta');
 -- e4 is signed in but has no profile yet.
 insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4486, 'Hapoel Tel Aviv'), (9999, 'Nobody FC');
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id) values
@@ -109,6 +111,13 @@ set local role authenticated;
 select throws_ok($$ select public.save_fan_lineup(52, '4-3-3', pg_temp.a()) $$, 'P0001', 'locked', 'no lineup after kick-off');
 select throws_ok($$ select public.save_fan_lineup(53, '4-3-3', pg_temp.a()) $$, 'P0001', 'locked', 'no lineup once the match started');
 select throws_ok($$ select public.save_fan_lineup(55, '4-3-3', pg_temp.a()) $$, 'P0001', 'locked', 'no lineup for a finished match');
+reset role;
+-- Kick-off at this very moment (wall clock, not the transaction start: now() is earlier than this kick-off).
+insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id)
+  values (56, 383, 2026, 'R1', clock_timestamp(), 'NS', 604, 4486);
+set local role authenticated;
+select throws_ok($$ select public.save_fan_lineup(56, '4-3-3', pg_temp.a()) $$, 'P0001', 'locked',
+  'locked at the exact kick-off time, by the real clock');
 
 -- ── own club, real players, 11 distinct (Review Focus 3) ──
 select throws_ok($$ select public.save_fan_lineup(54, '4-3-3', pg_temp.a()) $$, '42501', 'not_your_match', 'only your club''s match');
@@ -150,17 +159,41 @@ select is((select formations from public.fan_lineup_totals where fixture_id = 51
   'clearing takes the fan out of the counts');
 reset role;
 
--- kick-off passes: the remaining lineup is frozen
+-- a third fan saves before kick-off (the one whose counts must survive the account deletion below)
+select pg_temp.as_fan('00000000-0000-0000-0000-0000000000e5');
+set local role authenticated;
+select lives_ok($$ select public.save_fan_lineup(51, '4-3-3', pg_temp.a()) $$, 'another fan saves before kick-off');
+reset role;
+
+-- kick-off passes: the remaining lineups are frozen
 update public.fixtures set kickoff_at = now() - interval '1 minute' where id = 51;
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000e1');
 set local role authenticated;
 select throws_ok($$ select public.clear_fan_lineup(51) $$, 'P0001', 'locked', 'no clearing after kick-off');
 reset role;
 
--- an account going takes its lineup out of the counts
+-- the lock holds for the service role too (the stamp trigger checks every write)
+set local role service_role;
+select throws_ok($$ insert into public.fan_lineups (fixture_id, user_id, formation, slots)
+  values (52, '00000000-0000-0000-0000-0000000000e2', '4-3-3',
+          (select slots from public.fan_lineups where user_id = '00000000-0000-0000-0000-0000000000e5')) $$,
+  'P0001', 'locked', 'service role: no insert after kick-off');
+select throws_ok($$ update public.fan_lineups set formation = '4-3-3' where fixture_id = 51 and user_id = '00000000-0000-0000-0000-0000000000e1' $$,
+  'P0001', 'locked', 'service role: no update after kick-off');
+reset role;
+
+-- an account going takes exactly its own lineup out of the counts: e1 (4-4-2, XI b) goes, e5 (4-3-3, XI a) stays
+create temp table before_433 as
+  select formation, slot, player_id, picks from public.fan_lineup_tallies where fixture_id = 51 and formation = '4-3-3';
 delete from auth.users where id = '00000000-0000-0000-0000-0000000000e1';
-select is(pg_temp.picks(51) + (select fans from public.fan_lineup_totals where fixture_id = 51 and team_id = 'mta'), 0,
-  'a deleted account leaves no counts behind');
+select results_eq($$ select formation, slot, player_id, picks from public.fan_lineup_tallies where fixture_id = 51
+                     order by formation, slot, player_id $$,
+  $$ select formation, slot, player_id, picks from before_433 order by formation, slot, player_id $$,
+  'the other fan''s picks are exactly as before, and the deleted fan''s are gone');
+select results_eq($$ select (x ->> 'slot')::smallint, x ->> 'player_id' from jsonb_array_elements(pg_temp.a()) x order by 1 $$,
+  $$ select slot, player_id from before_433 order by slot $$, 'what remains is the other fan''s XI');
+select is((select (fans, formations)::text from public.fan_lineup_totals where fixture_id = 51 and team_id = 'mta'),
+  (1, '{"4-3-3": 1}'::jsonb)::text, 'totals drop by exactly one fan and one 4-4-2');
 
 select * from finish();
 rollback;

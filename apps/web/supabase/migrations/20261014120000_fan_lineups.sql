@@ -9,7 +9,7 @@
 create table public.fan_lineups (
   fixture_id  bigint not null references public.fixtures (id) on delete cascade,
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  team_id     text not null default public.my_team() references public.teams (id),  -- stamped: the fan's club
+  team_id     text not null references public.teams (id),   -- stamped by the trigger: the fan's club
   formation   text not null check (formation in ('4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2')),
   slots       jsonb not null check (jsonb_typeof(slots) = 'array' and jsonb_array_length(slots) = 11),
                                                                             -- [{slot 0..10, player_id}] in slot order
@@ -69,7 +69,7 @@ begin
   if fan is distinct from f.home and fan is distinct from f.away then
     raise exception 'not_your_match' using errcode = '42501';
   end if;
-  if now() >= f.kickoff_at or f.status not in ('NS', 'TBD') then
+  if clock_timestamp() >= f.kickoff_at or f.status not in ('NS', 'TBD') then
     raise exception 'locked' using errcode = 'P0001';
   end if;
   if new.formation is null or new.formation not in ('4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2') then
@@ -223,7 +223,7 @@ begin
   if not found then
     return false;
   end if;
-  if now() >= f.kickoff_at or f.status not in ('NS', 'TBD') then
+  if clock_timestamp() >= f.kickoff_at or f.status not in ('NS', 'TBD') then
     raise exception 'locked' using errcode = 'P0001';
   end if;
   delete from public.fan_lineups where fixture_id = p_fixture and user_id = me;

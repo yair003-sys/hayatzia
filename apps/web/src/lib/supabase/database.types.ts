@@ -503,7 +503,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "fixture_id": number,"formation": string,"slots": Json,"team_id"?: string,"updated_at"?: string,"user_id"?: string
+                    "fixture_id": number,"formation": string,"slots": Json,"team_id": string,"updated_at"?: string,"user_id"?: string
                   }
                   Update: {
                     "fixture_id"?: number,"formation"?: string,"slots"?: Json,"team_id"?: string,"updated_at"?: string,"user_id"?: string
