@@ -29,7 +29,7 @@ export async function getBannerAlert(id: number): Promise<BannerAlert> {
     .select('id,fixture_id,kind,home_goals,away_goals,scoring_api_id')
     .eq('id', id)
     .maybeSingle()
-  if (error) throw new Error('banner alert: read failed')
+  if (error) throw new Error(`banner alert: read failed (${error.code ?? 'unknown'})`)
   if (!alert) throw new Error(ALERT_NOT_FOUND)
   const d = (await describeAlerts(admin, [alert], { strict: true })).get(alert.id)
   if (!d) throw new Error(ALERT_NOT_FOUND)
@@ -44,6 +44,10 @@ export async function alertExists(id: number): Promise<boolean | null> {
   const admin = createAdminClient()
   if (!admin) return null
   const { data, error } = await admin.from('match_alerts').select('id').eq('id', id).maybeSingle()
-  if (error) return null
+  if (error) {
+    // Error code and a short reason only (no data): enough to tell a bad key from a missing table.
+    console.warn(`alert exists: read failed ${error.code ?? ''} ${(error.message ?? '').slice(0, 80)}`)
+    return null
+  }
   return data !== null
 }
