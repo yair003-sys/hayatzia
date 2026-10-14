@@ -37,7 +37,7 @@ export function useReviewLikes() {
       busy.current.delete(key)
       if (!res?.data || !('ok' in res.data)) {
         setChanged((c) => ({ ...c, [key]: before }))
-        setError(res?.data && 'error' in res.data ? res.data.error : 'הלייק לא נשמר. נסה שוב')
+        setError((res?.data && 'error' in res.data && res.data.error) || 'הלייק לא נשמר. נסה שוב')
       }
     },
     [view],
