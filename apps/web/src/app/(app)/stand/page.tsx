@@ -56,7 +56,8 @@ function HomeSkeleton() {
 /**
  * The home (redesign 2026-10-14, owner's sketch): header, stories, live tiles, next match, players in the fans' eyes,
  * hot in the Square, the club chat, a mini table and the fans of the week. Each section streams in its own <Suspense>
- * and hides when empty. The earlier home's other sections follow below, unchanged.
+ * and always shows, in the sketch's order, with an empty state when there is no data yet (owner); only the next-match
+ * card and the mini table are left out without a match or a table. The earlier home's other sections follow below.
  */
 async function Home() {
   const s = await getSessionProfile()

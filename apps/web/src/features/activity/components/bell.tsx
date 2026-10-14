@@ -65,11 +65,11 @@ export function Bell({ meId, count: serverCount, inline = false }: { meId: strin
       refetch.call()
     }
     window.addEventListener(ACTIVITY_SEEN_EVENT, onSeen)
-    let first = true
     const stop = whileVisible(() => {
-      // Back from the background: what changed meanwhile came by phone push only, so read the count again.
-      if (!first) refetch.call()
-      first = false
+      // On mount and back from the background, read the count: the server's number may be old (a bell mounted again
+      // after the home, whose header carries its own bell, starts from the layout's first-load count), and what changed
+      // while hidden came by phone push only.
+      refetch.call()
       const off = listenPrivate(supabase, `inbox:${meId}`, (m) => {
         if (m.event === 'activity') refetch.call()
       })

@@ -158,6 +158,8 @@ export async function getActiveFans(teamId: string): Promise<number | null> {
   const db = createAdminClient()
   if (!db) return null
   const { data, error } = await db.rpc('home_active_fans', { p_team: teamId })
+  // The code only (never data): a service-role failure must show in the server logs instead of a silent dash.
+  if (error) console.error('home_active_fans failed', error.code)
   return error || typeof data !== 'number' ? null : data
 }
 
@@ -169,5 +171,6 @@ export async function getFansOfWeek(teamId: string): Promise<{ nick: string; poi
   const db = createAdminClient()
   if (!db) return []
   const { data, error } = await db.rpc('home_fans_of_week', { p_team: teamId })
+  if (error) console.error('home_fans_of_week failed', error.code)
   return error ? [] : (data ?? [])
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '../schema'
@@ -10,6 +10,13 @@ import { ReviewLike, useReviewLikes } from './review-like'
 export function SquadRatings({ initial, openId: firstOpen = null }: { initial: PlayerRow[]; openId?: string | null }) {
   const [players, setPlayers] = useState(initial)
   const [openId, setOpenId] = useState<string | null>(() => (firstOpen && initial.some((p) => p.id === firstOpen) ? firstOpen : null))
+  // Opened from a link (?p=<id>): bring that player into view once the list is on screen.
+  useEffect(() => {
+    if (!firstOpen) {
+      return
+    }
+    document.getElementById(`p-${firstOpen}`)?.scrollIntoView?.({ block: 'start' })
+  }, [firstOpen])
 
   const groups = new Map<string, PlayerRow[]>()
   for (const p of players) {
@@ -28,6 +35,7 @@ export function SquadRatings({ initial, openId: firstOpen = null }: { initial: P
                 <PlayerItem
                   player={p}
                   open={openId === p.id}
+                  loadNow={p.id === firstOpen}
                   onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                   onRated={(next) => setPlayers((cur) => cur.map((x) => (x.id === next.id ? next : x)))}
                 />
@@ -43,6 +51,8 @@ export function SquadRatings({ initial, openId: firstOpen = null }: { initial: P
 function PlayerItem(props: {
   player: PlayerRow
   open: boolean
+  /** Opened from a link: load the reviews at once (normally they load on the tap that opens the row). */
+  loadNow?: boolean
   onToggle: () => void
   onRated: (p: PlayerRow) => void
 }) {
@@ -54,6 +64,19 @@ function PlayerItem(props: {
   const [pending, start] = useTransition()
   const likes = useReviewLikes()
   const coach = positionGroup(p.position).order === 4
+
+  useEffect(() => {
+    if (!props.loadNow) {
+      return
+    }
+    let alive = true
+    void reviewsAction({ playerId: p.id }).then((r) => {
+      if (alive) setReviews(r.data?.reviews ?? [])
+    })
+    return () => {
+      alive = false
+    }
+  }, [props.loadNow, p.id])
 
   return (
     <div className="rounded-lg border border-line-soft bg-surface">

@@ -7,11 +7,11 @@ export function FansOfWeek({ fans }: { fans: { nick: string; points: number }[] 
     <section aria-labelledby="hm-fans-h" className="hm-sec">
       <SectionHead id="hm-fans-h" emoji="🏆" title="אוהדי השבוע" />
       {fans.length === 0 ? (
-        <p className="hm-empty">עוד אין אוהדים מצטיינים השבוע — נחשו, דרגו והעלו לכיכר כדי להיכנס לטבלה</p>
+        <p className="hm-empty">עוד אין אוהדים מצטיינים השבוע — נחש, דרג והעלה לכיכר כדי להיכנס לרשימה</p>
       ) : (
         <ol className="hm-fans">
           {fans.map((f, i) => (
-            <li key={f.nick} className="hm-fan">
+            <li key={i} className="hm-fan">
               <span className="text-xl" aria-hidden="true">
                 {MEDALS[i]}
               </span>

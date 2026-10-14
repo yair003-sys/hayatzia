@@ -160,4 +160,14 @@ describe('Bell', () => {
     render(<Bell meId={ME} count={0} inline />)
     expect(screen.getByRole('link', { name: 'התראות' })).toHaveClass('bell', 'bell-inline')
   })
+
+  it('reads the count from the server on mount: back from the home, the layout\'s old count is replaced', async () => {
+    h.pathname = '/square'
+    h.rpc.mockResolvedValue({ data: 2, error: null })
+    render(<FloatingBell meId={ME} count={9} />)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 9 חדשות')
+    await tick(1000)
+    expect(h.rpc).toHaveBeenCalledWith('activity_unread_count')
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 2 חדשות')
+  })
 })

@@ -23,7 +23,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
     return (
       <div className="hm-reels-empty">
         <ImagePlus className="size-6 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
-        <p>{uploaded ? 'הסרטון עלה לכיכר ✓' : 'עוד אין סרטונים היום'}</p>
+        <p>{uploaded ? 'הפוסט עלה לכיכר ✓' : 'עוד אין פוסטים היום'}</p>
         <UploadClip
           meId={meId}
           myTeamId={myTeamId}

@@ -24,7 +24,8 @@ import { PlayerReviews } from './player-reviews'
 import { StoriesRow } from './stories-row'
 
 // The home's sections (redesign 2026-10-14). Each is its own Server Component, rendered by the page inside its own
-// <Suspense> so the screen streams section by section; each hides itself when it has nothing to show.
+// <Suspense> so the screen streams section by section. They always show, with an empty state when there is no data
+// yet (owner, 2026-10-14); only the next match and the mini table are left out when there is no match or table.
 
 type Fan = { team: Team; userId: string }
 

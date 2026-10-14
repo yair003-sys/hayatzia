@@ -13,8 +13,8 @@ const positionHe = (position: string) => {
 }
 
 /**
- * "השחקנים בעיני האוהדים": a card per rated player whose review line fades every 4 s to the next most-liked review
- * (cards a step apart). The rotation stops while the cards are off screen, under reduced motion, in a hidden tab, and
+ * "השחקנים בעיני האוהדים": a card per squad player (rated or not; "עוד לא דורג" / "היה הראשון לכתוב ביקורת" when
+ * there is nothing yet). A player with two or more reviews fades every 4 s to the next most-liked one (cards a step apart). The rotation stops while the cards are off screen, under reduced motion, in a hidden tab, and
  * while a pointer is over the cards or focus is inside them (to read or to ♥).
  */
 export function PlayerReviews({ players }: { players: HomePlayer[] }) {
