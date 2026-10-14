@@ -68,6 +68,21 @@ describe('BannerView', () => {
     expect(card.style.getPropertyValue('--ab-bg')).toBe('')
   })
 
+  it('a trip banner (activity bell) links to the trip, neutral style with an icon', () => {
+    const TRIP = '55555555-5555-4555-8555-555555555555'
+    render(
+      <BannerView
+        banner={{ seq: 2, title: 'יוסי ביקש להצטרף לנסיעה שלך', body: '', href: `/stand/trips?trip=${TRIP}`, tone: 'trip', accent: null }}
+        onOpen={() => {}}
+        onDismiss={() => {}}
+      />,
+    )
+    const link = screen.getByRole('link', { name: 'יוסי ביקש להצטרף לנסיעה שלך' })
+    expect(link).toHaveAttribute('href', `/stand/trips?trip=${TRIP}`)
+    expect(link.querySelector('.ab-icon svg')).not.toBeNull()
+    expect(link.closest('.ab')).toHaveAttribute('data-tone', 'trip')
+  })
+
   it('a mouse hover and focus hold it, reported separately; a touch never holds it', () => {
     const onHold = vi.fn()
     render(<BannerView banner={goal} onOpen={() => {}} onDismiss={() => {}} onHold={onHold} />)

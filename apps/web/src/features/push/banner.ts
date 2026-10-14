@@ -1,6 +1,7 @@
 // In-app banner ("התראה בראש המסך"): which live events become a banner, its text and where a tap goes.
 // Pure helpers; the component lives in components/alert-banner.tsx.
 import { z } from 'zod'
+import { parseActivityEvent, tripHref, type TripKind } from '@/features/activity/activity'
 import type { NotificationPrefs } from './schema'
 
 export type BannerEvent =
@@ -8,10 +9,14 @@ export type BannerEvent =
   | { kind: 'dm'; threadId: string; from: string }
   | { kind: 'group'; groupId: string; from: string }
   | { kind: 'invite'; groupId: string }
+  /** Someone asked to join my trip, or my request was accepted. The trip is known only after the lookup. */
+  | { kind: 'trip'; activity: TripKind; tripId?: string }
 
 export type BannerContext = {
   /** The current path (a query or hash, if present, is ignored). */
   pathname: string
+  /** The current query string ('?trip=…'); only the trips board uses it. */
+  search?: string
   /** The fan's settings; none saved → the defaults (everything on). */
   prefs: NotificationPrefs | null | undefined
   /** API-Football ids of the fan's club (one club may have more than one id). */
@@ -45,6 +50,9 @@ export function shouldShow(event: BannerEvent, ctx: BannerContext): boolean {
       return messages && event.from !== ctx.meId && path !== `/inbox/g/${event.groupId}`
     case 'invite':
       return messages
+    case 'trip':
+      // Always on (rare, actionable). Not while that trip is already on screen.
+      return !(event.tripId && path === '/stand/trips' && new URLSearchParams(ctx.search ?? '').get('trip') === event.tripId)
   }
 }
 
@@ -59,6 +67,8 @@ export function bannerHref(event: BannerEvent): string {
       return `/inbox/g/${event.groupId}`
     case 'invite':
       return '/inbox'
+    case 'trip':
+      return event.tripId ? tripHref(event.tripId) : '/stand/trips'
   }
 }
 
@@ -88,8 +98,15 @@ const dmPayload = z.object({ thread_id: uuid, from: uuid })
 const groupPayload = z.object({ group_id: uuid, from: uuid })
 const invitePayload = z.object({ group_id: uuid })
 
-/** An `inbox:<me>` broadcast: 'message' {thread_id|group_id, from} or 'invite' {group_id}. Ids only, never content. */
+/**
+ * An `inbox:<me>` broadcast: 'message' {thread_id|group_id, from}, 'invite' {group_id} or 'activity' {kind}. Ids only,
+ * never content. Of the activity kinds only the two trip events become a banner; likes stay in the bell.
+ */
 export function parseInboxEvent(event: string, payload: unknown): BannerEvent | null {
+  if (event === 'activity') {
+    const kind = parseActivityEvent(event, payload)
+    return kind === 'trip_request' || kind === 'trip_accepted' ? { kind: 'trip', activity: kind } : null
+  }
   if (event === 'invite') {
     const p = invitePayload.safeParse(payload)
     return p.success ? { kind: 'invite', groupId: p.data.group_id } : null

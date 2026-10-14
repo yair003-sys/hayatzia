@@ -521,7 +521,8 @@
   .sq-tabs a { position: relative; padding-block: 0.35rem; color: rgb(255 255 255 / 0.6); font-size: 1rem; font-weight: 500; text-shadow: 0 1px 6px rgb(0 0 0 / 0.6); transition: color 0.2s; }
   .sq-tabs a[aria-current='page'] { color: #fff; font-weight: 600; }
   .sq-tabs a[aria-current='page']::after { content: ''; position: absolute; inset-inline: 30%; bottom: -2px; height: 2px; border-radius: 2px; background: var(--color-ok); box-shadow: 0 0 8px rgb(0 255 102 / 0.7); }
-  .sq-plus { position: absolute; inset-inline-end: 1rem; top: calc(env(safe-area-inset-top, 0px) + 0.65rem); display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
+  /* The "+" sits at the start (right) corner: the activity bell owns the end (left) corner, as in reels apps in RTL. */
+  .sq-plus { position: absolute; inset-inline-start: 1rem; top: calc(env(safe-area-inset-top, 0px) + 0.65rem); display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
     border-radius: 999px; background: rgb(255 255 255 / 0.14); color: #fff; backdrop-filter: blur(10px); border: 1px solid rgb(255 255 255 / 0.18); }
   .sq-plus:active { transform: scale(0.94); }
   .sq-round { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 999px; background: rgb(0 0 0 / 0.45); color: #fff; backdrop-filter: blur(8px); }
@@ -685,4 +686,52 @@
   @keyframes ab-in { from { opacity: 0; transform: translateY(calc(-100% - 1rem)); } }
   @keyframes ab-fade { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .ab { animation: ab-fade 0.2s linear; transition: opacity 0.2s; } }
+}
+
+/* Activity bell ("התראות"): a round button at the top end (left in RTL) corner of every in-app screen, under the
+   in-app banner (z 60) and the sheets, over the Square (z 30) and the tab bar (z 40). */
+@layer components {
+  .app-main { padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem); }
+  .bell { position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 0.6rem); inset-inline-end: max(1rem, calc((100vw - 28rem) / 2 + 1rem));
+    display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 999px; color: var(--color-fg);
+    border: 1px solid var(--color-line); background: rgb(13 18 32 / 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 20px -12px rgb(0 0 0 / 0.9); transition: transform 0.15s var(--ease-spring), color 0.2s, border-color 0.2s; }
+  .bell:active { transform: scale(0.93); }
+  .bell[aria-current='page'] { border-color: rgb(0 102 255 / 0.5); color: var(--color-accent-text); }
+  /* The count leans towards the screen (the start side), so it never clips at the edge. */
+  .bell-badge { position: absolute; top: -0.3rem; inset-inline-start: -0.35rem; display: grid; place-items: center; min-width: 1.25rem; height: 1.25rem;
+    padding-inline: 0.3rem; border: 2px solid var(--color-canvas); border-radius: 999px; background: var(--color-live); color: #fff;
+    font-size: 0.66rem; line-height: 1; animation: bell-pop 0.4s var(--ease-spring); }
+  @keyframes bell-pop { from { opacity: 0; transform: scale(0.4); } }
+
+  .act-list { display: flex; flex-direction: column; gap: 0.25rem; }
+  .act-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.65rem 0.75rem; border-radius: var(--radius-md); transition: background 0.2s; }
+  .act-row:hover { background: var(--color-surface); }
+  .act-row:focus-visible { outline-offset: -2px; }
+  .act-row[data-unseen] { background: var(--color-accent-soft); }
+  .act-row[data-unseen]:hover { background: rgb(0 102 255 / 0.22); }
+  .act-who { position: relative; flex: none; }
+  .act-kind { position: absolute; bottom: -0.15rem; inset-inline-end: -0.2rem; display: grid; place-items: center; width: 1.1rem; height: 1.1rem;
+    border: 2px solid var(--color-canvas); border-radius: 999px; color: #fff; }
+  .act-kind[data-kind='like'] { background: var(--color-live); }
+  .act-kind[data-kind='trip'] { background: var(--color-accent); }
+  .act-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 0.15rem; }
+  .act-line { font-size: 0.92rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .act-row[data-unseen] .act-line { font-weight: 600; }
+  .act-meta { color: var(--color-dim); font-size: 0.78rem; }
+  .act-thumb { display: grid; flex: none; place-items: center; width: 2.75rem; height: 2.75rem; overflow: hidden; border-radius: var(--radius-sm);
+    background: var(--color-surface-2); color: var(--color-muted); }
+  .act-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .act-more { display: block; width: 100%; margin-top: 0.5rem; padding: 0.7rem; border: 1px solid var(--color-line); border-radius: var(--radius-md);
+    color: var(--color-accent-text); font-weight: 600; }
+  .act-more:disabled { opacity: 0.6; }
+  .act-empty { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; padding: 3rem 1.5rem; text-align: center; }
+  .act-empty-ico { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; margin-bottom: 0.5rem; border: 1px solid var(--color-line);
+    border-radius: 1.1rem; background: rgb(255 255 255 / 0.04); color: var(--color-accent-text); }
+  .trip-focus { border-color: rgb(0 102 255 / 0.55); box-shadow: 0 0 0 1px rgb(0 102 255 / 0.35); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bell, .act-row { transition: none; }
+    .bell-badge { animation: none; }
+  }
 }

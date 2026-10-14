@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Route } from 'next'
 import { usePathname, useRouter } from 'next/navigation'
+import { tripAcceptedLine, tripRequestLine } from '@/features/activity/activity'
 import type { EncryptedRow } from '@/features/dm/use-device-key'
 import { teamAccent } from '@/features/stand-home/schema'
 import { decryptMessage } from '@/lib/e2e/crypto'
@@ -30,10 +31,18 @@ import { BannerView, type ShownBanner } from './alert-banner-view'
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
 /** Up to this long a random wait before asking for an alert's text. */
 const FETCH_JITTER_MS = 1500
+/**
+ * A trip broadcast also comes when a request is withdrawn (the row is removed): only a row changed this recently is
+ * news. Generous, because the phone's clock may be off a little; each row is shown once anyway.
+ */
+const TRIP_FRESH_MS = 10 * 60_000
 
 type Content = Omit<ShownBanner, 'seq'>
 type Client = ReturnType<typeof createClient>
 type Hold = { seq: number; hover: boolean; focus: boolean }
+
+/** The live context plus the query string (read when an event arrives, not while rendering). */
+const withSearch = (c: BannerContext): BannerContext => ({ ...c, search: typeof window === 'undefined' ? '' : window.location.search })
 
 /**
  * Decrypts one message on this device, read only: the banner never creates a device key (the inbox and the threads
@@ -58,7 +67,8 @@ async function decryptOne(supabase: Client, meId: string, row: unknown): Promise
 }
 
 /**
- * The in-app banner: goals and full time (topic `alerts`) and private / group messages and invites (`inbox:<me>`),
+ * The in-app banner: goals and full time (topic `alerts`), private / group messages and invites, and the two trip
+ * events of the activity bell (all on `inbox:<me>`),
  * one at a time at the top of any screen. Message text is decrypted here, on the device, and never leaves it.
  * Settings come from the server and follow the settings card live (PREFS_EVENT).
  */
@@ -112,6 +122,9 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
       clearTimeout(t)
     }
   }, [banner, held])
+
+  // Trip rows already shown (id + time), so a later broadcast about the same row never repeats it.
+  const shownTrips = useRef(new Set<string>())
 
   const lookUp = useCallback(
     async (event: BannerEvent, alertId?: number): Promise<Content | null> => {
@@ -167,6 +180,33 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
           const { data } = await supabase.from('dm_group_members').select('dm_groups(name)').eq('group_id', event.groupId).eq('user_id', meId).maybeSingle()
           return { title: inviteLine(data?.dm_groups?.name), body: '', href, tone: 'message', accent: null }
         }
+        case 'trip': {
+          // The broadcast says only which kind changed: the newest such row of mine says which trip and who.
+          const { data: row } = await supabase
+            .from('activity')
+            .select('id,trip_id,actor_id,updated_at,trips(nick)')
+            .eq('user_id', meId)
+            .eq('kind', event.activity)
+            .order('updated_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (!row?.trip_id) return null
+          const key = `${row.id}:${row.updated_at}`
+          if (shownTrips.current.has(key) || Date.now() - Date.parse(row.updated_at) > TRIP_FRESH_MS) return null
+          const full: BannerEvent = { ...event, tripId: row.trip_id }
+          if (!shouldShow(full, withSearch(ctx.current))) return null
+          // Accepted: the actor is the driver, whose nick the trip carries. A request: the requester (same club).
+          const nick =
+            event.activity === 'trip_accepted'
+              ? (row.trips?.nick ?? null)
+              : row.actor_id
+                ? ((await supabase.from('profiles').select('nick').eq('user_id', row.actor_id).maybeSingle()).data?.nick ?? null)
+                : null
+          shownTrips.current.add(key)
+          const title = event.activity === 'trip_accepted' ? tripAcceptedLine(nick) : tripRequestLine(nick)
+          return { title, body: '', href: bannerHref(full), tone: 'trip', accent: null }
+        }
       }
     },
     [supabase, meId],
@@ -177,12 +217,12 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
     const handle = async (event: BannerEvent, alertId?: number) => {
       const n = gate.arrive()
       // "My club only" needs the two clubs, known only after the lookup: the first check leaves it out.
-      const c = ctx.current
+      const c = withSearch(ctx.current)
       const first = event.kind === 'match' && c.prefs?.matches === 'team' ? { ...c, prefs: { ...c.prefs, matches: 'all' as const } } : c
       if (!shouldShow(event, first)) return
       const content = await lookUp(event, alertId).catch(() => null)
       // Check again: the fan may have opened that screen or changed a setting while we were looking it up.
-      if (!content || (event.kind !== 'match' && !shouldShow(event, ctx.current))) return
+      if (!content || (event.kind !== 'match' && !shouldShow(event, withSearch(ctx.current)))) return
       if (!gate.claim(n)) return
       setBanner({ ...content, seq: n })
     }

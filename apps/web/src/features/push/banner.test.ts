@@ -184,3 +184,37 @@ describe('arrivalGate', () => {
     expect(g.claim(older)).toBe(true)
   })
 })
+
+describe('trip events (activity bell)', () => {
+  const TRIP = '55555555-5555-4555-8555-555555555555'
+  const req = { kind: 'trip', activity: 'trip_request' } as const
+  const acc = { kind: 'trip', activity: 'trip_accepted', tripId: TRIP } as const
+
+  it('`activity` broadcasts: trip kinds become a banner, likes never do', () => {
+    expect(parseInboxEvent('activity', { kind: 'trip_request' })).toEqual(req)
+    expect(parseInboxEvent('activity', { kind: 'trip_accepted', id: 'x' })).toEqual({ kind: 'trip', activity: 'trip_accepted' })
+    expect(parseInboxEvent('activity', { kind: 'clip_like' })).toBeNull()
+    expect(parseInboxEvent('activity', { kind: 'photo_like' })).toBeNull()
+    expect(parseInboxEvent('activity', { kind: 'nope' })).toBeNull()
+  })
+
+  it('always on: the message and match settings do not affect them', () => {
+    expect(shouldShow(req, ctx({ prefs: { matches: 'off', messages: false } }))).toBe(true)
+    expect(shouldShow(acc, ctx({ prefs: { matches: 'off', messages: false } }))).toBe(true)
+  })
+
+  it("not shown while that trip's screen is open; shown on other trips or elsewhere", () => {
+    expect(shouldShow(acc, ctx({ pathname: '/stand/trips', search: `?trip=${TRIP}` }))).toBe(false)
+    expect(shouldShow(acc, ctx({ pathname: '/stand/trips/', search: `?x=1&trip=${TRIP}` }))).toBe(false)
+    expect(shouldShow(acc, ctx({ pathname: '/stand/trips', search: '?trip=other' }))).toBe(true)
+    expect(shouldShow(acc, ctx({ pathname: '/stand/trips' }))).toBe(true)
+    expect(shouldShow(acc, ctx({ pathname: '/activity', search: `?trip=${TRIP}` }))).toBe(true)
+    // Before the lookup the trip is not known yet: allowed, checked again after.
+    expect(shouldShow(req, ctx({ pathname: '/stand/trips', search: `?trip=${TRIP}` }))).toBe(true)
+  })
+
+  it('tap → the trip', () => {
+    expect(bannerHref(acc)).toBe(`/stand/trips?trip=${TRIP}`)
+    expect(bannerHref(req)).toBe('/stand/trips')
+  })
+})

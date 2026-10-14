@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { sendPush } from '@/features/push/server/send'
+import { tripAcceptedLine, tripHref, tripRequestLine, type TripKind } from '@/features/activity/activity'
 import { decideSchema, eventSchema, goingSchema, idSchema, itemSchema, tripSchema } from '../schema'
 
 async function db() {
@@ -11,6 +12,7 @@ async function db() {
   if (!supabase) throw new Error('Supabase is not configured')
   return supabase
 }
+type Db = Awaited<ReturnType<typeof db>>
 const limitMsg = (m: string, fallback: string) => (m.includes('rate_limit') ? 'יותר מדי פרסומים בשעה האחרונה' : fallback)
 
 export const createTripAction = actionClient.inputSchema(tripSchema).action(async ({ parsedInput: p }) => {
@@ -32,30 +34,56 @@ export const requestSeatAction = actionClient.inputSchema(idSchema).action(async
   const supabase = await db()
   const { error } = await supabase.from('trip_requests').insert({ trip_id: id })
   if (error && error.code !== '23505') return { error: limitMsg(error.message, 'הבקשה לא נשלחה') }
-  if (!error) {
-    const { data: t } = await supabase.from('trips').select('user_id').eq('id', id).maybeSingle()
-    if (t) await sendPush([t.user_id], { title: 'בקשה לטרמפ', body: 'אוהד ביקש להצטרף לנסיעה שלך', url: '/stand/trips', tag: `trip:${id}` })
-  }
+  if (!error) await pushTrip(supabase, 'trip_request', id)
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })
 
 export const decideSeatAction = actionClient.inputSchema(decideSchema).action(async ({ parsedInput: p }) => {
-  const { error } = await (await db())
+  const status = p.accept ? 'accepted' : 'declined'
+  // Only a request that really changed is told (RLS: the trip's driver only; the same answer twice changes nothing).
+  const { data: changed, error } = await (await db())
     .from('trip_requests')
-    .update({ status: p.accept ? 'accepted' : 'declined' })
+    .update({ status })
     .eq('trip_id', p.tripId)
     .eq('user_id', p.userId)
+    .neq('status', status)
+    .select('user_id')
   if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : 'לא הצלחנו לשמור' }
-  await sendPush([p.userId], {
-    title: p.accept ? 'אושרת לנסיעה' : 'הבקשה לנסיעה נדחתה',
-    body: p.accept ? 'יש לך מקום. תתאמו פרטים בהודעה.' : 'אפשר לחפש נסיעה אחרת',
-    url: '/stand/trips',
-    tag: `trip:${p.tripId}`,
-  })
+  if (changed?.length) {
+    if (p.accept) await pushTrip(await db(), 'trip_accepted', p.tripId, p.userId)
+    else await sendPush([p.userId], { title: 'הבקשה לנסיעה נדחתה', body: 'אפשר לחפש נסיעה אחרת', url: '/stand/trips', tag: `trip:${p.tripId}` })
+  }
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })
+
+/**
+ * The two trip events of the activity bell, as a phone notification to the one fan concerned (always on):
+ * a request → the trip's driver, "<nick> ביקש להצטרף לנסיעה שלך"; an acceptance → the rider, "אושרת! הצטרפת לנסיעה
+ * של <nick>". <nick> is the acting fan (me). Nothing else is sent. Same rules as the bell's rows: never to myself, and
+ * not between fans blocked either way. sendPush never throws, so a failed notification never fails the action.
+ */
+async function pushTrip(supabase: Db, kind: TripKind, tripId: string, rider?: string) {
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  if (!me) return
+  const [{ data: trip }, { data: profile }] = await Promise.all([
+    supabase.from('trips').select('user_id').eq('id', tripId).maybeSingle(),
+    supabase.from('profiles').select('nick').eq('user_id', me).maybeSingle(),
+  ])
+  const to = kind === 'trip_request' ? trip?.user_id : rider
+  if (!trip || !to || to === me) return
+  const { data: blocked, error } = await supabase.rpc('blocked_between', { a: me, b: to })
+  if (error || blocked) return
+  const nick = profile?.nick ?? null
+  await sendPush([to], {
+    title: kind === 'trip_request' ? tripRequestLine(nick) : tripAcceptedLine(nick),
+    body: '',
+    url: tripHref(tripId),
+    tag: `trip:${tripId}`,
+  })
+}
 
 export const deleteTripAction = actionClient.inputSchema(idSchema).action(async ({ parsedInput: { id } }) => {
   await (await db()).from('trips').delete().eq('id', id)

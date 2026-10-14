@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
-import { MessageCircle, X } from 'lucide-react'
+import { Car, MessageCircle, X } from 'lucide-react'
 import type { TeamAccent } from '@/features/stand-home/schema'
 
 export type ShownBanner = {
@@ -10,7 +10,7 @@ export type ShownBanner = {
   title: string
   body: string
   href: string
-  tone: 'match' | 'message'
+  tone: 'match' | 'message' | 'trip'
   /** The scoring club's colours; null → the neutral brand style. */
   accent: TeamAccent | null
 }
@@ -139,9 +139,9 @@ export function BannerView({
           }}
         >
           <a href={banner.href} className="ab-main" onClick={open} draggable={false}>
-            {banner.tone === 'message' && (
+            {banner.tone !== 'match' && (
               <span className="ab-icon" aria-hidden="true">
-                <MessageCircle className="size-4" strokeWidth={2.4} />
+                {banner.tone === 'trip' ? <Car className="size-4" strokeWidth={2.4} /> : <MessageCircle className="size-4" strokeWidth={2.4} />}
               </span>
             )}
             <span className="ab-text">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, MessageSquare, Shirt, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -69,8 +69,14 @@ const input = 'w-full rounded-md border border-line bg-elev px-3 py-2'
 // ---------------- trips ----------------
 export type MatchOption = { id: number; label: string; kickoff: number }
 
-export function TripsBoard({ matches, trips, meId }: { matches: MatchOption[]; trips: Trip[]; meId: string }) {
-  const [fixtureId, setFixtureId] = useState(matches[0]?.id)
+export function TripsBoard({ matches, trips, meId, focusId }: { matches: MatchOption[]; trips: Trip[]; meId: string; focusId?: string }) {
+  // A trip opened from a notification: its match is picked and the trip scrolled into view.
+  const focused = focusId ? trips.find((t) => t.id === focusId) : undefined
+  const [fixtureId, setFixtureId] = useState(matches.find((m) => m.id === focused?.fixture_id)?.id ?? matches[0]?.id)
+  const focusedId = focused?.id
+  useEffect(() => {
+    if (focusedId) document.getElementById(`trip-${focusedId}`)?.scrollIntoView({ block: 'center' })
+  }, [focusedId])
   const [form, setForm] = useState(false)
   const { pending, error, run } = useRun()
   const match = matches.find((m) => m.id === fixtureId)
@@ -174,7 +180,7 @@ export function TripsBoard({ matches, trips, meId }: { matches: MatchOption[]; t
           const accepted = t.requests.filter((r) => r.status === 'accepted').length
           const free = Math.max(t.seats - accepted, 0)
           return (
-            <li key={t.id} className="space-y-2 rounded-lg border border-line-soft bg-surface p-3">
+            <li key={t.id} id={`trip-${t.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', t.id === focusedId && 'trip-focus')}>
               <div className="flex items-center gap-2">
                 <b>{t.nick}</b>
                 <span className="text-xs text-accent-text">{TRIP_KIND[t.kind]}</span>
