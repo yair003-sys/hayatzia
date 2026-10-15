@@ -987,6 +987,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"push_throttle": {
+                  Row: {
+                    "at": string,"scope": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "at": string,"scope": string,"user_id": string
+                  }
+                  Update: {
+                    "at"?: string,"scope"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"reports": {
                   Row: {
                     "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string,"status": string
@@ -1240,9 +1254,6 @@ isOneToOne: false
 "blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
-"claim_message_push":
-{ Args: { "p_id": string,"p_kind": string }; Returns: boolean
-                           },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
                            },
@@ -1263,6 +1274,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"claim_message_push":
+{ Args: { "p_id": string,"p_kind": string }; Returns: boolean
+                           },
 "clear_fan_lineup":
 { Args: { "p_fixture": number }; Returns: boolean
                            },
