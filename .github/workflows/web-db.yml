@@ -24,19 +24,28 @@ jobs:
       run:
         working-directory: apps/web
     steps:
+      # No token in .git/config (only the commit step gets it), and the CLI and its action are pinned (security review
+      # 2026-10-15).
       - uses: actions/checkout@v5
-      - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          persist-credentials: false
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: 2.120.0
       - name: Start local Supabase (database + realtime + auth + storage; applies all migrations)
         run: ./scripts/ci-step.sh "supabase start" supabase start -x studio,edge-runtime,logflare,vector,imgproxy
       - name: Security tests (pgTAP)
         run: ./scripts/ci-step.sh "db test" supabase test db
       - name: Generate database types
         run: ./scripts/ci-step.sh "gen types" bash -c 'supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts'
+      # Only a run on main commits (a branch run just shows the types differ).
       - name: Commit types if they changed
         id: commit
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           if git diff --quiet -- src/lib/supabase/database.types.ts && git ls-files --error-unmatch src/lib/supabase/database.types.ts >/dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
@@ -44,8 +53,8 @@ jobs:
           git config user.email "hayatzia-bot@users.noreply.github.com"
           git add src/lib/supabase/database.types.ts
           git commit -m "web: עדכון סוגי מסד הנתונים (אוטומטי)"
-          git pull --rebase origin main
-          git push
+          git pull --rebase "$REPO_URL" main
+          git push "$REPO_URL" HEAD:main
           echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Re-run web CI on the new types
         if: steps.commit.outputs.changed == 'true'
