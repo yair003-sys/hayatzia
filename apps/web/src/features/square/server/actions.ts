@@ -4,6 +4,7 @@ import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { chatErrorHe } from '@/features/chat/schema'
+import { moderationHe } from '@/lib/moderation'
 import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, toggleSchema } from '../schema'
 import { getClip, getClipComments, getSquareFeed } from './queries'
 
@@ -32,7 +33,11 @@ export const createClipAction = actionClient.inputSchema(createClipSchema).actio
     .single()
   if (error) {
     await supabase.storage.from('clips').remove([parsedInput.path])
-    return { error: error.message.includes('rate_limit') ? 'הגעת למקסימום העלאות לשעה. נסה מאוחר יותר' : 'הפרסום נכשל. נסה שוב' }
+    return {
+      error:
+        moderationHe(error.message) ??
+        (error.message.includes('rate_limit') ? 'הגעת למקסימום העלאות לשעה. נסה מאוחר יותר' : 'הפרסום נכשל. נסה שוב'),
+    }
   }
   // The poster's feed adds the post itself (no page reload); other fans see it on their next load.
   return { ok: true as const, clip: await getClip(row.id) }

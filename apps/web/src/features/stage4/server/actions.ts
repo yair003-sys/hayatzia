@@ -1,5 +1,6 @@
 'use server'
 
+import { moderationHe } from '@/lib/moderation'
 import { z } from 'zod'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
@@ -56,7 +57,7 @@ export const addChantAction = actionClient.inputSchema(chantSchema).action(async
   const { error } = await supabase.from('chants').insert({ title: parsedInput.title, lyrics: parsedInput.lyrics, audio_path: parsedInput.audioPath ?? null })
   if (error) {
     if (parsedInput.audioPath) await supabase.storage.from('chants').remove([parsedInput.audioPath])
-    return { error: 'רק נציג הקהל של הקבוצה יכול להוסיף שירים' }
+    return { error: moderationHe(error.message) ?? 'רק נציג הקהל של הקבוצה יכול להוסיף שירים' }
   }
   return { ok: true }
 })

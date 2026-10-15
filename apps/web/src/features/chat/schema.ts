@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { moderationHe } from '@/lib/moderation'
 
 export const MESSAGE_MAX = 200
 export const PAGE_SIZE = 50
@@ -24,6 +25,8 @@ export type SendResult = { message: ChatMessage } | { error: string }
 
 /** Hebrew text for the errors the database raises on insert. */
 export function chatErrorHe(message: string): string {
+  const moderated = moderationHe(message)
+  if (moderated) return moderated
   if (message.includes('rate_limit')) return 'רגע, לאט יותר. נסה שוב בעוד כמה שניות'
   if (message.includes('room_closed')) return 'החדר סגור כרגע'
   if (message.includes('not_playing')) return 'רק אוהדי שתי הקבוצות כותבים בחדר הזה'

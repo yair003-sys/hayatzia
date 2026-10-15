@@ -93,6 +93,7 @@ const GROUP_ERRORS: Record<string, string> = {
   no_members: 'בחר לפחות אוהד אחד',
   not_member: 'ההזמנה כבר לא בתוקף, או שאתה כבר לא בקבוצה',
   bad_name: 'שם הקבוצה צריך להיות 2–40 תווים',
+  offensive_name: 'שם הקבוצה מכיל מילה לא ראויה. נסה שם אחר',
 }
 
 /** Hebrew message for an error code raised by the group functions in the database. */

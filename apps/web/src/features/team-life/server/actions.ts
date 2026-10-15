@@ -1,5 +1,6 @@
 'use server'
 
+import { moderationHe } from '@/lib/moderation'
 import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
@@ -13,7 +14,8 @@ async function db() {
   return supabase
 }
 type Db = Awaited<ReturnType<typeof db>>
-const limitMsg = (m: string, fallback: string) => (m.includes('rate_limit') ? 'יותר מדי פרסומים בשעה האחרונה' : fallback)
+const limitMsg = (m: string, fallback: string) =>
+  moderationHe(m) ?? (m.includes('rate_limit') ? 'יותר מדי פרסומים בשעה האחרונה' : fallback)
 
 export const createTripAction = actionClient.inputSchema(tripSchema).action(async ({ parsedInput: p }) => {
   const { error } = await (await db()).from('trips').insert({

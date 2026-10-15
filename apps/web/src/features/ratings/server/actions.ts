@@ -1,5 +1,6 @@
 'use server'
 
+import { moderationHe } from '@/lib/moderation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { likeReviewSchema, playerIdSchema, rateSchema } from '../schema'
@@ -22,7 +23,8 @@ export const ratePlayerAction = actionClient.inputSchema(rateSchema).action(asyn
   const { error } = existing.data
     ? await supabase.from('player_ratings').update({ stars, review }).eq('player_id', playerId).eq('user_id', userId)
     : await supabase.from('player_ratings').insert({ player_id: playerId, stars, review })
-  if (error) return { error: error.message.includes('not_your_player') ? 'מדרגים רק שחקנים של הקבוצה שלך' : 'השמירה נכשלה' }
+  if (error)
+    return { error: moderationHe(error.message) ?? (error.message.includes('not_your_player') ? 'מדרגים רק שחקנים של הקבוצה שלך' : 'השמירה נכשלה') }
   return { ok: true as const, previous: existing.data?.stars ?? null }
 })
 
