@@ -9,10 +9,9 @@ on:
     # changes to the new app, docs or tooling never redeploy the legacy site
     paths-ignore: ['apps/**', 'docs/**', '.claude/**', 'CLAUDE.md', '.github/workflows/web-ci.yml']
 
+# Least privilege per job (security review 2026-10-15): only the data job writes to the repo, only deploy writes Pages.
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: hayatzia-update
@@ -22,6 +21,8 @@ jobs:
   update:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       changed: ${{ steps.run.outputs.changed }}
     steps:
@@ -55,6 +56,10 @@ jobs:
     needs: update
     if: always() && (github.event_name == 'push' || needs.update.outputs.changed == 'true')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
