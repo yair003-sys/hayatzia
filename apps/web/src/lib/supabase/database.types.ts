@@ -1356,6 +1356,12 @@ isOneToOne: false
 "message_push_allowed":
 { Args: { "p_users": (string)[] }; Returns: string[]
                            },
+"moderate_name":
+{ Args: { "p": string }; Returns: string
+                           },
+"moderate_text":
+{ Args: { "p": string }; Returns: string
+                           },
 "mute_group":
 { Args: { "p_group": string,"p_muted": boolean }; Returns: undefined
                            },
