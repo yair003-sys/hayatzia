@@ -2,7 +2,7 @@
 -- Guards that every table keeps it that way: a new table that references auth.users must cascade (or set null for a
 -- "who did it" column), or account deletion would fail or leave the fan's data behind.
 begin;
-select plan(4);
+select plan(5);
 
 select is(
   (select count(*)::int
@@ -30,9 +30,11 @@ delete from auth.users where id = '00000000-0000-0000-0000-000000000d01';
 
 select is((select count(*)::int from public.profiles where user_id = '00000000-0000-0000-0000-000000000d01'), 0,
   'the profile goes with the account');
-select is((select count(*)::int from public.blocks where blocked_id = '00000000-0000-0000-0000-000000000d01')
-        + (select count(*)::int from public.reports where reporter_id = '00000000-0000-0000-0000-000000000d01'), 0,
+select is((select count(*)::int from public.blocks where blocked_id = '00000000-0000-0000-0000-000000000d01'), 0,
   'rows that point at the deleted fan go too');
+-- A report is about someone else's content: it stays for the moderators, without the reporter (20261015180000).
+select is((select count(*)::int from public.reports where reporter_id is null and ref = '00000000-0000-0000-0000-000000000d02'), 1,
+  'a report the fan sent stays, without their name');
 select is((select count(*)::int from public.profiles where user_id = '00000000-0000-0000-0000-000000000d02'), 1,
   'other fans are untouched');
 
