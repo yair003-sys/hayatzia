@@ -405,14 +405,14 @@ isOneToOne: false
                   ]
                 },"dm_group_messages": {
                   Row: {
-                    "ciphertext": string,"created_at": string,"group_id": string,"id": string,"iv": string,"sender_device": string,"sender_id": string,"wrapped_keys": NonNullable<Json>
+                    "ciphertext": string,"created_at": string,"group_id": string,"id": string,"iv": string,"reply_to": string | null,"sender_device": string,"sender_id": string,"wrapped_keys": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "ciphertext": string,"created_at"?: string,"group_id": string,"id"?: string,"iv": string,"sender_device": string,"sender_id"?: string,"wrapped_keys": NonNullable<Json>
+                    "ciphertext": string,"created_at"?: string,"group_id": string,"id"?: string,"iv": string,"reply_to"?: string | null,"sender_device": string,"sender_id"?: string,"wrapped_keys": NonNullable<Json>
                   }
                   Update: {
-                    "ciphertext"?: string,"created_at"?: string,"group_id"?: string,"id"?: string,"iv"?: string,"sender_device"?: string,"sender_id"?: string,"wrapped_keys"?: NonNullable<Json>
+                    "ciphertext"?: string,"created_at"?: string,"group_id"?: string,"id"?: string,"iv"?: string,"reply_to"?: string | null,"sender_device"?: string,"sender_id"?: string,"wrapped_keys"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
@@ -445,14 +445,14 @@ isOneToOne: false
                   ]
                 },"dm_messages": {
                   Row: {
-                    "ciphertext": string,"created_at": string,"id": string,"iv": string,"sender_device": string,"sender_id": string,"thread_id": string,"wrapped_keys": NonNullable<Json>
+                    "ciphertext": string,"created_at": string,"id": string,"iv": string,"reply_to": string | null,"sender_device": string,"sender_id": string,"thread_id": string,"wrapped_keys": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "ciphertext": string,"created_at"?: string,"id"?: string,"iv": string,"sender_device": string,"sender_id"?: string,"thread_id": string,"wrapped_keys": NonNullable<Json>
+                    "ciphertext": string,"created_at"?: string,"id"?: string,"iv": string,"reply_to"?: string | null,"sender_device": string,"sender_id"?: string,"thread_id": string,"wrapped_keys": NonNullable<Json>
                   }
                   Update: {
-                    "ciphertext"?: string,"created_at"?: string,"id"?: string,"iv"?: string,"sender_device"?: string,"sender_id"?: string,"thread_id"?: string,"wrapped_keys"?: NonNullable<Json>
+                    "ciphertext"?: string,"created_at"?: string,"id"?: string,"iv"?: string,"reply_to"?: string | null,"sender_device"?: string,"sender_id"?: string,"thread_id"?: string,"wrapped_keys"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
@@ -703,14 +703,14 @@ isOneToOne: false
                   ]
                 },"match_messages": {
                   Row: {
-                    "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"side": string,"team_id": string,"user_id": string
+                    "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"side": string,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"fixture_id": number,"id"?: string,"nick"?: string,"side"?: string,"team_id"?: string,"user_id"?: string
+                    "body": string,"created_at"?: string,"fixture_id": number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"nick"?: string,"side"?: string,"team_id"?: string,"user_id"?: string
+                    "body"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1103,14 +1103,14 @@ isOneToOne: false
                   ]
                 },"team_messages": {
                   Row: {
-                    "body": string,"created_at": string,"id": string,"nick": string,"team_id": string,"user_id": string
+                    "body": string,"created_at": string,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
