@@ -1,11 +1,14 @@
 -- Chat essentials (spec 2026-10-15-chat-essentials-design): replies in all four chats.
 --
 -- Public chats (team_messages, match_messages): the fan sends `reply_to` only. A BEFORE INSERT trigger checks the
--- replied message is in the same chat (same club / same fixture) and stamps a snapshot of it: `reply_nick` and the
--- first 80 characters of its stored body (`reply_body`). The stored body has already been through the curse filter
--- (zz_moderate), so the snapshot carries the moderated text. Rendering a reply needs no extra query (no N+1) and still
--- works when the original is not loaded. The fan cannot set the snapshot columns (no grant, and the trigger overwrites
--- them for every caller).
+-- replied message is in the same chat (same club / same fixture) and stamps a snapshot of it: `reply_user` (its
+-- author, so the app hides a quote of a fan the viewer blocked), `reply_nick` and up to 80 characters of its stored
+-- body (`reply_body`). Rendering a reply needs no extra query (no N+1) and still works when the original is not
+-- loaded. The fan cannot set the snapshot columns (no grant, and the trigger overwrites them for every caller).
+-- The stored body was moderated as a whole, but a cut can create a listed word the whole text did not hold (the filter
+-- matches whole words only: "...מוות לערביםק" cut inside the last word, "זינוק" cut to "זין"). So the snapshot is cut
+-- at the last space before 81 characters (a single long word is cut at 80) and moderated again; a cut that now holds
+-- blocked text keeps no text at all.
 --
 -- Private messages and groups (end-to-end encrypted): `reply_to` only, checked to be in the same thread / group
 -- (and, in a group, sent since the replier joined, i.e. a message they can read). The quoted text is found and
@@ -24,10 +27,12 @@
 -- ---------- columns ----------
 alter table public.team_messages
   add column reply_to   uuid,
+  add column reply_user uuid,
   add column reply_nick varchar(20),
   add column reply_body varchar(80);
 alter table public.match_messages
   add column reply_to   uuid,
+  add column reply_user uuid,
   add column reply_nick varchar(20),
   add column reply_body varchar(80);
 alter table public.dm_messages add column reply_to uuid;
@@ -38,24 +43,39 @@ create function public.chat_reply_stamp() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
   src record;
+  cut text;
 begin
+  new.reply_user := null;
   new.reply_nick := null;
   new.reply_body := null;
   if new.reply_to is null then
     return new;
   end if;
   if tg_table_name = 'team_messages' then
-    select m.nick, m.body into src from public.team_messages m
+    select m.user_id, m.nick, m.body into src from public.team_messages m
      where m.id = new.reply_to and m.team_id = new.team_id;
   else
-    select m.nick, m.body into src from public.match_messages m
+    select m.user_id, m.nick, m.body into src from public.match_messages m
      where m.id = new.reply_to and m.fixture_id = new.fixture_id;
   end if;
   if not found then
     raise exception 'bad_reply' using errcode = '23503';
   end if;
+  new.reply_user := src.user_id;
   new.reply_nick := src.nick;
-  new.reply_body := left(src.body, 80);
+  cut := src.body;
+  if char_length(cut) > 80 then
+    -- Up to the last whitespace within the first 81 characters (so a word ending at 80 is kept whole).
+    cut := coalesce(rtrim(substring(left(cut, 81) from '^(.*)\s')), left(cut, 80));
+    if cut = '' then
+      cut := left(src.body, 80);
+    end if;
+  end if;
+  begin
+    new.reply_body := left(public.moderate_text(cut), 80);
+  exception when check_violation then
+    new.reply_body := null;   -- the cut holds blocked text: quote the nick only
+  end;
   return new;
 end $$;
 revoke all on function public.chat_reply_stamp() from public, anon, authenticated;

@@ -203,7 +203,9 @@ export function useFollowEnd<T extends { id: string }>(
   const shown = useRef(items)
   const shownExtra = useRef(extraCount)
   const followMine = useRef(false)
-  const [seenId, setSeenId] = useState<string | null>(null)
+  // The newest message the fan has seen at the end; the badge counts what came after it. Starts at the newest message
+  // on screen when the chat opens (a room that opens scrolled up still counts what arrives later).
+  const [seenId, setSeenId] = useState<string | null>(() => items.at(-1)?.id ?? null)
 
   useEffect(() => {
     const el = bottom.current
@@ -232,10 +234,11 @@ export function useFollowEnd<T extends { id: string }>(
 
   const last = items.at(-1)?.id ?? null
   useEffect(() => {
-    if (!atBottom || !last) return
-    const t = setTimeout(() => setSeenId(last), 0)
+    // At the end: everything is seen. Not yet anything (a history that loads later): its newest message.
+    if (!last || (!atBottom && seenId !== null)) return
+    const t = setTimeout(() => setSeenId((cur) => (atBottom || cur === null ? last : cur)), 0)
     return () => clearTimeout(t)
-  }, [atBottom, last])
+  }, [atBottom, last, seenId])
 
   return {
     atBottom,

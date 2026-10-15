@@ -118,7 +118,8 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         tint={(m) => (m.side === 'a' ? away.bar : home.bar)}
         send={async (body, replyTo) => {
           const r = await sendMatchMessageAction({ fixtureId, body, replyTo })
-          return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה' }
+          // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.
+          return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
         }}
         loadOlder={async (cursor) =>
           (await loadOlderMatchMessagesAction({ fixtureId, ...cursor })).data?.messages ?? []

@@ -2,7 +2,7 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { chatErrorHe, cursorSchema, MESSAGE_COLUMNS, sendMessageSchema, type SendResult } from '@/features/chat/schema'
+import { chatErrorHe, chatErrorKind, cursorSchema, MESSAGE_COLUMNS, sendMessageSchema, type SendResult } from '@/features/chat/schema'
 import { getTeamMessages } from './queries'
 
 /**
@@ -19,7 +19,7 @@ export const sendTeamMessageAction = actionClient
       .insert({ body: parsedInput.body, reply_to: parsedInput.replyTo ?? null })
       .select(MESSAGE_COLUMNS)
       .single()
-    if (error) return { error: chatErrorHe(error.message) }
+    if (error) return { error: chatErrorHe(error.message), kind: chatErrorKind(error.message) }
     return { message: data }
   })
 

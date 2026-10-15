@@ -703,14 +703,14 @@ isOneToOne: false
                   ]
                 },"match_messages": {
                   Row: {
-                    "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"side": string,"team_id": string,"user_id": string
+                    "body": string,"created_at": string,"fixture_id": number,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"side": string,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"fixture_id": number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
+                    "body": string,"created_at"?: string,"fixture_id": number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
+                    "body"?: string,"created_at"?: string,"fixture_id"?: number,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"side"?: string,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1103,14 +1103,14 @@ isOneToOne: false
                   ]
                 },"team_messages": {
                   Row: {
-                    "body": string,"created_at": string,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"team_id": string,"user_id": string
+                    "body": string,"created_at": string,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"team_id"?: string,"user_id"?: string
+                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"team_id"?: string,"user_id"?: string
+                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {

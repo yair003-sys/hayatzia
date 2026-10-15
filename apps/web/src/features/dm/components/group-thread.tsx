@@ -6,7 +6,7 @@ import { encryptMessage } from '@/lib/e2e/crypto'
 import { notifyGroupAction } from '@/features/push/server/actions'
 import { DayDivider, JumpButton, jumpToMessage, UnreadDivider, useNowMinute } from '@/features/chat/components/chat-parts'
 import { useFollowEnd, useReadPosition } from '@/features/chat/components/use-read-position'
-import { LOCAL_ID, replySnippet, startsNewDay } from '@/features/chat/essentials'
+import { echoMatch, failurePlan, LOCAL_ID, replySnippet, startsNewDay, type FailureKind } from '@/features/chat/essentials'
 import { avatarOf, DEVICES_PER_FAN, DM_PAGE, eventLine, pickDevices, recipientsFor, type GroupEventKind } from '../schema'
 import { markReadAction } from '../server/actions'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
@@ -45,6 +45,15 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
+  const [draft, setDraft] = useState('')
+  const draftRef = useRef('')
+  useEffect(() => {
+    draftRef.current = draft
+  })
+  // Server ids my sends already confirmed: their realtime echo replaces no "sending" copy.
+  const confirmed = useRef(new Set<string>())
+  // The message each of my pending replies answers, to put the quote back if the text is refused.
+  const replyOf = useRef(new Map<string, Msg>())
   const now = useNowMinute()
 
   const msgs = items.filter((x): x is Msg => x.type === 'msg')
@@ -119,7 +128,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       // My own message can arrive here before the insert returns: it replaces its "sending" copy.
       if (s.sender_id === meId) {
         setPending((cur) => {
-          const i = cur.findIndex((p) => !p.failed && p.text === s.text && p.reply_to === s.reply_to)
+          const i = echoMatch(cur, s, confirmed.current, (p) => p.text)
           return i < 0 ? cur : cur.filter((_, j) => j !== i)
         })
       }
@@ -135,9 +144,21 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
     }
   }, [key, groupId, meId, supabase, reveal, learnNicks])
 
-  const fail = (p: Msg, why: string) => {
-    setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+  const fail = (p: Msg, why: string, kind: FailureKind = 'retry') => {
     setStatus(why)
+    const plan = failurePlan(kind)
+    if (plan.keepBubble) {
+      setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+      return
+    }
+    // Refused for good: no pointless retry, the text (and its quote, unless that is gone) goes back to the box.
+    const quoted = replyOf.current.get(p.id)
+    replyOf.current.delete(p.id)
+    setPending((cur) => cur.filter((x) => x.id !== p.id))
+    if (plan.restoreText && p.text !== null && !draftRef.current.trim()) {
+      setDraft(p.text)
+      if (plan.restoreQuote && quoted) setReplyTo((cur) => cur ?? quoted)
+    }
   }
 
   const deliver = async (p: Msg) => {
@@ -168,8 +189,12 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         .single()
       if (error) {
         const m = error.message
-        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : m.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : m.includes('bad_reply') ? 'ההודעה שענית לה כבר לא זמינה' : 'ההודעה לא נשלחה')
+        if (m.includes('not_member')) return fail(p, 'אתה כבר לא בקבוצה הזאת', 'permanent')
+        if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
+        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
       }
+      confirmed.current.add(data.id)
+      replyOf.current.delete(p.id)
       setPending((cur) => cur.filter((x) => x.id !== p.id))
       setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text: p.text }]))
       void notifyGroupAction({ groupId })
@@ -181,6 +206,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   const send = async (text: string) => {
     if (!key) return false
     const p: Msg = { type: 'msg', id: `${LOCAL_ID}${crypto.randomUUID()}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
+    if (replyTo) replyOf.current.set(p.id, replyTo)
     follow.followNext()
     setPending((cur) => [...cur, p])
     setReplyTo(null)
@@ -239,13 +265,29 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
           setPending((cur) => cur.map((x) => (x.id === m.id ? { ...x, failed: false } : x)))
           void deliver({ ...m, failed: false })
         }}
-        onDiscard={() => setPending((cur) => cur.filter((x) => x.id !== m.id))}
+        onDiscard={() => {
+          replyOf.current.delete(m.id)
+          setPending((cur) => cur.filter((x) => x.id !== m.id))
+        }}
       />,
     )
   }
 
   return (
-    <div ref={root} className="chat-doodle flex min-h-[65dvh] flex-col">
+    <div
+      ref={root}
+      className="chat-doodle flex min-h-[65dvh] flex-col"
+      // Escape anywhere in the chat (box, reply bar, message actions) cancels a reply and closes the actions.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || (!replyTo && !active)) return
+        e.preventDefault()
+        setActive(null)
+        if (replyTo) {
+          setReplyTo(null)
+          input.current?.focus()
+        }
+      }}
+    >
       <E2eNote />
       <span className="sr-only" aria-live="polite">
         {divider?.label ?? ''}
@@ -260,6 +302,8 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         placeholder="הודעה לקבוצה…"
         label="הודעה לקבוצה"
         onSend={send}
+        draft={draft}
+        onDraft={setDraft}
         inputRef={input}
         reply={replyTo ? { nick: replyTo.sender_id === meId ? 'עצמך' : nickOf(replyTo.sender_id), text: replyTo.text === null ? 'הודעה מוצפנת' : replySnippet(replyTo.text) } : null}
         onCancelReply={() => {

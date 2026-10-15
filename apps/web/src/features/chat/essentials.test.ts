@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   dayKey,
+  echoMatch,
+  failurePlan,
   dayLabel,
   laterMark,
   loadMark,
@@ -158,5 +160,37 @@ describe('replySnippet', () => {
 
   it('never splits an emoji', () => {
     expect(replySnippet('⚽'.repeat(3), 2)).toBe('⚽⚽…')
+  })
+})
+
+describe('echoMatch (my own message coming back on the live channel)', () => {
+  type P = { id: string; body: string; failed?: boolean; reply_to?: string | null }
+  const body = (p: P) => p.body
+  const echo = (id: string, text: string, reply_to: string | null = null) => ({ id, text, reply_to })
+
+  it('replaces the oldest copy still sending with the same text and reply', () => {
+    const pending: P[] = [{ id: 'local-1', body: 'גול' }, { id: 'local-2', body: 'גול' }]
+    expect(echoMatch(pending, echo('s1', 'גול'), new Set(), body)).toBe(0)
+    expect(echoMatch([{ id: 'local-1', body: 'גול', reply_to: 'x' }], echo('s1', 'גול'), new Set(), body)).toBe(-1)
+    expect(echoMatch([{ id: 'local-1', body: 'גול', failed: true }], echo('s1', 'גול'), new Set(), body)).toBe(-1)
+  })
+
+  it('leaves a newer same-text message alone when the send already confirmed the echoed one', () => {
+    // "גול" was sent, confirmed (s1) and its copy removed; a second "גול" is on its way when s1's echo arrives.
+    const pending: P[] = [{ id: 'local-2', body: 'גול' }]
+    expect(echoMatch(pending, echo('s1', 'גול'), new Set(['s1']), body)).toBe(-1)
+    expect(echoMatch(pending, echo('s2', 'גול'), new Set(['s1']), body)).toBe(0)
+  })
+})
+
+describe('failurePlan', () => {
+  it('keeps "נסה שוב" only for passing failures', () => {
+    expect(failurePlan('retry')).toEqual({ keepBubble: true, restoreText: false, restoreQuote: false })
+    expect(failurePlan()).toEqual({ keepBubble: true, restoreText: false, restoreQuote: false })
+  })
+
+  it('puts a refused text back, with its quote unless the quote is gone', () => {
+    expect(failurePlan('permanent')).toEqual({ keepBubble: false, restoreText: true, restoreQuote: true })
+    expect(failurePlan('bad_reply')).toEqual({ keepBubble: false, restoreText: true, restoreQuote: false })
   })
 })

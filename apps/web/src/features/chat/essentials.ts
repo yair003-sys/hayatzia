@@ -161,3 +161,31 @@ export function replySnippet(text: string, max = REPLY_SNIPPET_MAX): string {
   const chars = Array.from(text.replace(/\s+/g, ' ').trim())
   return chars.length > max ? chars.slice(0, max).join('').trimEnd() + '…' : chars.join('')
 }
+
+// ---------- my own messages on their way ----------
+
+/**
+ * Which of my "sending" copies a realtime echo of my own saved message replaces (-1: none). An echo of a message the
+ * send already confirmed (its id is in `confirmed`) replaces nothing: its copy is gone, and a newer message with the
+ * same text must stay. Otherwise the oldest copy still sending with the same text and the same reply.
+ */
+export function echoMatch<P extends { failed?: boolean; reply_to?: string | null }>(
+  pending: readonly P[],
+  echo: { id: string; text: string | null; reply_to?: string | null },
+  confirmed: ReadonlySet<string>,
+  textOf: (p: P) => string | null,
+): number {
+  if (confirmed.has(echo.id)) return -1
+  return pending.findIndex((p) => !p.failed && textOf(p) === echo.text && (p.reply_to ?? null) === (echo.reply_to ?? null))
+}
+
+/** How a failed send ends (see SendErrorKind in ./schema). */
+export type FailureKind = 'retry' | 'permanent' | 'bad_reply'
+
+/**
+ * After a failed send: a passing failure keeps the bubble with "נסה שוב"; a refused text goes back to the typing box
+ * (when the box is empty) with its quote, or without it when the answered message is gone.
+ */
+export function failurePlan(kind: FailureKind = 'retry'): { keepBubble: boolean; restoreText: boolean; restoreQuote: boolean } {
+  return { keepBubble: kind === 'retry', restoreText: kind !== 'retry', restoreQuote: kind === 'permanent' }
+}
