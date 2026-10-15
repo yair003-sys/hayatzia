@@ -12,6 +12,7 @@ create table private.moderation_terms (
   term    text primary key check (char_length(term) between 2 and 40),
   action  text not null check (action in ('mask', 'block'))
 );
+alter table private.moderation_terms enable row level security;  -- no policies: only the filter's own functions read it
 revoke all on private.moderation_terms from public, anon, authenticated;
 
 insert into private.moderation_terms (term, action) values
