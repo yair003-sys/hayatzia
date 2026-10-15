@@ -27,7 +27,11 @@ jobs:
       NEXT_PUBLIC_APP_ENV: local   # CI never talks to preview or production services
       NEXT_TELEMETRY_DISABLED: 1
     steps:
+      # The token is not left in .git/config, so install scripts, the build and the tests can never push (security
+      # review 2026-10-15); only the commit step below gets it, explicitly.
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v5
         with:
@@ -44,14 +48,17 @@ jobs:
           fi
 
       - name: Commit resolved lockfile
-        if: steps.boot.outputs.created == 'true' && github.event_name != 'pull_request'
+        if: steps.boot.outputs.created == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "web: נעילת גרסאות תלויות (נוצר אוטומטית ב-CI)"
-          git pull --rebase origin main
-          git push
+          git pull --rebase "$REPO_URL" main
+          git push "$REPO_URL" HEAD:main
 
       - name: Install
         if: steps.boot.outputs.created != 'true'
