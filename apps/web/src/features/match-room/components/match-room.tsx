@@ -116,8 +116,8 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         placeholder="מה קורה במגרש?"
         emptyText={state === 'soon' ? 'עוד מוקדם. נתראה לפני שריקת הפתיחה.' : 'עוד אין הודעות בחדר.'}
         tint={(m) => (m.side === 'a' ? away.bar : home.bar)}
-        send={async (body) => {
-          const r = await sendMatchMessageAction({ fixtureId, body })
+        send={async (body, replyTo) => {
+          const r = await sendMatchMessageAction({ fixtureId, body, replyTo })
           return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה' }
         }}
         loadOlder={async (cursor) =>

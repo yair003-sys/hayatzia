@@ -1,17 +1,17 @@
 'use client'
 
-import { memo, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
-import { ArrowDown, SendHorizontal } from 'lucide-react'
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { SendHorizontal } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
+import { DayDivider, JumpButton, jumpToMessage, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
+import { useFollowEnd, useReadPosition } from './use-read-position'
+import { LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
 import {
-  chatTime,
-  countAfter,
-  hasNewTail,
   MESSAGE_MAX,
   mergeMessages,
   messageFromBroadcast,
@@ -26,7 +26,8 @@ export type ChatRoomProps = {
   topic: string
   meId: string
   initial: ChatMessage[]
-  send: (body: string) => Promise<SendResult>
+  /** Sends a message (optionally a reply to `replyTo`, a message of the same chat). */
+  send: (body: string, replyTo?: string) => Promise<SendResult>
   loadOlder: (cursor: Cursor) => Promise<ChatMessage[]>
   /** When set, the composer is replaced by this note (room closed, read-only fan…). */
   readOnly?: ReactNode
@@ -45,9 +46,9 @@ export type ChatRoomProps = {
   /** Shown just above the composer (e.g. the open poll's jump button). */
   pinned?: ReactNode
   /**
-   * Scroll the page to the newest message on mount (default, team chat). A room that sits under other
-   * content (the match page's hero and tabs) passes false: the page stays put and the fan catches up
-   * with the "jump to the end" button.
+   * Open at the newest message when there is nothing unread (default, team chat). A room that sits under other
+   * content (the match page's hero and tabs) passes false: the page stays put unless there is an unread divider to
+   * open at, and the fan catches up with the "go down" button.
    */
   openAtEnd?: boolean
   /**
@@ -58,6 +59,7 @@ export type ChatRoomProps = {
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
+let localSeq = 0
 
 export function ChatRoom({
   topic,
@@ -79,41 +81,36 @@ export function ChatRoom({
 }: ChatRoomProps) {
   const typing = useTyping(presenceTopic, meId, hiddenUsers)
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
+  // My messages on their way (one tick) or failed ("נסה שוב"); always the newest, so kept apart from the sorted list.
+  const [pending, setPending] = useState<ChatMessage[]>([])
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
-  const [sending, startSend] = useTransition()
-  const [loadingOlder, startOlder] = useTransition()
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
+  const [active, setActive] = useState<string | null>(null)
+  const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
-  const shown = useRef<ChatMessage[]>(initial)
-  const shownInserts = useRef(inserts?.length ?? 0)
-  // Whether the end of the conversation is on screen; the chat follows new messages only then.
-  // A room that does not open at the end starts as "not at the end", so nothing scrolls the page
-  // before the observer has reported where the end really is.
-  const [atBottom, setAtBottom] = useState(openAtEnd)
-  const atBottomRef = useRef(openAtEnd)
-  const [seenId, setSeenId] = useState<string | null>(initial.at(-1)?.id ?? null)
-  const followMine = useRef(false)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const now = useNowMinute()
 
-  useEffect(() => {
-    const el = bottom.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      ([e]) => {
-        const v = e?.isIntersecting ?? true
-        atBottomRef.current = v
-        setAtBottom(v)
-      },
-      { rootMargin: '0px 0px 160px 0px' },
-    )
-    io.observe(el)
-    // Open at the newest message, like any chat (unless the room sits under other content).
-    if (openAtEnd) {
-      el.scrollIntoView({ block: 'end' })
-    }
-    return () => io.disconnect()
-  }, [openAtEnd])
+  const visible = hiddenUsers?.length ? messages.filter((m) => !hiddenUsers.includes(m.user_id)) : messages
+  const all = pending.length ? [...visible, ...pending] : visible
+
+  const isMine = useCallback((m: ChatMessage) => m.user_id === meId, [meId])
+  const { divider, entered } = useReadPosition({
+    chat: `${meId}:${topic}`,
+    items: visible,
+    ready: true,
+    isMine,
+    hasOlder,
+    root,
+    bottom,
+    openAtEnd,
+  })
+  const follow = useFollowEnd(all, bottom, { enabled: entered, initialAtBottom: openAtEnd, extraCount: inserts?.length ?? 0 })
+
   const onExtra = useRef(onChannelEvent)
   useEffect(() => {
     onExtra.current = onChannelEvent
@@ -129,7 +126,15 @@ export function ChatRoom({
       channel = ch
       ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
         const m = messageFromBroadcast(payload)
-        if (m) setMessages((cur) => mergeMessages(cur, [m]))
+        if (!m) return
+        // My own message can arrive here before the send returns: it replaces its "sending" copy.
+        if (m.user_id === meId) {
+          setPending((cur) => {
+            const i = cur.findIndex((p) => !p.failed && p.body === m.body && (p.reply_to ?? null) === (m.reply_to ?? null))
+            return i < 0 ? cur : cur.filter((_, j) => j !== i)
+          })
+        }
+        setMessages((cur) => mergeMessages(cur, [m]))
       })
       for (const ev of EXTRA_EVENTS) {
         ch.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
@@ -141,142 +146,208 @@ export function ChatRoom({
       cancelled = true
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [topic])
+  }, [topic, meId])
 
-  // Follow the conversation only when the fan is already at the end (or just sent a message);
-  // someone reading further up stays where they are and gets the "jump to the end" button instead.
-  useEffect(() => {
-    const grew = (inserts?.length ?? 0) > shownInserts.current
-    const newTail = hasNewTail(shown.current, messages)
-    if ((newTail || grew) && (atBottomRef.current || followMine.current)) {
-      bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  const deliver = async (p: ChatMessage) => {
+    let res: SendResult
+    try {
+      res = await send(p.body, p.reply_to ?? undefined)
+    } catch {
+      res = { error: 'ההודעה לא נשלחה. נסה שוב' }
     }
-    followMine.current = false
-    shown.current = messages
-    shownInserts.current = inserts?.length ?? 0
-  }, [messages, inserts?.length])
-
-  // What the fan has seen: everything up to the last message while at the end.
-  const last = messages.at(-1)?.id ?? null
-  useEffect(() => {
-    if (!atBottom || !last) return
-    const t = setTimeout(() => setSeenId(last), 0)
-    return () => clearTimeout(t)
-  }, [atBottom, last])
-  const unread = atBottom ? 0 : countAfter(messages, seenId)
-  const toEnd = () => bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    if ('message' in res) {
+      const saved = res.message
+      setPending((cur) => cur.filter((x) => x.id !== p.id))
+      setMessages((cur) => mergeMessages(cur, [saved]))
+      setError(null)
+    } else {
+      setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+      setError(res.error)
+    }
+  }
 
   const submit = () => {
     const body = draft.trim()
-    if (!body || sending) return
+    if (!body) return
     typing.onStop()
-    startSend(async () => {
-      const res = await send(body)
-      if ('message' in res) {
-        followMine.current = true
-        setMessages((cur) => mergeMessages(cur, [res.message]))
-        setDraft('')
-        setError(null)
-      } else {
-        setError(res.error)
-      }
-    })
+    const p: ChatMessage = {
+      id: `${LOCAL_ID}${++localSeq}`,
+      user_id: meId,
+      nick: '',
+      body,
+      created_at: new Date().toISOString(),
+      reply_to: replyTo?.id ?? null,
+      reply_nick: replyTo?.nick ?? null,
+      reply_body: replyTo ? replySnippet(replyTo.body) : null,
+    }
+    follow.followNext()
+    setPending((cur) => [...cur, p])
+    setDraft('')
+    setReplyTo(null)
+    setError(null)
+    void deliver(p)
   }
 
-  const first = messages[0]
+  // Stable handlers for the memoised rows read the latest pending list and send function through a ref.
+  const latest = useRef({ deliver, pending })
+  useEffect(() => {
+    latest.current = { deliver, pending }
+  })
+  const retry = useCallback((id: string) => {
+    const p = latest.current.pending.find((x) => x.id === id)
+    if (!p) return
+    setPending((cur) => cur.map((x) => (x.id === id ? { ...x, failed: false } : x)))
+    void latest.current.deliver({ ...p, failed: false })
+  }, [])
+  const discard = useCallback((id: string) => setPending((cur) => cur.filter((x) => x.id !== id)), [])
+  const startReply = useCallback((m: ChatMessage) => {
+    setReplyTo(m)
+    input.current?.focus()
+  }, [])
+  const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
+
+  const firstSaved = messages[0]
+  const loadedIds = new Set(messages.map((m) => m.id))
+  const hiddenIds = new Set(hiddenUsers?.length ? messages.filter((m) => hiddenUsers.includes(m.user_id)).map((m) => m.id) : [])
+
+  let prevAt: string | undefined
+  const rows: ReactNode[] = []
+  for (const item of stream(all, inserts)) {
+    if (item.kind === 'x') {
+      rows.push(
+        <li key={item.key} className="flex flex-col self-stretch">
+          {item.node}
+        </li>,
+      )
+      continue
+    }
+    const m = item.m
+    if (startsNewDay(prevAt, m.created_at)) rows.push(<DayDivider key={`day-${m.id}`} at={m.created_at} now={now} />)
+    prevAt = m.created_at
+    if (divider?.id === m.id) rows.push(<UnreadDivider key="unread" label={divider.label} />)
+    const mine = m.user_id === meId
+    rows.push(
+      <MessageItem
+        key={m.id}
+        m={m}
+        mine={mine}
+        color={mine ? undefined : tint?.(m)}
+        active={active === m.id}
+        onActive={setActive}
+        onReply={readOnly || m.id.startsWith(LOCAL_ID) ? undefined : startReply}
+        quoteLoaded={!!m.reply_to && loadedIds.has(m.reply_to)}
+        quoteHidden={!!m.reply_to && hiddenIds.has(m.reply_to)}
+        onJump={jump}
+        onRetry={retry}
+        onDiscard={discard}
+      />,
+    )
+  }
 
   return (
-    <div className="chat-doodle flex min-h-[60dvh] flex-col" style={doodle ? ({ '--doodle': doodle } as CSSProperties) : undefined}>
+    <div
+      ref={root}
+      className="chat-doodle flex min-h-[60dvh] flex-col"
+      style={doodle ? ({ '--doodle': doodle } as CSSProperties) : undefined}
+    >
       <div className="mb-2 flex items-center gap-2 text-xs text-muted" aria-live="polite">
         <span className={cn('size-2 rounded-full', live ? 'bg-ok' : 'bg-dim')} aria-hidden="true" />
         {live ? 'מחובר בזמן אמת' : 'מתחבר…'}
       </div>
+      <span className="sr-only" aria-live="polite">
+        {divider?.label ?? ''}
+      </span>
 
       <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
-        {hasOlder && first && (
+        {hasOlder && firstSaved && (
           <li className="self-center">
             <button
               type="button"
               disabled={loadingOlder}
-              onClick={() =>
-                startOlder(async () => {
-                  const older = await loadOlder({ createdAt: first.created_at, id: first.id })
+              onClick={async () => {
+                setLoadingOlder(true)
+                try {
+                  const older = await loadOlder({ createdAt: firstSaved.created_at, id: firstSaved.id })
                   setMessages((cur) => mergeMessages(cur, older))
                   setHasOlder(older.length >= PAGE_SIZE)
-                })
-              }
-              className="rounded-full border border-line px-3 py-1 text-xs text-muted disabled:opacity-50"
+                } finally {
+                  setLoadingOlder(false)
+                }
+              }}
+              className="min-h-11 rounded-full border border-line px-3 py-1 text-xs text-muted disabled:opacity-50"
             >
               {loadingOlder ? 'טוען…' : 'הודעות קודמות'}
             </button>
           </li>
         )}
-        {messages.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
-        {stream(messages.filter((m) => !hiddenUsers?.includes(m.user_id)), inserts).map((item) => {
-          if (item.kind === 'x') return <li key={item.key} className="flex flex-col self-stretch">{item.node}</li>
-          return <MessageItem key={item.m.id} m={item.m} mine={item.m.user_id === meId} color={item.m.user_id === meId ? undefined : tint?.(item.m)} />
-        })}
+        {all.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
+        {rows}
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
 
       <div className="chat-dock z-10 grid gap-2">
-      {!atBottom && (
-        <button
-          type="button"
-          onClick={toEnd}
-          className="flex min-h-10 items-center gap-1.5 justify-self-center rounded-full border border-line bg-surface-3/95 px-3.5 text-xs font-bold shadow-[0_3px_0_var(--color-elev),0_10px_20px_-10px_rgb(0_0_0/.9)] backdrop-blur transition-transform active:translate-y-0.5"
-        >
-          <ArrowDown className="size-4" aria-hidden="true" />
-          {unread > 0 ? `${unread} הודעות חדשות` : 'לסוף הצ׳אט'}
-        </button>
-      )}
-      {pinned}
-      {presenceTopic && <TypingLine count={typing.count} />}
-      {readOnly ? (
-        <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">
-          {readOnly}
-        </p>
-      ) : (
-        <form
-          className="flex items-end gap-2 rounded-xl border border-line bg-elev/95 p-2 backdrop-blur"
-          onSubmit={(e) => {
-            e.preventDefault()
-            submit()
-          }}
-        >
-          <label className="sr-only" htmlFor={`chat-input-${topic}`}>
-            הודעה
-          </label>
-          <textarea
-            id={`chat-input-${topic}`}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              if (e.target.value.trim()) typing.onInput()
-              else typing.onStop()
-            }}
-            onBlur={typing.onStop}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+        {!follow.atBottom && <JumpButton count={follow.unread} onClick={follow.toEnd} />}
+        {pinned}
+        {presenceTopic && <TypingLine count={typing.count} />}
+        {readOnly ? (
+          <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">{readOnly}</p>
+        ) : (
+          <div className="rounded-xl border border-line bg-elev/95 backdrop-blur">
+            {replyTo && (
+              <ReplyBar
+                nick={replyTo.user_id === meId ? 'עצמך' : replyTo.nick}
+                text={replySnippet(replyTo.body)}
+                onCancel={() => {
+                  setReplyTo(null)
+                  input.current?.focus()
+                }}
+              />
+            )}
+            <form
+              className="flex items-end gap-2 p-2"
+              onSubmit={(e) => {
                 e.preventDefault()
                 submit()
-              }
-            }}
-            maxLength={MESSAGE_MAX}
-            rows={1}
-            placeholder={placeholder ?? 'כתוב הודעה…'}
-            className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 outline-none"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            aria-label="שלח"
-            className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40"
-          >
-            <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
-          </button>
-        </form>
-      )}
+              }}
+            >
+              <label className="sr-only" htmlFor={`chat-input-${topic}`}>
+                הודעה
+              </label>
+              <textarea
+                ref={input}
+                id={`chat-input-${topic}`}
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value)
+                  if (e.target.value.trim()) typing.onInput()
+                  else typing.onStop()
+                }}
+                onBlur={typing.onStop}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    submit()
+                  } else if (e.key === 'Escape' && replyTo) {
+                    e.preventDefault()
+                    setReplyTo(null)
+                  }
+                }}
+                maxLength={MESSAGE_MAX}
+                rows={1}
+                placeholder={placeholder ?? 'כתוב הודעה…'}
+                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!draft.trim()}
+                aria-label="שלח"
+                className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40"
+              >
+                <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
+              </button>
+            </form>
+          </div>
+        )}
       </div>
       {error && (
         <p role="alert" className="mt-2 text-sm text-live">
@@ -297,27 +368,67 @@ function stream(messages: ChatMessage[], inserts: ChatRoomProps['inserts']): Str
   return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
 }
 
-/** One message bubble; memoised so a ticking poll countdown does not re-render the whole conversation. */
-const MessageItem = memo(function MessageItem({ m, mine, color }: { m: ChatMessage; mine: boolean; color?: string }) {
+/** One message; memoised so a ticking poll countdown does not re-render the whole conversation. */
+const MessageItem = memo(function MessageItem({
+  m,
+  mine,
+  color,
+  active,
+  onActive,
+  onReply,
+  quoteLoaded,
+  quoteHidden,
+  onJump,
+  onRetry,
+  onDiscard,
+}: {
+  m: ChatMessage
+  mine: boolean
+  color?: string
+  active: boolean
+  onActive: (id: string | null) => void
+  onReply?: (m: ChatMessage) => void
+  quoteLoaded: boolean
+  quoteHidden: boolean
+  onJump: (id: string) => void
+  onRetry: (id: string) => void
+  onDiscard: (id: string) => void
+}) {
+  const state = mine ? sendState(m) : undefined
   return (
-            <li className={cn('flex max-w-[85%] flex-col', mine ? 'self-start' : 'self-end')}>
-              {!mine && (
-                <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
-                  {m.nick}
-                </span>
-              )}
-              <div
-                className={cn(
-                  'rounded-lg px-3 py-2 break-words whitespace-pre-wrap',
-                  mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2',
-                )}
-                style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
-              >
-                {m.body}
-              </div>
-              <time dateTime={m.created_at} className="mt-0.5 px-1 text-[11px] text-dim">
-                {chatTime(m.created_at)}
-              </time>
-            </li>
+    <MessageRow
+      id={m.id}
+      at={m.id.startsWith(LOCAL_ID) ? undefined : m.created_at}
+      mine={mine}
+      active={active}
+      onActive={onActive}
+      onReply={onReply ? () => onReply(m) : undefined}
+    >
+      {!mine && (
+        <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
+          {m.nick}
+        </span>
+      )}
+      <div
+        className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2')}
+        style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
+      >
+        {m.reply_to && (
+          <Quote
+            mine={mine}
+            nick={quoteHidden ? 'אוהד' : (m.reply_nick ?? 'הודעה קודמת')}
+            text={quoteHidden ? 'הודעה מוסתרת' : (m.reply_body ?? '')}
+            onJump={quoteLoaded && !quoteHidden && m.reply_to ? () => onJump(m.reply_to as string) : undefined}
+          />
+        )}
+        {m.body}
+      </div>
+      <MessageMeta
+        at={m.created_at}
+        state={state}
+        onRetry={state === 'failed' ? () => onRetry(m.id) : undefined}
+        onDiscard={state === 'failed' ? () => onDiscard(m.id) : undefined}
+      />
+    </MessageRow>
   )
 })

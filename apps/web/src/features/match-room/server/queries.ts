@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { PAGE_SIZE, type ChatMessage, type Cursor } from '@/features/chat/schema'
+import { MESSAGE_COLUMNS, PAGE_SIZE, type ChatMessage, type Cursor } from '@/features/chat/schema'
 
 /** Newest page of a match room (oldest first), or older than `before`. Reads the session: never cached. */
 export async function getMatchMessages(fixtureId: number, before?: Cursor): Promise<ChatMessage[]> {
@@ -8,7 +8,7 @@ export async function getMatchMessages(fixtureId: number, before?: Cursor): Prom
   if (!supabase) return []
   let q = supabase
     .from('match_messages')
-    .select('id,user_id,nick,body,created_at,side')
+    .select(`${MESSAGE_COLUMNS},side` as const)
     .eq('fixture_id', fixtureId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })

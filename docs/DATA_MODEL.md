@@ -31,6 +31,7 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 - `match_messages`: `fixture_id`, `side` and `nick` stamped by trigger; writable only by fans of the two clubs (`club_of_api()`), only while `match_room_open()` (−30′ … +170′); channel `match:<fixture id>`.
 - `clips` + `clip_views` / `clip_likes` / `clip_respects` / `clip_comments`: as in "The Square" below; `clip_seen()` (security definer) breaks the clips ↔ clip_views policy loop; uploads ≤ 10 per hour; bucket `clips` (private, 50 MB, images + mp4/mov/webm).
 - Privileges: nothing is granted implicitly (migration `explicit_privileges`); each migration revokes and grants exactly.
+- Replies (2026-10-15, migration `chat_replies`): `team_messages` and `match_messages` add `reply_to uuid`, `reply_nick varchar(20)`, `reply_body varchar(80)`. The fan sends `reply_to` only (insert grant); the BEFORE INSERT trigger `zr_reply` (`chat_reply_stamp`) refuses a message of another club / fixture (`bad_reply`, 23503) and stamps the snapshot (nick + first 80 characters of the stored, already moderated body); the snapshot is never granted and is cleared without `reply_to`. `dm_messages` and `dm_group_messages` add `reply_to uuid` only, checked by `zr_reply` (`dm_reply_check`): same thread / same group and sent since the replier joined. No foreign key and no index on `reply_to` (lookups by primary key only; deleting messages never scans for replies). Realtime rows carry the new columns.
 
 ## Team space (team-private: `team_id = my_team()`)
 | Table | Columns | Indexes / triggers |
