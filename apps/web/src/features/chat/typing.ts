@@ -72,7 +72,7 @@ export function createTypingSignal(
   send: (typing: boolean) => void,
   { throttleMs = TYPING_THROTTLE_MS, idleMs = TYPING_IDLE_MS }: { throttleMs?: number; idleMs?: number } = {},
 ) {
-  const flag = createThrottle(send, throttleMs, false)
+  const flag = createThrottle<boolean>(send, throttleMs, false)
   let idle: ReturnType<typeof setTimeout> | null = null
   const clearIdle = () => {
     if (idle) clearTimeout(idle)
