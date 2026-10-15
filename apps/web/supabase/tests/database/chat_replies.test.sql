@@ -2,7 +2,7 @@
 -- 80 characters of the moderated text) and only accept a message of the same chat; private messages and groups take
 -- only the id, which must be in the same thread / group.
 begin;
-select plan(36);
+select plan(38);
 
 -- f1, f2, f3, f4: Maccabi Tel Aviv; f5: Hapoel Tel Aviv.
 insert into auth.users (id, aud, role, email) values
@@ -74,15 +74,17 @@ select pg_temp.as_fan('f4');
 set local role authenticated;
 insert into public.team_messages (body) values (repeat('א', 68) || ' מוות לערביםק עוד');
 insert into public.team_messages (body) values (repeat('א', 76) || ' זינוק יפה');
+insert into public.team_messages (body) values (repeat('א', 76) || ' shitake יפה');
 reset role;
 select set_config('t.atk', (select id::text from public.team_messages where body like '%לערביםק%'), true);
 select set_config('t.zin', (select id::text from public.team_messages where body like '%זינוק%'), true);
+select set_config('t.shi', (select id::text from public.team_messages where body like '%shitake%'), true);
 select is((select body::text from public.team_messages where id = current_setting('t.atk')::uuid), repeat('א', 68) || ' מוות לערביםק עוד',
   'the whole message passes the filter');
 select throws_ok($$ select public.moderate_text(left(repeat('א', 68) || ' מוות לערביםק עוד', 80)) $$, '23514', 'offensive_content',
   'cut blindly at 80 characters it would be blocked text');
-select ok(public.moderate_text(left(repeat('א', 76) || ' זינוק יפה', 80)) like '%***',
-  'and cut blindly, זינוק would end as a curse');
+select ok(public.moderate_text(left(repeat('א', 76) || ' shitake יפה', 80)) like '%***',
+  'and cut blindly inside a word, a harmless word can end as a curse');
 
 select pg_temp.as_fan('f3');
 set local role authenticated;
@@ -93,7 +95,11 @@ select is((select reply_body::text from public.team_messages where body = 'תג�
 select lives_ok(format($$ insert into public.team_messages (body, reply_to) values ('תגובה 2', %L) $$, current_setting('t.zin')),
   'a reply to a message with זינוק near the cut');
 select is((select reply_body::text from public.team_messages where body = 'תגובה 2'), repeat('א', 76),
-  'the word is never split into a curse');
+  'a word near the cut is left out whole, never split');
+select lives_ok(format($$ insert into public.team_messages (body, reply_to) values ('תגובה 3', %L) $$, current_setting('t.shi')),
+  'a reply to a message whose cut would end in a curse');
+select is((select reply_body::text from public.team_messages where body = 'תגובה 3'), repeat('א', 76),
+  'the snapshot holds no curse and no mask');
 select throws_ok(format($$ insert into public.team_messages (body, reply_to, reply_user) values ('זיוף', %L, '00000000-0000-0000-0000-0000000000f5') $$, current_setting('t.m1')),
   '42501', null, 'a fan cannot set the quoted author');
 select throws_ok(format($$ insert into public.team_messages (body, reply_to) values ('פלישה', %L) $$, current_setting('t.h1')),
