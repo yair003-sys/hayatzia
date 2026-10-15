@@ -5,49 +5,7 @@ export type Database = {
   
   "public": {
           Tables: {
-            "admin_actions": {
-                  Row: {
-                    "action": string,"admin_id": string | null,"created_at": string,"id": number,"kind": string | null,"note": string,"ref": string | null,"target_user": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "action": string,"admin_id"?: string | null,"created_at"?: string,"id"?: never,"kind"?: string | null,"note"?: string,"ref"?: string | null,"target_user"?: string | null
-                  }
-                  Update: {
-                    "action"?: string,"admin_id"?: string | null,"created_at"?: string,"id"?: never,"kind"?: string | null,"note"?: string,"ref"?: string | null,"target_user"?: string | null
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"app_admins": {
-                  Row: {
-                    "created_at": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"user_id": string
-                  }
-                  Update: {
-                    "created_at"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"fan_bans": {
-                  Row: {
-                    "by_admin": string | null,"created_at": string,"reason": string,"until": string | null,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "by_admin"?: string | null,"created_at"?: string,"reason"?: string,"until"?: string | null,"user_id": string
-                  }
-                  Update: {
-                    "by_admin"?: string | null,"created_at"?: string,"reason"?: string,"until"?: string | null,"user_id"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"activity": {
+            "activity": {
                   Row: {
                     "actor_count": number,"actor_id": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"requester_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
                   }
@@ -93,6 +51,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"admin_actions": {
+                  Row: {
+                    "action": string,"admin_id": string | null,"created_at": string,"id": number,"kind": string | null,"note": string,"ref": string | null,"target_user": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"admin_id"?: string | null,"created_at"?: string,"id"?: never,"kind"?: string | null,"note"?: string,"ref"?: string | null,"target_user"?: string | null
+                  }
+                  Update: {
+                    "action"?: string,"admin_id"?: string | null,"created_at"?: string,"id"?: never,"kind"?: string | null,"note"?: string,"ref"?: string | null,"target_user"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"api_teams": {
                   Row: {
                     "api_id": number,"logo": string,"name": string,"updated_at": string
@@ -103,6 +75,20 @@ isOneToOne: false
                   }
                   Update: {
                     "api_id"?: number,"logo"?: string,"name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"app_admins": {
+                  Row: {
+                    "created_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     
@@ -515,6 +501,20 @@ isOneToOne: false
                   }
                   Update: {
                     "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"fan_bans": {
+                  Row: {
+                    "by_admin": string | null,"created_at": string,"reason": string,"until": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "by_admin"?: string | null,"created_at"?: string,"reason"?: string,"until"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "by_admin"?: string | null,"created_at"?: string,"reason"?: string,"until"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     
@@ -1315,39 +1315,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "admin_ban_list":
-{ Args: { "p_limit"?: number }; Returns: {
-              "created_at": string,"nick": string | null,"reason": string,"until": string | null,"user_id": string
-            }[]
-                           },
-"admin_ban_user":
-{ Args: { "p_days"?: number,"p_reason"?: string,"p_user": string }; Returns: string | null
-                           },
-"admin_open_count":
-{ Args: Record<PropertyKey, never>; Returns: number
-                           },
-"admin_recent_actions":
-{ Args: { "p_limit"?: number }; Returns: {
-              "action": string,"admin_nick": string | null,"created_at": string,"id": number,"kind": string | null,"note": string,"ref": string | null,"target_nick": string | null,"target_user": string | null
-            }[]
-                           },
-"admin_remove_content":
-{ Args: { "p_kind": string,"p_ref": string }; Returns: {
-              "bucket": string | null,"path": string | null,"removed": boolean
-            }[]
-                           },
-"admin_report_queue":
-{ Args: { "p_before"?: string,"p_before_id"?: string,"p_limit"?: number,"p_status"?: string }; Returns: {
-              "created_at": string,"id": string,"kind": string,"note": string,"open_reports_on_target": number,"reason": string,"ref": string,"reporter_contact": string | null,"reporter_nick": string | null,"status": string,"target_exists": boolean,"target_nick": string | null,"target_preview": string | null,"target_user_id": string | null
-            }[]
-                           },
-"admin_set_report_status":
-{ Args: { "p_report": string,"p_status": string }; Returns: undefined
-                           },
-"admin_unban_user":
-{ Args: { "p_user": string }; Returns: undefined
-                           },
-"activity_broadcast":
+            "activity_broadcast":
 { Args: { "p_kind": string,"p_user": string }; Returns: undefined
                            },
 "activity_like":
@@ -1370,6 +1338,38 @@ isOneToOne: false
                            },
 "activity_unread_count":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"admin_ban_list":
+{ Args: { "p_limit"?: number }; Returns: {
+              "created_at": string,"nick": string,"reason": string,"until": string,"user_id": string
+            }[]
+                           },
+"admin_ban_user":
+{ Args: { "p_days"?: number,"p_reason"?: string,"p_user": string }; Returns: string
+                           },
+"admin_open_count":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"admin_recent_actions":
+{ Args: { "p_limit"?: number }; Returns: {
+              "action": string,"admin_nick": string,"created_at": string,"id": number,"kind": string,"note": string,"ref": string,"target_nick": string,"target_user": string
+            }[]
+                           },
+"admin_remove_content":
+{ Args: { "p_kind": string,"p_ref": string }; Returns: {
+              "bucket": string,"path": string,"removed": boolean
+            }[]
+                           },
+"admin_report_queue":
+{ Args: { "p_before"?: string,"p_before_id"?: string,"p_limit"?: number,"p_status"?: string }; Returns: {
+              "created_at": string,"id": string,"kind": string,"note": string,"open_reports_on_target": number,"reason": string,"ref": string,"reporter_contact": string,"reporter_nick": string,"status": string,"target_exists": boolean,"target_nick": string,"target_preview": string,"target_user_id": string
+            }[]
+                           },
+"admin_set_report_status":
+{ Args: { "p_report": string,"p_status": string }; Returns: undefined
+                           },
+"admin_unban_user":
+{ Args: { "p_user": string }; Returns: undefined
                            },
 "alert_recipients":
 { Args: { "p_after"?: string,"p_fixture": number,"p_limit"?: number }; Returns: string[]
@@ -1472,9 +1472,6 @@ isOneToOne: false
 "is_app_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
-"my_ban_active":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
 "is_club_rep":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -1501,6 +1498,9 @@ isOneToOne: false
                            },
 "mute_group":
 { Args: { "p_group": string,"p_muted": boolean }; Returns: undefined
+                           },
+"my_ban_active":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "my_groups":
 { Args: { "with_invites": boolean }; Returns: string[]
