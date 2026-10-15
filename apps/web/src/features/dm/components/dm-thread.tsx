@@ -16,7 +16,6 @@ import { Bubble, Composer, E2eNote, type ShownQuote } from './thread-parts'
 type Shown = { id: string; sender_id: string; created_at: string; text: string | null; reply_to: string | null; failed?: boolean }
 
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at,reply_to'
-let localSeq = 0
 
 const shown = (m: EncryptedRow & { text: string | null }): Shown => ({
   id: m.id,
@@ -135,7 +134,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
 
   const send = async (text: string) => {
     if (!key) return false
-    const p: Shown = { id: `${LOCAL_ID}${++localSeq}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
+    const p: Shown = { id: `${LOCAL_ID}${crypto.randomUUID()}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
     follow.followNext()
     setPending((cur) => [...cur, p])
     setReplyTo(null)
@@ -143,6 +142,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     return true
   }
 
+  const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
   const byId = new Map(messages.map((m) => [m.id, m]))
   const nickOf = (id: string) => (id === meId ? 'אתה' : otherNick)
   const quoteOf = (m: Shown): ShownQuote | null => {
@@ -150,7 +150,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     const orig = byId.get(m.reply_to)
     if (!orig) return { nick: 'הודעה קודמת', text: '' }
     const to = orig.id
-    return { nick: nickOf(orig.sender_id), text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text), onJump: () => jumpToMessage(root.current, to) }
+    return { nick: nickOf(orig.sender_id), text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text), onJump: () => jump(to) }
   }
 
   const rows: ReactNode[] = []
