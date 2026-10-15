@@ -47,7 +47,7 @@ describe('createThrottle', () => {
 
   it('sends a change at once, then at most once per window, with the latest value', () => {
     const send = vi.fn()
-    const t = createThrottle(send, 2000, 'a')
+    const t = createThrottle<string>(send, 2000, 'a')
     t.set('b')
     expect(send).toHaveBeenLastCalledWith('b')
     t.set('c')
@@ -62,7 +62,7 @@ describe('createThrottle', () => {
 
   it('sends nothing when the value comes back to what was sent', () => {
     const send = vi.fn()
-    const t = createThrottle(send, 2000, false)
+    const t = createThrottle<boolean>(send, 2000, false)
     t.set(true)
     t.set(false)
     t.set(true)
@@ -73,7 +73,7 @@ describe('createThrottle', () => {
 
   it('dispose drops a pending send', () => {
     const send = vi.fn()
-    const t = createThrottle(send, 2000, 0)
+    const t = createThrottle<number>(send, 2000, 0)
     t.set(1)
     t.set(2)
     t.dispose()
