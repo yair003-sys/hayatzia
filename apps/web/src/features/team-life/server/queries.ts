@@ -1,7 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
-import { rideOver, type DriverTrust, type Gender } from '../ride-safety'
+import type { DriverTrust, Gender } from '../ride-safety'
 
 export type Trip = {
   id: string
@@ -92,39 +92,15 @@ export async function getMyRideProfile(): Promise<RideProfile | null> {
 export type RideToRate = { tripId: string; driverNick: string; kickoffAt: string }
 
 /**
- * Rides of the last 30 days where the fan was an accepted rider, the match is over and the fan has not rated yet
- * (rule 6). Small indexed reads: own requests (trip_requests_user_idx), trips and fixtures by key, own ratings.
+ * Rides of the last 30 days where the fan was an accepted rider of a ride offer, the match is over and the fan has not
+ * rated yet (rule 6). Through my_rides_to_rate() (security definer), so a driver suspended from rides can still be rated.
  */
-export async function getRidesToRate(userId: string): Promise<RideToRate[]> {
+export async function getRidesToRate(): Promise<RideToRate[]> {
   const supabase = await createClient()
   if (!supabase) return []
-  const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
-  const { data: mine } = await supabase
-    .from('trip_requests')
-    .select('trip_id')
-    .eq('user_id', userId)
-    .eq('status', 'accepted')
-    .gte('created_at', since)
-    .limit(50)
-  const ids = (mine ?? []).map((r) => r.trip_id)
-  if (!ids.length) return []
-  const [{ data: trips }, { data: rated }] = await Promise.all([
-    supabase.from('trips').select('id,nick,kind,fixture_id').in('id', ids).eq('kind', 'offer'),
-    supabase.from('ride_ratings').select('trip_id').eq('rater_id', userId).in('trip_id', ids),
-  ])
-  const done = new Set((rated ?? []).map((r) => r.trip_id))
-  const open = (trips ?? []).filter((t) => !done.has(t.id))
-  if (!open.length) return []
-  const { data: fixtures } = await supabase
-    .from('fixtures')
-    .select('id,kickoff_at,status')
-    .in('id', [...new Set(open.map((t) => t.fixture_id))])
-  const fx = new Map((fixtures ?? []).map((f) => [f.id, f]))
-  const now = new Date()
-  return open.flatMap((t) => {
-    const f = fx.get(t.fixture_id)
-    return f && rideOver(f.kickoff_at, f.status, now) ? [{ tripId: t.id, driverNick: t.nick, kickoffAt: f.kickoff_at }] : []
-  })
+  const { data, error } = await supabase.rpc('my_rides_to_rate')
+  if (error || !data) return []
+  return data.map((r) => ({ tripId: r.trip_id, driverNick: r.driver_nick, kickoffAt: r.kickoff_at }))
 }
 
 export type FanEvent = {

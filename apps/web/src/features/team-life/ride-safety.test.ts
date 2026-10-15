@@ -102,6 +102,7 @@ describe('ride copy', () => {
     expect(rideErrorHe('ride_suspended')).toMatch(/מושעה מנסיעות/)
     expect(rideErrorHe('women_only')).toMatch(/לאוהדות בלבד/)
     expect(rideErrorHe('phone_required')).toMatch(/טלפון/)
+    expect(rideErrorHe('ride_started')).toMatch(/המשחק כבר התחיל/)
     expect(rideErrorHe('something else')).toBeNull()
   })
   it('lists the emergency numbers', () => {

@@ -313,7 +313,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
                       </button>
                     )}
                   </div>
-                  {t.driver && <p className="text-xs text-muted">{trustLine(t.driver)}</p>}
+                  {t.kind === 'offer' && t.driver && <p className="text-xs text-muted">{trustLine(t.driver)}</p>}
                   <p className="text-sm">
                     מ{t.from_city} · יציאה {departureLabel(match.kickoff, t.depart_before_min)}
                     {t.kind === 'offer' && <> · {free > 0 ? `${free} מקומות פנויים` : 'מלא'}</>} · {t.cost === 'free' ? 'בלי עלות' : 'השתתפות בדלק'}
@@ -377,7 +377,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
                       <MessageTo userId={t.user_id} />
                     </div>
                   )}
-                  {(mine || myReq) && (
+                  {t.kind === 'offer' && (mine || myReq?.status === 'accepted') && (
                     <div className="flex flex-wrap items-center gap-2">
                       <ShareRide
                         tripId={t.id}

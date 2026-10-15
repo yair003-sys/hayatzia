@@ -114,6 +114,7 @@ export function rideErrorHe(message: string | undefined | null): string | null {
   if (m.includes('ride_suspended')) return RIDE_SUSPENDED_HE
   if (m.includes('women_only')) return 'הנסיעה הזאת לאוהדות בלבד'
   if (m.includes('phone_required')) return 'כדי לנסוע צריך לאמת מספר טלפון'
+  if (m.includes('ride_started')) return 'המשחק כבר התחיל, ואי אפשר לשנות את הנסיעה'
   if (m.includes('ride_not_over')) return 'אפשר לדרג אחרי המשחק'
   if (m.includes('not_a_rider') || m.includes('not_a_ride')) return 'רק מי שהצטרף לנסיעה יכול לדרג אותה'
   return null

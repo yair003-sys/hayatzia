@@ -54,7 +54,7 @@ export const decideSeatAction = actionClient.inputSchema(decideSchema).action(as
     .eq('user_id', p.userId)
     .neq('status', status)
     .select('user_id')
-  if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : (rideErrorHe(error.message) ?? 'לא הצלחנו לשמור') }
+  if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : limitMsg(error.message, 'לא הצלחנו לשמור') }
   if (changed?.length) {
     if (p.accept) await pushTrip(await db(), 'trip_accepted', p.tripId, p.userId)
     else {
@@ -137,7 +137,9 @@ export const rateRideAction = actionClient.inputSchema(rateRideSchema).action(as
 })
 
 export const deleteTripAction = actionClient.inputSchema(idSchema).action(async ({ parsedInput: { id } }) => {
-  await (await db()).from('trips').delete().eq('id', id)
+  // RLS keeps a ride that already left with riders, and every ride during an open ride case: then nothing is deleted.
+  const { data, error } = await (await db()).from('trips').delete().eq('id', id).select('id')
+  if (error || !data?.length) return { error: 'אי אפשר למחוק את הנסיעה הזאת: היא כבר יצאה לדרך או נמצאת בבירור' }
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })

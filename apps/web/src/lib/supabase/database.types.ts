@@ -1097,17 +1097,31 @@ isOneToOne: false
                   ]
                 },"reports": {
                   Row: {
-                    "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string | null,"status": string
+                    "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string | null,"ride_suspended": boolean,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"kind": string,"note"?: string,"reason": string,"ref": string,"reporter_id"?: string | null,"status"?: string
+                    "created_at"?: string,"id"?: string,"kind": string,"note"?: string,"reason": string,"ref": string,"reporter_id"?: string | null,"ride_suspended"?: boolean,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string | null,"status"?: string
+                    "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string | null,"ride_suspended"?: boolean,"status"?: string
                   }
                   Relationships: [
                     
+                  ]
+                },"ride_completions": {
+                  Row: {
+                    "created_at": string,"driver_id": string,"fixture_id": number,"trip_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"driver_id": string,"fixture_id": number,"trip_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"driver_id"?: string,"fixture_id"?: number,"trip_id"?: string
+                  }
+                  Relationships: [
+
                   ]
                 },"ride_driver_stats": {
                   Row: {
@@ -1575,6 +1589,11 @@ isOneToOne: false
               "adult_confirmed": boolean,"gender": string,"phone_ok": boolean,"phone_required": boolean,"ride_suspended": boolean,"safety_seen": boolean
             }[]
                            },
+"my_rides_to_rate":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "driver_nick": string,"kickoff_at": string,"trip_id": string
+            }[]
+                           },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
@@ -1587,10 +1606,18 @@ isOneToOne: false
 "rename_group":
 { Args: { "p_group": string,"p_name": string }; Returns: undefined
                            },
+"report_ride_harm":
+{ Args: { "p_kind": string,"p_note"?: string,"p_ref": string }; Returns: {
+              "report_id": string,"suspended": boolean
+            }[]
+                           },
 "ride_drivers":
 { Args: { "p_users": string[] }; Returns: {
               "female": boolean,"member_since": string,"ratings_count": number,"ratings_sum": number,"rides_completed": number,"user_id": string
             }[]
+                           },
+"ride_suspension_riders":
+{ Args: { "p_report": string }; Returns: string[]
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean

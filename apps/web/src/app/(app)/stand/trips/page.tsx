@@ -30,6 +30,6 @@ async function Trips({ focus }: { focus?: string }) {
   if (s.status !== 'ready') return null
   const league = await getLeague()
   const matches = upcomingTeamMatches(league, s.team.id)
-  const [trips, ride, toRate] = await Promise.all([getTrips(matches.map((m) => m.id)), getMyRideProfile(), getRidesToRate(s.userId)])
+  const [trips, ride, toRate] = await Promise.all([getTrips(matches.map((m) => m.id)), getMyRideProfile(), getRidesToRate()])
   return <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} ride={ride} toRate={toRate} />
 }
