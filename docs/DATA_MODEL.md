@@ -53,7 +53,7 @@ RLS: `select` for `anon` + `authenticated`; writes only through the secret key (
 | Table | Columns | Rules |
 |---|---|---|
 | `team_stats` | `team_id pk`, `fans` | read: fans of that club; kept by trigger on `profiles` insert/delete ("אוהדים מאומתים") |
-Realtime Presence (private topics, RLS on `realtime.messages` with `extension = 'presence'`): `online:<club>` (own club only; tracked once per app by `OnlineTracker` in the session gate → "מחוברים עכשיו"), `room:<fixture>` (any fan; tracked by the match room, read by the home ticket → "X אוהדים בחדר"). Counts are distinct user ids.
+Realtime Presence (private topics, RLS on `realtime.messages` with `extension = 'presence'`): `online:<club>` (own club only; tracked once per app by `OnlineTracker` in the session gate → "מחוברים עכשיו"), `room:<fixture>` (any fan; tracked by the match room, read by the home ticket → "X אוהדים בחדר"). Counts are distinct user ids. The tracked metadata is `{user_id, typing?}`: the club chat (on `online:<club>`) and the match room (on `room:<fixture>`) set `typing: true` while the fan types (at most one track per 2 s; off after 4 s idle, on send, blur, hidden page or leaving) → "N אוהדים כותבים…". Client-supplied, so shown as a count only, never names; no DB writes.
 
 ## Predictions (2026-10-12)
 | Table | Columns | Rules |
