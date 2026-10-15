@@ -34,6 +34,10 @@ check production Supabase Auth (email sign-up and anonymous sign-ins off unless 
 Later: enforce phone verification in the database once SMS is chosen; check-in location is self-reported; CI jobs run
 installs with a write token (split jobs, `persist-credentials: false`, pin actions, protect `main`).
 
+## Europe phase (recorded 2026-10-15, not built)
+Each fan picks two clubs: the Israeli one and one foreign club. Owner's decision: **both are locked forever**. Communities
+are keyed by club and country (e.g. "אוהדי ברצלונה בישראל").
+
 ## Notes for the next session
 - All migrations through `20261013090000_fan_card` are applied on staging and production (2026-10-13).
 - All migrations through `20261013110000_dm_groups_blocks` are applied on staging and production (2026-10-13).
