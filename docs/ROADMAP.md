@@ -23,6 +23,17 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 4. Phone check (owner, 2026-10-13): sign-up step 2 is shown with "בקרוב". To switch it on: SMS provider in Supabase Auth, link the phone to the Google account (`updateUser({ phone })` + `verifyOtp` type `phone_change`), make it required before the club step, and keep one phone per account (Supabase already refuses a phone that belongs to another user).
 5. Terms of use and privacy pages before launch (the sign-up page does not mention them until they exist).
 
+## Security review (2026-10-15)
+Done and live (migration `20261015090000_security_hardening` on staging and production; `tests/database/security.test.sql`):
+message-notification abuse, view-once files, block probing, forged join date, anonymous profiles, anon-executable
+functions (CI fails on any new one), push endpoint allow-list + cap + timeout, security headers, trip seats race,
+decline push across a block, DM key size, error logging, web-deps injection, public ingest logs. Legacy: Square /
+gallery stored XSS filtered in index.html (live).
+Owner actions still open: publish `firestore.rules` in the Firebase console; delete test phone +972 50-000-0001;
+check production Supabase Auth (email sign-up and anonymous sign-ins off unless needed).
+Later: enforce phone verification in the database once SMS is chosen; check-in location is self-reported; CI jobs run
+installs with a write token (split jobs, `persist-credentials: false`, pin actions, protect `main`).
+
 ## Notes for the next session
 - All migrations through `20261013090000_fan_card` are applied on staging and production (2026-10-13).
 - All migrations through `20261013110000_dm_groups_blocks` are applied on staging and production (2026-10-13).
