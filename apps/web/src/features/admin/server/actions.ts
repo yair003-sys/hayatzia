@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { adminErrorHe, banSchema, fileToRemove, removeSchema, restoreSchema, statusSchema, unbanSchema } from '../schema'
+import { adminErrorHe, banSchema, fileToRemove, liftRideSchema, removeSchema, restoreSchema, statusSchema, unbanSchema } from '../schema'
 
 // Every action runs the database function with the admin's own session: the database checks is_app_admin() and refuses
 // anyone else ('not_admin'). The service key is used for one thing only: deleting the file of content that the
@@ -60,6 +60,16 @@ export const unbanUserAction = actionClient.inputSchema(unbanSchema).action(asyn
   if (error) return { error: adminErrorHe(error.message) }
   revalidatePath(PAGE)
   return { ok: true as const }
+})
+
+/** "בטל השעיה מנסיעות" (ride safety, rule 9): the fan may offer and request rides again; audited in the database. */
+export const liftRideSuspensionAction = actionClient.inputSchema(liftRideSchema).action(async ({ parsedInput: { userId } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data, error } = await supabase.rpc('admin_lift_ride_suspension', { p_user: userId })
+  if (error) return { error: adminErrorHe(error.message) }
+  revalidatePath(PAGE)
+  return { ok: true as const, lifted: data === true }
 })
 
 export const setReportStatusAction = actionClient.inputSchema(statusSchema).action(async ({ parsedInput: { reportId, status } }) => {

@@ -40,7 +40,7 @@ vi.mock('@/lib/supabase/admin', () => ({
       : null,
 }))
 
-import { banUserAction, removeContentAction, restoreContentAction, setReportStatusAction, unbanUserAction } from './actions'
+import { banUserAction, liftRideSuspensionAction, removeContentAction, restoreContentAction, setReportStatusAction, unbanUserAction } from './actions'
 
 const notAdmin: RpcResult = { data: null, error: { message: 'not_admin' } }
 
@@ -63,6 +63,7 @@ describe('a fan who is not an admin', () => {
       unbanUserAction({ userId: FAN }),
       setReportStatusAction({ reportId: CLIP, status: 'dismissed' }),
       restoreContentAction({ kind: 'clip', ref: CLIP }),
+      liftRideSuspensionAction({ userId: FAN }),
     ])
     for (const r of results) expect(r.data).toEqual({ error: 'אין לך הרשאה לפעולה הזאת' })
     expect(s.removed).toEqual([])
@@ -145,5 +146,20 @@ describe('banUserAction', () => {
     s.rpc = () => ({ data: null, error: { message: 'cannot_ban_admin' } })
     const r = await banUserAction({ userId: FAN, days: 7, reason: '' })
     expect(r.data).toEqual({ error: 'אי אפשר להשעות מנהל' })
+  })
+})
+
+describe('liftRideSuspensionAction (ride safety, rule 9)', () => {
+  it('lifts the suspension from rides through the audited database function', async () => {
+    s.rpc = () => ({ data: true, error: null })
+    const r = await liftRideSuspensionAction({ userId: FAN })
+    expect(r.data).toEqual({ ok: true, lifted: true })
+    expect(s.rpcCalls).toEqual([{ fn: 'admin_lift_ride_suspension', args: { p_user: FAN } }])
+    expect(s.revalidated).toEqual(['/admin/reports'])
+  })
+  it('refuses a malformed id before calling the database', async () => {
+    const r = await liftRideSuspensionAction({ userId: 'nope' })
+    expect(r.validationErrors).toBeDefined()
+    expect(s.rpcCalls).toEqual([])
   })
 })

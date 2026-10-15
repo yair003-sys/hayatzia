@@ -10,6 +10,8 @@ export const DELETE_WORD = 'מחק'
 export const USER_BUCKETS = ['clips', 'stand', 'market', 'chants'] as const
 
 export const BANNED_DELETE_HE = 'אי אפשר למחוק חשבון בזמן השעיה'
+/** Ride safety, rule 11: no deleting the account while a ride case is open (all data is kept for the inquiry). */
+export const RIDE_CASE_DELETE_HE = 'אי אפשר למחוק חשבון בזמן בירור'
 /** The files go first: when the account itself then fails to delete, the fan must know some files are already gone. */
 export const PARTIAL_DELETE_HE = 'המחיקה נכשלה, וחלק מהתמונות והסרטונים כבר נמחקו. נסה שוב'
 

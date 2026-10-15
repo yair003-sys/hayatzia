@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
+import { rideOver, type DriverTrust, type Gender } from '../ride-safety'
 
 export type Trip = {
   id: string
@@ -13,8 +14,12 @@ export type Trip = {
   seats: number
   cost: 'share' | 'free'
   note: string
+  pickup: string
+  women_only: boolean
   created_at: string
   requests: { user_id: string; nick: string; status: 'pending' | 'accepted' | 'declined' }[]
+  /** Trust facts about the trip's author (ride safety rule 5); null when the database did not return them. */
+  driver: DriverTrust | null
 }
 
 /** Trips of the fan's club for the given matches, with the requests the fan may see (own, or all when driver). */
@@ -24,7 +29,7 @@ export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
   const [{ data: trips }, blocked] = await Promise.all([
     supabase
       .from('trips')
-      .select('id,user_id,nick,fixture_id,kind,from_city,depart_before_min,seats,cost,note,created_at')
+      .select('id,user_id,nick,fixture_id,kind,from_city,depart_before_min,seats,cost,note,pickup,women_only,created_at')
       .in('fixture_id', fixtureIds)
       .order('created_at', { ascending: false })
       .limit(200),
@@ -32,14 +37,94 @@ export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
   ])
   const list = (trips ?? []).filter((t) => !blocked.includes(t.user_id))
   if (!list.length) return []
-  const { data: reqs } = await supabase
-    .from('trip_requests')
-    .select('trip_id,user_id,nick,status')
-    .in('trip_id', list.map((t) => t.id))
+  const [{ data: reqs }, { data: drivers }] = await Promise.all([
+    supabase
+      .from('trip_requests')
+      .select('trip_id,user_id,nick,status')
+      .in('trip_id', list.map((t) => t.id)),
+    supabase.rpc('ride_drivers', { p_users: [...new Set(list.map((t) => t.user_id))] }),
+  ])
+  const trust = new Map(
+    (drivers ?? []).map((d) => [
+      d.user_id,
+      {
+        memberSince: d.member_since,
+        ridesCompleted: d.rides_completed,
+        ratingsCount: d.ratings_count,
+        ratingsSum: d.ratings_sum,
+        female: d.female,
+      } satisfies DriverTrust,
+    ]),
+  )
   return list.map((t) => ({
-    ...(t as Omit<Trip, 'requests'>),
+    ...(t as Omit<Trip, 'requests' | 'driver'>),
     requests: (reqs ?? []).filter((r) => r.trip_id === t.id) as Trip['requests'],
+    driver: trust.get(t.user_id) ?? null,
   }))
+}
+
+export type RideProfile = {
+  gender: Gender | null
+  adultConfirmed: boolean
+  safetySeen: boolean
+  suspended: boolean
+  phoneRequired: boolean
+  phoneOk: boolean
+}
+
+/** The fan's own ride state (gender, 18+, safety screen, suspension, phone rule), through my_ride_profile(). */
+export async function getMyRideProfile(): Promise<RideProfile | null> {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('my_ride_profile')
+  const row = data?.[0]
+  if (error || !row) return null
+  return {
+    gender: row.gender === 'm' || row.gender === 'f' || row.gender === 'x' ? row.gender : null,
+    adultConfirmed: row.adult_confirmed,
+    safetySeen: row.safety_seen,
+    suspended: row.ride_suspended,
+    phoneRequired: row.phone_required,
+    phoneOk: row.phone_ok,
+  }
+}
+
+export type RideToRate = { tripId: string; driverNick: string; kickoffAt: string }
+
+/**
+ * Rides of the last 30 days where the fan was an accepted rider, the match is over and the fan has not rated yet
+ * (rule 6). Small indexed reads: own requests (trip_requests_user_idx), trips and fixtures by key, own ratings.
+ */
+export async function getRidesToRate(userId: string): Promise<RideToRate[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const { data: mine } = await supabase
+    .from('trip_requests')
+    .select('trip_id')
+    .eq('user_id', userId)
+    .eq('status', 'accepted')
+    .gte('created_at', since)
+    .limit(50)
+  const ids = (mine ?? []).map((r) => r.trip_id)
+  if (!ids.length) return []
+  const [{ data: trips }, { data: rated }] = await Promise.all([
+    supabase.from('trips').select('id,nick,kind,fixture_id').in('id', ids).eq('kind', 'offer'),
+    supabase.from('ride_ratings').select('trip_id').eq('rater_id', userId).in('trip_id', ids),
+  ])
+  const done = new Set((rated ?? []).map((r) => r.trip_id))
+  const open = (trips ?? []).filter((t) => !done.has(t.id))
+  if (!open.length) return []
+  const { data: fixtures } = await supabase
+    .from('fixtures')
+    .select('id,kickoff_at,status')
+    .in('id', [...new Set(open.map((t) => t.fixture_id))])
+  const fx = new Map((fixtures ?? []).map((f) => [f.id, f]))
+  const now = new Date()
+  return open.flatMap((t) => {
+    const f = fx.get(t.fixture_id)
+    return f && rideOver(f.kickoff_at, f.status, now) ? [{ tripId: t.id, driverNick: t.nick, kickoffAt: f.kickoff_at }] : []
+  })
 }
 
 export type FanEvent = {

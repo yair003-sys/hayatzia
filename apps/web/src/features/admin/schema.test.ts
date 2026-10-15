@@ -3,6 +3,8 @@ import { REPORT_KINDS } from '@/features/safety/schema'
 import {
   AUTO_HIDDEN_LABEL,
   KIND_LABEL,
+  RIDE_URGENT_LABEL,
+  isUrgentRide,
   actionBy,
   actionLabel,
   adminErrorHe,
@@ -117,5 +119,20 @@ describe('auto-hide (migration 20261015200000_auto_hide)', () => {
     expect(restoreSchema.safeParse({ kind: 'review', ref: 'mta_1:x' }).success).toBe(true)
     expect(restoreSchema.safeParse({ kind: 'user', ref: 'x' }).success).toBe(false)
     expect(restoreSchema.safeParse({ kind: 'dm_thread', ref: 'x' }).success).toBe(false)
+  })
+})
+
+describe('ride safety (migration 20261015220000_ride_safety)', () => {
+  it('marks a harm-in-a-ride report on a ride or a fan as urgent', () => {
+    expect(RIDE_URGENT_LABEL).toBe('דחוף · נסיעה')
+    expect(isUrgentRide({ kind: 'trip', reason: 'הטרדה או פגיעה בנסיעה' })).toBe(true)
+    expect(isUrgentRide({ kind: 'user', reason: 'הטרדה או פגיעה בנסיעה' })).toBe(true)
+    expect(isUrgentRide({ kind: 'trip', reason: 'הטרדה' })).toBe(false)
+    expect(isUrgentRide({ kind: 'clip', reason: 'הטרדה או פגיעה בנסיעה' })).toBe(false)
+  })
+  it('labels the ride audit actions; the automatic suspension is by the database', () => {
+    expect(actionLabel('ride_suspend')).toBe('השעיה מנסיעות')
+    expect(actionLabel('ride_unsuspend')).toBe('ביטול השעיה מנסיעות')
+    expect(actionBy('ride_suspend', null)).toBe('אוטומטי')
   })
 })

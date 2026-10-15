@@ -8,7 +8,18 @@ import { cn } from '@/lib/utils'
 import { openThreadAction } from '@/features/dm/server/actions'
 import { ReportBlock } from '@/features/safety/components/report-block'
 import { CONDITION, departureLabel, EVENT_KIND, MARKET_CAT, MARKET_DISCLAIMER, RIDE_DISCLAIMER, TRIP_KIND } from '../schema'
-import type { FanEvent, MarketItem, Trip } from '../server/queries'
+import type { FanEvent, MarketItem, RideProfile, RideToRate, Trip } from '../server/queries'
+import {
+  PICKUP_LABEL,
+  PICKUP_SUGGESTIONS,
+  PICKUP_WARNING,
+  RIDE_SUSPENDED_HE,
+  WOMEN_DRIVERS_FILTER,
+  WOMEN_ONLY_LABEL,
+  filterRides,
+  trustLine,
+} from '../ride-safety'
+import { RateRides, SafetyGate, ShareRide } from './ride-safety'
 import {
   createEventAction,
   createItemAction,
@@ -70,7 +81,17 @@ const input = 'w-full rounded-md border border-line bg-elev px-3 py-2'
 // ---------------- trips ----------------
 export type MatchOption = { id: number; label: string; kickoff: number }
 
-export function TripsBoard({ matches, trips, meId, focusId }: { matches: MatchOption[]; trips: Trip[]; meId: string; focusId?: string }) {
+type TripsProps = {
+  matches: MatchOption[]
+  trips: Trip[]
+  meId: string
+  focusId?: string
+  /** The fan's own ride state (null when it could not be read: the database still enforces every rule). */
+  ride: RideProfile | null
+  toRate: RideToRate[]
+}
+
+export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: TripsProps) {
   // A trip opened from a notification: its match is picked and the trip scrolled into view.
   const focused = focusId ? trips.find((t) => t.id === focusId) : undefined
   const [fixtureId, setFixtureId] = useState(matches.find((m) => m.id === focused?.fixture_id)?.id ?? matches[0]?.id)
@@ -79,170 +100,303 @@ export function TripsBoard({ matches, trips, meId, focusId }: { matches: MatchOp
     if (focusedId) document.getElementById(`trip-${focusedId}`)?.scrollIntoView({ block: 'center' })
   }, [focusedId])
   const [form, setForm] = useState(false)
+  const [womenDrivers, setWomenDrivers] = useState(false)
+  const [pickup, setPickup] = useState('')
+  // The one-time 18+ confirmation and safety screen stands before the first offer or request (rules 2 and 8).
+  const [gate, setGate] = useState<null | (() => void)>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const ready = confirmed || (!!ride?.adultConfirmed && !!ride?.safetySeen)
+  const guarded = (fn: () => void) => (ready ? fn() : setGate(() => fn))
   const { pending, error, run } = useRun()
   const match = matches.find((m) => m.id === fixtureId)
-  const list = trips.filter((t) => t.fixture_id === fixtureId)
-
-  if (!match) return <p className="py-8 text-center text-muted">אין משחקים קרובים של הקבוצה כרגע.</p>
+  const drivers = Object.fromEntries(trips.map((t) => [t.user_id, t.driver ?? undefined]))
+  const list = filterRides(
+    trips.filter((t) => t.fixture_id === fixtureId),
+    womenDrivers,
+    drivers,
+  )
+  const suspended = !!ride?.suspended
+  const isWoman = ride?.gender === 'f'
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {matches.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            aria-pressed={m.id === fixtureId}
-            onClick={() => setFixtureId(m.id)}
-            className={cn('shrink-0 rounded-full border px-3 py-1.5 text-sm', m.id === fixtureId ? 'border-accent bg-accent-soft' : 'border-line text-muted')}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {form ? (
-        <form
-          className="space-y-3 rounded-lg border border-line bg-surface p-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const f = new FormData(e.currentTarget)
-            run(
-              () =>
-                createTripAction({
-                  fixtureId: match.id,
-                  kind: f.get('kind') as 'offer',
-                  fromCity: String(f.get('from')),
-                  departBeforeMin: Number(f.get('before')),
-                  seats: Number(f.get('seats')),
-                  cost: f.get('cost') as 'share',
-                  note: String(f.get('note')),
-                }),
-              () => setForm(false),
-            )
-          }}
-        >
-          <p className="rounded-md bg-elev p-2.5 text-xs leading-relaxed text-muted">{RIDE_DISCLAIMER}</p>
-          <Field label="סוג">
-            <select name="kind" className={input}>
-              {Object.entries(TRIP_KIND).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="יוצאים מ־">
-            <input name="from" required maxLength={40} placeholder="למשל: חיפה" className={input} />
-          </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="כמה לפני המשחק">
-              <select name="before" defaultValue="120" className={input}>
-                {[60, 90, 120, 150, 180, 240].map((m) => (
-                  <option key={m} value={m}>
-                    {m / 60} שע׳ ({departureLabel(match.kickoff, m)})
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="מקומות פנויים">
-              <input name="seats" type="number" min={0} max={8} defaultValue={3} className={input} />
-            </Field>
-          </div>
-          <Field label="עלות">
-            <select name="cost" className={input}>
-              <option value="share">השתתפות בדלק</option>
-              <option value="free">בלי עלות</option>
-            </select>
-          </Field>
-          <Field label="הערה">
-            <input name="note" maxLength={140} placeholder="לא חובה" className={input} />
-          </Field>
-          <div className="flex gap-2">
-            <button type="submit" disabled={pending} className="flex-1 rounded-lg bg-accent py-2.5 font-semibold text-white">
-              פרסם
-            </button>
-            <button type="button" onClick={() => setForm(false)} className="rounded-lg border border-line px-4">
-              ביטול
-            </button>
-          </div>
-        </form>
+      <RateRides rides={toRate} />
+      {!match ? (
+        <p className="py-8 text-center text-muted">אין משחקים קרובים של הקבוצה כרגע.</p>
       ) : (
-        <button type="button" onClick={() => setForm(true)} className="w-full rounded-lg bg-accent py-3 font-semibold text-white">
-          + נסיעה חדשה
-        </button>
-      )}
-      {error && <p role="alert" className="text-sm text-live">{error}</p>}
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {matches.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={m.id === fixtureId}
+                onClick={() => setFixtureId(m.id)}
+                className={cn('min-h-11 shrink-0 rounded-full border px-3 text-sm', m.id === fixtureId ? 'border-accent bg-accent-soft' : 'border-line text-muted')}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={womenDrivers}
+              onClick={() => setWomenDrivers(!womenDrivers)}
+              className={cn('min-h-11 rounded-full border px-3 text-sm', womenDrivers ? 'border-accent bg-accent-soft font-semibold' : 'border-line text-muted')}
+            >
+              {WOMEN_DRIVERS_FILTER}
+            </button>
+          </div>
 
-      {list.length === 0 && <p className="py-6 text-center text-muted">עוד אין נסיעות למשחק הזה.</p>}
-      <ul className="space-y-3">
-        {list.map((t) => {
-          const mine = t.user_id === meId
-          const myReq = t.requests.find((r) => r.user_id === meId)
-          const accepted = t.requests.filter((r) => r.status === 'accepted').length
-          const free = Math.max(t.seats - accepted, 0)
-          return (
-            <li key={t.id} id={`trip-${t.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', t.id === focusedId && 'trip-focus')}>
-              <div className="flex items-center gap-2">
-                <b>{t.nick}</b>
-                <span className="text-xs text-accent-text">{TRIP_KIND[t.kind]}</span>
-                {mine && (
-                  <button type="button" aria-label="מחק נסיעה" onClick={() => run(() => deleteTripAction({ id: t.id }))} className="ms-auto text-dim">
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              <p className="text-sm">
-                מ{t.from_city} · יציאה {departureLabel(match.kickoff, t.depart_before_min)}
-                {t.kind === 'offer' && <> · {free > 0 ? `${free} מקומות פנויים` : 'מלא'}</>} · {t.cost === 'free' ? 'בלי עלות' : 'השתתפות בדלק'}
-              </p>
-              {t.note && <p className="text-sm text-muted">{t.note}</p>}
-              {mine ? (
-                t.requests.length > 0 && (
-                  <ul className="space-y-1.5 border-t border-line-soft pt-2">
-                    {t.requests.map((r) => (
-                      <li key={r.user_id} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1">{r.nick}</span>
-                        {r.status === 'pending' ? (
-                          <>
-                            <button type="button" onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: true }))} className="rounded-full bg-ok/20 px-2.5 py-1 text-xs text-ok">
-                              אשר
-                            </button>
-                            <button type="button" onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: false }))} className="rounded-full border border-line px-2.5 py-1 text-xs">
-                              דחה
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted">{r.status === 'accepted' ? 'אושר ✓' : 'נדחה'}</span>
-                        )}
-                        <MessageTo userId={r.user_id} />
-                      </li>
-                    ))}
-                  </ul>
+          {suspended && (
+            <p role="status" className="rounded-lg border border-live/40 bg-surface p-3 text-sm">
+              {RIDE_SUSPENDED_HE}
+            </p>
+          )}
+
+          {gate ? (
+            <SafetyGate
+              onDone={() => {
+                setConfirmed(true)
+                const next = gate
+                setGate(null)
+                next()
+              }}
+              onCancel={() => setGate(null)}
+            />
+          ) : form ? (
+            <form
+              className="space-y-3 rounded-lg border border-line bg-surface p-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const f = new FormData(e.currentTarget)
+                run(
+                  () =>
+                    createTripAction({
+                      fixtureId: match.id,
+                      kind: f.get('kind') as 'offer',
+                      fromCity: String(f.get('from')),
+                      pickup,
+                      womenOnly: isWoman && f.get('womenOnly') === 'on',
+                      departBeforeMin: Number(f.get('before')),
+                      seats: Number(f.get('seats')),
+                      cost: f.get('cost') as 'share',
+                      note: String(f.get('note')),
+                    }),
+                  () => {
+                    setForm(false)
+                    setPickup('')
+                  },
                 )
-              ) : (
-                <div className="flex items-center gap-2">
-                  {myReq ? (
-                    <span className="text-xs text-muted">
-                      {myReq.status === 'pending' ? 'הבקשה נשלחה' : myReq.status === 'accepted' ? 'אושרת ✓' : 'הבקשה נדחתה'}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={pending || (t.kind === 'offer' && free === 0)}
-                      onClick={() => run(() => requestSeatAction({ id: t.id }))}
-                      className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                    >
-                      {t.kind === 'offer' ? 'בקש מקום' : 'מצטרף'}
+              }}
+            >
+              <p className="rounded-md bg-elev p-2.5 text-xs leading-relaxed text-muted">{RIDE_DISCLAIMER}</p>
+              <Field label="סוג">
+                <select name="kind" className={input}>
+                  {Object.entries(TRIP_KIND).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="יוצאים מ־">
+                <input name="from" required maxLength={40} placeholder="למשל: חיפה" className={input} />
+              </Field>
+              <div className="space-y-1.5">
+                <label className="block space-y-1 text-sm">
+                  <span className="text-muted">{PICKUP_LABEL}</span>
+                  <input
+                    name="pickup"
+                    required
+                    minLength={3}
+                    maxLength={80}
+                    value={pickup}
+                    onChange={(e) => setPickup(e.target.value)}
+                    list="pickup-suggestions"
+                    placeholder="למשל: תחנת רכבת מרכז"
+                    aria-describedby="pickup-warning"
+                    className={input}
+                  />
+                </label>
+                <datalist id="pickup-suggestions">
+                  {PICKUP_SUGGESTIONS.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+                <div className="flex flex-wrap gap-2" aria-label="הצעות לנקודת איסוף">
+                  {PICKUP_SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" onClick={() => setPickup(s)} className="min-h-11 rounded-full border border-line px-3 text-xs">
+                      {s}
                     </button>
-                  )}
-                  <MessageTo userId={t.user_id} />
+                  ))}
                 </div>
+                <p id="pickup-warning" className="text-xs font-medium text-warn">
+                  {PICKUP_WARNING}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="כמה לפני המשחק">
+                  <select name="before" defaultValue="120" className={input}>
+                    {[60, 90, 120, 150, 180, 240].map((m) => (
+                      <option key={m} value={m}>
+                        {m / 60} שע׳ ({departureLabel(match.kickoff, m)})
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="מקומות פנויים">
+                  <input name="seats" type="number" min={0} max={8} defaultValue={3} className={input} />
+                </Field>
+              </div>
+              <Field label="עלות">
+                <select name="cost" className={input}>
+                  <option value="share">השתתפות בדלק</option>
+                  <option value="free">בלי עלות</option>
+                </select>
+              </Field>
+              {isWoman && (
+                <label className="flex min-h-11 items-center gap-3 text-sm">
+                  <input type="checkbox" name="womenOnly" className="size-5" />
+                  {WOMEN_ONLY_LABEL}
+                </label>
               )}
-            </li>
-          )
-        })}
-      </ul>
+              <Field label="הערה">
+                <input name="note" maxLength={140} placeholder="לא חובה" className={input} />
+              </Field>
+              <div className="flex gap-2">
+                <button type="submit" disabled={pending} className="min-h-11 flex-1 rounded-lg bg-accent font-semibold text-white">
+                  פרסם
+                </button>
+                <button type="button" onClick={() => setForm(false)} className="min-h-11 rounded-lg border border-line px-4">
+                  ביטול
+                </button>
+              </div>
+            </form>
+          ) : (
+            !suspended && (
+              <button
+                type="button"
+                onClick={() => guarded(() => setForm(true))}
+                className="min-h-11 w-full rounded-lg bg-accent py-3 font-semibold text-white"
+              >
+                + נסיעה חדשה
+              </button>
+            )
+          )}
+          {error && (
+            <p role="alert" className="text-sm text-live">
+              {error}
+            </p>
+          )}
+
+          {list.length === 0 && (
+            <p className="py-6 text-center text-muted">{womenDrivers ? 'אין נסיעות עם נהגות למשחק הזה.' : 'עוד אין נסיעות למשחק הזה.'}</p>
+          )}
+          <ul className="space-y-3">
+            {list.map((t) => {
+              const mine = t.user_id === meId
+              const myReq = t.requests.find((r) => r.user_id === meId)
+              const accepted = t.requests.filter((r) => r.status === 'accepted').length
+              const free = Math.max(t.seats - accepted, 0)
+              const closedToMe = t.women_only && !isWoman
+              return (
+                <li key={t.id} id={`trip-${t.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', t.id === focusedId && 'trip-focus')}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <b>{t.nick}</b>
+                    <span className="text-xs text-accent-text">{TRIP_KIND[t.kind]}</span>
+                    {t.women_only && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold">{WOMEN_ONLY_LABEL}</span>}
+                    {mine && (
+                      <button type="button" aria-label="מחק נסיעה" onClick={() => run(() => deleteTripAction({ id: t.id }))} className="ms-auto flex size-11 items-center justify-center text-dim">
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                  {t.driver && <p className="text-xs text-muted">{trustLine(t.driver)}</p>}
+                  <p className="text-sm">
+                    מ{t.from_city} · יציאה {departureLabel(match.kickoff, t.depart_before_min)}
+                    {t.kind === 'offer' && <> · {free > 0 ? `${free} מקומות פנויים` : 'מלא'}</>} · {t.cost === 'free' ? 'בלי עלות' : 'השתתפות בדלק'}
+                  </p>
+                  {t.pickup && <p className="text-sm">איסוף: {t.pickup}</p>}
+                  {t.note && <p className="text-sm text-muted">{t.note}</p>}
+                  {mine ? (
+                    t.requests.length > 0 && (
+                      <ul className="space-y-2 border-t border-line-soft pt-2">
+                        {t.requests.map((r) => (
+                          <li key={r.user_id} className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="flex-1">{r.nick}</span>
+                              {r.status === 'pending' ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: true }))}
+                                    className="min-h-11 rounded-full bg-ok/20 px-3 text-xs text-ok"
+                                  >
+                                    אשר
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: false }))}
+                                    className="min-h-11 rounded-full border border-line px-3 text-xs"
+                                  >
+                                    דחה
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted">{r.status === 'accepted' ? 'אושר ✓' : 'נדחה'}</span>
+                              )}
+                              <MessageTo userId={r.user_id} />
+                            </div>
+                            <ReportBlock kind="user" refId={r.user_id} userId={r.user_id} userNick={r.nick} />
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {myReq ? (
+                        <span className="text-xs text-muted">
+                          {myReq.status === 'pending' ? 'הבקשה נשלחה' : myReq.status === 'accepted' ? 'אושרת ✓' : 'הבקשה נדחתה'}
+                        </span>
+                      ) : closedToMe ? (
+                        <span className="text-xs text-muted">{WOMEN_ONLY_LABEL}</span>
+                      ) : (
+                        !suspended && (
+                          <button
+                            type="button"
+                            disabled={pending || (t.kind === 'offer' && free === 0)}
+                            onClick={() => guarded(() => run(() => requestSeatAction({ id: t.id })))}
+                            className="min-h-11 rounded-full bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40"
+                          >
+                            {t.kind === 'offer' ? 'בקש מקום' : 'מצטרף'}
+                          </button>
+                        )
+                      )}
+                      <MessageTo userId={t.user_id} />
+                    </div>
+                  )}
+                  {(mine || myReq) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ShareRide
+                        tripId={t.id}
+                        driverNick={t.nick}
+                        pickup={t.pickup}
+                        fromCity={t.from_city}
+                        kickoffSec={match.kickoff}
+                        departBeforeMin={t.depart_before_min}
+                        match={match.label}
+                      />
+                    </div>
+                  )}
+                  {!mine && <ReportBlock kind="trip" refId={t.id} userId={t.user_id} userNick={t.nick} />}
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
     </div>
   )
 }

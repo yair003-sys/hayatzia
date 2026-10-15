@@ -8,6 +8,7 @@ type Fns = Database['public']['Functions']
 export type QueueRow = Fns['admin_report_queue']['Returns'][number]
 export type BanRow = Fns['admin_ban_list']['Returns'][number]
 export type ActionRow = Fns['admin_recent_actions']['Returns'][number]
+export type RideSuspensionRow = Fns['admin_ride_suspensions']['Returns'][number]
 
 /** True only for a signed-in admin (public.app_admins). Per request. Reads cookies: call inside <Suspense>. */
 export const isAppAdmin = cache(async (): Promise<boolean> => {
@@ -53,5 +54,13 @@ export async function getRecentActions(): Promise<ActionRow[]> {
   const supabase = await createClient()
   if (!supabase) return []
   const { data } = await supabase.rpc('admin_recent_actions', { p_limit: 15 })
+  return data ?? []
+}
+
+/** Fans suspended from rides right now (ride safety, rule 9). */
+export async function getRideSuspensions(): Promise<RideSuspensionRow[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.rpc('admin_ride_suspensions', { p_limit: 50 })
   return data ?? []
 }
