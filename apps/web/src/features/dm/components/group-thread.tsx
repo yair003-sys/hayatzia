@@ -196,11 +196,10 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
     if (!m.reply_to) return null
     const orig = byId.get(m.reply_to)
     if (!orig) return { nick: 'הודעה קודמת', text: '' }
-    const to = orig.id
     return {
       nick: orig.sender_id === meId ? 'אתה' : nickOf(orig.sender_id),
       text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text),
-      onJump: () => jump(to),
+      to: orig.id,
     }
   }
 
@@ -229,6 +228,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         sender={m.sender_id === meId ? undefined : { nick: nickOf(m.sender_id), hue: avatarOf(m.sender_id, '').hue }}
         failed={m.failed}
         quote={quoteOf(m)}
+        onJump={jump}
         active={active === m.id}
         onActive={setActive}
         onReply={() => {
