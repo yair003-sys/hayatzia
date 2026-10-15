@@ -1220,6 +1220,9 @@ function dayLabel(t){
   return diff===0?'היום':diff===1?'מחר':d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'numeric'});
 }
 function num(n){return n.toLocaleString('he-IL')}
+// Security (2026-10-15): images and ids from the cloud go into HTML attributes, so only strict base64 JPEG data and
+// plain Firestore ids are accepted; anything else (a planted quote or tag) is dropped before it can reach the page.
+var SAFE_IMG=/^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/,SAFE_ID=/^[A-Za-z0-9]{1,40}$/;
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function scarf(t){return '<i class="scarf" style="--a:'+t.bg+';--b:'+t.ring+'" aria-hidden="true"></i>'}
 function scarfH(t,h,w){return '<i class="scarf" style="--a:'+t.bg+';--b:'+t.ring+';--h:'+h+'px;width:'+w+'px" aria-hidden="true"></i>'}
@@ -3689,7 +3692,7 @@ function sqCloudAttach(){
       var v=d.data({serverTimestamps:'estimate'});
       return {id:'fc_'+d.id,fid:d.id,cloud:true,uid:v.uid,owner:v.uid===me?'me':'u:'+v.uid,nick:String(v.nick||'אוהד'),tid:v.tid,img:String(v.img||''),video:'',
         cap:String(v.cap||''),tags:String(v.tags||''),likes:v.likes||0,resp:v.resp||0,ncm:v.ncm||0,once:!!v.once,views:v.views||0,comments:prev['fc_'+d.id]?prev['fc_'+d.id].comments:[],t:v.t&&v.t.toMillis?v.t.toMillis():Date.now()};
-    }).filter(function(c){return T[c.tid]&&/^data:image\//.test(c.img)});
+    }).filter(function(c){return T[c.tid]&&SAFE_IMG.test(c.img)&&SAFE_ID.test(c.fid)});
     sqOnceCheck();sqMerge();
   },function(e){console.warn('square',e)});
 }
@@ -3887,7 +3890,7 @@ function tpAttach(){
       var v=d.data({serverTimestamps:'estimate'}),id='tp_'+d.id,o=prev[id];
       return {id:id,fid:d.id,cloud:true,owner:v.uid===me?'me':realFan(v.uid,String(v.nick||'אוהד'),team).id,tid:team,cap:String(v.cap||''),aud:'team',
         t:v.t&&v.t.toMillis?v.t.toMillis():Date.now(),img:String(v.img||''),likes:v.likes||0,ncm:v.ncm||0,comments:o?o.comments:[],cmLoaded:o?o.cmLoaded:false};
-    }).filter(function(p){return /^data:image\//.test(p.img)});
+    }).filter(function(p){return SAFE_IMG.test(p.img)&&SAFE_ID.test(p.fid)});
     if(TPC.list.map(function(p){return p.id}).join(',')!==before&&ui.tab==='stand'&&!cur&&!SV&&!VW)render();
   },function(e){console.warn('photos',e)});
 }

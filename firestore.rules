@@ -13,7 +13,10 @@ service cloud.firestore {
       return (bump(f, 1) && existsAfter(mark) && !exists(mark))
           || (bump(f, -1) && !existsAfter(mark) && exists(mark));
     }
-    function validImg(img) { return img is string && img.size() < 700000 && img.matches('data:image/jpeg;base64,.*'); }
+    // Strict: only base64 characters after the prefix, so an image string can never carry HTML or script (security fix 2026-10-15).
+    function validImg(img) { return img is string && img.size() < 700000 && img.matches('^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$'); }
+    // Document ids are the 20-character ids Firestore generates; anything else could carry HTML into the page.
+    function validId(id) { return id.matches('^[A-Za-z0-9]{20}$'); }
     function validText(t, max) { return t is string && t.size() > 0 && t.size() <= max; }
 
     // A fan's profile. The team is chosen once and can never change.
@@ -87,7 +90,7 @@ service cloud.firestore {
     match /teams/{team}/photos/{phid} {
       function photoPath() { return /databases/$(database)/documents/teams/$(team)/photos/$(phid); }
       allow read: if signedIn() && myTeam() == team;
-      allow create: if signedIn() && myTeam() == team
+      allow create: if signedIn() && myTeam() == team && validId(phid)
         && rd().keys().hasOnly(['uid','nick','img','cap','t','likes','ncm'])
         && rd().uid == request.auth.uid
         && validNick(rd().nick)
@@ -124,7 +127,7 @@ service cloud.firestore {
       function clipPath() { return /databases/$(database)/documents/clips/$(cid); }
       function mark(kind) { return /databases/$(database)/documents/clips/$(cid)/$(kind)/$(request.auth.uid); }
       allow read: if signedIn();
-      allow create: if signedIn()
+      allow create: if signedIn() && validId(cid)
         && rd().keys().hasOnly(['uid','nick','tid','img','cap','tags','t','likes','resp','ncm','once','views'])
         && rd().get('once', false) is bool && rd().get('views', 0) == 0
         && rd().uid == request.auth.uid
