@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { DM_MAX } from '../schema'
 
 /** A quoted message as the device found it: decrypted from the loaded messages, or "הודעה קודמת" when not loaded. */
-export type ShownQuote = { nick: string; text: string; onJump?: () => void }
+export type ShownQuote = { nick: string; text: string; /** The original's id when it is loaded (tap to jump). */ to?: string }
 
 /** One message bubble. Mine sit at the start (right in RTL) in the accent colour. */
 export function Bubble({
@@ -20,6 +20,7 @@ export function Bubble({
   locked = 'הודעה שנשלחה לפני שהמכשיר הזה הופעל',
   failed,
   quote,
+  onJump,
   active,
   onActive,
   onReply,
@@ -34,6 +35,7 @@ export function Bubble({
   locked?: string
   failed?: boolean
   quote?: ShownQuote | null
+  onJump?: (id: string) => void
   active: boolean
   onActive: (id: string | null) => void
   onReply?: () => void
@@ -50,7 +52,7 @@ export function Bubble({
             {sender.nick}
           </b>
         )}
-        {quote && <Quote mine={mine} nick={quote.nick} text={quote.text} onJump={quote.onJump} />}
+        {quote && <Quote mine={mine} nick={quote.nick} text={quote.text} onJump={quote.to && onJump ? () => onJump(quote.to as string) : undefined} />}
         {text ?? (
           <span className="inline-flex items-center gap-1 text-xs italic opacity-70">
             <Lock className="size-3" aria-hidden="true" /> {locked}

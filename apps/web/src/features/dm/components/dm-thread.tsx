@@ -149,8 +149,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     if (!m.reply_to) return null
     const orig = byId.get(m.reply_to)
     if (!orig) return { nick: 'הודעה קודמת', text: '' }
-    const to = orig.id
-    return { nick: nickOf(orig.sender_id), text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text), onJump: () => jump(to) }
+    return { nick: nickOf(orig.sender_id), text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text), to: orig.id }
   }
 
   const rows: ReactNode[] = []
@@ -169,6 +168,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         locked="נשלח למכשיר אחר שלך"
         failed={m.failed}
         quote={quoteOf(m)}
+        onJump={jump}
         active={active === m.id}
         onActive={setActive}
         onReply={() => {
