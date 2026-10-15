@@ -46,7 +46,7 @@ update public.push_throttle set at = now() - interval '1 minute';
 select pg_temp.as_fan('a61');
 set local role authenticated;
 select is(public.claim_message_push('dm', current_setting('t.th')::uuid), false, 'no notification across a block');
-select is((select count(*)::int from public.push_throttle), 0, 'the throttle table is closed to fans');
+select throws_ok($$ select count(*) from public.push_throttle $$, '42501', null, 'the throttle table is closed to fans');
 reset role;
 
 -- ---------- 2 + 3. profiles ----------
