@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { TEAMS, teamById } from '@/features/teams/data'
 import {
   MAX_FAN_POINTS,
+  MIN_TRACK_CONTRAST,
+  SAME_COLOUR_DISTANCE,
+  WAR_NEUTRAL,
+  WAR_TRACK,
+  colourDistance,
+  contrast,
   contributedLine,
   fanPoints,
   recordLine,
@@ -89,13 +96,38 @@ describe('copy', () => {
 })
 
 describe('colours', () => {
-  it('uses each club bar colour, and the away second colour when both clubs share one', () => {
-    expect(warColours({ bar: '#14B85A', ring: '#fff' }, { bar: '#FFD400', ring: '#111111' })).toEqual({ home: '#14B85A', away: '#FFD400' })
-    expect(warColours({ bar: '#E0242F', ring: '#111111' }, { bar: '#e0242f', ring: '#ffffff' })).toEqual({ home: '#E0242F', away: '#ffffff' })
+  const club = (id: string) => {
+    const t = teamById(id)
+    if (!t) throw new Error(`no club ${id}`)
+    return t
+  }
+  const pair = (h: string, a: string) => warColours(club(h), club(a))
+
+  it('keeps each club bar colour when they differ', () => {
+    expect(pair('mhf', 'bei')).toEqual({ home: '#14B85A', away: '#FFD400' })
   })
-  it('keeps a dark second colour off the bar', () => {
-    // Maccabi Tel Aviv (yellow / blue) at home to Beitar (yellow / black): the home side turns blue.
-    expect(warColours({ bar: '#FFD400', ring: '#1D3FA8' }, { bar: '#FFD400', ring: '#111111' })).toEqual({ home: '#1D3FA8', away: '#FFD400' })
-    expect(warColours({ bar: '#FFD400', ring: '#111111' }, { bar: '#FFD400', ring: '#000000' })).toEqual({ home: '#FFD400', away: '#ffffff' })
+  it('switches near-identical reds (Hapoel Tel Aviv vs Beer Sheva): away takes its white', () => {
+    expect(pair('hta', 'hbs')).toEqual({ home: '#E0242F', away: '#ffffff' })
+    expect(pair('hhf', 'hjr')).toEqual({ home: '#D3182B', away: '#ffffff' })
+  })
+  it('switches near-identical yellows; a dark second colour is refused for the neutral grey', () => {
+    // Netanya's black and Maccabi Tel Aviv's dark blue are both under 3:1 on the track.
+    expect(pair('mta', 'mnt')).toEqual({ home: '#FFD400', away: WAR_NEUTRAL })
+    expect(pair('mta', 'bei')).toEqual({ home: '#FFD400', away: WAR_NEUTRAL })
+  })
+  it('falls back to white when the grey is too close to the home colour', () => {
+    expect(warColours({ bar: '#8C96A8', ring: '#111111' }, { bar: '#8C96A9', ring: '#000000' })).toEqual({ home: '#8C96A8', away: '#ffffff' })
+  })
+  it('every pairing of the 14 clubs ends with two distinct colours, any replacement at least 3:1 on the track', () => {
+    for (const h of TEAMS) {
+      for (const a of TEAMS) {
+        if (h.id === a.id) continue
+        const c = warColours(h, a)
+        expect(colourDistance(c.home, c.away), `${h.id}–${a.id}`).toBeGreaterThanOrEqual(SAME_COLOUR_DISTANCE)
+        if (c.home !== h.bar) expect(contrast(c.home, WAR_TRACK)).toBeGreaterThanOrEqual(MIN_TRACK_CONTRAST)
+        if (c.away !== a.bar) expect(contrast(c.away, WAR_TRACK)).toBeGreaterThanOrEqual(MIN_TRACK_CONTRAST)
+      }
+    }
   })
 })
+

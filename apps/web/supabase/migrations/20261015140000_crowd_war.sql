@@ -164,7 +164,8 @@ create trigger crowd_war_totals after insert or update or delete on public.crowd
 
 -- ---------- season record ----------
 -- A club's finished wars in a season: wins, losses, draws (equal points, both above zero). A war where neither crowd
--- scored does not count; a war where only one crowd scored is that crowd's win. Reads the club's fixtures through the
+-- scored does not count; a war where only one crowd scored is that crowd's win. Demo matches (staging) are left out
+-- of the record: a sample match must never show up as a real win or loss. Reads the club's fixtures through the
 -- (home/away, kickoff) indexes and the totals by primary key. Invoker: totals and fixtures are readable by fans.
 create function public.crowd_war_record(p_team text, p_season integer)
 returns table (wins integer, losses integer, draws integer)
@@ -174,9 +175,11 @@ language sql stable security invoker set search_path = '' as $$
   ), fx as (
     select f.id from public.fixtures f
      where f.home_api_id in (select i.api_id from ids i) and f.season = p_season and f.kickoff_at <= now()
+       and not f.is_demo
     union
     select f.id from public.fixtures f
      where f.away_api_id in (select i.api_id from ids i) and f.season = p_season and f.kickoff_at <= now()
+       and not f.is_demo
   ), w as (
     select coalesce(sum(t.points) filter (where t.team_id = p_team), 0) as mine,
            coalesce(sum(t.points) filter (where t.team_id <> p_team), 0) as theirs

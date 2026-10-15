@@ -55,27 +55,57 @@ export function warSplit(home: number, away: number): { home: number; away: numb
 
 type Colours = { bar: string; ring: string }
 
+/** The bar's empty track (--color-surface-3): a fallback colour must stand out against it. */
+export const WAR_TRACK = '#1d263b'
+/** Neutral grey for when neither club has a usable second colour (5:1 on the track). */
+export const WAR_NEUTRAL = '#8C96A8'
+/** Below this "redmean" RGB distance two bar colours read as the same (red vs red, yellow vs yellow). */
+export const SAME_COLOUR_DISTANCE = 120
+/** WCAG non-text contrast for a fallback colour against the track. */
+export const MIN_TRACK_CONTRAST = 3
+
+function rgb(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+  const n = m?.[1] ? Number.parseInt(m[1], 16) : 0
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
 /** Relative luminance of a #rrggbb colour (0 black … 1 white). */
 function luminance(hex: string): number {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
-  if (!m?.[1]) return 0
-  const n = Number.parseInt(m[1], 16)
   const lin = (c: number) => {
     const v = c / 255
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
   }
-  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255)
+  const [r, g, b] = rgb(hex)
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+/** WCAG contrast ratio of two colours (1 … 21). */
+export function contrast(a: string, b: string): number {
+  const [lo, hi] = [luminance(a), luminance(b)].sort((x, y) => x - y) as [number, number]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Perceptual-ish distance of two colours ("redmean" weighted RGB, 0 … ~765). */
+export function colourDistance(a: string, b: string): number {
+  const [r1, g1, b1] = rgb(a)
+  const [r2, g2, b2] = rgb(b)
+  const rm = (r1 + r2) / 2
+  return Math.sqrt((2 + rm / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - rm) / 256) * (b1 - b2) ** 2)
 }
 
 /**
- * The two crowds' bar colours: each club's bar colour. When both clubs share it, one side takes its second colour:
- * the away side, unless that colour is too dark to see on the dark canvas (then the home side; white as a last resort).
+ * The two crowds' bar colours: each club's bar colour. When the two look alike (close in colour, not only equal), one
+ * side switches: the away side's second colour, else the home side's second colour, else a neutral grey, else white.
+ * A replacement is used only with at least 3:1 against the track and clearly different from the other side.
  */
 export function warColours(home: Colours, away: Colours): { home: string; away: string } {
-  if (home.bar.toLowerCase() !== away.bar.toLowerCase()) return { home: home.bar, away: away.bar }
-  const visible = (c: string) => luminance(c) > 0.03 && c.toLowerCase() !== home.bar.toLowerCase()
-  if (visible(away.ring)) return { home: home.bar, away: away.ring }
-  if (visible(home.ring)) return { home: home.ring, away: away.bar }
+  if (colourDistance(home.bar, away.bar) >= SAME_COLOUR_DISTANCE) return { home: home.bar, away: away.bar }
+  const usable = (c: string, other: string) =>
+    contrast(c, WAR_TRACK) >= MIN_TRACK_CONTRAST && colourDistance(c, other) >= SAME_COLOUR_DISTANCE
+  if (usable(away.ring, home.bar)) return { home: home.bar, away: away.ring }
+  if (usable(home.ring, away.bar)) return { home: home.ring, away: away.bar }
+  if (usable(WAR_NEUTRAL, home.bar)) return { home: home.bar, away: WAR_NEUTRAL }
   return { home: home.bar, away: '#ffffff' }
 }
 

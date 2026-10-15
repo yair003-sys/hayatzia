@@ -1,7 +1,7 @@
 -- Crowd war ("מלחמת הקהלים"): points per fan per match from the 48 hours before kick-off, with caps, only for fans of
 -- the two clubs, club totals by trigger, own fan row only, totals for signed-in fans, the season record.
 begin;
-select plan(39);
+select plan(45);
 
 -- h1, h2: Maccabi Haifa. b1: Beitar. m1: Maccabi Tel Aviv. s1: Hapoel Beer Sheva (no match in the window).
 insert into auth.users (id, aud, role, email)
@@ -99,8 +99,16 @@ select results_eq($$ select chat::int, posts::int, predicted, lineup from public
   $$ values (20, 3, true, true) $$, 'the fan reads their own counters');
 reset role;
 
+-- Square posts are deleted after 24 hours (or by their owner): the points stay.
+delete from public.clips where user_id = pg_temp.uid('c01');
+select is(pg_temp.pts(201, 'c01'), 45, 'deleting the posts keeps their points');
+
 -- ── other fans ──
 select pg_temp.chat('c02', 2);
+-- A message the moderation filter refuses is never saved, so it scores nothing.
+select throws_ok($$ insert into public.team_messages (user_id, body) values (pg_temp.uid('c02'), 'מוות לערבים') $$,
+  '23514', 'offensive_content', 'a racist message is refused');
+select is(pg_temp.pts(201, 'c02'), 2, 'a refused message scores nothing');
 select pg_temp.chat('c03', 1);
 select pg_temp.as_fan('c03');
 set local role authenticated;
@@ -122,6 +130,19 @@ insert into public.match_messages (fixture_id, user_id, body) values (203, pg_te
 select is(pg_temp.pts(203, 'c04'), 2, 'team chat + match room message: 2 points (demo matches count)');
 insert into public.match_messages (fixture_id, user_id, body) values (204, pg_temp.uid('c04'), 'יאללה');
 select is((select count(*)::int from public.crowd_war_fans where fixture_id = 204), 0, 'nothing after kick-off');
+
+-- A prediction made before the window, changed once the window is open: +5.
+select pg_temp.as_fan('c02');
+set local role authenticated;
+insert into public.predictions (fixture_id, home_goals, away_goals) values (202, 0, 0);
+reset role;
+select is(pg_temp.pts(202, 'c02'), 0, 'the early prediction scores nothing');
+update public.fixtures set kickoff_at = now() + interval '20 hours' where id = 202;
+select pg_temp.as_fan('c02');
+set local role authenticated;
+update public.predictions set away_goals = 2 where fixture_id = 202;
+reset role;
+select is(pg_temp.pts(202, 'c02'), 5, 'changing it inside the window: +5');
 
 -- ── totals ──
 select results_eq($$ select team_id, points, fans from public.crowd_war_totals where fixture_id = 201 order by team_id $$,
@@ -151,6 +172,12 @@ reset role;
 delete from auth.users where id = pg_temp.uid('c04');
 select results_eq($$ select points, fans from public.crowd_war_totals where fixture_id = 203 and team_id = 'mta' $$,
   $$ values (0, 0) $$, 'an account deleted before kick-off counts down');
+select is((select count(*)::int from public.crowd_war_totals t
+            where t.points <> (select coalesce(sum(f.points), 0) from public.crowd_war_fans f
+                                where f.fixture_id = t.fixture_id and f.team_id = t.team_id)
+               or t.fans <> (select count(*) from public.crowd_war_fans f
+                              where f.fixture_id = t.fixture_id and f.team_id = t.team_id)), 0,
+  'after the account delete the totals still equal the sum of the fans');
 update public.fixtures set kickoff_at = now() - interval '1 minute' where id = 201;
 select pg_temp.chat('c03', 1);
 delete from auth.users where id = pg_temp.uid('c03');
@@ -165,17 +192,20 @@ insert into public.fixtures (id, league_id, season, round, kickoff_at, status, h
   (208, 383, 2026, 'R0', now() - interval '6 days', 'FT', 651, 650),
   (209, 383, 2025, 'R0', now() - interval '300 days', 'FT', 650, 651),
   (210, 383, 2026, 'R0', now() - interval '7 days', 'FT', 604, 650);
+insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id, is_demo) values
+  (211, 383, 2026, 'R0', now() - interval '8 days', 'FT', 650, 651, true);   -- a demo match: never in the record
 insert into public.crowd_war_totals (fixture_id, team_id, points, fans) values
   (205, 'mhf', 10, 2), (205, 'bei', 4, 1),    -- mhf wins
   (206, 'mhf', 2, 1), (206, 'bei', 8, 2),     -- bei wins
   (207, 'bei', 5, 1),                          -- only bei scored: bei wins
   (208, 'mhf', 3, 1), (208, 'bei', 3, 1),     -- draw
   (209, 'mhf', 9, 1), (209, 'bei', 1, 1),     -- last season
-  (210, 'mhf', 4, 1);                          -- only mhf scored against mta
+  (210, 'mhf', 4, 1),                          -- only mhf scored against mta
+  (211, 'mhf', 50, 3), (211, 'bei', 1, 1);    -- demo: left out
 select pg_temp.as_fan('c02');
 set local role authenticated;
 select results_eq($$ select * from public.crowd_war_record('mhf', 2026) $$, $$ values (3, 2, 1) $$,
-  'mhf: wins 201, 205, 210; losses 206, 207; draw 208; last season left out');
+  'mhf: wins 201, 205, 210; losses 206, 207; draw 208; last season and the demo match left out');
 select results_eq($$ select * from public.crowd_war_record('bei', 2026) $$, $$ values (2, 2, 1) $$,
   'bei: the mirror, without the match against mta');
 select results_eq($$ select * from public.crowd_war_record('hbs', 2026) $$, $$ values (0, 0, 0) $$, 'no wars: zeros');

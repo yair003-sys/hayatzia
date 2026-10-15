@@ -89,10 +89,13 @@ async function ProfileCard() {
           <Stat value={card?.exact ?? 0} label="תוצאות מדויקות" sub="3 נקודות כל אחת" />
           <Stat value={card?.rated ?? 0} label="משחקים שדירגת" sub="ציון לשחקנים אחרי המשחק" />
         </div>
-        <p className="cw-record">
-          <Swords className="size-4 shrink-0" aria-hidden="true" />
-          <span className="t-num">{recordLine(war ?? { wins: 0, losses: 0, draws: 0 })}</span>
-        </p>
+        {/* Hidden when the record cannot be read: never a made-up 0–0. */}
+        {war && (
+          <p className="cw-record">
+            <Swords className="size-4 shrink-0" aria-hidden="true" />
+            <span className="t-num">{recordLine(war)}</span>
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="me-settings" className="space-y-3">

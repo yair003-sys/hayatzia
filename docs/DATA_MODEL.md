@@ -136,7 +136,7 @@ Story seen-state reuses `clip_views` (one row per clip and fan, own rows readabl
 | `crowd_war_fans` | `(fixture_id, user_id) pk`, `team_id`, `chat` (0..20), `posts` (0..3), `predicted`, `lineup`, `points` (generated: chat + 5·posts + 5 + 5) | read: own row only; trigger-only (on `team_messages`, `match_messages`, `clips`, `predictions`, `fan_lineups`): counts only from 48 h before kick-off until kick-off, only for a fan of one of the two clubs, only for a match in status NS/TBD. Team chat and Square posts go to the club's earliest match in the window. A capped counter is not written again |
 | `crowd_war_totals` | `(fixture_id, team_id) pk`, `points`, `fans`; index `(team_id, fixture_id)` | read: authenticated (aggregates, no fan ids); trigger-only on `crowd_war_fans` (sum of the fans). A fan row removed (account deleted) counts down only before kick-off: at kick-off the result is final |
 
-Function: `crowd_war_record(p_team, p_season) → (wins, losses, draws)` (invoker, authenticated + service role): the club's finished wars of the season; a war where only one crowd scored is its win, equal points above zero a draw, no points at all not counted. Removing a message, post, guess or lineup keeps the points.
+Function: `crowd_war_record(p_team, p_season) → (wins, losses, draws)` (invoker, authenticated + service role): the club's finished wars of the season; a war where only one crowd scored is its win, equal points above zero a draw, no points at all not counted, demo matches (`is_demo`) left out. Removing a message, post, guess or lineup keeps the points.
 
 ## Storage buckets
 | Bucket | Access | Path |

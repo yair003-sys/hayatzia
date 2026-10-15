@@ -87,16 +87,20 @@ export function WarBar(props: { phase: 'open' | 'final'; home: Side; away: Side;
           {result}
         </p>
       )}
+      {/* Numbers in the text colour (club colours fail text contrast); the club colour rides on a swatch. */}
       <div className="cw-sides">
         <span>
+          <i className="cw-swatch" data-side="h" aria-hidden="true" />
           {home.short} <b className="t-num">{split.home}%</b>
         </span>
         <span>
+          <i className="cw-swatch" data-side="a" aria-hidden="true" />
           {away.short} <b className="t-num">{split.away}%</b>
         </span>
       </div>
       <div
         className="cw-bar"
+        data-both={split.home > 0 && split.away > 0}
         role="img"
         aria-label={`${home.short} ${split.home} אחוז (${score.home} נקודות), ${away.short} ${split.away} אחוז (${score.away} נקודות)`}
       >
