@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BanList } from '@/features/admin/components/ban-list'
 import { ReportCard } from '@/features/admin/components/report-card'
-import { QUEUE_STATUS, kindLabel, queueStatus, reportTime, type QueueStatus } from '@/features/admin/schema'
+import { QUEUE_STATUS, actionBy, actionLabel, kindLabel, queueStatus, reportTime, type QueueStatus } from '@/features/admin/schema'
 import { getBans, getRecentActions, getReportQueue, isAppAdmin, type Cursor } from '@/features/admin/server/queries'
 
 export const metadata: Metadata = { title: 'דיווחים', robots: { index: false, follow: false } }
@@ -30,8 +30,6 @@ function cursorOf(before: unknown, id: unknown): Cursor | null {
   if (Number.isNaN(Date.parse(before)) || !/^[0-9a-f-]{36}$/.test(id)) return null
   return { before, beforeId: id }
 }
-
-const ACTION_LABEL: Record<string, string> = { remove: 'הסרת תוכן', ban: 'השעיה', unban: 'ביטול השעיה', status: 'שינוי סטטוס' }
 
 async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor | null }) {
   if (!(await isAppAdmin())) notFound()
@@ -97,17 +95,20 @@ async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor |
           <p className="text-sm text-muted">עוד אין פעולות.</p>
         ) : (
           <ul className="space-y-1 text-sm text-muted">
-            {actions.map((a) => (
-              <li key={a.id}>
-                <time dateTime={a.created_at} className="text-dim">
-                  {reportTime(a.created_at)}
-                </time>{' '}
-                · {ACTION_LABEL[a.action] ?? a.action}
-                {a.kind ? ` · ${kindLabel(a.kind)}` : ''}
-                {a.target_nick ? ` · ${a.target_nick}` : ''}
-                {a.admin_nick ? ` (${a.admin_nick})` : ''}
-              </li>
-            ))}
+            {actions.map((a) => {
+              const by = actionBy(a.action, a.admin_nick)
+              return (
+                <li key={a.id}>
+                  <time dateTime={a.created_at} className="text-dim">
+                    {reportTime(a.created_at)}
+                  </time>{' '}
+                  · {actionLabel(a.action)}
+                  {a.kind ? ` · ${kindLabel(a.kind)}` : ''}
+                  {a.target_nick ? ` · ${a.target_nick}` : ''}
+                  {by ? ` (${by})` : ''}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

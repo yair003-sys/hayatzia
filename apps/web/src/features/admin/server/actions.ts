@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { adminErrorHe, banSchema, fileToRemove, removeSchema, statusSchema, unbanSchema } from '../schema'
+import { adminErrorHe, banSchema, fileToRemove, removeSchema, restoreSchema, statusSchema, unbanSchema } from '../schema'
 
 // Every action runs the database function with the admin's own session: the database checks is_app_admin() and refuses
 // anyone else ('not_admin'). The service key is used for one thing only: deleting the file of content that the
@@ -31,6 +31,16 @@ export const removeContentAction = actionClient.inputSchema(removeSchema).action
   }
   revalidatePath(PAGE)
   return { ok: true as const, removed: row?.removed ?? false, fileLeft }
+})
+
+/** Puts content hidden by many reports back for everyone and dismisses the open reports on it. */
+export const restoreContentAction = actionClient.inputSchema(restoreSchema).action(async ({ parsedInput: { kind, ref } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data, error } = await supabase.rpc('admin_restore_content', { p_kind: kind, p_ref: ref })
+  if (error) return { error: adminErrorHe(error.message) }
+  revalidatePath(PAGE)
+  return { ok: true as const, restored: data === true }
 })
 
 export const banUserAction = actionClient.inputSchema(banSchema).action(async ({ parsedInput: { userId, days, reason } }) => {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { REPORT_KINDS } from '@/features/safety/schema'
 import {
+  AUTO_HIDDEN_LABEL,
   KIND_LABEL,
+  actionBy,
+  actionLabel,
   adminErrorHe,
   banSchema,
   banUntilLabel,
@@ -11,6 +14,7 @@ import {
   queueStatus,
   removeSchema,
   reportsOnTarget,
+  restoreSchema,
   reportTime,
 } from './schema'
 
@@ -89,5 +93,29 @@ describe('banSchema', () => {
     expect(banSchema.safeParse({ userId, days: null }).success).toBe(true)
     expect(banSchema.safeParse({ userId, days: 9999 }).success).toBe(false)
     expect(banSchema.safeParse({ userId: 'x', days: 7 }).success).toBe(false)
+  })
+})
+
+describe('auto-hide (migration 20261015200000_auto_hide)', () => {
+  it('labels hidden content and the audit actions in Hebrew', () => {
+    expect(AUTO_HIDDEN_LABEL).toBe('הוסתר אוטומטית')
+    expect(actionLabel('auto_hide')).toBe('הוסתר אוטומטית')
+    expect(actionLabel('restore')).toBe('החזרת תוכן')
+    expect(actionLabel('remove')).toBe('הסרת תוכן')
+  })
+  it('shows an unknown action as is, never a prototype key', () => {
+    expect(actionLabel('something_new')).toBe('something_new')
+    expect(actionLabel('toString')).toBe('toString')
+  })
+  it('names who acted: the admin, or "אוטומטי" for the database', () => {
+    expect(actionBy('auto_hide', null)).toBe('אוטומטי')
+    expect(actionBy('restore', 'מנהל')).toBe('מנהל')
+    expect(actionBy('remove', null)).toBeNull()
+  })
+  it('restores content rows only', () => {
+    expect(restoreSchema.safeParse({ kind: 'clip', ref: 'x' }).success).toBe(true)
+    expect(restoreSchema.safeParse({ kind: 'review', ref: 'mta_1:x' }).success).toBe(true)
+    expect(restoreSchema.safeParse({ kind: 'user', ref: 'x' }).success).toBe(false)
+    expect(restoreSchema.safeParse({ kind: 'dm_thread', ref: 'x' }).success).toBe(false)
   })
 })

@@ -62,6 +62,29 @@ export function fileToRemove(bucket: string | null | undefined, path: string | n
   return { bucket, path }
 }
 
+/** Badge on a report whose content the database hid after many reports (migration 20261015200000_auto_hide). */
+export const AUTO_HIDDEN_LABEL = 'הוסתר אוטומטית'
+
+/** The audit trail's actions (admin_actions.action), in Hebrew. */
+export const ACTION_LABEL: Record<string, string> = {
+  remove: 'הסרת תוכן',
+  ban: 'השעיה',
+  unban: 'ביטול השעיה',
+  status: 'שינוי סטטוס',
+  auto_hide: AUTO_HIDDEN_LABEL,
+  restore: 'החזרת תוכן',
+}
+
+export function actionLabel(action: string): string {
+  return Object.hasOwn(ACTION_LABEL, action) ? (ACTION_LABEL[action] ?? action) : action
+}
+
+/** Who did it, for the audit trail: the admin's nickname, or "אוטומטי" for the database's own auto-hide. */
+export function actionBy(action: string, adminNick: string | null | undefined): string | null {
+  if (adminNick) return adminNick
+  return action === 'auto_hide' ? 'אוטומטי' : null
+}
+
 export function reportsOnTarget(n: number): string {
   return n === 1 ? 'דיווח אחד על התוכן הזה' : `${n} דיווחים על התוכן הזה`
 }
@@ -96,6 +119,8 @@ export function adminErrorHe(message: string | undefined | null): string {
 export const BAN_DAYS = 7
 
 export const removeSchema = z.object({ kind: z.enum(REMOVABLE_KINDS), ref: z.string().min(1).max(100) })
+/** Putting hidden content back: the same kinds as removal (rows with content). */
+export const restoreSchema = removeSchema
 export const banSchema = z.object({
   userId: z.uuid(),
   days: z.union([z.literal(BAN_DAYS), z.null()]),

@@ -40,7 +40,7 @@ vi.mock('@/lib/supabase/admin', () => ({
       : null,
 }))
 
-import { banUserAction, removeContentAction, setReportStatusAction, unbanUserAction } from './actions'
+import { banUserAction, removeContentAction, restoreContentAction, setReportStatusAction, unbanUserAction } from './actions'
 
 const notAdmin: RpcResult = { data: null, error: { message: 'not_admin' } }
 
@@ -62,6 +62,7 @@ describe('a fan who is not an admin', () => {
       banUserAction({ userId: FAN, days: 7, reason: '' }),
       unbanUserAction({ userId: FAN }),
       setReportStatusAction({ reportId: CLIP, status: 'dismissed' }),
+      restoreContentAction({ kind: 'clip', ref: CLIP }),
     ])
     for (const r of results) expect(r.data).toEqual({ error: 'אין לך הרשאה לפעולה הזאת' })
     expect(s.removed).toEqual([])
@@ -101,6 +102,29 @@ describe('removeContentAction', () => {
 
   it('refuses kinds that are not content before calling the database', async () => {
     const r = await removeContentAction({ kind: 'user', ref: FAN } as never)
+    expect(r.validationErrors).toBeDefined()
+    expect(s.rpcCalls).toEqual([])
+  })
+})
+
+describe('restoreContentAction', () => {
+  it('puts hidden content back through the database and refreshes the queue', async () => {
+    s.rpc = () => ({ data: true, error: null })
+    const r = await restoreContentAction({ kind: 'clip', ref: CLIP })
+    expect(s.rpcCalls).toEqual([{ fn: 'admin_restore_content', args: { p_kind: 'clip', p_ref: CLIP } }])
+    expect(r.data).toEqual({ ok: true, restored: true })
+    expect(s.revalidated).toEqual(['/admin/reports'])
+    expect(s.removed).toEqual([])
+  })
+
+  it('says when the content was not hidden', async () => {
+    s.rpc = () => ({ data: false, error: null })
+    const r = await restoreContentAction({ kind: 'review', ref: `mta_1:${FAN}` })
+    expect(r.data).toEqual({ ok: true, restored: false })
+  })
+
+  it('refuses kinds that are not content before calling the database', async () => {
+    const r = await restoreContentAction({ kind: 'user', ref: FAN } as never)
     expect(r.validationErrors).toBeDefined()
     expect(s.rpcCalls).toEqual([])
   })

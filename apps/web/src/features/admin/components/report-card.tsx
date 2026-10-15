@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Ban, Check, RotateCcw, Trash2, X } from 'lucide-react'
-import { BAN_DAYS, isRemovable, kindLabel, reportsOnTarget, reportTime } from '../schema'
+import { Ban, Check, EyeOff, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
+import { AUTO_HIDDEN_LABEL, BAN_DAYS, isRemovable, kindLabel, reportsOnTarget, reportTime } from '../schema'
 import type { QueueRow } from '../server/queries'
-import { banUserAction, removeContentAction, setReportStatusAction } from '../server/actions'
+import { banUserAction, removeContentAction, restoreContentAction, setReportStatusAction } from '../server/actions'
 
-type Pending = 'remove' | 'ban7' | 'banForever' | null
+type Pending = 'remove' | 'restore' | 'ban7' | 'banForever' | null
 
 const CONFIRM: Record<Exclude<Pending, null>, { ask: string; yes: string }> = {
   remove: { ask: 'להסיר את התוכן? אי אפשר לבטל.', yes: 'כן, הסר' },
+  restore: { ask: 'להחזיר את התוכן לכל האוהדים? הדיווחים הפתוחים עליו יידחו.', yes: 'כן, החזר' },
   ban7: { ask: `להשעות את האוהד מכתיבה ל־${BAN_DAYS} ימים?`, yes: 'כן, השעה' },
   banForever: { ask: 'להשעות את האוהד מכתיבה לצמיתות?', yes: 'כן, השעה לצמיתות' },
 }
@@ -24,6 +25,9 @@ export function ReportCard({ r }: { r: QueueRow }) {
   const open = r.status === 'open'
   const isContact = r.kind === 'contact'
   const canRemove = open && r.target_exists && isRemovable(r.kind)
+  // Hidden by the database after many reports: the admin decides, remove it or put it back.
+  const hidden = r.target_exists && r.target_hidden
+  const canRestore = open && hidden && isRemovable(r.kind)
   const canBan = open && !isContact && r.target_user_id !== null
 
   const run = (fn: () => Promise<{ data?: { error?: string; ok?: true } | undefined; serverError?: string }>, done: string) =>
@@ -36,6 +40,7 @@ export function ReportCard({ r }: { r: QueueRow }) {
   const doConfirmed = () => {
     const kind = r.kind
     if (confirm === 'remove' && isRemovable(kind)) run(() => removeContentAction({ kind, ref: r.ref }), 'התוכן הוסר')
+    if (confirm === 'restore' && isRemovable(kind)) run(() => restoreContentAction({ kind, ref: r.ref }), 'התוכן הוחזר')
     if ((confirm === 'ban7' || confirm === 'banForever') && r.target_user_id) {
       const userId = r.target_user_id
       run(() => banUserAction({ userId, days: confirm === 'ban7' ? BAN_DAYS : null, reason: r.reason }), 'האוהד הושעה')
@@ -53,6 +58,12 @@ export function ReportCard({ r }: { r: QueueRow }) {
         </time>
       </header>
 
+      {hidden && (
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 text-xs font-semibold text-warn">
+          <EyeOff className="size-3.5" aria-hidden="true" />
+          {AUTO_HIDDEN_LABEL}
+        </p>
+      )}
       {r.target_preview !== null && (
         <p className="rounded-xl bg-elev p-3 text-sm leading-relaxed break-words whitespace-pre-wrap">{r.target_preview}</p>
       )}
@@ -96,6 +107,12 @@ export function ReportCard({ r }: { r: QueueRow }) {
             <button type="button" disabled={busy} onClick={() => setConfirm('remove')} className={`${btn} text-live`}>
               <Trash2 className="size-4" aria-hidden="true" />
               הסר תוכן
+            </button>
+          )}
+          {canRestore && (
+            <button type="button" disabled={busy} onClick={() => setConfirm('restore')} className={btn}>
+              <Undo2 className="size-4" aria-hidden="true" />
+              החזר תוכן
             </button>
           )}
           {canBan && (

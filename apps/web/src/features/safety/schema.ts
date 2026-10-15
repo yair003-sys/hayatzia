@@ -31,6 +31,8 @@ export const blockSchema = z.object({ userId: z.uuid(), on: z.boolean() })
 /** "צור קשר" in "הכרטיס שלי": a request with no target (privacy, accessibility, anything else). */
 export const CONTACT_TOPICS = ['פרטיות', 'נגישות', 'אחר'] as const
 export const CONTACT_MAX = 500
+/** Shown after a request is sent, and kept on screen (owner, 2026-10-15). No e-mail is sent by the app. */
+export const CONTACT_ACK_HE = 'קיבלנו את הפנייה. נחזור אליך תוך 48 שעות לכתובת המייל של החשבון.'
 export const contactSchema = z.object({
   topic: z.enum(CONTACT_TOPICS),
   text: z.string().trim().min(2, { error: 'כתוב כמה מילים על הבקשה' }).max(CONTACT_MAX, { error: `עד ${CONTACT_MAX} תווים` }),

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { Mail } from 'lucide-react'
-import { CONTACT_MAX, CONTACT_TOPICS } from '../schema'
+import { CONTACT_ACK_HE, CONTACT_MAX, CONTACT_TOPICS } from '../schema'
 import { contactAction } from '../server/actions'
 
 type Topic = (typeof CONTACT_TOPICS)[number]
@@ -87,8 +87,8 @@ export function ContactForm() {
         </p>
       )}
       {sent && (
-        <p role="status" className="text-sm text-muted">
-          תודה. הפנייה נשלחה לצוות.
+        <p role="status" className="rounded-xl bg-accent-soft p-3 text-sm leading-relaxed">
+          {CONTACT_ACK_HE}
         </p>
       )}
       <div className="flex gap-2">
