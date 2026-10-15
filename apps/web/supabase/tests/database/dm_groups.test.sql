@@ -19,7 +19,7 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000d4', 'דלת', 'mta'),
   ('00000000-0000-0000-0000-0000000000d5', 'הא', 'hta'),
   ('00000000-0000-0000-0000-0000000000d6', 'וו', 'mta'),
-  ('00000000-0000-0000-0000-0000000000d7', 'זין', 'mta');
+  ('00000000-0000-0000-0000-0000000000d7', 'זיו', 'mta');
 insert into auth.users (id, aud, role, email)
   select ('00000000-0000-0000-0000-0000000001' || lpad(i::text, 2, '0'))::uuid, 'authenticated', 'authenticated', 'x' || i || '@test.local'
   from generate_series(1, 20) i;
