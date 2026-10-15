@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { moderationHe } from '@/lib/moderation'
+import type { FailureKind } from './essentials'
 
 export const MESSAGE_MAX = 200
 export const PAGE_SIZE = 50
@@ -22,6 +23,8 @@ export type ChatMessage = {
   side?: 'h' | 'a'
   /** A reply: the answered message, with the server's snapshot of its nick and first 80 characters. */
   reply_to?: string | null
+  /** Author of the answered message (stamped by the server), so a quote of a blocked fan is hidden. */
+  reply_user?: string | null
   reply_nick?: string | null
   reply_body?: string | null
   /** This device only: a message that could not be sent (its id is a local one). */
@@ -29,10 +32,25 @@ export type ChatMessage = {
 }
 
 /** Columns every chat read and write returns. */
-export const MESSAGE_COLUMNS = 'id,user_id,nick,body,created_at,reply_to,reply_nick,reply_body'
+export const MESSAGE_COLUMNS = 'id,user_id,nick,body,created_at,reply_to,reply_user,reply_nick,reply_body'
 
 export type Cursor = z.infer<typeof cursorSchema>
-export type SendResult = { message: ChatMessage } | { error: string }
+/**
+ * How a failed send ends: `retry` (network, rate limit: the bubble stays with "נסה שוב"), `permanent` (the text or the
+ * room is refused: the text goes back to the box) or `bad_reply` (the answered message is gone: the text goes back
+ * without the quote).
+ */
+export type SendErrorKind = FailureKind
+export type SendResult = { message: ChatMessage } | { error: string; kind?: SendErrorKind }
+
+/** Which kind of failure a database error is (see SendErrorKind). Unknown errors may be passing: retry. */
+export function chatErrorKind(message: string): SendErrorKind {
+  if (message.includes('bad_reply')) return 'bad_reply'
+  if (['offensive_content', 'room_closed', 'not_playing', 'no profile', 'no such match', '23514'].some((c) => message.includes(c))) {
+    return 'permanent'
+  }
+  return 'retry'
+}
 
 /** Hebrew text for the errors the database raises on insert. */
 export function chatErrorHe(message: string): string {
@@ -72,12 +90,13 @@ export function countAfter(messages: readonly { id: string }[], seenId: string |
 export function messageFromBroadcast(payload: unknown): ChatMessage | null {
   const record = (payload as { record?: Partial<ChatMessage> } | null)?.record
   if (!record) return null
-  const { id, user_id, nick, body, created_at, side, reply_to, reply_nick, reply_body } = record
+  const { id, user_id, nick, body, created_at, side, reply_to, reply_user, reply_nick, reply_body } = record
   if (![id, user_id, nick, body, created_at].every((v) => typeof v === 'string')) return null
   const m = { id, user_id, nick, body, created_at } as ChatMessage
   if (side === 'h' || side === 'a') m.side = side
   if (typeof reply_to === 'string') {
     m.reply_to = reply_to
+    m.reply_user = typeof reply_user === 'string' ? reply_user : null
     m.reply_nick = typeof reply_nick === 'string' ? reply_nick : null
     m.reply_body = typeof reply_body === 'string' ? reply_body : null
   }

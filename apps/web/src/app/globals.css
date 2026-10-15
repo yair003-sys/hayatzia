@@ -1211,7 +1211,9 @@
    button, shared by the four chat screens. */
 @layer components {
   .chat-msg { position: relative; display: flex; flex-direction: column; max-width: 85%; }
+  /* Focus lands on a message after a jump to a quote: a ring for keyboard users, none after a tap. */
   .chat-msg:focus { outline: none; }
+  .chat-msg:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 0.6rem; }
   .chat-msg-mine { align-self: flex-start; }
   .chat-msg-other { align-self: flex-end; }
   .chat-bubble { border-radius: 0.5rem; padding: 0.5rem 0.75rem; overflow-wrap: break-word; white-space: pre-wrap; }

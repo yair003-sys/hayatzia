@@ -2,7 +2,7 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { chatErrorHe, MESSAGE_COLUMNS, type SendResult } from '@/features/chat/schema'
+import { chatErrorHe, chatErrorKind, MESSAGE_COLUMNS, type SendResult } from '@/features/chat/schema'
 import { olderMatchMessagesSchema, sendMatchMessageSchema } from '../schema'
 import { getMatchMessages } from './queries'
 
@@ -17,7 +17,7 @@ export const sendMatchMessageAction = actionClient
       .insert({ fixture_id: parsedInput.fixtureId, body: parsedInput.body, reply_to: parsedInput.replyTo ?? null })
       .select(`${MESSAGE_COLUMNS},side` as const)
       .single()
-    if (error) return { error: chatErrorHe(error.message) }
+    if (error) return { error: chatErrorHe(error.message), kind: chatErrorKind(error.message) }
     return { message: { ...data, side: data.side === 'a' ? 'a' : 'h' } }
   })
 

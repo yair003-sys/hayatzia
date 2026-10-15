@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chatTime, countAfter, hasNewTail, mergeMessages, messageFromBroadcast, sendMessageSchema, type ChatMessage } from './schema'
+import { chatErrorKind, chatTime, countAfter, hasNewTail, mergeMessages, messageFromBroadcast, sendMessageSchema, type ChatMessage } from './schema'
 
 const msg = (id: string, created_at: string, body = 'x'): ChatMessage => ({ id, user_id: 'u', nick: 'n', body, created_at })
 
@@ -27,8 +27,8 @@ describe('messageFromBroadcast', () => {
   })
 
   it('keeps the reply snapshot', () => {
-    const record = { ...msg('a', '2026-10-11T19:00:00.000Z'), reply_to: 'b', reply_nick: 'צהוב', reply_body: 'יאללה' }
-    expect(messageFromBroadcast({ record })).toMatchObject({ reply_to: 'b', reply_nick: 'צהוב', reply_body: 'יאללה' })
+    const record = { ...msg('a', '2026-10-11T19:00:00.000Z'), reply_to: 'b', reply_user: 'u2', reply_nick: 'צהוב', reply_body: 'יאללה' }
+    expect(messageFromBroadcast({ record })).toMatchObject({ reply_to: 'b', reply_user: 'u2', reply_nick: 'צהוב', reply_body: 'יאללה' })
     expect(messageFromBroadcast({ record: { ...msg('a', '2026-10-11T19:00:00.000Z'), reply_to: null } })?.reply_to).toBeUndefined()
   })
 
@@ -78,5 +78,18 @@ describe('countAfter', () => {
   it('is zero when nothing was seen yet or the seen message is gone', () => {
     expect(countAfter([m('a')], null)).toBe(0)
     expect(countAfter([m('a')], 'zz')).toBe(0)
+  })
+})
+
+describe('chatErrorKind', () => {
+  it('offers a retry only for passing failures', () => {
+    expect(chatErrorKind('rate_limit')).toBe('retry')
+    expect(chatErrorKind('network down')).toBe('retry')
+  })
+  it('sends refused texts back to the box', () => {
+    expect(chatErrorKind('offensive_content')).toBe('permanent')
+    expect(chatErrorKind('room_closed')).toBe('permanent')
+    expect(chatErrorKind('not_playing')).toBe('permanent')
+    expect(chatErrorKind('bad_reply')).toBe('bad_reply')
   })
 })

@@ -7,7 +7,7 @@ import { encryptMessage, safetyCode } from '@/lib/e2e/crypto'
 import { notifyDmAction } from '@/features/push/server/actions'
 import { DayDivider, JumpButton, jumpToMessage, UnreadDivider, useNowMinute } from '@/features/chat/components/chat-parts'
 import { useFollowEnd, useReadPosition } from '@/features/chat/components/use-read-position'
-import { LOCAL_ID, replySnippet, startsNewDay } from '@/features/chat/essentials'
+import { echoMatch, failurePlan, LOCAL_ID, replySnippet, startsNewDay, type FailureKind } from '@/features/chat/essentials'
 import { DM_PAGE } from '../schema'
 import { markReadAction } from '../server/actions'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
@@ -41,6 +41,15 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
+  const [draft, setDraft] = useState('')
+  const draftRef = useRef('')
+  useEffect(() => {
+    draftRef.current = draft
+  })
+  // Server ids my sends already confirmed: their realtime echo replaces no "sending" copy.
+  const confirmed = useRef(new Set<string>())
+  // The message each of my pending replies answers, to put the quote back if the text is refused.
+  const replyOf = useRef(new Map<string, Shown>())
   const now = useNowMinute()
 
   const all = pending.length ? [...messages, ...pending] : messages
@@ -81,7 +90,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       // My own message can arrive here before the insert returns: it replaces its "sending" copy.
       if (s.sender_id === meId) {
         setPending((cur) => {
-          const i = cur.findIndex((p) => !p.failed && p.text === s.text && p.reply_to === s.reply_to)
+          const i = echoMatch(cur, s, confirmed.current, (p) => p.text)
           return i < 0 ? cur : cur.filter((_, j) => j !== i)
         })
       }
@@ -97,9 +106,21 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     }
   }, [key, threadId, meId, supabase, reveal])
 
-  const fail = (p: Shown, why: string) => {
-    setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+  const fail = (p: Shown, why: string, kind: FailureKind = 'retry') => {
     setStatus(why)
+    const plan = failurePlan(kind)
+    if (plan.keepBubble) {
+      setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+      return
+    }
+    // Refused for good: no pointless retry, the text (and its quote, unless that is gone) goes back to the box.
+    const quoted = replyOf.current.get(p.id)
+    replyOf.current.delete(p.id)
+    setPending((cur) => cur.filter((x) => x.id !== p.id))
+    if (plan.restoreText && p.text !== null && !draftRef.current.trim()) {
+      setDraft(p.text)
+      if (plan.restoreQuote && quoted) setReplyTo((cur) => cur ?? quoted)
+    }
   }
 
   const deliver = async (p: Shown) => {
@@ -108,12 +129,12 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
     try {
       const devices = await devicesOf([meId, otherId])
       if (!devices.some((d) => d.user_id === otherId)) {
-        return fail(p, `${otherNick} עוד לא פתח את ההודעות הפרטיות במכשיר שלו. אפשר לשלוח אחרי שייכנס.`)
+        return fail(p, `${otherNick} עוד לא פתח את ההודעות הפרטיות במכשיר שלו. אפשר לשלוח אחרי שייכנס.`, 'permanent')
       }
       const enc = await encryptMessage(p.text, key, devices)
       // Every key of the other fan may be unusable (skipped): then nobody but me could read it.
       if (!devices.some((d) => d.user_id === otherId && enc.wrapped_keys[d.id])) {
-        return fail(p, 'ההודעה לא נשלחה')
+        return fail(p, 'ההודעה לא נשלחה', 'permanent')
       }
       const { data, error } = await supabase
         .from('dm_messages')
@@ -122,8 +143,12 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         .single()
       if (error) {
         const m = error.message
-        return fail(p, m.includes('blocked') ? 'אי אפשר לשלוח לאוהד הזה' : m.includes('rate_limit') ? 'רגע, לאט יותר' : m.includes('bad_reply') ? 'ההודעה שענית לה כבר לא זמינה' : 'ההודעה לא נשלחה')
+        if (m.includes('blocked')) return fail(p, 'אי אפשר לשלוח לאוהד הזה', 'permanent')
+        if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
+        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
       }
+      confirmed.current.add(data.id)
+      replyOf.current.delete(p.id)
       setPending((cur) => cur.filter((x) => x.id !== p.id))
       setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text: p.text }]))
       void notifyDmAction({ threadId })
@@ -135,6 +160,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   const send = async (text: string) => {
     if (!key) return false
     const p: Shown = { id: `${LOCAL_ID}${crypto.randomUUID()}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
+    if (replyTo) replyOf.current.set(p.id, replyTo)
     follow.followNext()
     setPending((cur) => [...cur, p])
     setReplyTo(null)
@@ -179,7 +205,10 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
           setPending((cur) => cur.map((x) => (x.id === m.id ? { ...x, failed: false } : x)))
           void deliver({ ...m, failed: false })
         }}
-        onDiscard={() => setPending((cur) => cur.filter((x) => x.id !== m.id))}
+        onDiscard={() => {
+          replyOf.current.delete(m.id)
+          setPending((cur) => cur.filter((x) => x.id !== m.id))
+        }}
       />,
     )
   }
@@ -187,7 +216,20 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   const shownStatus = status ?? keyStatus
 
   return (
-    <div ref={root} className="chat-doodle flex min-h-[65dvh] flex-col">
+    <div
+      ref={root}
+      className="chat-doodle flex min-h-[65dvh] flex-col"
+      // Escape anywhere in the chat (box, reply bar, message actions) cancels a reply and closes the actions.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || (!replyTo && !active)) return
+        e.preventDefault()
+        setActive(null)
+        if (replyTo) {
+          setReplyTo(null)
+          input.current?.focus()
+        }
+      }}
+    >
       <E2eNote>
         <button
           type="button"
@@ -224,6 +266,8 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         placeholder="הודעה פרטית…"
         label="הודעה פרטית"
         onSend={send}
+        draft={draft}
+        onDraft={setDraft}
         inputRef={input}
         reply={replyTo ? { nick: nickOf(replyTo.sender_id) === 'אתה' ? 'עצמך' : otherNick, text: replyTo.text === null ? 'הודעה מוצפנת' : replySnippet(replyTo.text) } : null}
         onCancelReply={() => {

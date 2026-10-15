@@ -10,7 +10,7 @@ import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
 import { DayDivider, JumpButton, jumpToMessage, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
 import { useFollowEnd, useReadPosition } from './use-read-position'
-import { LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
+import { echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
 import {
   MESSAGE_MAX,
   mergeMessages,
@@ -92,6 +92,14 @@ export function ChatRoom({
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
+  // Server ids my sends already confirmed: their realtime echo replaces no "sending" copy.
+  const confirmed = useRef(new Set<string>())
+  // The message each of my pending replies answers, to put the quote back if the text is refused.
+  const replyOf = useRef(new Map<string, ChatMessage>())
+  const draftRef = useRef('')
+  useEffect(() => {
+    draftRef.current = draft
+  })
   const now = useNowMinute()
 
   const visible = hiddenUsers?.length ? messages.filter((m) => !hiddenUsers.includes(m.user_id)) : messages
@@ -129,7 +137,7 @@ export function ChatRoom({
         // My own message can arrive here before the send returns: it replaces its "sending" copy.
         if (m.user_id === meId) {
           setPending((cur) => {
-            const i = cur.findIndex((p) => !p.failed && p.body === m.body && (p.reply_to ?? null) === (m.reply_to ?? null))
+            const i = echoMatch(cur, { id: m.id, text: m.body, reply_to: m.reply_to }, confirmed.current, (p) => p.body)
             return i < 0 ? cur : cur.filter((_, j) => j !== i)
           })
         }
@@ -156,12 +164,26 @@ export function ChatRoom({
     }
     if ('message' in res) {
       const saved = res.message
+      confirmed.current.add(saved.id)
+      replyOf.current.delete(p.id)
       setPending((cur) => cur.filter((x) => x.id !== p.id))
       setMessages((cur) => mergeMessages(cur, [saved]))
       setError(null)
-    } else {
+      return
+    }
+    setError(res.error)
+    const plan = failurePlan(res.kind)
+    if (plan.keepBubble) {
       setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
-      setError(res.error)
+      return
+    }
+    // Refused for good (offensive text, room closed, quote gone…): no pointless retry, the text goes back to the box.
+    const quoted = replyOf.current.get(p.id)
+    replyOf.current.delete(p.id)
+    setPending((cur) => cur.filter((x) => x.id !== p.id))
+    if (plan.restoreText && !draftRef.current.trim()) {
+      setDraft(p.body)
+      if (plan.restoreQuote && quoted) setReplyTo((cur) => cur ?? quoted)
     }
   }
 
@@ -176,9 +198,11 @@ export function ChatRoom({
       body,
       created_at: new Date().toISOString(),
       reply_to: replyTo?.id ?? null,
+      reply_user: replyTo?.user_id ?? null,
       reply_nick: replyTo?.nick ?? null,
       reply_body: replyTo ? replySnippet(replyTo.body) : null,
     }
+    if (replyTo) replyOf.current.set(p.id, replyTo)
     follow.followNext()
     setPending((cur) => [...cur, p])
     setDraft('')
@@ -198,7 +222,10 @@ export function ChatRoom({
     setPending((cur) => cur.map((x) => (x.id === id ? { ...x, failed: false } : x)))
     void latest.current.deliver({ ...p, failed: false })
   }, [])
-  const discard = useCallback((id: string) => setPending((cur) => cur.filter((x) => x.id !== id)), [])
+  const discard = useCallback((id: string) => {
+    replyOf.current.delete(id)
+    setPending((cur) => cur.filter((x) => x.id !== id))
+  }, [])
   const startReply = useCallback((m: ChatMessage) => {
     setReplyTo(m)
     input.current?.focus()
@@ -235,7 +262,7 @@ export function ChatRoom({
         onActive={setActive}
         onReply={readOnly || m.id.startsWith(LOCAL_ID) ? undefined : startReply}
         quoteLoaded={!!m.reply_to && loadedIds.has(m.reply_to)}
-        quoteHidden={!!m.reply_to && hiddenIds.has(m.reply_to)}
+        quoteHidden={!!m.reply_to && (hiddenIds.has(m.reply_to) || (!!m.reply_user && !!hiddenUsers?.includes(m.reply_user)))}
         onJump={jump}
         onRetry={retry}
         onDiscard={discard}
@@ -248,6 +275,16 @@ export function ChatRoom({
       ref={root}
       className="chat-doodle flex min-h-[60dvh] flex-col"
       style={doodle ? ({ '--doodle': doodle } as CSSProperties) : undefined}
+      // Escape anywhere in the chat (box, reply bar, message actions) cancels a reply and closes the actions.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || (!replyTo && !active)) return
+        e.preventDefault()
+        setActive(null)
+        if (replyTo) {
+          setReplyTo(null)
+          input.current?.focus()
+        }
+      }}
     >
       <div className="mb-2 flex items-center gap-2 text-xs text-muted" aria-live="polite">
         <span className={cn('size-2 rounded-full', live ? 'bg-ok' : 'bg-dim')} aria-hidden="true" />
@@ -326,9 +363,6 @@ export function ChatRoom({
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     submit()
-                  } else if (e.key === 'Escape' && replyTo) {
-                    e.preventDefault()
-                    setReplyTo(null)
                   }
                 }}
                 maxLength={MESSAGE_MAX}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode, type Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { Lock, SendHorizontal } from 'lucide-react'
 import { MessageMeta, MessageRow, Quote, ReplyBar } from '@/features/chat/components/chat-parts'
 import { isLocalId, sendState } from '@/features/chat/essentials'
@@ -65,8 +65,8 @@ export function Bubble({
 }
 
 /**
- * Composer: Enter sends, Shift+Enter breaks a line, Escape cancels a reply. Clears only when `onSend` reports success
- * (the threads report it as soon as the message is on its way: it then shows with one tick).
+ * Composer: Enter sends, Shift+Enter breaks a line (Escape, handled by the thread, cancels a reply). The box clears as
+ * the message goes out (it then shows with one tick); the text comes back when `onSend` refuses it.
  */
 export function Composer({
   ready,
@@ -74,6 +74,8 @@ export function Composer({
   placeholder,
   label,
   onSend,
+  draft,
+  onDraft,
   reply,
   onCancelReply,
   inputRef,
@@ -84,6 +86,9 @@ export function Composer({
   placeholder: string
   label: string
   onSend: (text: string) => Promise<boolean>
+  /** The text in the box (kept by the thread, so a refused message can come back to it). */
+  draft: string
+  onDraft: (text: string) => void
   /** The message being answered, shown above the box with ✕. */
   reply?: { nick: string; text: string } | null
   onCancelReply?: () => void
@@ -91,11 +96,12 @@ export function Composer({
   /** Floats above the box (the "go down" button). */
   above?: ReactNode
 }) {
-  const [draft, setDraft] = useState('')
   const send = async () => {
     const text = draft.trim()
     if (!text || !ready || sending) return
-    if (await onSend(text)) setDraft('')
+    // Cleared before the send settles: a refused text is put back by the thread.
+    onDraft('')
+    if (!(await onSend(text))) onDraft(text)
   }
   return (
     <div className="chat-dock z-10">
@@ -116,14 +122,11 @@ export function Composer({
             ref={inputRef}
             id="dm-input"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => onDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 void send()
-              } else if (e.key === 'Escape' && reply && onCancelReply) {
-                e.preventDefault()
-                onCancelReply()
               }
             }}
             maxLength={DM_MAX}

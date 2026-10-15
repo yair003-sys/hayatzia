@@ -18,7 +18,8 @@ export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: str
       emptyText="עוד אין הודעות. כתוב את הראשונה."
       send={async (body, replyTo) => {
         const r = await sendTeamMessageAction({ body, replyTo })
-        return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה' }
+        // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.
+        return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
       }}
       loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? []}
     />
