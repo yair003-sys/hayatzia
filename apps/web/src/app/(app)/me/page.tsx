@@ -16,6 +16,9 @@ import { fanNumber, memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
 import { recordLine } from '@/features/crowd-war/schema'
 import { getWarRecord } from '@/features/crowd-war/server/queries'
+import { DeleteAccount } from '@/features/account/components/delete-account'
+import { LegalLinks } from '@/features/legal/components/legal-links'
+import { NOT_AFFILIATED } from '@/lib/legal'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -112,7 +115,10 @@ async function ProfileCard() {
               יציאה מהחשבון
             </button>
           </form>
+          <DeleteAccount />
         </div>
+        <LegalLinks />
+        <p className="text-center text-xs text-dim">{NOT_AFFILIATED}</p>
       </section>
     </div>
   )

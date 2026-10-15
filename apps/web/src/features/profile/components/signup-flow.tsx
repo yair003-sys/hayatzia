@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
+import { MIN_AGE } from '@/lib/legal'
 import { Lock } from 'lucide-react'
 import { SignupHeader, SignupKicker } from '@/features/auth/components/signup-header'
 import { TEAMS } from '@/features/teams/data'
@@ -19,12 +21,14 @@ export function SignupFlow() {
   const [step, setStep] = useState<Step>('phone')
   const [club, setClub] = useState(0)
   const [nick, setNick] = useState('')
+  const [accepted, setAccepted] = useState(false)
   const { execute, result, isPending } = useAction(createProfileAction)
   const team = TEAMS[club]!
   const error =
     result.serverError ??
     (result.data && 'error' in result.data ? result.data.error : undefined) ??
-    result.validationErrors?.nick?._errors?.[0]
+    result.validationErrors?.nick?._errors?.[0] ??
+    result.validationErrors?.accept?._errors?.[0]
 
   const back = (to: Step) => (
     <button type="button" className="su-back" onClick={() => setStep(to)}>
@@ -129,7 +133,27 @@ export function SignupFlow() {
         </p>
       )}
       <div className="flex-1" />
-      <button type="button" className="su-btn su-btn-green" disabled={isPending} onClick={() => execute({ teamId: team.id, nick, confirm: true })}>
+      <label className="su-consent">
+        <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required aria-required="true" />
+        <span>
+          אני בן/בת {MIN_AGE} ומעלה ומסכים/ה ל
+          <Link href="/terms" target="_blank" rel="noopener">
+            תנאי השימוש
+          </Link>{' '}
+          ול
+          <Link href="/privacy" target="_blank" rel="noopener">
+            מדיניות הפרטיות
+          </Link>
+        </span>
+      </label>
+      <button
+        type="button"
+        className="su-btn su-btn-green"
+        disabled={isPending || !accepted}
+        onClick={() => {
+          if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true })
+        }}
+      >
         {isPending ? 'שומר…' : 'כן, זו הקבוצה שלי'}
       </button>
       <button type="button" className="su-btn su-btn-ghost" onClick={() => setStep('club')}>

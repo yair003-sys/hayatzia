@@ -6,7 +6,8 @@ import { Camera, MessageSquare, Shirt, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { openThreadAction } from '@/features/dm/server/actions'
-import { CONDITION, departureLabel, EVENT_KIND, MARKET_CAT, TRIP_KIND } from '../schema'
+import { ReportBlock } from '@/features/safety/components/report-block'
+import { CONDITION, departureLabel, EVENT_KIND, MARKET_CAT, MARKET_DISCLAIMER, RIDE_DISCLAIMER, TRIP_KIND } from '../schema'
 import type { FanEvent, MarketItem, Trip } from '../server/queries'
 import {
   createEventAction,
@@ -121,6 +122,7 @@ export function TripsBoard({ matches, trips, meId, focusId }: { matches: MatchOp
             )
           }}
         >
+          <p className="rounded-md bg-elev p-2.5 text-xs leading-relaxed text-muted">{RIDE_DISCLAIMER}</p>
           <Field label="סוג">
             <select name="kind" className={input}>
               {Object.entries(TRIP_KIND).map(([k, v]) => (
@@ -400,6 +402,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
             )
           }}
         >
+          <p className="rounded-md bg-elev p-2.5 text-xs leading-relaxed text-muted">{MARKET_DISCLAIMER}</p>
           <input ref={cam} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           <input ref={gal} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           <div className="flex gap-2">
@@ -494,6 +497,8 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                     !i.sold && <MessageTo userId={i.user_id} label="למוכר" />
                   )}
                 </div>
+                {/* A fake item or a ticket: reported on the seller (reports have no market kind yet). */}
+                {!mine && <ReportBlock kind="user" refId={i.user_id} userId={i.user_id} userNick={i.nick} />}
               </div>
             </li>
           )

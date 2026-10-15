@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const REPORT_KINDS = ['team_message', 'match_message', 'clip', 'clip_comment', 'photo', 'photo_comment', 'user', 'dm_thread'] as const
-export const REPORT_REASONS = ['הטרדה', 'גזענות או שנאה', 'אלימות', 'תוכן מיני', 'ספאם', 'התחזות', 'אחר'] as const
+export const REPORT_REASONS = ['הטרדה', 'גזענות או שנאה', 'אלימות', 'תוכן מיני', 'ספאם', 'התחזות', 'פריט מזויף / מכירת כרטיסים', 'אחר'] as const
 
 export const reportSchema = z.object({
   kind: z.enum(REPORT_KINDS),

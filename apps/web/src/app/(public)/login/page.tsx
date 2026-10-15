@@ -5,6 +5,7 @@ import { GoogleSignIn } from '@/features/auth/components/google-sign-in'
 import { InAppBrowserNote } from '@/features/auth/components/in-app-browser-note'
 import { SignupHeader, SignupKicker } from '@/features/auth/components/signup-header'
 import { FirstRunIntro } from '@/features/first-run/components/first-run-intro'
+import { LegalLinks } from '@/features/legal/components/legal-links'
 import { supabaseConfig } from '@/lib/supabase/config'
 
 export const metadata: Metadata = { title: 'כניסה' }
@@ -40,6 +41,7 @@ export default function LoginPage() {
         )}
       </div>
       <p className="su-fine">האוהדים האחרים רואים רק את הכינוי שלך.</p>
+      <LegalLinks className="mt-3" />
     </main>
   )
 }

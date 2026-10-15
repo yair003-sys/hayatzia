@@ -5,6 +5,10 @@ import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { Brand } from '@/components/brand'
 import { BrandBackdrop } from '@/components/brand-backdrop'
 import { FirstRunIntro } from '@/features/first-run/components/first-run-intro'
+import { DeletedNotice } from '@/features/account/components/deleted-notice'
+import { LegalLinks } from '@/features/legal/components/legal-links'
+import { NOT_AFFILIATED } from '@/lib/legal'
+import { Suspense } from 'react'
 
 export default function WelcomePage() {
   const enabled = supabaseConfig() !== null
@@ -15,6 +19,10 @@ export default function WelcomePage() {
       <header>
         <Brand className="text-2xl" size={36} />
       </header>
+
+      <Suspense fallback={null}>
+        <DeletedNotice />
+      </Suspense>
 
       <section className="space-y-4">
         <p className="text-xs font-medium tracking-[0.08em] text-muted">
@@ -42,6 +50,8 @@ export default function WelcomePage() {
           כניסה ל-onefan
         </Link>
         <p className="text-center text-xs text-dim">גרסה חדשה בבנייה.</p>
+        <p className="text-center text-xs text-dim">{NOT_AFFILIATED}</p>
+        <LegalLinks />
       </div>
     </main>
   )

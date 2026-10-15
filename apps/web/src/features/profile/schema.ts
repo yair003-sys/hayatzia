@@ -13,6 +13,8 @@ export const createProfileSchema = z.object({
   teamId: z.enum(TEAM_IDS, { error: 'בחר קבוצה' }),
   nick: nickSchema,
   confirm: z.literal(true, { error: 'צריך לאשר שהבחירה סופית' }),
+  /** Age 16+ and the terms + privacy policy (2026-10-15). Required on the server, so the box cannot be skipped. */
+  accept: z.literal(true, { error: 'צריך לאשר את הגיל, תנאי השימוש ומדיניות הפרטיות' }),
 })
 
 export type CreateProfileInput = z.infer<typeof createProfileSchema>

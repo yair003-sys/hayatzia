@@ -7,6 +7,22 @@ test('welcome page is Hebrew and right-to-left', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('רק אוהדים')
 })
 
+for (const [path, title] of [
+  ['/terms', 'תנאי שימוש'],
+  ['/privacy', 'מדיניות פרטיות'],
+  ['/accessibility', 'הצהרת נגישות'],
+] as const) {
+  test(`legal page ${path} is public, dated and marked as a draft`, async ({ page }) => {
+    await page.goto(path)
+    await expect(page).toHaveURL(path)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
+    await expect(page.getByText('עודכן לאחרונה: 15 באוקטובר 2026')).toBeVisible()
+    await expect(page.getByText('טיוטה – בבדיקה משפטית')).toBeVisible()
+    const legal = page.getByRole('navigation', { name: 'מידע משפטי' })
+    await expect(legal.getByRole('link', { name: 'פרטיות' })).toHaveAttribute('href', '/privacy')
+  })
+}
+
 test('first visit shows the intro once; skipping it remembers', async ({ page }) => {
   await page.goto('/login')
   const intro = page.getByRole('dialog', { name: 'ברוכים הבאים ל-onefan' })

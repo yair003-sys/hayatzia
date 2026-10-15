@@ -11,6 +11,10 @@ export const EVENT_KIND = {
 export const MARKET_CAT = { shirt: 'חולצות', scarf: 'צעיפים', flag: 'דגלים', memo: 'מזכרות', other: 'אחר' } as const
 export const CONDITION = { new: 'חדש', like_new: 'כמו חדש', used: 'משומש' } as const
 
+/** Shown on the create forms (terms of use, 2026-10-15). */
+export const RIDE_DISCLAIMER = 'נסיעה משותפת בין אוהדים, חלוקת דלק בלבד, באחריות המשתתפים. onefan אינה צד לנסיעה.'
+export const MARKET_DISCLAIMER = 'אסור למכור כרטיסים למשחקים ומוצרים מזויפים. העסקה בין האוהדים בלבד, ו-onefan אינה צד לה.'
+
 const kinds = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
 
 export const tripSchema = z.object({

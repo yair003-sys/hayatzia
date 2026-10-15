@@ -21,7 +21,13 @@ Design: `superpowers/specs/2026-10-11-nextjs-platform-design.md`. Each phase get
 2. OK for the current Firebase users to sign up again (legacy data is local/demo apart from a few real profiles).
 3. At launch: Supabase Pro ($25/mo per project) + Vercel Pro ($20/mo); API-Football Pro ($19/mo) for the current season; SMS provider for the phone check; Sentry account.
 4. Phone check (owner, 2026-10-13): sign-up step 2 is shown with "בקרוב". To switch it on: SMS provider in Supabase Auth, link the phone to the Google account (`updateUser({ phone })` + `verifyOtp` type `phone_change`), make it required before the club step, and keep one phone per account (Supabase already refuses a phone that belongs to another user).
-5. Terms of use and privacy pages before launch (the sign-up page does not mention them until they exist).
+5. Legal (2026-10-15, branch `legal`): `/terms`, `/privacy` and `/accessibility` **drafted, lawyer review pending**
+   (each page says "טיוטה – בבדיקה משפטית"; remove the note after review). Minimum age 16; the operator is named
+   "מפעיל השירות" (private individual, no company yet). Sign-up requires the 16+ / terms / privacy checkbox (enforced in
+   `createProfileAction`). "מחיקת החשבון" in "הכרטיס שלי" deletes the auth user (cascade) and the fan's Storage files.
+   **Contact email pending**: set `LEGAL_CONTACT_EMAIL` in `apps/web/src/lib/legal.ts`; until then the pages point to
+   the in-app report button. Also open: an accessibility coordinator's name/contact, and a general in-app "contact us"
+   (today a request needs a report target).
 
 ## Security review (2026-10-15)
 Done and live (migration `20261015090000_security_hardening` on staging and production; `tests/database/security.test.sql`):
@@ -49,6 +55,7 @@ are keyed by club and country (e.g. "אוהדי ברצלונה בישראל").
 - Owner's own production profile has no team yet (he chooses).
 - Preview deployments have the staging `SUPABASE_SECRET_KEY` (rotated 2026-10-14) and send notifications on staging; GitHub reaches previews through the Vercel automation bypass.
 - Next.js 16.4.1 security update (2026-10-14 advisory: 2 Critical incl. RCE with Cache Components, 1 High DoS on Server Actions) applied 2026-10-15 via web-deps; eslint-config-next 16.4.1.
+- Before launch: legal pages reviewed by a lawyer and the contact email published (see open decision 5).
 - Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 
 ## Load test results (staging, free plan, direct PostgREST reads of the league data, uncached)

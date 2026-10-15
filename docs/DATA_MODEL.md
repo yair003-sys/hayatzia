@@ -105,6 +105,11 @@ Counters: `dm_group_members.unread` grows for every other member without a block
 | `reports` | `id`, `reporter_id`, `kind`, `ref`, `reason`, `note`, `created_at`, `status` | insert own; no select for fans; moderators via service role / admin role |
 | `blocks` | `(user_id, blocked_id) pk` | own rows; used in feed and chat filters; `blocked_between(a, b)` (security definer) checks both directions for private messages and groups |
 
+Report reasons are a list in code (`features/safety/schema.ts`, `reason varchar(60)`), including "פריט מזויף / מכירת כרטיסים" (2026-10-15). A market item is reported on its seller (`kind 'user'`, `ref` = seller id): `reports.kind` has no market value yet.
+
+### Account deletion (2026-10-15)
+"מחיקת החשבון" (`features/account/server/actions.ts`) deletes `auth.users` with the service role, user id from the session only. Every public foreign key to `auth.users` is `on delete cascade`, except "who did it" columns that are `set null`: `dm_groups.created_by`, `dm_group_members.invited_by`, `dm_group_events.actor`/`subject`, `activity.actor_id` (pgTAP `account_delete.test.sql` fails on any other kind). Denormalised ids without a foreign key (`dm_threads.last_from`, `dm_groups.last_from`) keep a stale id; harmless (threads with the fan are deleted, a group shows only the last preview). Trigger-kept totals (team fans, rating stats, lineups tally, crowd war of matches not yet started) count down on delete; anonymous totals of finished crowd wars stay. Storage files are not rows: before the delete the action removes `<user id>/…` in `clips`, `stand`, `market` and `chants`. Device private keys stay in that browser's IndexedDB (useless without the account).
+
 ## Activity bell (התראות, 2026-10-14)
 | Table | Columns | Rules |
 |---|---|---|
