@@ -20,6 +20,7 @@ import { getBlockedIds } from '@/features/safety/server/queries'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 import { MatchExtras } from '@/features/stage4/components/match-extras'
 import { FanLineupSection } from '@/features/lineup/components/fan-lineup-section'
+import { MatchCrowdWar } from '@/features/crowd-war/components/crowd-war'
 
 const clock = () => Date.now()
 
@@ -61,6 +62,10 @@ async function MatchContent({ id, tab: tabParam }: { id: number; tab: string | s
   return (
     <>
       <MatchHero fixture={f} home={home} away={away} round={roundLabelHe(f.r)} day={kickoffDay(f.t)} time={kickoffTime(f.t)} />
+      {/* Fans of the two clubs only; nothing before the 48-hour window or when neither crowd scored. */}
+      <Suspense fallback={null}>
+        <MatchCrowdWar fixture={f} home={home} away={away} />
+      </Suspense>
       <MatchTabs
         initial={tab}
         game={

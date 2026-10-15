@@ -130,6 +130,14 @@ Functions (authenticated; the club ones also the service role, for a server-side
 `home_player_reviews(p_per_player = 5)` (invoker) → per player of the caller's club, the 1..20 most-liked reviews with words of the last 30 days (`player_id, author_id, nick, review, stars, likes_count, liked, updated_at`), authors with a block either way hidden, ordered by player then likes · `home_active_fans(p_team) → int` (definer) distinct club fans with a chat message, Square post, prediction saved, player rated, review liked, check-in or fan lineup in the last 7 days · `home_fans_of_week(p_team) → (nick, points)` (definer) top 3, points = prediction points of matches kicked off in the last 7 days + 1 per player rated in the last 7 days + likes received on Square posts of the last 7 days (`clip_like_days`); ties by nick. Both refuse any club but the caller's own, and a null club (`not_your_club`, 42501), and return no fan ids. `home_fans_of_week` does **not** apply blocks (it is the same list for the whole club, cached per club); the UI may hide a blocked fan's row but should not refill it.
 Story seen-state reuses `clip_views` (one row per clip and fan, own rows readable): "seen" = a `clip_views` row of mine. Note that viewing a view-once post hides it for that fan. "Online now" is Presence on `online:<club>` (see Stand home). New indexes: `team_messages (team_id, created_at) include (user_id)` (covering, active fans), `predictions (team_id, updated_at)`, `checkins (team_id, created_at)`, `fan_lineups (team_id, updated_at)`, `clips (likes_count desc, created_at desc)` (hot in the Square).
 
+## Crowd war (מלחמת הקהלים, 2026-10-15)
+| Table | Columns | Rules |
+|---|---|---|
+| `crowd_war_fans` | `(fixture_id, user_id) pk`, `team_id`, `chat` (0..20), `posts` (0..3), `predicted`, `lineup`, `points` (generated: chat + 5·posts + 5 + 5) | read: own row only; trigger-only (on `team_messages`, `match_messages`, `clips`, `predictions`, `fan_lineups`): counts only from 48 h before kick-off until kick-off, only for a fan of one of the two clubs, only for a match in status NS/TBD. Team chat and Square posts go to the club's earliest match in the window. A capped counter is not written again |
+| `crowd_war_totals` | `(fixture_id, team_id) pk`, `points`, `fans`; index `(team_id, fixture_id)` | read: authenticated (aggregates, no fan ids); trigger-only on `crowd_war_fans` (sum of the fans). A fan row removed (account deleted) counts down only before kick-off: at kick-off the result is final |
+
+Function: `crowd_war_record(p_team, p_season) → (wins, losses, draws)` (invoker, authenticated + service role): the club's finished wars of the season; a war where only one crowd scored is its win, equal points above zero a draw, no points at all not counted. Removing a message, post, guess or lineup keeps the points.
+
 ## Storage buckets
 | Bucket | Access | Path |
 |---|---|---|

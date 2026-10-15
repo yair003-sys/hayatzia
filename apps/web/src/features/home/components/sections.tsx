@@ -6,6 +6,7 @@ import { Users } from 'lucide-react'
 import { Brand } from '@/components/brand'
 import { Bell } from '@/features/activity/components/bell'
 import { getUnreadCount } from '@/features/activity/server/queries'
+import { HomeCrowdWar } from '@/features/crowd-war/components/crowd-war'
 import { canBuild } from '@/features/lineup/schema'
 import { displayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
@@ -144,6 +145,9 @@ export async function NextMatchSection({ team }: { team: Team }) {
           {away.short}
         </span>
       </Link>
+      <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
+        <HomeCrowdWar fixture={next} home={home} away={away} />
+      </Suspense>
       {canBuild(next, now) && (
         <Link href={`/matches/${next.id}?tab=lineup`} className="hm-next-cta">
           בנה את ההרכב שלך

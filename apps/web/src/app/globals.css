@@ -1226,3 +1226,35 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
     filter: drop-shadow(0 0 48px rgb(0 102 255 / 0.7)); animation: brand-float 12s ease-in-out infinite alternate; }
   @keyframes brand-float { to { transform: translate(-50%, -53%) rotate(-4deg) scale(1.05); } }
 }
+
+/* Crowd war (spec 2026-10-15): a tug-of-war bar in the two clubs' colours. Home share first (right in RTL). */
+@layer components {
+  .cw { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--color-line-soft); border-radius: 16px;
+    background: rgb(255 255 255 / 0.03); }
+  .cw-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .cw-title { font-weight: 800; color: var(--color-fg); }
+  .cw-total { margin-inline-start: auto; color: var(--color-muted); font-size: 12px; }
+  .cw-total b { color: var(--color-fg); font-size: 14px; }
+  .cw-result { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--color-fg); }
+  .cw-result[data-draw='true'] { color: var(--color-muted); }
+  .cw-shield { flex: none; width: 22px; height: 22px; fill: currentColor; stroke: var(--color-canvas); }
+  .cw-sides { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; }
+  .cw-sides span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cw-sides b { font-size: 14px; }
+  .cw-sides span:first-child b { color: var(--cw-h); }
+  .cw-sides span:last-child b { color: var(--cw-a); }
+  .cw-bar { display: flex; height: 12px; overflow: hidden; border-radius: 999px; background: var(--color-surface-3); }
+  .cw-bar i { display: block; height: 100%; }
+  .cw-bar-h { flex: 0 0 var(--cw-p); background: var(--cw-h); transition: flex-basis 0.6s ease; }
+  .cw-bar-a { flex: 1 1 0; background: var(--cw-a); }
+  .cw[data-phase='final'] .cw-bar { opacity: 0.85; }
+  .cw-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12px; color: var(--color-muted); }
+  .cw-mine { color: var(--color-fg); font-weight: 700; }
+  .cw-note { font-size: 13px; color: var(--color-muted); }
+  .cw-earn { font-size: 11.5px; color: var(--color-dim); font-variant-numeric: tabular-nums; }
+  .cw-record { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-line-soft);
+    border-radius: 1.1rem; font-size: 14px; color: var(--color-fg); background: rgb(255 255 255 / 0.03); }
+  @media (prefers-reduced-motion: reduce) {
+    .cw-bar-h { transition: none; }
+  }
+}

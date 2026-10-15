@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { Lock, LogOut } from 'lucide-react'
+import { Lock, LogOut, Swords } from 'lucide-react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { signOutAction } from '@/features/profile/server/actions'
 import { InstallApp } from '@/features/pwa/install-app'
@@ -14,6 +14,8 @@ import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard } from '@/features/me/server/queries'
 import { fanNumber, memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
+import { recordLine } from '@/features/crowd-war/schema'
+import { getWarRecord } from '@/features/crowd-war/server/queries'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -35,7 +37,12 @@ async function ProfileCard() {
     return <p className="rounded-2xl bg-surface p-4 text-muted">אין חשבון מחובר בסביבה הזאת.</p>
   }
   const league = await getLeague()
-  const [card, prefs] = await Promise.all([getFanCard(s.userId, s.team.id, league?.league.season ?? null), getMyPrefs(s.userId)])
+  const season = league?.league.season ?? null
+  const [card, prefs, war] = await Promise.all([
+    getFanCard(s.userId, s.team.id, season),
+    getMyPrefs(s.userId),
+    season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
+  ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
 
@@ -82,6 +89,10 @@ async function ProfileCard() {
           <Stat value={card?.exact ?? 0} label="תוצאות מדויקות" sub="3 נקודות כל אחת" />
           <Stat value={card?.rated ?? 0} label="משחקים שדירגת" sub="ציון לשחקנים אחרי המשחק" />
         </div>
+        <p className="cw-record">
+          <Swords className="size-4 shrink-0" aria-hidden="true" />
+          <span className="t-num">{recordLine(war ?? { wins: 0, losses: 0, draws: 0 })}</span>
+        </p>
       </section>
 
       <section aria-labelledby="me-settings" className="space-y-3">

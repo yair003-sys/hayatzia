@@ -151,6 +151,58 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"crowd_war_fans": {
+                  Row: {
+                    "chat": number,"fixture_id": number,"lineup": boolean,"points": number,"posts": number,"predicted": boolean,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chat"?: number,"fixture_id": number,"lineup"?: boolean,"points"?: never,"posts"?: number,"predicted"?: boolean,"team_id": string,"user_id": string
+                  }
+                  Update: {
+                    "chat"?: number,"fixture_id"?: number,"lineup"?: boolean,"points"?: never,"posts"?: number,"predicted"?: boolean,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crowd_war_fans_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crowd_war_fans_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crowd_war_totals": {
+                  Row: {
+                    "fans": number,"fixture_id": number,"points": number,"team_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "fans"?: number,"fixture_id": number,"points"?: number,"team_id": string
+                  }
+                  Update: {
+                    "fans"?: number,"fixture_id"?: number,"points"?: number,"team_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crowd_war_totals_fixture_id_fkey"
+      columns: ["fixture_id"]
+isOneToOne: false
+      referencedRelation: "fixtures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crowd_war_totals_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"clip_comments": {
                   Row: {
                     "body": string,"clip_id": string,"created_at": string,"id": string,"nick": string,"team_id": string,"user_id": string
@@ -1321,6 +1373,11 @@ isOneToOne: false
                            },
 "group_push_targets":
 { Args: { "p_group": string }; Returns: string[]
+                           },
+"crowd_war_record":
+{ Args: { "p_season": number,"p_team": string }; Returns: {
+              "draws": number,"losses": number,"wins": number
+            }[]
                            },
 "home_active_fans":
 { Args: { "p_team": string }; Returns: number
