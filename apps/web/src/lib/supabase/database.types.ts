@@ -1049,14 +1049,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"nick": string,"team_id": string,"user_id": string
+                    "created_at": string,"nick": string,"team_id": string,"terms_version": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"nick": string,"team_id": string,"user_id": string
+                    "created_at"?: string,"nick": string,"team_id": string,"terms_version"?: string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"nick"?: string,"team_id"?: string,"user_id"?: string
+                    "created_at"?: string,"nick"?: string,"team_id"?: string,"terms_version"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1470,6 +1470,9 @@ isOneToOne: false
 { Args: { "p_group": string,"p_members": (string)[] }; Returns: (string)[]
                            },
 "is_app_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"my_ban_active":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "is_club_rep":

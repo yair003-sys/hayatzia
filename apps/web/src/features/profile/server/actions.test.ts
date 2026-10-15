@@ -41,7 +41,8 @@ describe('createProfileAction: consent (16+, terms, privacy)', () => {
 
   it('creates the profile for the session user once the box is ticked', async () => {
     await createProfileAction({ teamId: 'mta', nick: ' יאיר ', confirm: true, accept: true })
-    expect(s.inserts).toEqual([{ user_id: ME, team_id: 'mta', nick: 'יאיר' }])
+    // The accepted terms version is recorded with the profile (the database refuses it without).
+    expect(s.inserts).toEqual([{ user_id: ME, team_id: 'mta', nick: 'יאיר', terms_version: '2026-10-15' }])
     expect(s.redirects).toEqual(['/stand'])
   })
 })

@@ -8,6 +8,9 @@ type Entry = { name: string; id: string | null }
 
 const s = vi.hoisted(() => ({
   me: '' as string | null,
+  /** What my_ban_active() answers: true / false, or a database error. */
+  banned: false as boolean | 'error',
+  rpcs: [] as string[],
   admin: true,
   /** Objects per bucket, keyed by full path. */
   files: {} as Record<string, string[]>,
@@ -40,6 +43,10 @@ vi.mock('next/navigation', () => ({
 }))
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
+    rpc: async (fn: string) => {
+      s.rpcs.push(fn)
+      return s.banned === 'error' ? { data: null, error: { message: 'boom' } } : { data: s.banned, error: null }
+    },
     auth: {
       getClaims: async () => ({ data: s.me ? { claims: { sub: s.me } } : null }),
       signOut: async (opts: unknown) => {
@@ -83,6 +90,8 @@ import { deleteAccountAction } from './actions'
 
 beforeEach(() => {
   s.me = ME
+  s.banned = false
+  s.rpcs = []
   s.admin = true
   s.files = {}
   s.listed = []
@@ -155,10 +164,29 @@ describe('deleteAccountAction', () => {
   it('reports a failed delete without signing out, and logs the code only', async () => {
     s.deleteError = { code: 'unexpected_failure', status: 500, message: 'secret-looking details' }
     const r = await deleteAccountAction({ confirm: 'מחק' })
-    expect(r.data).toEqual({ error: 'המחיקה נכשלה. נסה שוב' })
+    expect(r.data).toEqual({ error: 'המחיקה נכשלה, וחלק מהתמונות והסרטונים כבר נמחקו. נסה שוב' })
     expect(s.signOuts).toEqual([])
     expect(s.redirects).toEqual([])
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain('secret-looking')
+  })
+
+  it('refuses while the fan is suspended, before touching any file (no leaving and coming back clean)', async () => {
+    s.banned = true
+    s.files = { clips: [`${ME}/a.mp4`] }
+    const r = await deleteAccountAction({ confirm: 'מחק' })
+    expect(r.data).toEqual({ error: 'אי אפשר למחוק חשבון בזמן השעיה' })
+    expect(s.rpcs).toEqual(['my_ban_active'])
+    expect(s.listed).toEqual([])
+    expect(s.deleted).toEqual([])
+    expect(s.files.clips).toEqual([`${ME}/a.mp4`])
+  })
+
+  it('refuses when the suspension check itself fails', async () => {
+    s.banned = 'error'
+    const r = await deleteAccountAction({ confirm: 'מחק' })
+    expect(r.data).toEqual({ error: 'המחיקה נכשלה. נסה שוב' })
+    expect(s.deleted).toEqual([])
+    expect(s.listed).toEqual([])
   })
 
   it('is unavailable without the admin key', async () => {

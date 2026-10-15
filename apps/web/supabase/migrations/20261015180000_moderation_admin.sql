@@ -401,3 +401,49 @@ grant execute on function public.admin_unban_user(uuid) to authenticated;
 grant execute on function public.admin_set_report_status(uuid, text) to authenticated;
 grant execute on function public.admin_ban_list(int) to authenticated;
 grant execute on function public.admin_recent_actions(int) to authenticated;
+
+-- ---------- security review 2026-10-15 ----------
+
+-- (1) Consent is recorded with the profile. A fan's own insert must carry the current terms version (restrictive
+-- policy; the sign-up action sends TERMS_VERSION from lib/legal.ts). Rows from before this column are 'legacy';
+-- service-role scripts (demo fans) bypass RLS and keep the default. The fan can never change it afterwards (the
+-- update grant is the nickname only). A new terms version = a migration that replaces this policy.
+alter table public.profiles add column terms_version varchar(20) not null default 'legacy';
+create policy profiles_insert_terms on public.profiles as restrictive for insert to authenticated
+  with check (terms_version = '2026-10-15');
+
+-- (2) No escaping a suspension by deleting the account: the delete action asks first, with the fan's session.
+create function public.my_ban_active() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.is_banned(auth.uid())
+$$;
+revoke all on function public.my_ban_active() from public, anon;
+grant execute on function public.my_ban_active() to authenticated;
+
+-- (3) A song's recording must be in its creator's own folder, as for every other media table (otherwise a rep could
+-- point a song at someone else's file and make it readable to the club through chants_files_read).
+create function public.chants_own_file() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.audio_path is not null and split_part(new.audio_path, '/', 1) <> new.created_by::text then
+    raise exception 'bad_path' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+revoke all on function public.chants_own_file() from public, anon, authenticated;
+create trigger chants_own_file before insert or update on public.chants
+  for each row execute function public.chants_own_file();
+
+-- (4) A kept contact request says nothing about the person once their account is gone: its text is cleared when the
+-- account deletion sets the reporter to null.
+create function public.reports_forget_contact() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if old.reporter_id is not null and new.reporter_id is null and new.kind = 'contact' then
+    new.note := 'הפנייה נמחקה עם החשבון';
+  end if;
+  return new;
+end $$;
+revoke all on function public.reports_forget_contact() from public, anon, authenticated;
+create trigger reports_forget_contact before update of reporter_id on public.reports
+  for each row execute function public.reports_forget_contact();

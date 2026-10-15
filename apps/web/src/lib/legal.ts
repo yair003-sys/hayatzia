@@ -5,6 +5,13 @@
  */
 export const LEGAL_CONTACT_EMAIL: string | null = null
 
+/**
+ * The terms version a new fan accepts at sign-up, stored in profiles.terms_version. The database refuses a fan's own
+ * profile insert with any other value (policy profiles_insert_terms, migration 20261015180000): changing this needs a
+ * migration that replaces that policy, in the same commit.
+ */
+export const TERMS_VERSION = '2026-10-15'
+
 /** Shown on every legal page ("עודכן לאחרונה"). */
 export const LEGAL_UPDATED = '15 באוקטובר 2026'
 

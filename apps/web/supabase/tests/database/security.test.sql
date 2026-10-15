@@ -52,8 +52,8 @@ reset role;
 -- ---------- 2 + 3. profiles ----------
 select pg_temp.as_fan('a65');
 set local role authenticated;
-insert into public.profiles (user_id, nick, team_id, created_at)
-  values ('00000000-0000-0000-0000-000000000a65', 'מזייף', 'mta', '2000-01-01T00:00:00Z');
+insert into public.profiles (user_id, nick, team_id, created_at, terms_version)
+  values ('00000000-0000-0000-0000-000000000a65', 'מזייף', 'mta', '2000-01-01T00:00:00Z', '2026-10-15');
 select ok((select created_at > now() - interval '1 minute' from public.profiles where user_id = auth.uid()),
   'the join date is stamped by the database, not the fan');
 reset role;
@@ -61,7 +61,7 @@ reset role;
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-000000000a66","role":"authenticated","is_anonymous":true}', true);
 set local role authenticated;
-select throws_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-000000000a66', 'אנונימי', 'mta') $$,
+select throws_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values ('00000000-0000-0000-0000-000000000a66', 'אנונימי', 'mta', '2026-10-15') $$,
   '42501', null, 'an anonymous sign-in cannot create a fan profile');
 reset role;
 

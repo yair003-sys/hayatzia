@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { USER_BUCKETS, deleteAccountSchema } from '../schema'
+import { BANNED_DELETE_HE, PARTIAL_DELETE_HE, USER_BUCKETS, deleteAccountSchema } from '../schema'
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>
 
@@ -45,6 +45,13 @@ export const deleteAccountAction = actionClient.inputSchema(deleteAccountSchema)
   const userId = data?.claims.sub
   if (!userId) return { error: 'צריך להתחבר מחדש כדי למחוק את החשבון' }
 
+  // A suspended fan cannot leave and come back clean (security review 2026-10-15). Asked of the database with the fan's
+  // own session; any doubt (an error) refuses too.
+  const { data: banned, error: banError } = await supabase.rpc('my_ban_active')
+  if (banError || banned !== false) {
+    return { error: banError ? 'המחיקה נכשלה. נסה שוב' : BANNED_DELETE_HE }
+  }
+
   const admin = createAdminClient()
   if (!admin) return { error: 'מחיקת החשבון לא זמינה כרגע. נסה שוב מאוחר יותר' }
 
@@ -59,7 +66,7 @@ export const deleteAccountAction = actionClient.inputSchema(deleteAccountSchema)
   if (error) {
     // The code / status only: never the message (it may echo request details).
     console.error('account delete failed', error.code ?? error.status ?? 'unknown')
-    return { error: 'המחיקה נכשלה. נסה שוב' }
+    return { error: PARTIAL_DELETE_HE }
   }
 
   // The user no longer exists: clear this browser's session cookies only (no server call needed).

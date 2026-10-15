@@ -4,6 +4,7 @@ import { moderationHe } from '@/lib/moderation'
 import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import { TERMS_VERSION } from '@/lib/legal'
 import { createProfileSchema } from '../schema'
 
 /** One-time: locks the fan to a club. The database also enforces the lock (trigger + column grants). */
@@ -15,7 +16,7 @@ export const createProfileAction = actionClient.inputSchema(createProfileSchema)
   if (!userId) redirect('/login')
   const { error } = await supabase
     .from('profiles')
-    .insert({ user_id: userId, team_id: parsedInput.teamId, nick: parsedInput.nick })
+    .insert({ user_id: userId, team_id: parsedInput.teamId, nick: parsedInput.nick, terms_version: TERMS_VERSION })
   if (error && error.code !== '23505') return { error: moderationHe(error.message) ?? 'השמירה נכשלה. נסה שוב' }
   redirect('/stand')
 })

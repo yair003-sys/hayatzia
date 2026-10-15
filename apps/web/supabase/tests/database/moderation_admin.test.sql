@@ -2,7 +2,7 @@
 -- messages; removing content handles its reports; a suspension stops every write path and ends on time; an admin is
 -- never suspended; a report outlives its reporter's account; logged-out visitors run nothing new.
 begin;
-select plan(53);
+select plan(64);
 
 create function pg_temp.uid(p text) returns uuid language sql as $$
   select ('00000000-0000-0000-0000-000000000' || p)::uuid
@@ -15,7 +15,8 @@ insert into auth.users (id, aud, role, email) values
   (pg_temp.uid('e91'), 'authenticated', 'authenticated', 'e91@test.local'),
   (pg_temp.uid('e92'), 'authenticated', 'authenticated', 'e92@test.local'),
   (pg_temp.uid('e93'), 'authenticated', 'authenticated', 'e93@test.local'),
-  (pg_temp.uid('e94'), 'authenticated', 'authenticated', 'e94@test.local');
+  (pg_temp.uid('e94'), 'authenticated', 'authenticated', 'e94@test.local'),
+  (pg_temp.uid('e95'), 'authenticated', 'authenticated', 'e95@test.local');
 insert into public.profiles (user_id, nick, team_id) values
   (pg_temp.uid('e91'), 'מנהל', 'mta'),
   (pg_temp.uid('e92'), 'כותב', 'mta'),
@@ -151,6 +152,11 @@ select throws_ok($$ insert into public.market_items (category, title, condition,
   '42501', 'banned', 'suspended: no market items');
 select lives_ok(format('insert into public.clip_likes (clip_id) values (%L)', current_setting('t.clip94')),
   'a like is not writing: the post''s counter still updates');
+select is(public.my_ban_active(), true, 'the suspended fan''s account-delete check sees the suspension');
+reset role;
+select pg_temp.as_fan('e94');
+set local role authenticated;
+select is(public.my_ban_active(), false, 'a fan without a suspension may delete their account');
 reset role;
 
 -- The suspension ends on time.
@@ -182,6 +188,33 @@ reset role;
 delete from auth.users where id = pg_temp.uid('e93');
 select is((select count(*)::int from public.reports where reporter_id is null and created_at = now()), 6,
   'the reporter''s account is gone, the reports stay without a name');
+select is((select note::text from public.reports where kind = 'contact' and created_at = now()), 'הפנייה נמחקה עם החשבון',
+  'a kept contact request loses its text with the account');
+select is((select note::text from public.reports where kind = 'dm_thread' and created_at = now()), 'שולח לי איומים',
+  'an ordinary report keeps its note');
+
+-- ---------- 7. consent is recorded with the profile ----------
+select pg_temp.as_fan('e95');
+set local role authenticated;
+select throws_ok(format('insert into public.profiles (user_id, nick, team_id) values (%L, %L, %L)', pg_temp.uid('e95'), 'בלי_הסכמה', 'mta'),
+  '42501', null, 'a profile without the current terms version is refused');
+select throws_ok(format('insert into public.profiles (user_id, nick, team_id, terms_version) values (%L, %L, %L, %L)', pg_temp.uid('e95'), 'ישן', 'mta', '2020-01-01'),
+  '42501', null, 'an old terms version is refused');
+select lives_ok(format('insert into public.profiles (user_id, nick, team_id, terms_version) values (%L, %L, %L, %L)', pg_temp.uid('e95'), 'מסכים', 'mta', '2026-10-15'),
+  'a profile with the current terms version is created');
+select is((select terms_version::text from public.profiles where user_id = auth.uid()), '2026-10-15', 'the accepted version is stored');
+select throws_ok($$ update public.profiles set terms_version = 'legacy' where user_id = auth.uid() $$, '42501', null,
+  'the fan cannot change the recorded version');
+reset role;
+
+-- ---------- 8. a song's recording is in its creator's own folder ----------
+insert into public.club_reps (team_id, user_id) values ('mta', pg_temp.uid('e94'));
+select pg_temp.as_fan('e94');
+set local role authenticated;
+select throws_ok(format('insert into public.chants (title, audio_path) values (%L, %L)', 'שיר זר', pg_temp.uid('e92') || '/song.mp3'),
+  '42501', 'bad_path', 'a song cannot point at another fan''s file');
+select lives_ok(format('insert into public.chants (title, audio_path) values (%L, %L)', 'שיר שלי', pg_temp.uid('e94') || '/song.mp3'),
+  'a song with its creator''s own recording');
 
 -- ---------- 6. logged-out visitors ----------
 select ok(not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

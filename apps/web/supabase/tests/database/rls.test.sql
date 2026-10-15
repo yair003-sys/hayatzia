@@ -31,9 +31,9 @@ reset role;
 -- Fan A creates a profile, only for themselves.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}', true);
 set local role authenticated;
-select lives_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-00000000000a', 'אוהד א', 'mta') $$,
+select lives_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values ('00000000-0000-0000-0000-00000000000a', 'אוהד א', 'mta', '2026-10-15') $$,
   'a fan creates their own profile');
-select throws_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-00000000000b', 'מתחזה', 'mta') $$,
+select throws_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values ('00000000-0000-0000-0000-00000000000b', 'מתחזה', 'mta', '2026-10-15') $$,
   '42501', null, 'a fan cannot create a profile for someone else');
 select throws_ok($$ update public.profiles set team_id = 'hta' where user_id = '00000000-0000-0000-0000-00000000000a' $$,
   '42501', null, 'the team cannot be changed (column grant)');
@@ -50,14 +50,14 @@ select throws_ok($$ update public.profiles set team_id = 'hta' where user_id = '
 -- Fan B (same club) and fan C (other club).
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}', true);
 set local role authenticated;
-select lives_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-00000000000b', 'אוהד ב', 'mta') $$,
+select lives_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values ('00000000-0000-0000-0000-00000000000b', 'אוהד ב', 'mta', '2026-10-15') $$,
   'second fan joins the same club');
 select is((select count(*)::int from public.profiles), 2, 'a fan sees fans of their own club');
 reset role;
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000c","role":"authenticated"}', true);
 set local role authenticated;
-select lives_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-00000000000c', 'אוהד ג', 'hta') $$,
+select lives_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values ('00000000-0000-0000-0000-00000000000c', 'אוהד ג', 'hta', '2026-10-15') $$,
   'a fan of another club joins');
 select is((select count(*)::int from public.profiles), 1, 'fans of other clubs are not visible');
 reset role;
