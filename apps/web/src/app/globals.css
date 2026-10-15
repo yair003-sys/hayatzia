@@ -1196,6 +1196,15 @@
 @layer components {
   .chat-dock { position: sticky; bottom: var(--tabbar-space); margin-inline: -1rem; padding: 0.75rem 0.75rem 0.4rem;
     background: linear-gradient(to top, var(--color-canvas) 72%, transparent); }
+
+  /* "N אוהדים כותבים…" just above the box (2026-10-15): three soft dots; still dots for reduced motion. */
+  .chat-typing { display: flex; align-items: center; gap: 0.45rem; min-height: 1.1rem; padding-inline: 0.6rem; font-size: 0.75rem; line-height: 1.1rem; color: var(--color-muted); }
+  .chat-typing-dots { display: inline-flex; flex: none; gap: 3px; }
+  .chat-typing-dots i { width: 5px; height: 5px; border-radius: 999px; background: currentColor; opacity: 0.35; animation: chat-typing-dot 1.2s ease-in-out infinite; }
+  .chat-typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .chat-typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes chat-typing-dot { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { .chat-typing-dots i { animation: none; opacity: 0.7; } }
 }
 /* Unlayered on purpose, so it beats the page's padding utility: the chat ends just above the bottom bar. */
 body:has(.chat-dock) .app-main { padding-bottom: var(--tabbar-space); }

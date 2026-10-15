@@ -95,6 +95,8 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
       </div>
       <ChatRoom
         topic={`match:${fixtureId}`}
+        // "N כותבים…" rides on the room's presence, tracked just above for the "N בחדר" count.
+        presenceTopic={`room:${fixtureId}`}
         openAtEnd={false}
         inserts={inserts}
         onChannelEvent={c.onChannelEvent}
