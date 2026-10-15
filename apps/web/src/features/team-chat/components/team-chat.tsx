@@ -16,8 +16,8 @@ export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: str
       doodle={color}
       placeholder="כתוב לקבוצה…"
       emptyText="עוד אין הודעות. כתוב את הראשונה."
-      send={async (body) => {
-        const r = await sendTeamMessageAction({ body })
+      send={async (body, replyTo) => {
+        const r = await sendTeamMessageAction({ body, replyTo })
         return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה' }
       }}
       loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? []}

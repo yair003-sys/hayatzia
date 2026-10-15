@@ -26,6 +26,12 @@ describe('messageFromBroadcast', () => {
     expect(messageFromBroadcast({ record: { ...msg('a', '2026-10-11T19:00:00.000Z'), side: 'a' } })?.side).toBe('a')
   })
 
+  it('keeps the reply snapshot', () => {
+    const record = { ...msg('a', '2026-10-11T19:00:00.000Z'), reply_to: 'b', reply_nick: 'צהוב', reply_body: 'יאללה' }
+    expect(messageFromBroadcast({ record })).toMatchObject({ reply_to: 'b', reply_nick: 'צהוב', reply_body: 'יאללה' })
+    expect(messageFromBroadcast({ record: { ...msg('a', '2026-10-11T19:00:00.000Z'), reply_to: null } })?.reply_to).toBeUndefined()
+  })
+
   it('ignores unexpected payloads', () => {
     expect(messageFromBroadcast(null)).toBeNull()
     expect(messageFromBroadcast({ record: { id: 1 } })).toBeNull()
@@ -37,6 +43,11 @@ describe('sendMessageSchema', () => {
     expect(sendMessageSchema.parse({ body: '  יאללה  ' }).body).toBe('יאללה')
     expect(sendMessageSchema.safeParse({ body: '   ' }).success).toBe(false)
     expect(sendMessageSchema.safeParse({ body: 'x'.repeat(201) }).success).toBe(false)
+  })
+
+  it('takes an optional reply id', () => {
+    expect(sendMessageSchema.parse({ body: 'כן', replyTo: '3f1c0a9e-0000-4000-8000-000000000000' }).replyTo).toBeDefined()
+    expect(sendMessageSchema.safeParse({ body: 'כן', replyTo: 'nope' }).success).toBe(false)
   })
 })
 

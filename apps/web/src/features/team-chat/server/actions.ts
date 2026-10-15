@@ -2,10 +2,13 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { chatErrorHe, cursorSchema, sendMessageSchema, type SendResult } from '@/features/chat/schema'
+import { chatErrorHe, cursorSchema, MESSAGE_COLUMNS, sendMessageSchema, type SendResult } from '@/features/chat/schema'
 import { getTeamMessages } from './queries'
 
-/** Only the text is sent. The database stamps club, nickname and time, and rate-limits (5 per 10 s). */
+/**
+ * Only the text (and the answered message, for a reply) is sent. The database stamps club, nickname, time and the
+ * reply's snapshot, and rate-limits (5 per 10 s).
+ */
 export const sendTeamMessageAction = actionClient
   .inputSchema(sendMessageSchema)
   .action(async ({ parsedInput }): Promise<SendResult> => {
@@ -13,8 +16,8 @@ export const sendTeamMessageAction = actionClient
     if (!supabase) return { error: 'הצ׳אט לא זמין בסביבה הזאת' }
     const { data, error } = await supabase
       .from('team_messages')
-      .insert({ body: parsedInput.body })
-      .select('id,user_id,nick,body,created_at')
+      .insert({ body: parsedInput.body, reply_to: parsedInput.replyTo ?? null })
+      .select(MESSAGE_COLUMNS)
       .single()
     if (error) return { error: chatErrorHe(error.message) }
     return { message: data }

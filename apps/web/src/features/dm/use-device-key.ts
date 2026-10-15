@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { decryptMessage, type DeviceKey, type EncryptedMessage, type PublicDevice } from '@/lib/e2e/crypto'
 import { e2eSupported, loadDeviceKey } from '@/lib/e2e/keystore'
 
-export type EncryptedRow = EncryptedMessage & { id: string; sender_id: string; created_at: string }
+export type EncryptedRow = EncryptedMessage & { id: string; sender_id: string; created_at: string; reply_to?: string | null }
 
 /**
  * This device's key for the signed-in fan (loaded or created, public half published) plus the two

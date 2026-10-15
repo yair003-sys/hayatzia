@@ -1,20 +1,32 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage } from '@/lib/e2e/crypto'
 import { notifyGroupAction } from '@/features/push/server/actions'
+import { DayDivider, JumpButton, jumpToMessage, UnreadDivider, useNowMinute } from '@/features/chat/components/chat-parts'
+import { useFollowEnd, useReadPosition } from '@/features/chat/components/use-read-position'
+import { LOCAL_ID, replySnippet, startsNewDay } from '@/features/chat/essentials'
 import { avatarOf, DEVICES_PER_FAN, DM_PAGE, eventLine, pickDevices, recipientsFor, type GroupEventKind } from '../schema'
 import { markReadAction } from '../server/actions'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
-import { Bubble, Composer, E2eNote } from './thread-parts'
+import { Bubble, Composer, E2eNote, type ShownQuote } from './thread-parts'
 
-type Msg = { type: 'msg'; id: string; sender_id: string; created_at: string; text: string | null }
+type Msg = { type: 'msg'; id: string; sender_id: string; created_at: string; text: string | null; reply_to: string | null; failed?: boolean }
 type Ev = { type: 'event'; id: string; kind: GroupEventKind; subject: string | null; created_at: string }
 type Item = Msg | Ev
 type EventRow = { id: string; kind: string; subject: string | null; created_at: string }
 
-const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at'
+const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at,reply_to'
+let localSeq = 0
+const toMsg = (m: EncryptedRow & { text: string | null }): Msg => ({
+  type: 'msg',
+  id: m.id,
+  sender_id: m.sender_id,
+  created_at: m.created_at,
+  text: m.text,
+  reply_to: m.reply_to ?? null,
+})
 const byTime = (a: Item, b: Item) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
 
 // Group messages never pass through the app server: encrypted on this device for every device of every
@@ -25,10 +37,22 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   const [items, setItems] = useState<Item[]>([])
   const [nicks, setNicks] = useState<Record<string, string>>(initialNicks)
   const [status, setStatus] = useState<string | null>(null)
-  const [sending, start] = useTransition()
+  const [pending, setPending] = useState<Msg[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [replyTo, setReplyTo] = useState<Msg | null>(null)
+  const [active, setActive] = useState<string | null>(null)
   const blocked = useRef(new Set<string>())
   const known = useRef(new Set(Object.keys(initialNicks)))
+  const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const now = useNowMinute()
+
+  const msgs = items.filter((x): x is Msg => x.type === 'msg')
+  const all: Item[] = pending.length ? [...items, ...pending] : items
+  const isMine = useCallback((m: Msg) => m.sender_id === meId, [meId])
+  const { divider, entered } = useReadPosition({ chat: `${meId}:grp:${groupId}`, items: msgs, ready: loaded, isMine, root, bottom, openAtEnd: true })
+  const follow = useFollowEnd(all, bottom, { enabled: entered })
 
   // Nicknames of senders or subjects who are no longer members: one query for the missing ones.
   const learnNicks = useCallback(
@@ -72,11 +96,12 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       void learnNicks([...rows.map((r) => r.sender_id), ...events.map((e) => e.subject)])
       if (cancelled) return
       const history: Item[] = [
-        ...shown.map((m): Item => ({ type: 'msg', id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text })),
+        ...shown.map(toMsg),
         ...events.map((e): Item => ({ type: 'event', id: e.id, kind: e.kind as GroupEventKind, subject: e.subject, created_at: e.created_at })),
       ]
       // Keep anything that arrived live while the history was loading.
       setItems((cur) => [...history, ...cur.filter((x) => !history.some((h) => h.id === x.id))].sort(byTime))
+      setLoaded(true)
     })()
 
     const channel = supabase.channel(`grp:${groupId}`, { config: { private: true } })
@@ -90,7 +115,16 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         if (!data) return
       }
       void learnNicks([r.sender_id])
-      if (m) setItems((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, { type: 'msg' as const, id: m.id, sender_id: m.sender_id, created_at: m.created_at, text: m.text }]))
+      if (!m) return
+      const s = toMsg(m)
+      // My own message can arrive here before the insert returns: it replaces its "sending" copy.
+      if (s.sender_id === meId) {
+        setPending((cur) => {
+          const i = cur.findIndex((p) => !p.failed && p.text === s.text && p.reply_to === s.reply_to)
+          return i < 0 ? cur : cur.filter((_, j) => j !== i)
+        })
+      }
+      setItems((cur) => (cur.some((x) => x.id === s.id) ? cur : [...cur, s]))
       if (r.sender_id !== meId) void markReadAction({ kind: 'group', id: groupId })
     })
     void Promise.all([supabase.realtime.setAuth(), blocksReady]).then(() => {
@@ -102,78 +136,138 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
     }
   }, [key, groupId, meId, supabase, reveal, learnNicks])
 
-  // Braces: newer Chrome returns a Promise from scrollIntoView, and React would call it as a cleanup.
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' })
-  }, [items])
+  const fail = (p: Msg, why: string) => {
+    setPending((cur) => cur.map((x) => (x.id === p.id ? { ...x, failed: true } : x)))
+    setStatus(why)
+  }
 
-  const send = (text: string) =>
-    new Promise<boolean>((resolve) => {
-      if (!key) return resolve(false)
-      start(async () => {
-        setStatus(null)
-        try {
-          // Current members at the moment of sending: never invitees or removed fans, never fans I blocked.
-          const [mem, blk] = await Promise.all([
-            supabase.from('dm_group_members').select('user_id,role').eq('group_id', groupId),
-            supabase.from('blocks').select('blocked_id'),
-          ])
-          if (mem.error || blk.error) {
-            setStatus('ההודעה לא נשלחה')
-            return resolve(false)
-          }
-          blocked.current = new Set(blk.data.map((b) => b.blocked_id))
-          const ids = recipientsFor(
-            mem.data.map((m) => ({ userId: m.user_id, role: m.role })),
-            [...blocked.current],
-            meId,
-          )
-          const found = await devicesOf(ids)
-          // This device may not be listed yet if its key was published a moment ago.
-          const all = found.some((d) => d.id === key.id) ? found : [...found, { user_id: meId, id: key.id, publicJwk: key.publicJwk, created_at: new Date().toISOString() }]
-          const devices = pickDevices(all, DEVICES_PER_FAN, { user_id: meId, id: key.id })
-          const enc = await encryptMessage(text, key, devices)
-          const { data, error } = await supabase.from('dm_group_messages').insert({ group_id: groupId, ...enc }).select('id,sender_id,created_at').single()
-          if (error) {
-            setStatus(error.message.includes('rate_limit') ? 'רגע, לאט יותר' : error.message.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : 'ההודעה לא נשלחה')
-            return resolve(false)
-          }
-          setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text }]))
-          void notifyGroupAction({ groupId })
-          resolve(true)
-        } catch {
-          setStatus('ההודעה לא נשלחה')
-          resolve(false)
-        }
-      })
-    })
+  const deliver = async (p: Msg) => {
+    if (!key || p.text === null) return
+    setStatus(null)
+    try {
+      // Current members at the moment of sending: never invitees or removed fans, never fans I blocked.
+      const [mem, blk] = await Promise.all([
+        supabase.from('dm_group_members').select('user_id,role').eq('group_id', groupId),
+        supabase.from('blocks').select('blocked_id'),
+      ])
+      if (mem.error || blk.error) return fail(p, 'ההודעה לא נשלחה')
+      blocked.current = new Set(blk.data.map((b) => b.blocked_id))
+      const ids = recipientsFor(
+        mem.data.map((m) => ({ userId: m.user_id, role: m.role })),
+        [...blocked.current],
+        meId,
+      )
+      const found = await devicesOf(ids)
+      // This device may not be listed yet if its key was published a moment ago.
+      const withMine = found.some((d) => d.id === key.id) ? found : [...found, { user_id: meId, id: key.id, publicJwk: key.publicJwk, created_at: new Date().toISOString() }]
+      const devices = pickDevices(withMine, DEVICES_PER_FAN, { user_id: meId, id: key.id })
+      const enc = await encryptMessage(p.text, key, devices)
+      const { data, error } = await supabase
+        .from('dm_group_messages')
+        .insert({ group_id: groupId, ...enc, reply_to: p.reply_to })
+        .select('id,sender_id,created_at,reply_to')
+        .single()
+      if (error) {
+        const m = error.message
+        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : m.includes('not_member') ? 'אתה כבר לא בקבוצה הזאת' : m.includes('bad_reply') ? 'ההודעה שענית לה כבר לא זמינה' : 'ההודעה לא נשלחה')
+      }
+      setPending((cur) => cur.filter((x) => x.id !== p.id))
+      setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text: p.text }]))
+      void notifyGroupAction({ groupId })
+    } catch {
+      fail(p, 'ההודעה לא נשלחה')
+    }
+  }
+
+  const send = async (text: string) => {
+    if (!key) return false
+    const p: Msg = { type: 'msg', id: `${LOCAL_ID}${++localSeq}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
+    follow.followNext()
+    setPending((cur) => [...cur, p])
+    setReplyTo(null)
+    void deliver(p)
+    return true
+  }
 
   const shownStatus = status ?? keyStatus
   const nickOf = (id: string | null) => (id && nicks[id]) || 'אוהד'
+  const byId = new Map(msgs.map((m) => [m.id, m]))
+  const quoteOf = (m: Msg): ShownQuote | null => {
+    if (!m.reply_to) return null
+    const orig = byId.get(m.reply_to)
+    if (!orig) return { nick: 'הודעה קודמת', text: '' }
+    const to = orig.id
+    return {
+      nick: orig.sender_id === meId ? 'אתה' : nickOf(orig.sender_id),
+      text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text),
+      onJump: () => jumpToMessage(root.current, to),
+    }
+  }
+
+  const rows: ReactNode[] = []
+  let prevAt: string | undefined
+  for (const it of all) {
+    if (startsNewDay(prevAt, it.created_at)) rows.push(<DayDivider key={`day-${it.id}`} at={it.created_at} now={now} />)
+    prevAt = it.created_at
+    if (it.type === 'event') {
+      rows.push(
+        <li key={it.id} className="self-center rounded-full bg-surface px-3 py-1 text-xs text-muted">
+          {eventLine(it.kind, nickOf(it.subject))}
+        </li>,
+      )
+      continue
+    }
+    if (divider?.id === it.id) rows.push(<UnreadDivider key="unread" label={divider.label} />)
+    const m = it
+    rows.push(
+      <Bubble
+        key={m.id}
+        id={m.id}
+        mine={m.sender_id === meId}
+        text={m.text}
+        createdAt={m.created_at}
+        sender={m.sender_id === meId ? undefined : { nick: nickOf(m.sender_id), hue: avatarOf(m.sender_id, '').hue }}
+        failed={m.failed}
+        quote={quoteOf(m)}
+        active={active === m.id}
+        onActive={setActive}
+        onReply={() => {
+          setReplyTo(m)
+          input.current?.focus()
+        }}
+        onRetry={() => {
+          setPending((cur) => cur.map((x) => (x.id === m.id ? { ...x, failed: false } : x)))
+          void deliver({ ...m, failed: false })
+        }}
+        onDiscard={() => setPending((cur) => cur.filter((x) => x.id !== m.id))}
+      />,
+    )
+  }
 
   return (
-    <div className="chat-doodle flex min-h-[65dvh] flex-col">
+    <div ref={root} className="chat-doodle flex min-h-[65dvh] flex-col">
       <E2eNote />
+      <span className="sr-only" aria-live="polite">
+        {divider?.label ?? ''}
+      </span>
       <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
-        {items.length === 0 && <li className="py-10 text-center text-muted">עוד אין הודעות. כתוב ראשון</li>}
-        {items.map((it) =>
-          it.type === 'event' ? (
-            <li key={it.id} className="self-center rounded-full bg-surface px-3 py-1 text-xs text-muted">
-              {eventLine(it.kind, nickOf(it.subject))}
-            </li>
-          ) : (
-            <Bubble
-              key={it.id}
-              mine={it.sender_id === meId}
-              text={it.text}
-              createdAt={it.created_at}
-              sender={it.sender_id === meId ? undefined : { nick: nickOf(it.sender_id), hue: avatarOf(it.sender_id, '').hue }}
-            />
-          ),
-        )}
-        <div ref={bottom} />
+        {all.length === 0 && <li className="py-10 text-center text-muted">עוד אין הודעות. כתוב ראשון</li>}
+        {rows}
+        <div ref={bottom} className="scroll-mb-48" />
       </ol>
-      <Composer ready={!!key} sending={sending} placeholder="הודעה לקבוצה…" label="הודעה לקבוצה" onSend={send} />
+      <Composer
+        ready={!!key}
+        placeholder="הודעה לקבוצה…"
+        label="הודעה לקבוצה"
+        onSend={send}
+        inputRef={input}
+        reply={replyTo ? { nick: replyTo.sender_id === meId ? 'עצמך' : nickOf(replyTo.sender_id), text: replyTo.text === null ? 'הודעה מוצפנת' : replySnippet(replyTo.text) } : null}
+        onCancelReply={() => {
+          setReplyTo(null)
+          input.current?.focus()
+        }}
+        above={!follow.atBottom ? <JumpButton count={follow.unread} onClick={follow.toEnd} /> : null}
+      />
       {shownStatus && (
         <p role="alert" className="mt-2 text-sm text-live">
           {shownStatus}

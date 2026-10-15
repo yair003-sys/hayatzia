@@ -1,8 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { PAGE_SIZE, type ChatMessage } from '@/features/chat/schema'
-
-const COLUMNS = 'id,user_id,nick,body,created_at'
+import { MESSAGE_COLUMNS, PAGE_SIZE, type ChatMessage } from '@/features/chat/schema'
 
 /**
  * Newest page of the fan's team chat (oldest first), or older than `before` (keyset, never OFFSET).
@@ -13,7 +11,7 @@ export async function getTeamMessages(before?: { createdAt: string; id: string }
   if (!supabase) return []
   let q = supabase
     .from('team_messages')
-    .select(COLUMNS)
+    .select(MESSAGE_COLUMNS)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(PAGE_SIZE)
