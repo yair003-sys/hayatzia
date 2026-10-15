@@ -8,6 +8,8 @@ export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: str
   return (
     <ChatRoom
       topic={`team:${teamId}`}
+      // "N כותבים…" rides on the club's "online now" presence, which the app layout already tracks (OnlineTracker).
+      presenceTopic={`online:${teamId}`}
       meId={meId}
       initial={initial}
       hiddenUsers={hidden}

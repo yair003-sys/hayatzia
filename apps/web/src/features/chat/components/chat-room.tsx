@@ -6,6 +6,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { TypingLine } from './typing-line'
+import { useTyping } from './use-typing'
 import {
   chatTime,
   countAfter,
@@ -48,6 +50,11 @@ export type ChatRoomProps = {
    * with the "jump to the end" button.
    */
   openAtEnd?: boolean
+  /**
+   * Presence topic the page already tracks for this fan (`online:<club>`, `room:<fixture>`): carries the "N כותבים…"
+   * line. Without it, no typing line.
+   */
+  presenceTopic?: string
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -68,7 +75,9 @@ export function ChatRoom({
   onChannelEvent,
   pinned,
   openAtEnd = true,
+  presenceTopic,
 }: ChatRoomProps) {
+  const typing = useTyping(presenceTopic, meId, hiddenUsers)
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
   const [draft, setDraft] = useState('')
@@ -160,6 +169,7 @@ export function ChatRoom({
   const submit = () => {
     const body = draft.trim()
     if (!body || sending) return
+    typing.onStop()
     startSend(async () => {
       const res = await send(body)
       if ('message' in res) {
@@ -221,6 +231,7 @@ export function ChatRoom({
         </button>
       )}
       {pinned}
+      {presenceTopic && <TypingLine count={typing.count} />}
       {readOnly ? (
         <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">
           {readOnly}
@@ -239,7 +250,12 @@ export function ChatRoom({
           <textarea
             id={`chat-input-${topic}`}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              if (e.target.value.trim()) typing.onInput()
+              else typing.onStop()
+            }}
+            onBlur={typing.onStop}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
