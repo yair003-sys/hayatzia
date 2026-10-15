@@ -157,7 +157,8 @@ select is((select count(*)::int from public.crowd_war_totals t
 -- ── who reads what ──
 select pg_temp.as_fan('c02');
 set local role authenticated;
-select is((select count(*)::int from public.crowd_war_fans), 1, 'a fan reads only their own fan row');
+select results_eq($$ select fixture_id, user_id from public.crowd_war_fans order by fixture_id $$,
+  $$ values (201::bigint, pg_temp.uid('c02')), (202::bigint, pg_temp.uid('c02')) $$, 'a fan reads only their own fan rows');
 select is((select count(*)::int from public.crowd_war_totals where fixture_id = 201), 2, 'a signed-in fan reads the totals');
 select throws_ok($$ insert into public.crowd_war_fans (fixture_id, user_id, team_id, chat) values (201, auth.uid(), 'mhf', 20) $$,
   '42501', null, 'a fan cannot write points');
