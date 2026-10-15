@@ -7,22 +7,31 @@
 --   database (now()) and, once given, are never cleared or moved (the record of when the fan confirmed).
 -- - Gender is "shown only in rides": the three new columns are not readable by other fans at all (profiles' select
 --   grant becomes column-level, without them). The fan reads their own through my_ride_profile(); ride cards get
---   "is the driver a woman" through ride_drivers(), only for fans of the caller's club who posted a ride.
--- - Every ride rule is checked in BEFORE triggers with clear codes: not_adult, ride_suspended, women_only,
---   phone_required. A row written by the service role or a database job (no auth.uid()) is not checked.
+--   "is the driver a woman" through ride_drivers(), only for drivers of the caller's club with an active, visible
+--   ride offer (never a fan who only seeks rides).
+-- - Every ride rule is checked in BEFORE triggers with clear codes: not_adult, banned, ride_suspended, women_only,
+--   phone_required, ride_started. A row written by the service role or a database job (no auth.uid()) is not checked.
+-- - Once the match has kicked off, a ride offer is evidence: its requests' status cannot change (no declining a rider
+--   to stop a rating) and, with an accepted rider, the ride cannot be deleted.
 -- - Settings: private.app_settings (key → jsonb), read by private.setting_on(key). 'rides_require_phone' = false until
 --   SMS sign-in exists; then: update private.app_settings set value = 'true' where key = 'rides_require_phone';
 -- - "The match is over" (ratings): fixture status FT / AET / PEN, or kickoff + 2 hours has passed (the score feed may
 --   lag; a match is over by then in practice).
 -- - rides_completed = the driver's ride offers whose match reached full time (FT / AET / PEN) with at least one accepted
---   rider at that moment. Counted once, by a trigger on fixtures when the status turns final (no counting at read time).
+--   rider at that moment. Counted once per trip through the ride_completions ledger (trip_id pk), by a trigger on
+--   fixtures when the status turns final; a revert removes exactly the ledger rows it counted (no drift, no counting at
+--   read time).
 -- - Ratings outlive the trip (no foreign key on trip_id): a driver cannot erase ratings by deleting the trip.
 -- - Ride suspension hides the fan's rides and pending requests from everyone else through restrictive select policies
 --   (nothing is hidden_at-marked, so lifting the suspension brings them back as they were). While a ride case is open
 --   (active ride suspension, or an open harm report about the fan) the fan cannot delete rides, withdraw requests or
 --   delete the account (rule 11: keep all data).
--- - Abuse guard on the automatic suspension: it happens only when the reporter is a ride user of the same club
---   (confirmed 18+) and the reported fan is not an admin. Any other harm report still reaches the admins as urgent.
+-- - Abuse guard on the automatic suspension (no brigading, no counter-suspension). It happens only when ALL hold:
+--   the reporter confirmed 18+, is in the reported fan's club, and their account is older than the auto-hide minimum
+--   age (private.auto_hide_rules()); the two share a ride request (either direction) from the last 30 days; the
+--   reporter triggered no other auto-suspension in the last 7 days; the reporter has no open ride case of their own;
+--   the reported fan is not an admin. Any other harm report still reaches the admins as urgent.
+--   reports.ride_suspended records which report suspended someone (for the 7-day limit and the admin push text).
 
 -- ---------- 1. settings ----------
 create table private.app_settings (
@@ -135,6 +144,9 @@ begin
   if not exists (select 1 from public.profiles p where p.user_id = p_user and p.adult_confirmed_at is not null) then
     raise exception 'not_adult' using errcode = '42501';
   end if;
+  if private.is_banned(p_user) then
+    raise exception 'banned' using errcode = '42501';
+  end if;
   if private.ride_suspended(p_user) then
     raise exception 'ride_suspended' using errcode = '42501';
   end if;
@@ -175,9 +187,19 @@ begin
        and not exists (select 1 from public.profiles p where p.user_id = new.user_id and p.gender = 'f') then
       raise exception 'women_only' using errcode = '42501';
     end if;
-  elsif new.status = 'accepted' and old.status <> 'accepted'
-        and (private.ride_suspended(new.user_id) or private.ride_suspended(auth.uid())) then
-    raise exception 'ride_suspended' using errcode = '42501';
+  elsif new.status is distinct from old.status then
+    if exists (select 1 from public.trips t join public.fixtures f on f.id = t.fixture_id
+                where t.id = new.trip_id and t.kind = 'offer' and f.kickoff_at <= now()) then
+      raise exception 'ride_started' using errcode = 'P0001';
+    end if;
+    if new.status = 'accepted' then
+      if private.is_banned(new.user_id) or private.is_banned(auth.uid()) then
+        raise exception 'banned' using errcode = '42501';
+      end if;
+      if private.ride_suspended(new.user_id) or private.ride_suspended(auth.uid()) then
+        raise exception 'ride_suspended' using errcode = '42501';
+      end if;
+    end if;
   end if;
   return new;
 end $$;
@@ -195,6 +217,19 @@ create policy trips_keep_during_case on public.trips as restrictive for delete t
 create policy trip_requests_keep_during_case on public.trip_requests as restrictive for delete to authenticated
   using (not (select private.ride_case_open(auth.uid())));
 
+-- A ride offer whose match has kicked off with an accepted rider is kept (ratings, evidence).
+create function private.trip_locked(p_trip uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.trips t join public.fixtures f on f.id = t.fixture_id
+     where t.id = p_trip and t.kind = 'offer' and f.kickoff_at <= now()
+       and exists (select 1 from public.trip_requests r where r.trip_id = t.id and r.status = 'accepted'))
+$$;
+revoke all on function private.trip_locked(uuid) from public, anon;
+grant execute on function private.trip_locked(uuid) to authenticated, service_role;
+create policy trips_keep_after_kickoff on public.trips as restrictive for delete to authenticated
+  using (not private.trip_locked(id));
+
 -- ---------- 7. ratings and driver stats ----------
 create table public.ride_ratings (
   trip_id     uuid not null,                       -- no foreign key: the rating outlives the trip
@@ -206,6 +241,18 @@ create table public.ride_ratings (
 );
 create index ride_ratings_driver_idx on public.ride_ratings (driver_id);
 create index ride_ratings_rater_idx on public.ride_ratings (rater_id, created_at desc);
+
+-- One row per ride counted as completed (the ledger behind ride_driver_stats.rides_completed).
+create table public.ride_completions (
+  trip_id     uuid primary key,                    -- no foreign key: the count outlives the trip
+  fixture_id  bigint not null,
+  driver_id   uuid not null references auth.users (id) on delete cascade,
+  created_at  timestamptz not null default now()
+);
+create index ride_completions_fixture_idx on public.ride_completions (fixture_id);
+create index ride_completions_driver_idx on public.ride_completions (driver_id);
+alter table public.ride_completions enable row level security;  -- no policies: written by the fixtures trigger only
+revoke all on public.ride_completions from public, anon, authenticated;
 
 create table public.ride_driver_stats (
   driver_id        uuid primary key references auth.users (id) on delete cascade,
@@ -273,21 +320,26 @@ begin
     return null;
   end if;
   if is_over then
+    with added as (
+      insert into public.ride_completions (trip_id, fixture_id, driver_id)
+        select t.id, t.fixture_id, t.user_id
+          from public.trips t
+         where t.fixture_id = new.id and t.kind = 'offer'
+           and exists (select 1 from public.trip_requests r where r.trip_id = t.id and r.status = 'accepted')
+      on conflict (trip_id) do nothing
+      returning driver_id
+    )
     insert into public.ride_driver_stats as s (driver_id, rides_completed)
-      select t.user_id, count(*)::int
-        from public.trips t
-       where t.fixture_id = new.id and t.kind = 'offer'
-         and exists (select 1 from public.trip_requests r where r.trip_id = t.id and r.status = 'accepted')
-       group by t.user_id
+      select a.driver_id, count(*)::int from added a group by a.driver_id
     on conflict (driver_id) do update set rides_completed = s.rides_completed + excluded.rides_completed;
   else
-    update public.ride_driver_stats s set rides_completed = greatest(s.rides_completed - d.n, 0)
-      from (select t.user_id, count(*)::int as n
-              from public.trips t
-             where t.fixture_id = new.id and t.kind = 'offer'
-               and exists (select 1 from public.trip_requests r where r.trip_id = t.id and r.status = 'accepted')
-             group by t.user_id) d
-     where s.driver_id = d.user_id;
+    with removed as (
+      delete from public.ride_completions c where c.fixture_id = new.id returning c.driver_id
+    ), n as (
+      select r.driver_id, count(*)::int as n from removed r group by r.driver_id
+    )
+    update public.ride_driver_stats s set rides_completed = greatest(s.rides_completed - n.n, 0)
+      from n where s.driver_id = n.driver_id;
   end if;
   return null;
 end $$;
@@ -309,6 +361,9 @@ grant select on public.ride_ratings, public.ride_driver_stats to authenticated;
 grant insert (trip_id, stars) on public.ride_ratings to authenticated;
 
 -- ---------- 8. the harm report: immediate suspension from rides ----------
+-- Which report suspended someone automatically (fans cannot set it: their insert grant is kind, ref, reason, note).
+alter table public.reports add column ride_suspended boolean not null default false;
+
 alter table public.admin_actions drop constraint admin_actions_action_check;
 alter table public.admin_actions add constraint admin_actions_action_check
   check (action in ('remove', 'ban', 'unban', 'status', 'auto_hide', 'restore', 'ride_suspend', 'ride_unsuspend'));
@@ -317,15 +372,31 @@ create function private.reports_ride_harm() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
   v_target uuid;
+  rules record;
 begin
   if new.reason <> private.ride_harm_reason() or new.kind not in ('trip', 'user') or new.reporter_id is null then
     return null;
   end if;
   select t.target_user into v_target from private.report_target(new.kind, new.ref::text, new.reporter_id) t;
   if v_target is null or v_target = new.reporter_id
-     or exists (select 1 from public.app_admins a where a.user_id = v_target)
-     or not exists (select 1 from public.profiles r join public.profiles x on x.team_id = r.team_id
-                     where r.user_id = new.reporter_id and r.adult_confirmed_at is not null and x.user_id = v_target) then
+     or exists (select 1 from public.app_admins a where a.user_id = v_target) then
+    return null;
+  end if;
+  select * into rules from private.auto_hide_rules();
+  -- A ride user of the same club, with an account older than the minimum age.
+  if not exists (select 1 from public.profiles r join public.profiles x on x.team_id = r.team_id
+                  where r.user_id = new.reporter_id and r.adult_confirmed_at is not null
+                    and r.created_at <= new.created_at - rules.min_account_age and x.user_id = v_target)
+     -- No counter-suspension: a reporter with an open ride case of their own does not suspend anyone.
+     or private.ride_case_open(new.reporter_id)
+     -- The two really shared a ride: a request between them (either direction) in the last 30 days.
+     or not exists (select 1 from public.trip_requests q join public.trips t on t.id = q.trip_id
+                     where q.created_at > now() - interval '30 days'
+                       and ((q.user_id = new.reporter_id and t.user_id = v_target)
+                            or (q.user_id = v_target and t.user_id = new.reporter_id)))
+     -- At most one automatic suspension per reporter in 7 days (reports_reporter_idx).
+     or exists (select 1 from public.reports p
+                 where p.reporter_id = new.reporter_id and p.ride_suspended and p.created_at > now() - interval '7 days') then
     return null;
   end if;
   insert into public.ride_suspensions as s (user_id, reason, by_report)
@@ -334,6 +405,7 @@ begin
     set reason = excluded.reason, by_report = excluded.by_report, created_at = now(), lifted_at = null, lifted_by = null
     where s.lifted_at is not null;               -- already suspended: the first report stays the reference
   if found then
+    update public.reports r set ride_suspended = true where r.id = new.id;
     insert into public.admin_actions (admin_id, action, kind, ref, target_user, note)
       values (null, 'ride_suspend', new.kind, new.ref, v_target, 'harm report');
   end if;
@@ -356,8 +428,9 @@ language sql stable security definer set search_path = '' as $$
    where p.user_id = auth.uid()
 $$;
 
--- Trust facts for ride cards: join date, completed rides, ratings, and whether the driver is a woman. Only fans of the
--- caller's club who posted a ride (gender is shown only in rides); at most 200 ids.
+-- Trust facts for ride cards: join date, completed rides, ratings, and whether the driver is a woman. Only drivers of
+-- the caller's club with an active (match from 3 hours ago on), visible ride offer: never a fan who only seeks rides,
+-- so no one learns a rider's gender. At most 200 ids.
 create function public.ride_drivers(p_users uuid[])
 returns table (user_id uuid, member_since timestamptz, rides_completed integer, ratings_count integer,
                ratings_sum integer, female boolean)
@@ -368,7 +441,10 @@ language sql stable security definer set search_path = '' as $$
     left join public.ride_driver_stats s on s.driver_id = p.user_id
    where p.user_id = any (p_users[1:200])
      and p.team_id = (select public.my_team())
-     and exists (select 1 from public.trips t where t.user_id = p.user_id)
+     and not private.ride_suspended(p.user_id)
+     and exists (select 1 from public.trips t join public.fixtures f on f.id = t.fixture_id
+                  where t.user_id = p.user_id and t.kind = 'offer' and t.hidden_at is null
+                    and f.kickoff_at > now() - interval '3 hours')
 $$;
 
 -- The delete-my-account action asks first (rule 11).
@@ -381,6 +457,53 @@ $$;
 create function public.admin_user_ids() returns setof uuid
 language sql stable security definer set search_path = '' as $$
   select a.user_id from public.app_admins a
+$$;
+
+-- A harm report filed through the app: the same row and triggers as a direct insert, and the answer whether it
+-- suspended someone (so the admins' push says so only when it did).
+create function public.report_ride_harm(p_kind text, p_ref text, p_note text default '')
+returns table (report_id uuid, suspended boolean)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if p_kind is null or p_kind not in ('trip', 'user') then
+    raise exception 'bad_kind' using errcode = '22023';
+  end if;
+  insert into public.reports (reporter_id, kind, ref, reason, note)
+    values (auth.uid(), p_kind, left(coalesce(p_ref, ''), 100), private.ride_harm_reason(), left(btrim(coalesce(p_note, '')), 120))
+    returning id into v_id;
+  return query select r.id, r.ride_suspended from public.reports r where r.id = v_id;
+end $$;
+
+-- Accepted riders of a just-suspended driver's upcoming ride offers, to tell them the ride is off for now. Server only.
+create function public.ride_suspension_riders(p_report uuid) returns setof uuid
+language sql stable security definer set search_path = '' as $$
+  select distinct q.user_id
+    from public.ride_suspensions s
+    join public.trips t on t.user_id = s.user_id and t.kind = 'offer'
+    join public.fixtures f on f.id = t.fixture_id and f.kickoff_at > now()
+    join public.trip_requests q on q.trip_id = t.id and q.status = 'accepted'
+   where s.by_report = p_report and s.lifted_at is null
+$$;
+
+-- The caller's rides to rate: accepted on a ride offer in the last 30 days, match over, not rated yet. Security definer
+-- so a rider can still rate a driver whose rides are hidden by a ride suspension.
+create function public.my_rides_to_rate()
+returns table (trip_id uuid, driver_nick text, kickoff_at timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select t.id, t.nick::text, f.kickoff_at
+    from public.trip_requests q
+    join public.trips t on t.id = q.trip_id and t.kind = 'offer'
+    join public.fixtures f on f.id = t.fixture_id
+   where q.user_id = auth.uid() and q.status = 'accepted' and q.created_at > now() - interval '30 days'
+     and (f.status in ('FT', 'AET', 'PEN') or f.kickoff_at + interval '2 hours' <= now())
+     and not exists (select 1 from public.ride_ratings x where x.trip_id = t.id and x.rater_id = auth.uid())
+   order by f.kickoff_at desc
+   limit 20
 $$;
 
 -- Admins: fans suspended from rides right now (newest first), and lifting a suspension.
@@ -417,6 +540,12 @@ begin
   return v_done;
 end $$;
 
+revoke all on function public.report_ride_harm(text, text, text) from public, anon;
+revoke all on function public.ride_suspension_riders(uuid) from public, anon, authenticated;
+revoke all on function public.my_rides_to_rate() from public, anon;
+grant execute on function public.report_ride_harm(text, text, text) to authenticated;
+grant execute on function public.ride_suspension_riders(uuid) to service_role;
+grant execute on function public.my_rides_to_rate() to authenticated;
 revoke all on function public.my_ride_profile() from public, anon;
 revoke all on function public.ride_drivers(uuid[]) from public, anon;
 revoke all on function public.my_ride_case_open() from public, anon;
