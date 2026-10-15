@@ -66,6 +66,7 @@ begin
 end $$;
 create trigger profiles_stamp_created before insert on public.profiles
   for each row execute function public.profiles_stamp_created();
+revoke all on function public.profiles_stamp_created() from public, anon, authenticated;
 
 -- ---------- 3. no profile for anonymous sign-ins ----------
 create policy profiles_insert_not_anonymous on public.profiles as restrictive for insert to authenticated
@@ -113,7 +114,7 @@ begin
     execute format('grant execute on function %s to authenticated, service_role', f.sig);
   end loop;
 end $$;
-alter default privileges in schema public revoke execute on functions from anon;
+-- New functions get EXECUTE for PUBLIC by Postgres itself; tests/security.test.sql fails CI on any new one anon can run.
 
 -- ---------- 6. view-once files ----------
 drop policy clips_files_read on storage.objects;
@@ -167,3 +168,4 @@ begin
 end $$;
 create trigger push_subscriptions_cap after insert on public.push_subscriptions
   for each row execute function public.push_subscriptions_cap();
+revoke all on function public.push_subscriptions_cap() from public, anon, authenticated;
