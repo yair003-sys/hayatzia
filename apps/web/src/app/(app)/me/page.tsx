@@ -17,6 +17,8 @@ import { teamAccent } from '@/features/stand-home/schema'
 import { recordLine } from '@/features/crowd-war/schema'
 import { getWarRecord } from '@/features/crowd-war/server/queries'
 import { DeleteAccount } from '@/features/account/components/delete-account'
+import { AdminBadge } from '@/features/admin/components/admin-badge'
+import { ContactForm } from '@/features/safety/components/contact-form'
 import { LegalLinks } from '@/features/legal/components/legal-links'
 import { NOT_AFFILIATED } from '@/lib/legal'
 
@@ -106,6 +108,9 @@ async function ProfileCard() {
           הגדרות
         </h2>
         <div className="space-y-2.5">
+          <Suspense fallback={null}>
+            <AdminBadge />
+          </Suspense>
           <InstallApp />
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />
@@ -115,6 +120,7 @@ async function ProfileCard() {
               יציאה מהחשבון
             </button>
           </form>
+          <ContactForm />
           <DeleteAccount />
         </div>
         <LegalLinks />

@@ -25,7 +25,7 @@ export function LegalPage({ title, lead, children }: { title: string; lead: stri
   )
 }
 
-/** How to reach the operator. While no address is published, the in-app report option is the way. */
+/** How to reach the operator. While no address is published, "צור קשר" in "הכרטיס שלי" is the way. */
 export function LegalContact({ topic }: { topic: string }) {
   if (LEGAL_CONTACT_EMAIL)
     return (
@@ -34,13 +34,13 @@ export function LegalContact({ topic }: { topic: string }) {
         <a href={`mailto:${LEGAL_CONTACT_EMAIL}`} dir="ltr">
           {LEGAL_CONTACT_EMAIL}
         </a>
-        , או דרך אפשרות הדיווח באפליקציה.
+        , או דרך „צור קשר” במסך „הכרטיס שלי” באפליקציה.
       </p>
     )
   return (
     <p>
-      {topic} אפשר לשלוח כרגע דרך כפתור „דיווח” באפליקציה, עם הסבר קצר בהערה. כתובת דואר אלקטרוני ליצירת קשר תפורסם
-      כאן בקרוב.
+      {topic} אפשר לשלוח דרך „צור קשר” במסך „הכרטיס שלי” באפליקציה. נחזור אליך לפי פרטי החשבון. כתובת דואר אלקטרוני
+      ליצירת קשר תפורסם כאן בקרוב.
     </p>
   )
 }

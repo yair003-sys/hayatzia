@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { REPORT_REASONS, reportSchema } from './schema'
+import { CONTACT_MAX, CONTACT_TOPICS, REPORT_KINDS, REPORT_REASONS, contactSchema, reportSchema } from './schema'
 
 describe('report reasons', () => {
   it('include fake items / ticket sales (terms of use, 2026-10-15)', () => {
@@ -11,5 +11,32 @@ describe('report reasons', () => {
   })
   it('refuse a reason that is not on the list', () => {
     expect(reportSchema.safeParse({ kind: 'user', ref: 'x', reason: 'סתם' }).success).toBe(false)
+  })
+})
+
+describe('report kinds (migration 20261015180000_moderation_admin)', () => {
+  it('include the team boards; a market item is reported by its own id', () => {
+    for (const kind of ['market_item', 'trip', 'event', 'chant', 'review'] as const) {
+      expect(REPORT_KINDS).toContain(kind)
+      expect(reportSchema.safeParse({ kind, ref: 'x', reason: 'ספאם' }).success).toBe(true)
+    }
+  })
+  it('never take a contact request through the report form (it has its own)', () => {
+    expect(reportSchema.safeParse({ kind: 'contact', ref: 'x', reason: 'אחר' }).success).toBe(false)
+  })
+})
+
+describe('contactSchema', () => {
+  it('takes a topic from the list and up to 500 characters', () => {
+    expect(contactSchema.safeParse({ topic: 'פרטיות', text: 'בקשה למחוק מידע' }).success).toBe(true)
+    expect(contactSchema.safeParse({ topic: 'נגישות', text: 'א'.repeat(CONTACT_MAX) }).success).toBe(true)
+    expect(contactSchema.safeParse({ topic: 'נגישות', text: 'א'.repeat(CONTACT_MAX + 1) }).success).toBe(false)
+  })
+  it('refuses an empty request or an unknown topic', () => {
+    expect(contactSchema.safeParse({ topic: 'פרטיות', text: '   ' }).success).toBe(false)
+    expect(contactSchema.safeParse({ topic: 'שיווק', text: 'שלום לכם' }).success).toBe(false)
+  })
+  it('topics fit the database column (reason varchar 60)', () => {
+    for (const t of CONTACT_TOPICS) expect(t.length).toBeLessThanOrEqual(60)
   })
 })

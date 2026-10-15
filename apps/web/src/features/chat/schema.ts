@@ -46,7 +46,7 @@ export type SendResult = { message: ChatMessage } | { error: string; kind?: Send
 /** Which kind of failure a database error is (see SendErrorKind). Unknown errors may be passing: retry. */
 export function chatErrorKind(message: string): SendErrorKind {
   if (message.includes('bad_reply')) return 'bad_reply'
-  if (['offensive_content', 'room_closed', 'not_playing', 'no profile', 'no such match', '23514'].some((c) => message.includes(c))) {
+  if (['offensive_content', 'banned', 'room_closed', 'not_playing', 'no profile', 'no such match', '23514'].some((c) => message.includes(c))) {
     return 'permanent'
   }
   return 'retry'

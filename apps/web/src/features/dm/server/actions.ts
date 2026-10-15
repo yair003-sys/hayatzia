@@ -49,7 +49,7 @@ export const searchTeammatesAction = actionClient.inputSchema(teammateSearchSche
   return { fans: await searchTeammates(me, parsedInput.q) }
 })
 
-const RPC_CODES = ['offensive_name', 'not_admin', 'not_member', 'group_full', 'not_same_team', 'blocked', 'invite_expired', 'bad_name', 'no_members', 'bad_kind']
+const RPC_CODES = ['banned', 'offensive_name', 'not_admin', 'not_member', 'group_full', 'not_same_team', 'blocked', 'invite_expired', 'bad_name', 'no_members', 'bad_kind']
 
 function errorCode(message: string): string {
   return RPC_CODES.find((c) => message.includes(c)) ?? ''

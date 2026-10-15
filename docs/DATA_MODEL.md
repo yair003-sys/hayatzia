@@ -102,13 +102,30 @@ Counters: `dm_group_members.unread` grows for every other member without a block
 ## Safety
 | Table | Columns | Rules |
 |---|---|---|
-| `reports` | `id`, `reporter_id`, `kind`, `ref`, `reason`, `note`, `created_at`, `status` | insert own; no select for fans; moderators via service role / admin role |
+| `reports` | `id`, `reporter_id` (nullable, `on delete set null`: a report outlives its reporter), `kind`, `ref`, `reason`, `note varchar(500)` (≤ 120 except `contact`), `created_at`, `status` (`open`/`handled`/`dismissed`) | insert own (30 a day); no select for fans; admins through the RPCs below; idx `(status, created_at desc)`, `(kind, ref) where status = 'open'` |
 | `blocks` | `(user_id, blocked_id) pk` | own rows; used in feed and chat filters; `blocked_between(a, b)` (security definer) checks both directions for private messages and groups |
 
-Report reasons are a list in code (`features/safety/schema.ts`, `reason varchar(60)`), including "פריט מזויף / מכירת כרטיסים" (2026-10-15). A market item is reported on its seller (`kind 'user'`, `ref` = seller id): `reports.kind` has no market value yet.
+Report reasons are a list in code (`features/safety/schema.ts`, `reason varchar(60)`), including "פריט מזויף / מכירת כרטיסים" (2026-10-15). Kinds and their `ref`: `team_message`, `match_message`, `clip`, `clip_comment`, `photo`, `photo_comment`, `market_item`, `trip`, `event`, `chant` (the row id), `review` (`<player id>:<author id>`), `user` (user id), `dm_thread` (thread id), `contact` ("צור קשר" in "הכרטיס שלי": `ref ''`, topic פרטיות/נגישות/אחר in `reason`, the text in `note`).
+
+### Moderation (2026-10-15, migration `moderation_admin`)
+| Table | Columns | Rules |
+|---|---|---|
+| `app_admins` | `user_id pk → auth.users` (cascade), `created_at` | no fan access at all; read through `is_app_admin()`. Added by hand per project (below) |
+| `fan_bans` | `user_id pk → auth.users` (cascade), `until` (null = for good), `reason varchar(120)`, `by_admin` (set null), `created_at` | no fan access; written by `admin_ban_user` / `admin_unban_user` |
+| `admin_actions` | `id bigint identity`, `admin_id` (set null), `action` (`remove`/`ban`/`unban`/`status`), `kind`, `ref`, `target_user` (no FK: the record stays), `note`, `created_at` | audit trail, one row per admin action; read through `admin_recent_actions()`; idx `(created_at desc, id desc)` |
+
+Functions (authenticated only; every `admin_*` one raises `not_admin` 42501 for anyone not in `app_admins`; security definer, `search_path ''`):
+`is_app_admin() → boolean` · `admin_report_queue(p_status = 'open', p_limit = 50, p_before, p_before_id)` (keyset, newest first: report fields, `reporter_nick`, `reporter_contact` (e-mail / phone, `contact` requests only), `target_user_id`, `target_nick`, `target_preview` (≤ 200 chars of the reported text; for `dm_thread` only the two nicknames, never anything from the encrypted messages), `target_exists`, `open_reports_on_target`) · `admin_open_count()` · `admin_remove_content(p_kind, p_ref) → (removed, bucket, path)` (deletes the row, handles every open report on it; the server action deletes the returned Storage file with the service key) · `admin_ban_user(p_user, p_days null = for good, p_reason) → until` (never an admin: `cannot_ban_admin`; handles every open report whose target is that fan) · `admin_unban_user(p_user)` · `admin_set_report_status(p_report, p_status)` · `admin_ban_list()` · `admin_recent_actions()`.
+
+Suspension: `private.moderate_row` (the `zz_moderate` trigger on every public content table) raises `banned` (42501) when the acting fan has an active `fan_bans` row, on every insert and on an update that changes a filtered text column (counters, "sold" flags and account-deletion `set null` steps still work). Private messages are end-to-end encrypted and have no such trigger. The app shows "החשבון מושעה מכתיבה" (`lib/moderation.ts`). Screen: `/admin/reports` (admins only, `notFound()` for others), linked with an open-reports badge from "הכרטיס שלי".
+
+Adding an admin (once per project, in the SQL editor; never in a migration):
+```sql
+insert into public.app_admins (user_id) select id from auth.users where email = '<owner email>';
+```
 
 ### Account deletion (2026-10-15)
-"מחיקת החשבון" (`features/account/server/actions.ts`) deletes `auth.users` with the service role, user id from the session only. Every public foreign key to `auth.users` is `on delete cascade`, except "who did it" columns that are `set null`: `dm_groups.created_by`, `dm_group_members.invited_by`, `dm_group_events.actor`/`subject`, `activity.actor_id` (pgTAP `account_delete.test.sql` fails on any other kind). Denormalised ids without a foreign key (`dm_threads.last_from`, `dm_groups.last_from`) keep a stale id; harmless (threads with the fan are deleted, a group shows only the last preview). Trigger-kept totals (team fans, rating stats, lineups tally, crowd war of matches not yet started) count down on delete; anonymous totals of finished crowd wars stay. Storage files are not rows: before the delete the action removes `<user id>/…` in `clips`, `stand`, `market` and `chants`. Device private keys stay in that browser's IndexedDB (useless without the account).
+"מחיקת החשבון" (`features/account/server/actions.ts`) deletes `auth.users` with the service role, user id from the session only. Every public foreign key to `auth.users` is `on delete cascade`, except "who did it" columns that are `set null`: `dm_groups.created_by`, `dm_group_members.invited_by`, `dm_group_events.actor`/`subject`, `activity.actor_id`, `reports.reporter_id` (the report stays for the moderators), `fan_bans.by_admin`, `admin_actions.admin_id` (pgTAP `account_delete.test.sql` fails on any other kind). Denormalised ids without a foreign key (`dm_threads.last_from`, `dm_groups.last_from`) keep a stale id; harmless (threads with the fan are deleted, a group shows only the last preview). Trigger-kept totals (team fans, rating stats, lineups tally, crowd war of matches not yet started) count down on delete; anonymous totals of finished crowd wars stay. Storage files are not rows: before the delete the action removes `<user id>/…` in `clips`, `stand`, `market` and `chants`. Device private keys stay in that browser's IndexedDB (useless without the account).
 
 ## Activity bell (התראות, 2026-10-14)
 | Table | Columns | Rules |

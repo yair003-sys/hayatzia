@@ -88,6 +88,7 @@ describe('chatErrorKind', () => {
   })
   it('sends refused texts back to the box', () => {
     expect(chatErrorKind('offensive_content')).toBe('permanent')
+    expect(chatErrorKind('banned')).toBe('permanent')
     expect(chatErrorKind('room_closed')).toBe('permanent')
     expect(chatErrorKind('not_playing')).toBe('permanent')
     expect(chatErrorKind('bad_reply')).toBe('bad_reply')

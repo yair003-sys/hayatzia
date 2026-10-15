@@ -1,6 +1,6 @@
 /**
  * Legal pages (owner, 2026-10-15): terms, privacy and accessibility. Drafts until a lawyer reviews them.
- * The contact address is one constant: while it is null the pages point to the in-app report option and say
+ * The contact address is one constant: while it is null the pages point to "צור קשר" in "הכרטיס שלי" and say
  * that an address will be published soon. Never invent an address.
  */
 export const LEGAL_CONTACT_EMAIL: string | null = null

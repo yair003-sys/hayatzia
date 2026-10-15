@@ -497,8 +497,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                     !i.sold && <MessageTo userId={i.user_id} label="למוכר" />
                   )}
                 </div>
-                {/* A fake item or a ticket: reported on the seller (reports have no market kind yet). */}
-                {!mine && <ReportBlock kind="user" refId={i.user_id} userId={i.user_id} userNick={i.nick} />}
+                {!mine && <ReportBlock kind="market_item" refId={i.id} userId={i.user_id} userNick={i.nick} />}
               </div>
             </li>
           )

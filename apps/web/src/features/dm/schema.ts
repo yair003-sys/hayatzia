@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BANNED_HE } from '@/lib/moderation'
 
 export const DM_PAGE = 50
 export const DM_MAX = 1000 // characters of plaintext (ciphertext limit is 4000 base64 chars)
@@ -94,6 +95,7 @@ const GROUP_ERRORS: Record<string, string> = {
   not_member: 'ההזמנה כבר לא בתוקף, או שאתה כבר לא בקבוצה',
   bad_name: 'שם הקבוצה צריך להיות 2–40 תווים',
   offensive_name: 'שם הקבוצה מכיל מילה לא ראויה. נסה שם אחר',
+  banned: BANNED_HE,
 }
 
 /** Hebrew message for an error code raised by the group functions in the database. */

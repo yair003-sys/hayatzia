@@ -56,6 +56,7 @@ are keyed by club and country (e.g. "אוהדי ברצלונה בישראל").
 - Preview deployments have the staging `SUPABASE_SECRET_KEY` (rotated 2026-10-14) and send notifications on staging; GitHub reaches previews through the Vercel automation bypass.
 - Next.js 16.4.1 security update (2026-10-14 advisory: 2 Critical incl. RCE with Cache Components, 1 High DoS on Server Actions) applied 2026-10-15 via web-deps; eslint-config-next 16.4.1.
 - Before launch: legal pages reviewed by a lawyer and the contact email published (see open decision 5).
+- Before launch: add the owner as admin on staging and production (SQL editor, once per project: `insert into public.app_admins (user_id) select id from auth.users where email = '<owner email>';`), then check that "דיווחים פתוחים" shows in "הכרטיס שלי".
 - Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 
 ## Load test results (staging, free plan, direct PostgREST reads of the league data, uncached)
