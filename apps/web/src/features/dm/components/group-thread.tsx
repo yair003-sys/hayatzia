@@ -18,7 +18,6 @@ type Item = Msg | Ev
 type EventRow = { id: string; kind: string; subject: string | null; created_at: string }
 
 const COLS = 'id,sender_id,sender_device,iv,ciphertext,wrapped_keys,created_at,reply_to'
-let localSeq = 0
 const toMsg = (m: EncryptedRow & { text: string | null }): Msg => ({
   type: 'msg',
   id: m.id,
@@ -181,7 +180,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
 
   const send = async (text: string) => {
     if (!key) return false
-    const p: Msg = { type: 'msg', id: `${LOCAL_ID}${++localSeq}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
+    const p: Msg = { type: 'msg', id: `${LOCAL_ID}${crypto.randomUUID()}`, sender_id: meId, created_at: new Date().toISOString(), text, reply_to: replyTo?.id ?? null }
     follow.followNext()
     setPending((cur) => [...cur, p])
     setReplyTo(null)
@@ -191,6 +190,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
 
   const shownStatus = status ?? keyStatus
   const nickOf = (id: string | null) => (id && nicks[id]) || 'אוהד'
+  const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
   const byId = new Map(msgs.map((m) => [m.id, m]))
   const quoteOf = (m: Msg): ShownQuote | null => {
     if (!m.reply_to) return null
@@ -200,7 +200,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
     return {
       nick: orig.sender_id === meId ? 'אתה' : nickOf(orig.sender_id),
       text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text),
-      onJump: () => jumpToMessage(root.current, to),
+      onJump: () => jump(to),
     }
   }
 

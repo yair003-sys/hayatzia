@@ -59,7 +59,6 @@ export type ChatRoomProps = {
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
-let localSeq = 0
 
 export function ChatRoom({
   topic,
@@ -171,7 +170,7 @@ export function ChatRoom({
     if (!body) return
     typing.onStop()
     const p: ChatMessage = {
-      id: `${LOCAL_ID}${++localSeq}`,
+      id: `${LOCAL_ID}${crypto.randomUUID()}`,
       user_id: meId,
       nick: '',
       body,
