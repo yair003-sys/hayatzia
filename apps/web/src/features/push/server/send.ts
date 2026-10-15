@@ -66,6 +66,7 @@ export async function sendPush(userIds: readonly string[], payload: PushPayload)
             await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, {
               TTL: 60 * 60,
               urgency: 'normal',
+              timeout: 8000,
             })
             delivered++
           } catch (e) {

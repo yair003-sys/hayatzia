@@ -1,7 +1,20 @@
 import { z } from 'zod'
 
+/** The browsers' push services (Chrome/Android/Samsung, Firefox, Safari, Edge). Any other address is refused, so the
+ *  server never sends requests to an address a fan picked (security review 2026-10-15). */
+export const PUSH_HOSTS = ['fcm.googleapis.com', 'push.services.mozilla.com', 'web.push.apple.com', 'notify.windows.com'] as const
+export function isPushEndpoint(url: string): boolean {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:' || u.port) return false
+    return PUSH_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`))
+  } catch {
+    return false
+  }
+}
+
 export const subscriptionSchema = z.object({
-  endpoint: z.url().startsWith('https://').max(999),
+  endpoint: z.url().startsWith('https://').max(999).refine(isPushEndpoint, 'not a push service'),
   keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(4).max(100) }),
 })
 export const endpointSchema = z.object({ endpoint: z.url().max(999) })

@@ -1,6 +1,7 @@
 'use server'
 
 import { actionClient } from '@/lib/safe-action'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { chatErrorHe } from '@/features/chat/schema'
 import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, toggleSchema } from '../schema'
@@ -53,14 +54,19 @@ export const toggleRespectAction = actionClient.inputSchema(toggleSchema).action
   return error && error.code !== '23505' ? { error: 'כבוד נותנים רק לאוהדים של קבוצה אחרת' } : { ok: true as const }
 })
 
-/** View-once: sign a short URL first, then record the view (after which the post is gone for this fan). */
+/**
+ * View-once: the fan's view is recorded first (one per fan, so a second or parallel call fails), then the server signs
+ * a short link. A view-once file is never readable by fans directly (storage rule), so this is the only way in.
+ */
 export const openOnceClipAction = actionClient.inputSchema(clipIdSchema).action(async ({ parsedInput: { clipId } }) => {
   const supabase = await db()
-  const { data: clip } = await supabase.from('clips').select('media_path').eq('id', clipId).maybeSingle()
-  if (!clip) return { error: 'הפוסט כבר נצפה או נעלם' }
-  const { data: signed } = await supabase.storage.from('clips').createSignedUrl(clip.media_path, ONCE_URL_TTL)
+  const { data: clip } = await supabase.from('clips').select('media_path,once').eq('id', clipId).maybeSingle()
+  if (!clip || !clip.once) return { error: 'הפוסט כבר נצפה או נעלם' }
+  const { error: viewErr } = await supabase.from('clip_views').insert({ clip_id: clipId })
+  if (viewErr) return { error: 'הפוסט כבר נצפה או נעלם' }
+  const admin = createAdminClient()
+  const { data: signed } = admin ? await admin.storage.from('clips').createSignedUrl(clip.media_path, ONCE_URL_TTL) : { data: null }
   if (!signed) return { error: 'לא הצלחנו לפתוח' }
-  await supabase.from('clip_views').insert({ clip_id: clipId })
   return { url: signed.signedUrl }
 })
 

@@ -34,23 +34,36 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      # Inputs reach the shell only as environment variables, and only plain package names pass (security review
+      # 2026-10-15: no shell injection through the package list).
       - name: Change dependencies
+        env:
+          PKGS: ${{ inputs.packages }}
+          REMOVE: ${{ inputs.remove }}
+          DEV: ${{ inputs.dev }}
         run: |
+          if ! printf '%s' "$PKGS" | grep -Eq '^(@?[a-z0-9][a-z0-9._/-]*(@[A-Za-z0-9._^~<>=-]+)?)( @?[a-z0-9][a-z0-9._/-]*(@[A-Za-z0-9._^~<>=-]+)?)*$'; then
+            echo "::error::packages must be plain npm package names (name or name@version)"; exit 1
+          fi
+          read -ra arr <<<"$PKGS"
           npm ci
-          if [ "${{ inputs.remove }}" = "true" ]; then
-            npm uninstall ${{ inputs.packages }}
-          elif [ "${{ inputs.dev }}" = "true" ]; then
-            npm install --save-exact --save-dev ${{ inputs.packages }}
+          if [ "$REMOVE" = "true" ]; then
+            npm uninstall -- "${arr[@]}"
+          elif [ "$DEV" = "true" ]; then
+            npm install --save-exact --save-dev -- "${arr[@]}"
           else
-            npm install --save-exact ${{ inputs.packages }}
+            npm install --save-exact -- "${arr[@]}"
           fi
       - name: Commit
+        env:
+          PKGS: ${{ inputs.packages }}
+          VERB: ${{ inputs.remove && 'remove' || 'add' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git diff --cached --quiet && exit 0
-          git commit -m "web deps: ${{ inputs.remove && 'remove' || 'add' }} ${{ inputs.packages }}"
+          git commit -m "web deps: $VERB $PKGS"
           git pull --rebase origin main
           git push
       - name: Trigger CI

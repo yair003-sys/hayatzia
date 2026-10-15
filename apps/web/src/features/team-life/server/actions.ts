@@ -52,7 +52,16 @@ export const decideSeatAction = actionClient.inputSchema(decideSchema).action(as
   if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : 'לא הצלחנו לשמור' }
   if (changed?.length) {
     if (p.accept) await pushTrip(await db(), 'trip_accepted', p.tripId, p.userId)
-    else await sendPush([p.userId], { title: 'הבקשה לנסיעה נדחתה', body: 'אפשר לחפש נסיעה אחרת', url: '/stand/trips', tag: `trip:${p.tripId}` })
+    else {
+      const supabase = await db()
+      const { data: claims } = await supabase.auth.getClaims()
+      const me = claims?.claims.sub
+      const { data: blocked, error: blockErr } = me
+        ? await supabase.rpc('blocked_between', { a: me, b: p.userId })
+        : { data: true, error: null }
+      if (!blockErr && !blocked)
+        await sendPush([p.userId], { title: 'הבקשה לנסיעה נדחתה', body: 'אפשר לחפש נסיעה אחרת', url: '/stand/trips', tag: `trip:${p.tripId}` })
+    }
   }
   revalidatePath('/stand/trips')
   return { ok: true as const }

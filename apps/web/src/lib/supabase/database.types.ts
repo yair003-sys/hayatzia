@@ -1240,6 +1240,9 @@ isOneToOne: false
 "blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
+"claim_message_push":
+{ Args: { "p_id": string,"p_kind": string }; Returns: boolean
+                           },
 "check_in":
 { Args: { "p_fixture": number,"p_lat": number,"p_lng": number }; Returns: Json
                            },

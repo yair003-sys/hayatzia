@@ -37,6 +37,9 @@ export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uu
     .eq('id', parsedInput.threadId)
     .maybeSingle()
   if (!me || !t) return { ok: true as const }
+  // Security (2026-10-15): only right after a real message by me, never across a block, at most once per 10 seconds.
+  const { data: allowed } = await supabase.rpc('claim_message_push', { p_kind: 'dm', p_id: t.id })
+  if (!allowed) return { ok: true as const }
   const meIsA = t.user_a === me
   await sendMessagePush([meIsA ? t.user_b : t.user_a], {
     title: 'הודעה פרטית חדשה',
@@ -58,6 +61,9 @@ export const notifyGroupAction = actionClient.inputSchema(z.object({ groupId: z.
   const { data: claims } = await supabase.auth.getClaims()
   const me = claims?.claims.sub
   if (!me) return { ok: true as const }
+  // Security (2026-10-15): only right after a real message by me, at most once per 10 seconds per group.
+  const { data: allowed } = await supabase.rpc('claim_message_push', { p_kind: 'grp', p_id: parsedInput.groupId })
+  if (!allowed) return { ok: true as const }
   const [{ data: group }, { data: targets }] = await Promise.all([
     supabase.from('dm_groups').select('id,name').eq('id', parsedInput.groupId).maybeSingle(),
     supabase.rpc('group_push_targets', { p_group: parsedInput.groupId }),

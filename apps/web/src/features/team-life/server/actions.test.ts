@@ -149,6 +149,16 @@ describe('trip push: an acceptance', () => {
     expect(db.pushes).toEqual([])
   })
 
+  it('a decline is not sent across a block either (security review 2026-10-15)', async () => {
+    db.updated = [{ user_id: RIDER }]
+    db.blocked = true
+    await decideSeatAction({ tripId: TRIP, userId: RIDER, accept: false })
+    expect(db.pushes).toEqual([])
+    db.blocked = false
+    await decideSeatAction({ tripId: TRIP, userId: RIDER, accept: false })
+    expect(db.pushes.map((p) => p.to)).toEqual([[RIDER]])
+  })
+
   it('not between fans blocked either way, and never to myself', async () => {
     db.updated = [{ user_id: RIDER }]
     db.blocked = true

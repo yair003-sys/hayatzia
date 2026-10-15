@@ -64,5 +64,6 @@ jobs:
           fi
           out=$(mktemp)
           code=$(curl -sS --max-time 75 -X POST -H "Authorization: Bearer $ALERTS_SECRET" ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} -o "$out" -w '%{http_code}' "${APP_URL%/}/api/alerts/dispatch" || true)
-          echo "::notice title=alerts ${{ matrix.env }}::HTTP ${code:-none} $(head -c 300 "$out" 2>/dev/null)"
+          # The status code only: these logs are public (security review 2026-10-15).
+          echo "::notice title=alerts ${{ matrix.env }}::HTTP ${code:-none}"
           exit 0
