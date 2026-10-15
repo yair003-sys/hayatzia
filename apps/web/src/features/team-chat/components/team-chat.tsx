@@ -13,6 +13,7 @@ export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: str
       meId={meId}
       initial={initial}
       hiddenUsers={hidden}
+      reportKind="team_message"
       doodle={color}
       placeholder="כתוב לקבוצה…"
       emptyText="עוד אין הודעות. כתוב את הראשונה."

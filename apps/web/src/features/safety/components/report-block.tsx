@@ -5,13 +5,48 @@ import { Flag, Ban } from 'lucide-react'
 import { REPORT_REASONS, type REPORT_KINDS } from '../schema'
 import { blockAction, reportAction } from '../server/actions'
 
-type Props = { kind: (typeof REPORT_KINDS)[number]; refId: string; userId?: string; userNick?: string }
+type Kind = (typeof REPORT_KINDS)[number]
+type Props = { kind: Kind; refId: string; userId?: string; userNick?: string }
+
+/**
+ * The report form itself (reason + optional note), for any place that has its own "דווח" button (chat messages,
+ * comments). Calls `onDone` with the line to show the fan (thanks, or what went wrong).
+ */
+export function ReportForm({ kind, refId, onDone, className }: { kind: Kind; refId: string; onDone: (msg: string) => void; className?: string }) {
+  const [reason, setReason] = useState<(typeof REPORT_REASONS)[number]>(REPORT_REASONS[0])
+  const [note, setNote] = useState('')
+  const [pending, start] = useTransition()
+  return (
+    <form
+      className={className ?? 'space-y-2 rounded-lg border border-line bg-surface p-3'}
+      aria-label="דיווח לצוות"
+      onSubmit={(e) => {
+        e.preventDefault()
+        start(async () => {
+          const r = await reportAction({ kind, ref: refId, reason, note })
+          onDone(r.data?.ok ? 'תודה. הדיווח הגיע לצוות.' : (r.data?.error ?? 'הדיווח לא נשלח'))
+        })
+      }}
+    >
+      <label className="block text-sm">
+        סיבה
+        <select value={reason} onChange={(e) => setReason(e.target.value as typeof reason)} className="mt-1 w-full rounded-md border border-line bg-elev px-3 py-2">
+          {REPORT_REASONS.map((r) => (
+            <option key={r}>{r}</option>
+          ))}
+        </select>
+      </label>
+      <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} placeholder="פרטים (לא חובה)" aria-label="פרטים" className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm" />
+      <button type="submit" disabled={pending} className="min-h-11 w-full rounded-lg bg-live py-2 text-sm font-semibold text-white">
+        שלח דיווח
+      </button>
+    </form>
+  )
+}
 
 /** "Report" (to moderators) and, when there is a person, "Block". */
 export function ReportBlock({ kind, refId, userId, userNick }: Props) {
   const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState<(typeof REPORT_REASONS)[number]>(REPORT_REASONS[0])
-  const [note, setNote] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
 
@@ -40,30 +75,14 @@ export function ReportBlock({ kind, refId, userId, userNick }: Props) {
         )}
       </div>
       {open && (
-        <form
-          className="space-y-2 rounded-lg border border-line bg-surface p-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            start(async () => {
-              const r = await reportAction({ kind, ref: refId, reason, note })
-              setMsg(r.data?.ok ? 'תודה. הדיווח הגיע לצוות.' : (r.data?.error ?? 'הדיווח לא נשלח'))
-              setOpen(false)
-            })
+        <ReportForm
+          kind={kind}
+          refId={refId}
+          onDone={(m) => {
+            setMsg(m)
+            setOpen(false)
           }}
-        >
-          <label className="block text-sm">
-            סיבה
-            <select value={reason} onChange={(e) => setReason(e.target.value as typeof reason)} className="mt-1 w-full rounded-md border border-line bg-elev px-3 py-2">
-              {REPORT_REASONS.map((r) => (
-                <option key={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} placeholder="פרטים (לא חובה)" aria-label="פרטים" className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm" />
-          <button type="submit" disabled={pending} className="w-full rounded-lg bg-live py-2 text-sm font-semibold text-white">
-            שלח דיווח
-          </button>
-        </form>
+        />
       )}
       {msg && <p role="status" className="text-xs text-muted">{msg}</p>}
     </div>

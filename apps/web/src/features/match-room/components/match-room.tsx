@@ -112,6 +112,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         meId={meId}
         initial={initial}
         hiddenUsers={hidden}
+        reportKind="match_message"
         readOnly={readOnly}
         placeholder="מה קורה במגרש?"
         emptyText={state === 'soon' ? 'עוד מוקדם. נתראה לפני שריקת הפתיחה.' : 'עוד אין הודעות בחדר.'}

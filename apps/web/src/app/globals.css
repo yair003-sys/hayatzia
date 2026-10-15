@@ -1252,16 +1252,18 @@
   .chat-replybar .chat-quote-text { -webkit-line-clamp: 1; }
   .chat-replybar-x { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: 0.6rem; color: var(--color-muted); }
 
-  /* "השב": beside the bubble, in the free space of the row. Shown after a tap (data-active), on hover, or when it
-     has keyboard focus; never removed from the tab order. */
-  .chat-reply-btn { position: absolute; top: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* "השב" (and "דווח" on other fans' messages): beside the bubble, in the free space of the row, one above the other.
+     Shown after a tap (data-active), on hover, or when it has keyboard focus; never removed from the tab order. */
+  .chat-actions { position: absolute; top: 50%; z-index: 1; display: flex; flex-direction: column; gap: 0.25rem; opacity: 0;
+    pointer-events: none; transform: translateY(-50%); transition: opacity 0.15s; }
+  .chat-reply-btn { display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 2.75rem; height: 2.75rem; border-radius: 999px; border: 1px solid var(--color-line); background: var(--color-surface-3);
-    color: var(--color-fg); opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity 0.15s; }
+    color: var(--color-fg); }
   .chat-reply-btn-text { font-size: 9.5px; font-weight: 700; line-height: 1; }
-  .chat-msg-mine .chat-reply-btn { inset-inline-end: -3.1rem; }
-  .chat-msg-other .chat-reply-btn { inset-inline-start: -3.1rem; }
-  .chat-msg[data-active] .chat-reply-btn, .chat-msg:focus-within .chat-reply-btn { opacity: 1; pointer-events: auto; }
-  @media (hover: hover) { .chat-msg:hover .chat-reply-btn { opacity: 1; pointer-events: auto; } }
+  .chat-msg-mine .chat-actions { inset-inline-end: -3.1rem; }
+  .chat-msg-other .chat-actions { inset-inline-start: -3.1rem; }
+  .chat-msg[data-active] .chat-actions, .chat-msg:focus-within .chat-actions { opacity: 1; pointer-events: auto; }
+  @media (hover: hover) { .chat-msg:hover .chat-actions { opacity: 1; pointer-events: auto; } }
 
   /* The original of a quote, after a jump. Reduced motion: the global rule cuts the animation, so no flash. */
   .chat-flash .chat-bubble { animation: chat-flash 1.6s ease-out; }

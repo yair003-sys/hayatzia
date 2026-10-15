@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { Eye, Heart, MessageCircle, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Eye, Flag, Heart, MessageCircle, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
-import { ReportBlock } from '@/features/safety/components/report-block'
+import { ReportBlock, ReportForm } from '@/features/safety/components/report-block'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { cn } from '@/lib/utils'
 import { shortCount, timeLeftHe, type Clip, type ClipComment } from '../schema'
@@ -38,6 +38,9 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const [comments, setComments] = useState<ClipComment[] | null>(null)
   const [commentCount, setCommentCount] = useState(clip.comments_count)
   const [draft, setDraft] = useState('')
+  // The comment being reported (its id), and the line shown after a report.
+  const [reportingComment, setReportingComment] = useState<string | null>(null)
+  const [commentNote, setCommentNote] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const [now] = useState(() => Date.now())
@@ -258,11 +261,45 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           {comments.length === 0 && <p className="text-xs text-muted">עוד אין תגובות.</p>}
           <ul className="space-y-1.5">
             {comments.map((c) => (
-              <li key={c.id} className="text-sm">
-                <b className="text-accent-text">{c.nick}</b> {c.body}
+              <li key={c.id} className="space-y-1.5 text-sm">
+                <div className="flex items-start gap-2">
+                  <p className="min-w-0 flex-1 break-words">
+                    <b className="text-accent-text">{c.nick}</b> {c.body}
+                  </p>
+                  {c.user_id !== meId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommentNote(null)
+                        setReportingComment(reportingComment === c.id ? null : c.id)
+                      }}
+                      aria-expanded={reportingComment === c.id}
+                      aria-label={`דווח על התגובה של ${c.nick}`}
+                      className="-my-2 flex min-h-11 shrink-0 items-center gap-1 px-1 text-xs text-muted"
+                    >
+                      <Flag className="size-3.5" aria-hidden="true" />
+                      דווח
+                    </button>
+                  )}
+                </div>
+                {reportingComment === c.id && (
+                  <ReportForm
+                    kind="clip_comment"
+                    refId={c.id}
+                    onDone={(m) => {
+                      setReportingComment(null)
+                      setCommentNote(m)
+                    }}
+                  />
+                )}
               </li>
             ))}
           </ul>
+          {commentNote && (
+            <p role="status" className="text-xs text-muted">
+              {commentNote}
+            </p>
+          )}
           <form
             className="flex gap-2"
             onSubmit={(e) => {

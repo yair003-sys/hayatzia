@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { SendHorizontal } from 'lucide-react'
+import { Flag, SendHorizontal, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +10,8 @@ import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
 import { DayDivider, JumpButton, jumpToMessage, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
 import { useFollowEnd, useReadPosition } from './use-read-position'
-import { echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
+import { ReportForm } from '@/features/safety/components/report-block'
+import { canReport, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
 import {
   MESSAGE_MAX,
   mergeMessages,
@@ -56,6 +57,8 @@ export type ChatRoomProps = {
    * line. Without it, no typing line.
    */
   presenceTopic?: string
+  /** Public chats: "דווח" on other fans' messages files a report of this kind with the message id. */
+  reportKind?: 'team_message' | 'match_message'
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -77,6 +80,7 @@ export function ChatRoom({
   pinned,
   openAtEnd = true,
   presenceTopic,
+  reportKind,
 }: ChatRoomProps) {
   const typing = useTyping(presenceTopic, meId, hiddenUsers)
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
@@ -89,6 +93,8 @@ export function ChatRoom({
   const [live, setLive] = useState(false)
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
   const [active, setActive] = useState<string | null>(null)
+  const [reporting, setReporting] = useState<ChatMessage | null>(null)
+  const [reportNote, setReportNote] = useState<string | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -231,6 +237,10 @@ export function ChatRoom({
     input.current?.focus()
   }, [])
   const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
+  const startReport = useCallback((m: ChatMessage) => {
+    setReportNote(null)
+    setReporting(m)
+  }, [])
 
   const firstSaved = messages[0]
   const loadedIds = new Set(messages.map((m) => m.id))
@@ -261,6 +271,7 @@ export function ChatRoom({
         active={active === m.id}
         onActive={setActive}
         onReply={readOnly || m.id.startsWith(LOCAL_ID) ? undefined : startReply}
+        onReport={canReport(m, meId, Boolean(reportKind)) ? startReport : undefined}
         quoteLoaded={!!m.reply_to && loadedIds.has(m.reply_to)}
         quoteHidden={!!m.reply_to && (hiddenIds.has(m.reply_to) || (!!m.reply_user && !!hiddenUsers?.includes(m.reply_user)))}
         onJump={jump}
@@ -277,9 +288,10 @@ export function ChatRoom({
       style={doodle ? ({ '--doodle': doodle } as CSSProperties) : undefined}
       // Escape anywhere in the chat (box, reply bar, message actions) cancels a reply and closes the actions.
       onKeyDown={(e) => {
-        if (e.key !== 'Escape' || (!replyTo && !active)) return
+        if (e.key !== 'Escape' || (!replyTo && !active && !reporting)) return
         e.preventDefault()
         setActive(null)
+        setReporting(null)
         if (replyTo) {
           setReplyTo(null)
           input.current?.focus()
@@ -325,6 +337,35 @@ export function ChatRoom({
         {!follow.atBottom && <JumpButton count={follow.unread} onClick={follow.toEnd} />}
         {pinned}
         {presenceTopic && <TypingLine count={typing.count} />}
+        {reporting && reportKind && (
+          <section aria-label="דיווח על הודעה" className="space-y-2 rounded-xl border border-line bg-elev/95 p-3 backdrop-blur">
+            <div className="flex items-start gap-2">
+              <Flag className="mt-0.5 size-4 shrink-0 text-live" aria-hidden="true" />
+              <div className="min-w-0 flex-1 text-sm">
+                <b>דיווח על ההודעה של {reporting.nick}</b>
+                <p className="truncate text-muted">{replySnippet(reporting.body)}</p>
+              </div>
+              <button type="button" className="chat-replybar-x" onClick={() => setReporting(null)} aria-label="ביטול הדיווח">
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <ReportForm
+              key={reporting.id}
+              kind={reportKind}
+              refId={reporting.id}
+              className="space-y-2"
+              onDone={(msg) => {
+                setReporting(null)
+                setReportNote(msg)
+              }}
+            />
+          </section>
+        )}
+        {reportNote && (
+          <p role="status" className="text-center text-xs text-muted">
+            {reportNote}
+          </p>
+        )}
         {readOnly ? (
           <p className="rounded-xl border border-line bg-elev/95 p-3 text-center text-sm text-muted backdrop-blur">{readOnly}</p>
         ) : (
@@ -409,6 +450,7 @@ const MessageItem = memo(function MessageItem({
   active,
   onActive,
   onReply,
+  onReport,
   quoteLoaded,
   quoteHidden,
   onJump,
@@ -421,6 +463,7 @@ const MessageItem = memo(function MessageItem({
   active: boolean
   onActive: (id: string | null) => void
   onReply?: (m: ChatMessage) => void
+  onReport?: (m: ChatMessage) => void
   quoteLoaded: boolean
   quoteHidden: boolean
   onJump: (id: string) => void
@@ -436,6 +479,7 @@ const MessageItem = memo(function MessageItem({
       active={active}
       onActive={onActive}
       onReply={onReply ? () => onReply(m) : undefined}
+      onReport={onReport ? () => onReport(m) : undefined}
     >
       {!mine && (
         <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>

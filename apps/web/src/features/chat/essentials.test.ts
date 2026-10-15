@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  canReport,
   dayKey,
   echoMatch,
   failurePlan,
@@ -192,5 +193,17 @@ describe('failurePlan', () => {
   it('puts a refused text back, with its quote unless the quote is gone', () => {
     expect(failurePlan('permanent')).toEqual({ keepBubble: false, restoreText: true, restoreQuote: true })
     expect(failurePlan('bad_reply')).toEqual({ keepBubble: false, restoreText: true, restoreQuote: false })
+  })
+})
+
+describe('canReport ("דווח" on a chat message)', () => {
+  const other = { id: 'm1', user_id: 'u2' }
+  it('offers a report on another fan\'s saved message in a public chat', () => {
+    expect(canReport(other, 'u1', true)).toBe(true)
+  })
+  it('never on my own message, a message still on this device, or a chat without reports', () => {
+    expect(canReport({ id: 'm1', user_id: 'u1' }, 'u1', true)).toBe(false)
+    expect(canReport({ id: 'local-1', user_id: 'u2' }, 'u1', true)).toBe(false)
+    expect(canReport(other, 'u1', false)).toBe(false)
   })
 })

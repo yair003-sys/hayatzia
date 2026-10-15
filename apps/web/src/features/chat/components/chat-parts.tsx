@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useSyncExternalStore, type ReactNode } from 'react'
-import { AlertCircle, ArrowDown, Check, CheckCheck, CornerUpLeft, X } from 'lucide-react'
+import { AlertCircle, ArrowDown, Check, CheckCheck, CornerUpLeft, Flag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { dayLabel, tickInfo, type SendState } from '../essentials'
 import { chatTime } from '../schema'
@@ -163,8 +163,8 @@ export function jumpToMessage(root: HTMLElement | null, id: string): boolean {
 }
 
 /**
- * One message row: tap (or long-press on touch) shows the "השב" action; on a computer it shows on hover, and it is
- * always reachable by keyboard (Tab). `data-mid` / `data-at` let the chat find the message (jump, read position).
+ * One message row: tap (or long-press on touch) shows the "השב" action (and "דווח" on another fan's message in a
+ * public chat); on a computer they show on hover, and they are always reachable by keyboard (Tab). `data-mid` / `data-at` let the chat find the message (jump, read position).
  */
 export function MessageRow({
   id,
@@ -173,6 +173,7 @@ export function MessageRow({
   active,
   onActive,
   onReply,
+  onReport,
   children,
 }: {
   id: string
@@ -182,8 +183,11 @@ export function MessageRow({
   active: boolean
   onActive: (id: string | null) => void
   onReply?: () => void
+  /** "דווח" (public chats, never on my own messages). */
+  onReport?: () => void
   children: ReactNode
 }) {
+  const hasActions = Boolean(onReply || onReport)
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; long: boolean }>({ timer: null, long: false })
   const clear = () => {
     if (press.current.timer) clearTimeout(press.current.timer)
@@ -197,7 +201,7 @@ export function MessageRow({
       data-active={active ? '' : undefined}
       className={cn('chat-msg', mine ? 'chat-msg-mine' : 'chat-msg-other')}
       onClick={(e) => {
-        if (!onReply) return
+        if (!hasActions) return
         if (press.current.long) {
           press.current.long = false
           return
@@ -207,7 +211,7 @@ export function MessageRow({
         onActive(active ? null : id)
       }}
       onPointerDown={(e) => {
-        if (!onReply || e.pointerType !== 'touch') return
+        if (!hasActions || e.pointerType !== 'touch') return
         press.current.long = false
         clear()
         press.current.timer = setTimeout(() => {
@@ -219,19 +223,37 @@ export function MessageRow({
       onPointerCancel={clear}
     >
       {children}
-      {onReply && (
-        <button
-          type="button"
-          className="chat-reply-btn"
-          onClick={() => {
-            onActive(null)
-            onReply()
-          }}
-          aria-label="השב להודעה"
-        >
-          <CornerUpLeft className="size-4" aria-hidden="true" />
-          <span className="chat-reply-btn-text">השב</span>
-        </button>
+      {hasActions && (
+        <div className="chat-actions">
+          {onReply && (
+            <button
+              type="button"
+              className="chat-reply-btn"
+              onClick={() => {
+                onActive(null)
+                onReply()
+              }}
+              aria-label="השב להודעה"
+            >
+              <CornerUpLeft className="size-4" aria-hidden="true" />
+              <span className="chat-reply-btn-text">השב</span>
+            </button>
+          )}
+          {onReport && (
+            <button
+              type="button"
+              className="chat-reply-btn"
+              onClick={() => {
+                onActive(null)
+                onReport()
+              }}
+              aria-label="דווח על ההודעה"
+            >
+              <Flag className="size-4" aria-hidden="true" />
+              <span className="chat-reply-btn-text">דווח</span>
+            </button>
+          )}
+        </div>
       )}
     </li>
   )

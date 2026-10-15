@@ -133,6 +133,11 @@ export function isLocalId(id: string): boolean {
   return id.startsWith(LOCAL_ID)
 }
 
+/** "דווח" on a chat message: only in a public chat that allows reports, on another fan's message the server saved. */
+export function canReport(m: { id: string; user_id: string }, meId: string, reportable: boolean): boolean {
+  return reportable && m.user_id !== meId && !isLocalId(m.id)
+}
+
 /** A message with a server id was saved; a local one is sending or failed. */
 export function sendState(m: { id: string; failed?: boolean }): SendState {
   if (!isLocalId(m.id)) return 'sent'
