@@ -1,12 +1,18 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const q = vi.hoisted(() => ({ toString: vi.fn(async (_text: string, _opts?: unknown) => '<svg xmlns="http://www.w3.org/2000/svg"></svg>') }))
+const q = vi.hoisted(() => ({
+  toString: vi.fn(async (text: string, opts?: unknown) => {
+    void text
+    void opts
+    return '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+  }),
+}))
 vi.mock('qrcode', () => ({ toString: q.toString, default: { toString: q.toString } }))
 vi.mock('../server/actions', () => ({ resetQrAction: vi.fn(), openByCodeAction: vi.fn() }))
 
 import { AddCard } from './add-card'
-import { MyQr } from './my-qr'
+import { codeFromScan, MyQr } from './my-qr'
 
 afterEach(cleanup)
 
@@ -32,5 +38,14 @@ describe('AddCard (/add/<code>)', () => {
     render(<AddCard code={CODE} card={{ nick: 'יריב', teamId: 'hta' }} />)
     expect(screen.getByText('יריב')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'שלח הודעה' })).toBeInTheDocument()
+  })
+})
+
+describe('codeFromScan', () => {
+  it('reads our add link or a bare code, nothing else', () => {
+    expect(codeFromScan(`https://onefan.example/add/${CODE}`)).toBe(CODE)
+    expect(codeFromScan(`https://onefan.example/add/${CODE}?x=1`)).toBe(CODE)
+    expect(codeFromScan(CODE)).toBe(CODE)
+    expect(codeFromScan('https://example.com/other')).toBeNull()
   })
 })
