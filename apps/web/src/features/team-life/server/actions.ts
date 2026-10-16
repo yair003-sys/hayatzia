@@ -4,6 +4,7 @@ import { moderationHe } from '@/lib/moderation'
 import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import type { TablesInsert } from '@/lib/supabase/database.types'
 import { sendPush } from '@/features/push/server/send'
 import { tripAcceptedLine, tripHref, tripRequestLine, type TripKind } from '@/features/activity/activity'
 import { decideSchema, eventSchema, genderSchema, goingSchema, idSchema, itemSchema, rateRideSchema, rideConsentSchema, tripSchema } from '../schema'
@@ -130,7 +131,10 @@ export const setGenderAction = actionClient.inputSchema(genderSchema).action(asy
 
 /** Rating the driver after the match, once (rule 6). The database checks rider, time and the single rating. */
 export const rateRideAction = actionClient.inputSchema(rateRideSchema).action(async ({ parsedInput: { tripId, stars } }) => {
-  const { error } = await (await db()).from('ride_ratings').insert({ trip_id: tripId, stars })
+  // driver_id is NOT NULL but always stamped by the BEFORE INSERT trigger (ride_ratings_check) from the trip, so the
+  // generated insert type asks for a value the client never sends and could not set anyway.
+  const row = { trip_id: tripId, stars } as TablesInsert<'ride_ratings'>
+  const { error } = await (await db()).from('ride_ratings').insert(row)
   if (error && error.code !== '23505') return { error: rideErrorHe(error.message) ?? 'הדירוג לא נשמר. נסה שוב' }
   revalidatePath('/stand/trips')
   return { ok: true as const }
