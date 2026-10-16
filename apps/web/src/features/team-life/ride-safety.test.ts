@@ -4,6 +4,7 @@ import {
   accountAge,
   averageStars,
   filterRides,
+  rideAge,
   rideErrorHe,
   rideOver,
   shareText,
@@ -108,5 +109,13 @@ describe('ride copy', () => {
   })
   it('lists the emergency numbers', () => {
     expect(EMERGENCY_NUMBERS.map((e) => e.number)).toEqual(['100', '1202', '1203'])
+  })
+})
+
+describe('rideAge (18+ from the birth date, 2026-10-16)', () => {
+  it('adult from the 18th birthday, minor before, none without a date', () => {
+    expect(rideAge('2008-10-16', '2026-10-16')).toBe('adult')
+    expect(rideAge('2008-10-17', '2026-10-16')).toBe('minor')
+    expect(rideAge(null, '2026-10-16')).toBe('none')
   })
 })

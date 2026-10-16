@@ -70,6 +70,12 @@ describe('createProfileAction: consent (terms, privacy) and birth date', () => {
     expect(s.redirects).toEqual(['/stand'])
   })
 
+  it('goes back to a scanned QR card after sign-up, and nowhere outside the app', async () => {
+    await createProfileAction({ teamId: 'mta', nick: 'יאיר', confirm: true, accept: true, birthDate: BIRTH, next: '/add/abcDEF123_-abcDEF123_-x' })
+    await createProfileAction({ teamId: 'mta', nick: 'יאיר', confirm: true, accept: true, birthDate: BIRTH, next: 'https://evil.example' })
+    expect(s.redirects).toEqual(['/add/abcDEF123_-abcDEF123_-x', '/stand'])
+  })
+
   it('shows the database refusal of the birth date in Hebrew', async () => {
     s.insertError = { code: '22023', message: 'too_young' }
     const r = await createProfileAction({ teamId: 'mta', nick: 'יאיר', confirm: true, accept: true, birthDate: BIRTH })
