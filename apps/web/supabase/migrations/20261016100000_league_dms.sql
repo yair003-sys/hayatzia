@@ -71,6 +71,9 @@ end $$;
 revoke all on function private.profiles_private_stamp() from public, anon, authenticated;
 create trigger profiles_private_stamp before insert or update on public.profiles
   for each row execute function private.profiles_private_stamp();
+-- A fan's own sign-up must carry the birth date (rows from before keep null until the one-time prompt).
+create policy profiles_insert_birth_date on public.profiles as restrictive for insert to authenticated
+  with check (birth_date is not null);
 
 create function private.is_adult(p_user uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
@@ -238,27 +241,22 @@ update public.dm_threads t
 -- The daily cap counts a fan's new requests.
 create index dm_threads_opened_idx on public.dm_threads (opened_by, created_at desc) where not via_qr;
 
--- May I (the caller) reach that fan: never across a block; a thread between us, or the fan's setting lets me in.
--- Fans sharing a group always may (groups keep working whatever the setting). Used by the device_keys policy.
+-- May I (the caller) read that fan's public device keys: a thread between us, a group we share, or the same club (as
+-- before), and never across a block either way. The request setting is deliberately not a reason (security review
+-- 2026-10-16): otherwise anyone could list every fan who takes requests from everyone. The opener of a new thread reads
+-- the keys right after opening it (the thread exists by then).
 create function private.can_dm(p_other uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select p_other is not null and (select auth.uid()) is not null and p_other <> (select auth.uid()) and (
-    exists (select 1 from public.dm_group_members a
-              join public.dm_group_members b on b.group_id = a.group_id and b.user_id = p_other
-             where a.user_id = (select auth.uid()))
-    or (
-      not private.blocks_exist((select auth.uid()), p_other)
-      and (
-        exists (select 1 from public.dm_threads t
-                 where t.user_a = least((select auth.uid()), p_other) and t.user_b = greatest((select auth.uid()), p_other))
-        or case private.dm_setting(p_other)
-             when 'everyone' then true
-             when 'team' then exists (select 1 from public.profiles p where p.user_id = p_other and p.team_id = public.my_team())
-             else false
-           end
-      )
-    )
-  )
+  select p_other is not null and (select auth.uid()) is not null and p_other <> (select auth.uid())
+     and not private.blocks_exist((select auth.uid()), p_other)
+     and (
+       exists (select 1 from public.dm_threads t
+                where t.user_a = least((select auth.uid()), p_other) and t.user_b = greatest((select auth.uid()), p_other))
+       or exists (select 1 from public.dm_group_members a
+                    join public.dm_group_members b on b.group_id = a.group_id and b.user_id = p_other
+                   where a.user_id = (select auth.uid()))
+       or exists (select 1 from public.profiles p where p.user_id = p_other and p.team_id = public.my_team())
+     )
 $$;
 revoke all on function private.can_dm(uuid) from public, anon;
 grant execute on function private.can_dm(uuid) to authenticated;  -- inside the device_keys policy only
@@ -273,6 +271,10 @@ declare
   mine record;
   lim int;
 begin
+  -- Only for the caller themselves (the QR path is reached only through open_dm_by_code, which passes the caller).
+  if p_me is null or p_me is distinct from auth.uid() then
+    raise exception 'not a member' using errcode = '42501';
+  end if;
   select p.nick, p.team_id, p.birth_date, p.created_at into mine from public.profiles p where p.user_id = p_me;
   if not found or not exists (select 1 from public.profiles p where p.user_id = p_other) then
     raise exception 'not a member' using errcode = '42501';
@@ -346,6 +348,10 @@ begin
     raise exception 'not a member' using errcode = '42501';
   end if;
   other := case when new.sender_id = t.user_a then t.user_b else t.user_a end;
+  -- A suspended fan cannot write privately either (security review 2026-10-16; the text stays unreadable to us).
+  if private.is_banned(new.sender_id) then
+    raise exception 'banned' using errcode = '42501';
+  end if;
   if public.blocked_between(new.sender_id, other) then
     raise exception 'blocked' using errcode = '42501';
   end if;
@@ -479,3 +485,52 @@ begin
 end $$;
 revoke all on function public.admin_most_blocked(int) from public, anon;
 grant execute on function public.admin_most_blocked(int) to authenticated;
+
+-- ---------- group invites respect a QR-only setting (security review 2026-10-16) ----------
+-- Same rules as 20261013110000_dm_groups_blocks, plus: a fan whose setting in force is 'qr' is invited only by a fan
+-- who already has a private thread with them (invites_closed).
+create or replace function public.invite_to_group(p_group uuid, p_members uuid[]) returns uuid[]
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  g record;
+  picked uuid[];
+  x uuid;
+begin
+  if public.dm_group_lock(p_group) <> 'admin' then
+    raise exception 'not_admin' using errcode = 'P0001';
+  end if;
+  select * into g from public.dm_groups where id = p_group;
+  picked := array(select distinct u from unnest(p_members) u where u is not null and u <> me);
+  if cardinality(picked) = 0 then
+    raise exception 'no_members' using errcode = 'P0001';
+  end if;
+  if cardinality(picked) > 19 then
+    raise exception 'group_full' using errcode = 'P0001';
+  end if;
+  delete from public.dm_group_members
+   where group_id = p_group and role = 'invited' and invited_at <= now() - interval '7 days';
+  picked := array(select u from unnest(picked) u
+                  where not exists (select 1 from public.dm_group_members m where m.group_id = p_group and m.user_id = u));
+  if (select count(*) from public.dm_group_members m where m.group_id = p_group) + cardinality(picked) > 20 then
+    raise exception 'group_full' using errcode = 'P0001';
+  end if;
+  foreach x in array picked loop
+    if not exists (select 1 from public.profiles p where p.user_id = x and p.team_id = g.team_id) then
+      raise exception 'not_same_team' using errcode = 'P0001';
+    end if;
+    if exists (select 1 from public.dm_group_members m where m.group_id = p_group and public.blocked_between(x, m.user_id)) then
+      raise exception 'blocked' using errcode = 'P0001';
+    end if;
+    if private.dm_setting(x) = 'qr'
+       and not exists (select 1 from public.dm_threads t where t.user_a = least(me, x) and t.user_b = greatest(me, x)) then
+      raise exception 'invites_closed' using errcode = 'P0001';
+    end if;
+    insert into public.dm_group_members (group_id, user_id, role, invited_by, invited_at)
+    values (p_group, x, 'invited', me, now());
+    perform realtime.send(jsonb_build_object('group_id', p_group), 'invite', 'inbox:' || x, true);
+  end loop;
+  return picked;
+end $$;
+revoke all on function public.invite_to_group(uuid, uuid[]) from public, anon;
+grant execute on function public.invite_to_group(uuid, uuid[]) to authenticated;
