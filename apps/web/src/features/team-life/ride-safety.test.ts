@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EMERGENCY_LABEL,
   EMERGENCY_NUMBERS,
   accountAge,
+  carLine,
+  emergencyOpen,
   averageStars,
   filterRides,
   rideAge,
@@ -117,5 +120,37 @@ describe('rideAge (18+ from the birth date, 2026-10-16)', () => {
     expect(rideAge('2008-10-16', '2026-10-16')).toBe('adult')
     expect(rideAge('2008-10-17', '2026-10-16')).toBe('minor')
     expect(rideAge(null, '2026-10-16')).toBe('none')
+  })
+})
+
+describe('ride verification (2026-10-16)', () => {
+  const base = { driverNick: 'נהג', pickup: 'תחנת רכבת', fromCity: 'חיפה', kickoffSec: 0, departBeforeMin: 60, match: 'x', url: 'u' }
+  it('the share text has the car and whether the driver is verified', () => {
+    const text = shareText({ ...base, car: 'מאזדה 3 · לבן', verified: true })
+    expect(text).toContain('רכב: מאזדה 3 · לבן')
+    expect(text).toContain('הנהג מאומת ב-onefan')
+    expect(shareText({ ...base, car: null, verified: false })).toContain('הנהג עוד לא מאומת ב-onefan')
+    expect(shareText(base)).not.toContain('מאומת')
+    expect(shareText({ ...base, car: null })).not.toContain('רכב:')
+  })
+  it('the car line: make and model, then colour', () => {
+    expect(carLine('מאזדה', '3', 'לבן')).toBe('מאזדה 3 · לבן')
+    expect(carLine('טויוטה', '', '')).toBe('טויוטה')
+    expect(carLine(null, null, null)).toBeNull()
+  })
+  it('the emergency button: from 30 minutes before departure until kickoff + 4 hours', () => {
+    const kickoff = Date.parse('2026-10-17T17:00:00Z') / 1000
+    const at = (iso: string) => new Date(iso)
+    expect(emergencyOpen(kickoff, 120, at('2026-10-17T14:29:00Z'))).toBe(false)
+    expect(emergencyOpen(kickoff, 120, at('2026-10-17T14:31:00Z'))).toBe(true)
+    expect(emergencyOpen(kickoff, 120, at('2026-10-17T16:00:00Z'))).toBe(true)
+    expect(emergencyOpen(kickoff, 120, at('2026-10-17T20:59:00Z'))).toBe(true)
+    expect(emergencyOpen(kickoff, 120, at('2026-10-17T21:01:00Z'))).toBe(false)
+    expect(EMERGENCY_LABEL).toBe('חירום – חיוג ל-100')
+  })
+  it('the verification gates in the fan\'s words', () => {
+    expect(rideErrorHe('verify_identity')).toBe('כדי לנסוע צריך לאמת זהות: תעודה מזהה וסריקת פנים')
+    expect(rideErrorHe('no_car')).toMatch(/רכב/)
+    expect(rideErrorHe('peer_not_verified')).toMatch(/אימות/)
   })
 })

@@ -91,6 +91,8 @@ export function shareText(p: {
   departBeforeMin: number
   match: string
   url: string
+  car?: string | null
+  verified?: boolean
 }): string {
   const kickoff = new Date(p.kickoffSec * 1000)
   const depart = new Date(kickoff.getTime() - p.departBeforeMin * 60_000)
@@ -116,6 +118,14 @@ const FINAL = new Set(['FT', 'AET', 'PEN'])
 /** The match is over (as the database decides for ratings): final status, or 2 hours after kickoff. */
 export function rideOver(kickoffIso: string, status: string, now: Date = new Date()): boolean {
   return FINAL.has(status) || new Date(kickoffIso).getTime() + 2 * 3600_000 <= now.getTime()
+}
+
+export const EMERGENCY_LABEL = ''
+export function carLine(_m: string | null, _mo: string | null, _c: string | null): string | null {
+  return null
+}
+export function emergencyOpen(_k: number, _d: number, _now: Date = new Date()): boolean {
+  return false
 }
 
 /** The database's ride refusals, in the fan's words (null for anything else). */
