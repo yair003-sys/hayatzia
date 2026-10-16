@@ -543,7 +543,7 @@ isOneToOne: false
                     "active"?: boolean,"checked_at"?: string,"colour"?: string,"created_at"?: string,"id"?: string,"make"?: string,"model"?: string,"plate"?: string,"user_id"?: string,"year"?: number | null
                   }
                   Relationships: [
-
+                    
                   ]
                 },"fan_event_going": {
                   Row: {
@@ -584,20 +584,6 @@ isOneToOne: false
       referencedRelation: "teams"
       referencedColumns: ["id"]
     }
-                  ]
-                },"fan_verifications": {
-                  Row: {
-                    "approved_at": string | null,"counted": boolean,"created_at": string,"doc_fingerprint": string | null,"expires_at": string | null,"id": string,"kind": string,"provider": string,"provider_ref": string | null,"reason_code": string | null,"status": string,"updated_at": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind": string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id": string
-                  }
-                  Update: {
-                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind"?: string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-
                   ]
                 },"fan_lineup_tallies": {
                   Row: {
@@ -676,6 +662,20 @@ isOneToOne: false
       referencedRelation: "teams"
       referencedColumns: ["id"]
     }
+                  ]
+                },"fan_verifications": {
+                  Row: {
+                    "approved_at": string | null,"counted": boolean,"created_at": string,"doc_fingerprint": string | null,"expires_at": string | null,"id": string,"kind": string,"provider": string,"provider_ref": string | null,"reason_code": string | null,"status": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind": string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind"?: string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"fixture_details": {
                   Row: {
@@ -1203,7 +1203,7 @@ isOneToOne: false
                     "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car_colour"?: string,"car_make"?: string,"car_model"?: string,"car_plate"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id"?: string
                   }
                   Relationships: [
-
+                    
                   ]
                 },"ride_ratings": {
                   Row: {
@@ -1792,14 +1792,14 @@ isOneToOne: false
 "set_birth_date":
 { Args: { "p_date": string }; Returns: undefined
                            },
+"set_dm_requests":
+{ Args: { "p_value": string }; Returns: undefined
+                           },
 "set_fan_car":
 { Args: { "p_colour": string,"p_make": string,"p_model": string,"p_plate": string,"p_user": string,"p_year"?: number }; Returns: undefined
                            },
 "verification_result":
 { Args: { "p_approved": boolean,"p_doc_birth_date"?: string,"p_doc_expires"?: string,"p_fingerprint"?: string,"p_licence_issued"?: string,"p_provider": string,"p_provider_ref": string,"p_reason"?: string,"p_session": string }; Returns: string
-                           },
-"set_dm_requests":
-{ Args: { "p_value": string }; Returns: undefined
                            }
           }
           Enums: {
