@@ -32,7 +32,14 @@ function findCulprit(): string | null {
     const out = Math.max(0, page.left - r.left, r.right - page.right)
     if (out <= 1) continue
     const pos = getComputedStyle(el).position
-    if (pos === 'fixed') continue
+    let inFixed = false
+    for (let p: Element | null = el; p && p !== document.body; p = p.parentElement) {
+      if (getComputedStyle(p).position === 'fixed') {
+        inFixed = true
+        break
+      }
+    }
+    if (inFixed) continue
     let cb: Element | null = pos === 'absolute' ? ((el as HTMLElement).offsetParent ?? document.documentElement) : el.parentElement
     let clipped = false
     for (; cb && cb !== document.documentElement; cb = cb.parentElement) {
