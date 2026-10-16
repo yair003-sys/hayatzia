@@ -1,7 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
-import { rideAge, type DriverTrust, type Gender, type RideAge } from '../ride-safety'
+import { carLine, rideAge, type DriverTrust, type Gender, type RideAge } from '../ride-safety'
 
 export type Trip = {
   id: string
@@ -17,13 +17,23 @@ export type Trip = {
   pickup: string
   women_only: boolean
   created_at: string
-  requests: { user_id: string; nick: string; status: 'pending' | 'accepted' | 'declined' }[]
+  /** `verified`: the requester's identity is verified (the badge on request rows, 2026-10-16). */
+  requests: { user_id: string; nick: string; status: 'pending' | 'accepted' | 'declined'; verified: boolean }[]
   /** Trust facts about the trip's author (ride safety rule 5); null when the database did not return them. */
   driver: DriverTrust | null
+  /** Ride verification of the author (2026-10-16): the badge and, on an offer, the car. */
+  trust: TripTrust | null
+  /** The car's plate: only for the driver and accepted riders (my_ride_plates), else null. */
+  plate: string | null
 }
 
-/** Trips of the fan's club for the given matches, with the requests the fan may see (own, or all when driver). */
-export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
+export type TripTrust = { identity: boolean; driver: boolean; car: string | null }
+
+/**
+ * Trips of the fan's club for the given matches, with the requests the fan may see (own, or all when driver). `me` is
+ * the signed-in fan (for the plates of rides they drive or ride in).
+ */
+export async function getTrips(fixtureIds: number[], me?: string): Promise<Trip[]> {
   const supabase = await createClient()
   if (!supabase || fixtureIds.length === 0) return []
   const [{ data: trips }, blocked] = await Promise.all([
@@ -44,6 +54,19 @@ export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
       .in('trip_id', list.map((t) => t.id)),
     supabase.rpc('ride_drivers', { p_users: [...new Set(list.map((t) => t.user_id))] }),
   ])
+  // One call each for the badges (authors and requesters) and for the plates of rides I drive or ride in.
+  const people = [...new Set([...list.map((t) => t.user_id), ...(reqs ?? []).map((r) => r.user_id)])].slice(0, 200)
+  const mineOrAccepted = list
+    .filter((t) => !!me && (t.user_id === me || (reqs ?? []).some((r) => r.trip_id === t.id && r.user_id === me && r.status === 'accepted')))
+    .map((t) => t.id)
+  const [{ data: trustRows }, { data: plates }] = await Promise.all([
+    supabase.rpc('ride_trust', { p_users: people }),
+    mineOrAccepted.length ? supabase.rpc('my_ride_plates', { p_trips: mineOrAccepted }) : Promise.resolve({ data: [] }),
+  ])
+  const verified = new Map(
+    (trustRows ?? []).map((r) => [r.user_id, { identity: r.identity_ok, driver: r.driver_ok, car: carLine(r.car_make, r.car_model, r.car_colour) }]),
+  )
+  const plateOf = new Map((plates ?? []).map((p) => [p.trip_id, p.plate]))
   const trust = new Map(
     (drivers ?? []).map((d) => [
       d.user_id,
@@ -57,9 +80,13 @@ export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
     ]),
   )
   return list.map((t) => ({
-    ...(t as Omit<Trip, 'requests' | 'driver'>),
-    requests: (reqs ?? []).filter((r) => r.trip_id === t.id) as Trip['requests'],
+    ...(t as Omit<Trip, 'requests' | 'driver' | 'trust' | 'plate'>),
+    requests: (reqs ?? [])
+      .filter((r) => r.trip_id === t.id)
+      .map((r) => ({ ...r, verified: verified.get(r.user_id)?.identity ?? false })) as Trip['requests'],
     driver: trust.get(t.user_id) ?? null,
+    trust: verified.get(t.user_id) ?? null,
+    plate: plateOf.get(t.id) ?? null,
   }))
 }
 

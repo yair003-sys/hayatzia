@@ -7,9 +7,22 @@ import { cn } from '@/lib/utils'
 import { BanList } from '@/features/admin/components/ban-list'
 import { MostBlockedList } from '@/features/admin/components/most-blocked-list'
 import { ReportCard } from '@/features/admin/components/report-card'
+import { IncidentList } from '@/features/admin/components/incident-list'
 import { RideSuspensionList } from '@/features/admin/components/ride-suspension-list'
+import { VerificationIssueList } from '@/features/admin/components/verification-issue-list'
 import { QUEUE_STATUS, actionBy, actionLabel, kindLabel, queueStatus, reportTime, type QueueStatus } from '@/features/admin/schema'
-import { getBans, getMostBlocked, getRecentActions, getReportQueue, getRideSuspensions, isAppAdmin, type Cursor } from '@/features/admin/server/queries'
+import {
+  getBans,
+  getIncidentCount,
+  getMostBlocked,
+  getOpenIncidents,
+  getRecentActions,
+  getReportQueue,
+  getRideSuspensions,
+  getVerificationIssues,
+  isAppAdmin,
+  type Cursor,
+} from '@/features/admin/server/queries'
 
 export const metadata: Metadata = { title: 'דיווחים', robots: { index: false, follow: false } }
 
@@ -35,12 +48,15 @@ function cursorOf(before: unknown, id: unknown): Cursor | null {
 
 async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor | null }) {
   if (!(await isAppAdmin())) notFound()
-  const [queue, bans, rideSuspensions, actions, mostBlocked] = await Promise.all([
+  const [queue, bans, rideSuspensions, actions, mostBlocked, incidents, unanswered, verifyIssues] = await Promise.all([
     getReportQueue(status, cursor),
     getBans(),
     getRideSuspensions(),
     getRecentActions(),
     getMostBlocked(),
+    getOpenIncidents(),
+    getIncidentCount(),
+    getVerificationIssues(),
   ])
 
   return (
@@ -50,6 +66,18 @@ async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor |
         הכרטיס שלי
       </Link>
       <h1 className="t-page">דיווחים</h1>
+
+      <section aria-labelledby="incidents-title" className="space-y-2">
+        <h2 id="incidents-title" className="me-label flex items-center gap-2">
+          אירועי חירום פתוחים
+          {unanswered > 0 && (
+            <span className="rounded-full bg-live px-2.5 py-0.5 text-sm font-bold text-white t-num" aria-label={`${unanswered} בלי מענה`}>
+              {unanswered}
+            </span>
+          )}
+        </h2>
+        <IncidentList rows={incidents} />
+      </section>
 
       <nav aria-label="סינון דיווחים" className="flex gap-2">
         {(Object.keys(QUEUE_STATUS) as QueueStatus[]).map((s) => (
@@ -93,6 +121,13 @@ async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor |
           מושעים מנסיעות
         </h2>
         <RideSuspensionList rows={rideSuspensions} />
+      </section>
+
+      <section aria-labelledby="verify-title" className="space-y-2">
+        <h2 id="verify-title" className="me-label">
+          אימות לנסיעות: אוהדים שנתקעו
+        </h2>
+        <VerificationIssueList rows={verifyIssues} />
       </section>
 
       <section aria-labelledby="blocked-title" className="space-y-2">

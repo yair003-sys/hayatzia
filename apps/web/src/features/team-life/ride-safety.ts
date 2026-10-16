@@ -2,6 +2,7 @@
 // themselves are enforced by the database (migration 20261015220000_ride_safety).
 
 import { todayIso, yearsBefore } from '@/features/first-run/schema'
+import { verificationErrorHe } from '@/features/verification/schema'
 
 /** 18+ for rides, from the birth date (2026-10-16), as the database decides (private.is_adult). */
 export type RideAge = 'adult' | 'minor' | 'none'
@@ -91,11 +92,15 @@ export function shareText(p: {
   departBeforeMin: number
   match: string
   url: string
+  car?: string | null
+  verified?: boolean
 }): string {
   const kickoff = new Date(p.kickoffSec * 1000)
   const depart = new Date(kickoff.getTime() - p.departBeforeMin * 60_000)
   return [
     `נוסע/ת למשחק ${p.match} עם ${p.driverNick} (onefan)`,
+    ...(p.car ? [`רכב: ${p.car}`] : []),
+    ...(p.verified === undefined ? [] : [p.verified ? 'הנהג מאומת ב-onefan (תעודה, רישיון ורכב)' : 'הנהג עוד לא מאומת ב-onefan']),
     `איסוף: ${p.pickup || p.fromCity}${p.pickup && p.fromCity ? `, ${p.fromCity}` : ''}`,
     `יציאה: ${TIME.format(depart)} · שריקת פתיחה: ${TIME.format(kickoff)}`,
     p.url,
@@ -118,9 +123,30 @@ export function rideOver(kickoffIso: string, status: string, now: Date = new Dat
   return FINAL.has(status) || new Date(kickoffIso).getTime() + 2 * 3600_000 <= now.getTime()
 }
 
+// ---------- ride verification and the emergency button (2026-10-16, migration 20261016200000) ----------
+export const EMERGENCY_LABEL = 'חירום – חיוג ל-100'
+export const EMERGENCY_NOTE = 'onefan אינה מוקד חירום 24/7. בסכנה מחייגים 100. הלחיצה גם שולחת התראה לצוות onefan.'
+
+/** "מאזדה 3 · לבן": make and model, then colour; null without a car. */
+export function carLine(make: string | null, model: string | null, colour: string | null): string | null {
+  const name = [make, model].map((s) => s?.trim()).filter(Boolean).join(' ')
+  const out = [name, colour?.trim()].filter(Boolean).join(' · ')
+  return out || null
+}
+
+/** The emergency button shows from 30 minutes before departure until kickoff + 4 hours (as the database allows). */
+export function emergencyOpen(kickoffSec: number, departBeforeMin: number, now: Date = new Date()): boolean {
+  const t = now.getTime()
+  const kickoff = kickoffSec * 1000
+  return t >= kickoff - (departBeforeMin + 30) * 60_000 && t <= kickoff + 4 * 3600_000
+}
+
 /** The database's ride refusals, in the fan's words (null for anything else). */
 export function rideErrorHe(message: string | undefined | null): string | null {
   const m = message ?? ''
+  // Ride verification gates (2026-10-16).
+  const verify = verificationErrorHe(m)
+  if (verify) return verify
   // Since 2026-10-16 18+ comes from the birth date (asked once in the app), not from a tap.
   if (m.includes('no_birth_date')) return 'צריך להשלים תאריך לידה'
   if (m.includes('not_adult')) return RIDES_ADULT_ONLY

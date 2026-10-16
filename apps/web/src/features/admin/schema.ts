@@ -75,6 +75,10 @@ export const ACTION_LABEL: Record<string, string> = {
   restore: 'החזרת תוכן',
   ride_suspend: 'השעיה מנסיעות',
   ride_unsuspend: 'ביטול השעיה מנסיעות',
+  verify_reset: 'איפוס ניסיונות אימות',
+  birth_date_fix: 'תיקון תאריך לידה',
+  incident_ack: 'קבלת אירוע חירום',
+  incident_close: 'סגירת אירוע חירום',
 }
 
 /** The red label on a harm-in-a-ride report (ride safety, rule 9). */
@@ -121,6 +125,8 @@ export function adminErrorHe(message: string | undefined | null): string {
   if (m.includes('cannot_ban_admin')) return 'אי אפשר להשעות מנהל'
   if (m.includes('bad_kind')) return 'את התוכן הזה אי אפשר להסיר מכאן'
   if (m.includes('no_report')) return 'הדיווח לא נמצא'
+  if (m.includes('too_young') || m.includes('bad_date')) return 'תאריך הלידה לא תקין (גיל 16 ומעלה, לא בעתיד)'
+  if (m.includes('no_profile')) return 'האוהד לא נמצא'
   return 'הפעולה נכשלה. נסה שוב'
 }
 
@@ -136,4 +142,9 @@ export const banSchema = z.object({
 })
 export const unbanSchema = z.object({ userId: z.uuid() })
 export const liftRideSchema = z.object({ userId: z.uuid() })
+// Ride verification and emergencies (migration 20261016200000_ride_verification).
+export const resetVerificationSchema = z.object({ userId: z.uuid(), kind: z.enum(['identity', 'licence']) })
+export const fixBirthDateSchema = z.object({ userId: z.uuid(), birthDate: z.iso.date() })
+export const incidentSchema = z.object({ id: z.uuid() })
+export const INCIDENTS_NOTE = 'onefan אינה מוקד חירום 24/7. אם מישהו בסכנה עכשיו, אומרים לו לחייג 100 (משטרה). כאן רואים מי, מאיפה, מתי ואיזה רכב.'
 export const statusSchema = z.object({ reportId: z.uuid(), status: z.enum(['open', 'handled', 'dismissed']) })

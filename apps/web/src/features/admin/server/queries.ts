@@ -68,6 +68,33 @@ export async function getMostBlocked(): Promise<MostBlockedRow[]> {
   return (data ?? []).filter((r) => r.blocked_by >= 2)
 }
 
+export type IncidentRow = Fns['admin_open_incidents']['Returns'][number]
+export type VerificationIssueRow = Fns['admin_verification_issues']['Returns'][number]
+
+/** Open ride emergencies, newest first (2026-10-16). */
+export async function getOpenIncidents(): Promise<IncidentRow[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.rpc('admin_open_incidents', { p_limit: 50 })
+  return data ?? []
+}
+
+/** Open emergencies no admin has acknowledged yet (the red badge). */
+export async function getIncidentCount(): Promise<number> {
+  const supabase = await createClient()
+  if (!supabase) return 0
+  const { data, error } = await supabase.rpc('admin_incident_count')
+  return error ? 0 : (data ?? 0)
+}
+
+/** Fans stuck in verification in the last 30 days (rejected, or out of attempts). */
+export async function getVerificationIssues(): Promise<VerificationIssueRow[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.rpc('admin_verification_issues', { p_limit: 50 })
+  return data ?? []
+}
+
 export async function getRideSuspensions(): Promise<RideSuspensionRow[]> {
   const supabase = await createClient()
   if (!supabase) return []

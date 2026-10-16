@@ -65,6 +65,15 @@ are keyed by club and country (e.g. "אוהדי ברצלונה בישראל").
   before acceptance, accept or block), request setting, daily caps, personal QR code (`/inbox/qr`, `/add/<code>`),
   chat avatar → private message, birth date at sign-up (16+) and a one-time prompt; rides read 18+ from it; admins see
   the most-blocked fans. **Built, CI green; waiting for staging, the owner's check at phone size, then production.**
+- Ride verification + emergency button (2026-10-16, branch `ride-verification`, migration
+  `20261016200000_ride_verification`, spec `superpowers/specs/2026-10-16-ride-verification-emergency-design.md`, plan
+  `superpowers/plans/2026-10-16-ride-verification-emergency.md`): ID + face scan for everyone in a ride, licence (≥ 2
+  years) and a registry-checked car for drivers, duplicate-identity fingerprint, 3 attempts + admin reset, "מאומת" badge,
+  car on the card and plate to accepted riders, emergency button (tel:100 + admin push + open incident that locks the
+  trip). Gates behind `rides_require_verification` (off). Mock provider with a labelled demo path on staging.
+  **Built, CI green; waiting for review, staging, the owner's check at phone size, then production.** Before turning
+  the switch on: the owner opens a provider account (a real adapter + `VERIFICATION_WEBHOOK_SECRET`,
+  `VERIFICATION_FINGERPRINT_SECRET` in Vercel Production), and the lawyer reviews the privacy text.
 - Before launch: add the owner as admin on staging and production (SQL editor, once per project: `insert into public.app_admins (user_id) select id from auth.users where email = '<owner email>';`), then check that "דיווחים פתוחים" shows in "הכרטיס שלי".
 - Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 

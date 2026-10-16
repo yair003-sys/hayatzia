@@ -3,6 +3,15 @@ import { displayTeam } from '@/features/matches/api-teams'
 import type { League } from '@/features/matches/schema'
 import type { MatchOption } from '../components/boards'
 
+/** "מכבי ת״א – הפועל חדרה" for a fixture id ("משחק" when the league data has no such match). */
+export function matchLabelOf(league: League | null, fixtureId: number | null): string {
+  const f = league?.fixtures.find((x) => x.id === fixtureId)
+  if (!f) return 'משחק'
+  const home = displayTeam(f.h, league?.teams[String(f.h)]?.name)
+  const away = displayTeam(f.a, league?.teams[String(f.a)]?.name)
+  return `${home.short} – ${away.short}`
+}
+
 /** The club's next matches (from 3 hours ago on), for trips. */
 export function upcomingTeamMatches(league: League | null, teamId: string, limit = 6): MatchOption[] {
   const now = Date.now() / 1000

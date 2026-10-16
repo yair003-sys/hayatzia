@@ -20,6 +20,9 @@ Owner's standing rule: **local and test data never touch production.**
 | `NEXT_PUBLIC_PHONE_AUTH` | client | `on`/`off` (default off): SMS sign-in, needs an SMS provider |
 | `INGEST_SECRET` | server only | guards `/api/ingest` and revalidation webhooks |
 | `ALERTS_SECRET` | server only | guards `POST /api/alerts/dispatch` (goal / full-time alerts, `Authorization: Bearer …`). Generate with `openssl rand -hex 32`. Vercel Production + Preview, and the same value in the matching GitHub environment. **Staging and production values must differ** |
+| `VERIFICATION_PROVIDER` | server only | ride identity verification provider. Unset = the `mock` (demo) provider outside production, none in production; `mock` is refused in production. A real provider gets its own value and adapter when the owner opens an account |
+| `VERIFICATION_WEBHOOK_SECRET` | server only | signs the provider's webhook (`POST /api/verification/webhook`). Optional outside production (the mock then signs with a per-process random key). Never logged |
+| `VERIFICATION_FINGERPRINT_SECRET` | server only | key of the ID-number fingerprint (HMAC). Required in production before verification opens (the webhook answers 503 without it); outside production a fixed public key is used. Never rotate it once used: old fingerprints would stop matching. `openssl rand -hex 32` |
 | `NEXT_PUBLIC_APP_ENV` | client + server | `local` / `preview` / `production`; shows a banner outside production |
 
 Set them in Vercel per environment (Production / Preview / Development). Production values exist **only** in Vercel's Production scope and in the GitHub `production` environment. `.env.local` is git-ignored; `.env.example` lists names only.

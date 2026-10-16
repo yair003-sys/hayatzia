@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { Lock, LogOut, Swords } from 'lucide-react'
+import Link from 'next/link'
+import { IdCard, Lock, LogOut, Swords } from 'lucide-react'
 import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
 import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
 import { signOutAction } from '@/features/profile/server/actions'
@@ -120,6 +121,10 @@ async function ProfileCard() {
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />
           <GenderPicker initial={ride?.gender ?? null} />
+          <Link href="/me/verify" className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-line px-4 py-3 font-medium">
+            <IdCard className="size-4" aria-hidden="true" />
+            אימות לנסיעות
+          </Link>
           {priv && <DmRequestsSetting initial={priv.dmRequests} />}
           <form action={signOutAction}>
             <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted">
