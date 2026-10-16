@@ -1,5 +1,6 @@
 'use server'
 
+import type { Route } from 'next'
 import { moderationHe } from '@/lib/moderation'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -33,7 +34,7 @@ export const createProfileAction = actionClient.inputSchema(createProfileSchema)
     return { error: moderationHe(error.message) ?? 'השמירה נכשלה. נסה שוב' }
   }
   // A fan who signed up from a scanned QR code goes back to that card; anything else to the stand.
-  redirect(safeNext(parsedInput.next, '/stand'))
+  redirect(safeNext(parsedInput.next, '/stand') as Route)
 })
 
 /** The one-time prompt for fans who signed up before the birth date existed. Set once (the database refuses a change). */
