@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 const css = readFileSync(fileURLToPath(new URL('./globals.css', import.meta.url)), 'utf8')
 
 describe('globals.css horizontal scrollers', () => {
-  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*overflow-x:\s*auto[^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }))
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*overflow-x:\s*auto[^{}]*)\}/g)].map((m) => ({ selector: (m[1] ?? '').trim(), body: m[2] ?? '' }))
 
   it('finds the scrollers', () => {
     expect(rules.map((r) => r.selector)).toEqual(expect.arrayContaining(['.hm-pcards', '.hm-stories', '.hm-reels', '.sh-bench']))
