@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Heebo, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { EnvBanner } from '@/components/env-banner'
+import { EnvBanner, shouldShowEnvBanner } from '@/components/env-banner'
+import { OverflowGuard } from '@/components/overflow-guard'
+import { env } from '@/lib/env'
 import { RegisterServiceWorker } from '@/features/pwa/register-sw'
 import './globals.css'
 
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
         <EnvBanner />
+        {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
         <RegisterServiceWorker />
         {children}
         <Analytics />

@@ -23,6 +23,7 @@ Read this first, every session. Then read `docs/README.md` for the map of all do
 - The skills refer to each other as `superpowers:<name>`; here they live in `.claude/skills/<name>/`.
 - Owner's override: **do not open a branch for every small change, and PRs are optional.** Small, safe changes go straight to `main` with a clear commit. Use a branch only for risky or long work.
 - Never claim something works without evidence: tests, CI, or a check on the deployed site.
+- Owner's rule after the 2026-10-16 home overflow bug ("שלא יהיו טעויות כאלה יותר"): before any merge that touches UI, open the preview at phone size (375px) on home, chat, Square, inbox, my card and trips with real data, and confirm no red "באג פריסה" bar (the OverflowGuard in test builds) and `scrollWidth == clientWidth`. Smoke tests check public pages the same way.
 
 ## Stack (new app in `apps/web`)
 Next.js 16 App Router + TypeScript strict + Tailwind v4, Supabase (Postgres + RLS + Realtime + Storage + Auth) through supabase-js typed by generated `database.types.ts`, Vercel. Follow the official Next.js docs (https://nextjs.org/docs): Server Components first, Cache Components (`'use cache'` + `cacheLife` + `cacheTag`), `<Suspense>` around runtime data, Server Actions for mutations, `proxy.ts` for session refresh only. Architecture: `docs/ARCHITECTURE.md`. Conventions: `docs/CONVENTIONS.md`.
