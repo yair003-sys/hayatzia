@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
-import { DayDivider, JumpButton, jumpToMessage, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
+import { DayDivider, JumpButton, jumpToMessage, MessageAuthor, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
+import { FanSheet, type SheetFan } from './fan-sheet'
 import { useFollowEnd, useReadPosition } from './use-read-position'
 import { ReportForm } from '@/features/safety/components/report-block'
 import { canReport, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
@@ -59,6 +60,11 @@ export type ChatRoomProps = {
   presenceTopic?: string
   /** Public chats: "דווח" on other fans' messages files a report of this kind with the message id. */
   reportKind?: 'team_message' | 'match_message'
+  /**
+   * Private messages from the chat (2026-10-16): another fan's avatar opens "שלח הודעה פרטית". Gives the writer's club
+   * (name and colour) for the sheet; null when unknown.
+   */
+  clubOf?: (m: ChatMessage) => SheetFan['club']
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -81,6 +87,7 @@ export function ChatRoom({
   openAtEnd = true,
   presenceTopic,
   reportKind,
+  clubOf,
 }: ChatRoomProps) {
   const typing = useTyping(presenceTopic, meId, hiddenUsers)
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
@@ -95,6 +102,7 @@ export function ChatRoom({
   const [active, setActive] = useState<string | null>(null)
   const [reporting, setReporting] = useState<ChatMessage | null>(null)
   const [reportNote, setReportNote] = useState<string | null>(null)
+  const [fan, setFan] = useState<SheetFan | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -241,6 +249,12 @@ export function ChatRoom({
     setReportNote(null)
     setReporting(m)
   }, [])
+  // Kept in a ref: pages pass a new function each render, and the memoised rows must not all re-render for it.
+  const clubOfRef = useRef(clubOf)
+  useEffect(() => {
+    clubOfRef.current = clubOf
+  })
+  const openFan = useCallback((m: ChatMessage) => setFan({ id: m.user_id, nick: m.nick, club: clubOfRef.current?.(m) ?? null }), [])
 
   const firstSaved = messages[0]
   const loadedIds = new Set(messages.map((m) => m.id))
@@ -272,6 +286,7 @@ export function ChatRoom({
         onActive={setActive}
         onReply={readOnly || m.id.startsWith(LOCAL_ID) ? undefined : startReply}
         onReport={canReport(m, meId, Boolean(reportKind)) ? startReport : undefined}
+        onFan={clubOf ? openFan : undefined}
         quoteLoaded={!!m.reply_to && loadedIds.has(m.reply_to)}
         quoteHidden={!!m.reply_to && (hiddenIds.has(m.reply_to) || (!!m.reply_user && !!hiddenUsers?.includes(m.reply_user)))}
         onJump={jump}
@@ -428,6 +443,7 @@ export function ChatRoom({
           {error}
         </p>
       )}
+      <FanSheet fan={fan} onClose={() => setFan(null)} />
     </div>
   )
 }
@@ -451,6 +467,7 @@ const MessageItem = memo(function MessageItem({
   onActive,
   onReply,
   onReport,
+  onFan,
   quoteLoaded,
   quoteHidden,
   onJump,
@@ -464,6 +481,7 @@ const MessageItem = memo(function MessageItem({
   onActive: (id: string | null) => void
   onReply?: (m: ChatMessage) => void
   onReport?: (m: ChatMessage) => void
+  onFan?: (m: ChatMessage) => void
   quoteLoaded: boolean
   quoteHidden: boolean
   onJump: (id: string) => void
@@ -482,8 +500,11 @@ const MessageItem = memo(function MessageItem({
       onReport={onReport ? () => onReport(m) : undefined}
     >
       {!mine && (
-        <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
-          {m.nick}
+        <span className="chat-author-row">
+          <MessageAuthor mine={false} userId={m.user_id} nick={m.nick} onFan={onFan ? () => onFan(m) : undefined} />
+          <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
+            {m.nick}
+          </span>
         </span>
       )}
       <div

@@ -4,7 +4,21 @@ import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { loadOlderTeamMessagesAction, sendTeamMessageAction } from '../server/actions'
 
-export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: string; meId: string; initial: ChatMessage[]; hidden: string[]; color?: string }) {
+export function TeamChat({
+  teamId,
+  meId,
+  initial,
+  hidden,
+  color,
+  clubName,
+}: {
+  teamId: string
+  meId: string
+  initial: ChatMessage[]
+  hidden: string[]
+  color?: string
+  clubName?: string
+}) {
   return (
     <ChatRoom
       topic={`team:${teamId}`}
@@ -15,6 +29,8 @@ export function TeamChat({ teamId, meId, initial, hidden, color }: { teamId: str
       hiddenUsers={hidden}
       reportKind="team_message"
       doodle={color}
+      // Every writer here is of my club: the avatar opens a private message (2026-10-16).
+      clubOf={() => (clubName ? { name: clubName, color: color ?? 'var(--accent)' } : null)}
       placeholder="כתוב לקבוצה…"
       emptyText="עוד אין הודעות. כתוב את הראשונה."
       send={async (body, replyTo) => {

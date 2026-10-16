@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { safeNext } from '../safe-next'
 
 const GoogleMark = () => (
   <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
@@ -19,9 +20,11 @@ export function GoogleSignIn() {
   async function signIn() {
     setBusy(true)
     setError(null)
+    // A scanned QR code sends signed-out fans here with ?next=/add/<code>: they come back to that card after Google.
+    const next = safeNext(new URLSearchParams(window.location.search).get('next'))
     const { error: e } = await createClient().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     })
     if (e) {
       setError('ההתחברות נכשלה. נסה שוב')

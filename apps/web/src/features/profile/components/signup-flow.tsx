@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
-import { MIN_AGE } from '@/lib/legal'
 import { Lock } from 'lucide-react'
 import { SignupHeader, SignupKicker } from '@/features/auth/components/signup-header'
 import { TEAMS } from '@/features/teams/data'
 import { createProfileAction } from '../server/actions'
+import { BirthDateFields } from './birth-date-fields'
 import { ClubCarousel } from './club-carousel'
 
 type Step = 'phone' | 'club' | 'confirm'
@@ -17,10 +17,11 @@ type Step = 'phone' | 'club' | 'confirm'
  * switched on later, and then a verified phone becomes required (one phone = one fan). Step 3 picks the club
  * from a carousel (country row first; Israel only for now) and a nickname, then a final "for life" check.
  */
-export function SignupFlow() {
+export function SignupFlow({ next }: { next?: string }) {
   const [step, setStep] = useState<Step>('phone')
   const [club, setClub] = useState(0)
   const [nick, setNick] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [accepted, setAccepted] = useState(false)
   const { execute, result, isPending } = useAction(createProfileAction)
   const team = TEAMS[club]!
@@ -28,6 +29,7 @@ export function SignupFlow() {
     result.serverError ??
     (result.data && 'error' in result.data ? result.data.error : undefined) ??
     result.validationErrors?.nick?._errors?.[0] ??
+    result.validationErrors?.birthDate?._errors?.[0] ??
     result.validationErrors?.accept?._errors?.[0]
 
   const back = (to: Step) => (
@@ -107,8 +109,12 @@ export function SignupFlow() {
             <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={20} placeholder="הכינוי שלך" autoComplete="nickname" />
           </span>
         </label>
+        {/* Birth date (owner, 2026-10-16): required, from 16; never shown to other fans. */}
+        <div className="mt-4">
+          <BirthDateFields initial={birthDate} onChange={setBirthDate} />
+        </div>
         <div className="min-h-4 flex-1" />
-        <button type="button" className="su-btn su-btn-green" disabled={nick.trim().length < 2} onClick={() => setStep('confirm')}>
+        <button type="button" className="su-btn su-btn-green" disabled={nick.trim().length < 2 || !birthDate} onClick={() => setStep('confirm')}>
           נעילת הקבוצה
         </button>
       </section>
@@ -136,7 +142,7 @@ export function SignupFlow() {
       <label className="su-consent">
         <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required aria-required="true" />
         <span>
-          אני בן/בת {MIN_AGE} ומעלה ומסכים/ה ל
+          אני מסכים/ה ל
           <Link href="/terms" target="_blank" rel="noopener">
             תנאי השימוש
           </Link>{' '}
@@ -151,7 +157,7 @@ export function SignupFlow() {
         className="su-btn su-btn-green"
         disabled={isPending || !accepted}
         onClick={() => {
-          if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true })
+          if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true, birthDate, next })
         }}
       >
         {isPending ? 'שומר…' : 'כן, זו הקבוצה שלי'}

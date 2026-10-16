@@ -56,9 +56,12 @@ select ok((select adult_confirmed_at is not null from public.profiles where user
   'a confirmation, once given, cannot be cleared');
 
 -- The others: 18+ confirmed by the database directly (the stamp applies the same way).
-update public.profiles set adult_confirmed_at = now(), gender = 'f'
+update public.profiles set adult_confirmed_at = now(), gender = 'f', birth_date = '1990-01-01'
  where user_id in (pg_temp.uid('f02'), pg_temp.uid('f05'), pg_temp.uid('f09'));
-update public.profiles set adult_confirmed_at = now(), gender = 'm' where user_id in (pg_temp.uid('f03'), pg_temp.uid('f06'), pg_temp.uid('f07'));
+update public.profiles set adult_confirmed_at = now(), gender = 'm', birth_date = '1990-01-01'
+ where user_id in (pg_temp.uid('f01'), pg_temp.uid('f03'), pg_temp.uid('f06'), pg_temp.uid('f07'));
+-- Since 20261016100000_league_dms 18+ comes from the birth date: f04 is 17, f08 never gave one.
+update public.profiles set birth_date = (current_date - interval '17 years')::date where user_id = pg_temp.uid('f04');
 
 select pg_temp.as_fan('f03');
 set local role authenticated;

@@ -25,3 +25,19 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile> => {
   if (!row || !team) return { status: 'no-profile', userId }
   return { status: 'ready', userId, nick: row.nick, team }
 })
+
+export type PrivateProfile = { birthDate: string | null; dmRequests: 'everyone' | 'team' | 'qr'; qrCode: string }
+
+/**
+ * The fan's own private fields (birth date, request setting in force, QR code), never readable by other fans.
+ * Deduplicated per request. Null when signed out or without a profile.
+ */
+export const getPrivateProfile = cache(async (): Promise<PrivateProfile | null> => {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('my_private_profile')
+  const row = data?.[0]
+  if (error || !row) return null
+  const setting = row.dm_requests === 'everyone' || row.dm_requests === 'qr' ? row.dm_requests : 'team'
+  return { birthDate: row.birth_date ?? null, dmRequests: setting, qrCode: row.qr_code }
+})

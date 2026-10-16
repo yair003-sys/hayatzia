@@ -117,6 +117,8 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         placeholder="מה קורה במגרש?"
         emptyText={state === 'soon' ? 'עוד מוקדם. נתראה לפני שריקת הפתיחה.' : 'עוד אין הודעות בחדר.'}
         tint={(m) => (m.side === 'a' ? away.bar : home.bar)}
+        // The writer's avatar opens a private message, also to fans of the other club (2026-10-16).
+        clubOf={(m) => (m.side === 'a' ? { name: away.short, color: away.bar } : m.side === 'h' ? { name: home.short, color: home.bar } : null)}
         send={async (body, replyTo) => {
           const r = await sendMatchMessageAction({ fixtureId, body, replyTo })
           // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.

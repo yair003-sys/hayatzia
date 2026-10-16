@@ -1,14 +1,37 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { GROUP_MAX, type InboxRow, type Invite } from '../schema'
+import { GROUP_MAX, QR_CODE_RE, requestOf, type InboxRow, type Invite, type RequestSide } from '../schema'
 
-export async function getThread(id: string, userId: string) {
+export type ThreadInfo = { id: string; otherId: string; otherNick: string; otherTeam: string | null; request: RequestSide }
+
+export async function getThread(id: string, userId: string): Promise<ThreadInfo | null> {
   const supabase = await createClient()
   if (!supabase) return null
-  const { data } = await supabase.from('dm_threads').select('id,user_a,user_b,nick_a,nick_b').eq('id', id).maybeSingle()
+  const { data } = await supabase
+    .from('dm_threads')
+    .select('id,user_a,user_b,nick_a,nick_b,team_a,team_b,accepted_at,opened_by')
+    .eq('id', id)
+    .maybeSingle()
   if (!data) return null
   const mineA = data.user_a === userId
-  return { id: data.id, otherId: mineA ? data.user_b : data.user_a, otherNick: mineA ? data.nick_b : data.nick_a }
+  return {
+    id: data.id,
+    otherId: mineA ? data.user_b : data.user_a,
+    otherNick: mineA ? data.nick_b : data.nick_a,
+    otherTeam: mineA ? data.team_b : data.team_a,
+    request: requestOf(data, userId),
+  }
+}
+
+/** The card behind a scanned QR code (nick and club only), or null for a bad or reset code. */
+export async function getQrCard(code: string): Promise<{ nick: string; teamId: string } | null> {
+  if (!QR_CODE_RE.test(code)) return null
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('qr_card', { p_code: code })
+  const row = data?.[0]
+  if (error || !row) return null
+  return { nick: row.nick, teamId: row.team_id }
 }
 
 /** Fans of the same club to start a conversation with (RLS shows only teammates' profiles). */
@@ -33,7 +56,8 @@ export type GroupDetails = {
 
 /**
  * The inbox: private threads and groups merged, newest first, plus pending group invites.
- * One query per kind and one nicknames query; metadata only (message contents are never read here).
+ * One query per kind and one nicknames query; metadata only (message contents are never read here). Message requests
+ * (unaccepted threads) come in the same thread query, marked, so the inbox needs no extra round trip.
  */
 export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invites: Invite[] }> {
   const supabase = await createClient()
@@ -41,7 +65,7 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
   const [threadsRes, memberships, blocksRes] = await Promise.all([
     supabase
       .from('dm_threads')
-      .select('id,user_a,user_b,nick_a,nick_b,last_at,last_from,last_message_id,unread_a,unread_b')
+      .select('id,user_a,user_b,nick_a,nick_b,team_a,team_b,last_at,last_from,last_message_id,unread_a,unread_b,accepted_at,opened_by')
       .order('last_at', { ascending: false })
       .limit(100),
     supabase
@@ -67,9 +91,12 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
         unread: mineA ? t.unread_a : t.unread_b,
         members: null,
         muted: false,
+        request: requestOf(t, userId),
+        otherTeam: mineA ? t.team_b : t.team_a,
       }
     })
-    .filter((t) => !blocked.has(t.otherId))
+    // Fans I blocked are hidden; so is a request the other fan opened but never wrote in (nothing to decide on yet).
+    .filter((t) => !blocked.has(t.otherId) && !(t.request === 'incoming' && !t.lastMessageId))
 
   const invites: Invite[] = []
   const inviterIds = new Set<string>()
@@ -93,6 +120,8 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
         unread: m.unread,
         members: g.members_count,
         muted: m.muted,
+        request: null,
+        otherTeam: null,
       })
     }
   }

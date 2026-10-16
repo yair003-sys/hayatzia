@@ -1,7 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIds } from '@/features/safety/server/queries'
-import type { DriverTrust, Gender } from '../ride-safety'
+import { rideAge, type DriverTrust, type Gender, type RideAge } from '../ride-safety'
 
 export type Trip = {
   id: string
@@ -66,6 +66,8 @@ export async function getTrips(fixtureIds: number[]): Promise<Trip[]> {
 export type RideProfile = {
   gender: Gender | null
   adultConfirmed: boolean
+  /** From the birth date: what the safety screen shows (18+ tap no longer exists). */
+  age: RideAge
   safetySeen: boolean
   suspended: boolean
   phoneRequired: boolean
@@ -76,12 +78,13 @@ export type RideProfile = {
 export async function getMyRideProfile(): Promise<RideProfile | null> {
   const supabase = await createClient()
   if (!supabase) return null
-  const { data, error } = await supabase.rpc('my_ride_profile')
+  const [{ data, error }, priv] = await Promise.all([supabase.rpc('my_ride_profile'), supabase.rpc('my_private_profile')])
   const row = data?.[0]
   if (error || !row) return null
   return {
     gender: row.gender === 'm' || row.gender === 'f' || row.gender === 'x' ? row.gender : null,
     adultConfirmed: row.adult_confirmed,
+    age: rideAge(priv.data?.[0]?.birth_date ?? null),
     safetySeen: row.safety_seen,
     suspended: row.ride_suspended,
     phoneRequired: row.phone_required,

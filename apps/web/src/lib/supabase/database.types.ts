@@ -493,14 +493,14 @@ isOneToOne: false
                   ]
                 },"dm_threads": {
                   Row: {
-                    "created_at": string,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"nick_a": string,"nick_b": string,"unread_a": number,"unread_b": number,"user_a": string,"user_b": string
+                    "accepted_at": string | null,"created_at": string,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"nick_a": string,"nick_b": string,"opened_by": string | null,"team_a": string | null,"team_b": string | null,"unread_a": number,"unread_b": number,"user_a": string,"user_b": string,"via_qr": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"unread_a"?: number,"unread_b"?: number,"user_a": string,"user_b": string
+                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"team_a"?: string | null,"team_b"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a": string,"user_b": string,"via_qr"?: boolean
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string
+                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"team_a"?: string | null,"team_b"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string,"via_qr"?: boolean
                   }
                   Relationships: [
                     
@@ -1049,14 +1049,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "adult_confirmed_at": string | null,"created_at": string,"gender": string | null,"nick": string,"ride_safety_seen_at": string | null,"team_id": string,"terms_version": string,"user_id": string
+                    "adult_confirmed_at": string | null,"birth_date": string | null,"created_at": string,"dm_requests": string | null,"gender": string | null,"nick": string,"qr_code": string,"ride_safety_seen_at": string | null,"team_id": string,"terms_version": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "adult_confirmed_at"?: string | null,"created_at"?: string,"gender"?: string | null,"nick": string,"ride_safety_seen_at"?: string | null,"team_id": string,"terms_version"?: string,"user_id": string
+                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick": string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id": string,"terms_version"?: string,"user_id": string
                   }
                   Update: {
-                    "adult_confirmed_at"?: string | null,"created_at"?: string,"gender"?: string | null,"nick"?: string,"ride_safety_seen_at"?: string | null,"team_id"?: string,"terms_version"?: string,"user_id"?: string
+                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick"?: string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id"?: string,"terms_version"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1400,6 +1400,36 @@ isOneToOne: false
                            },
 "activity_unread_count":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"accept_dm_thread":
+{ Args: { "p_thread": string }; Returns: undefined
+                           },
+"admin_most_blocked":
+{ Args: { "p_limit"?: number }; Returns: {
+              "blocked_by": number,"nick": string,"user_id": string
+            }[]
+                           },
+"my_private_profile":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "birth_date": string,"dm_requests": string,"qr_code": string
+            }[]
+                           },
+"open_dm_by_code":
+{ Args: { "p_code": string }; Returns: string
+                           },
+"qr_card":
+{ Args: { "p_code": string }; Returns: {
+              "nick": string,"team_id": string
+            }[]
+                           },
+"reset_qr_code":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"set_birth_date":
+{ Args: { "p_date": string }; Returns: undefined
+                           },
+"set_dm_requests":
+{ Args: { "p_value": string }; Returns: undefined
                            },
 "admin_ban_list":
 { Args: { "p_limit"?: number }; Returns: {

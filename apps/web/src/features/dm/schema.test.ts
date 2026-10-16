@@ -70,7 +70,7 @@ describe('inbox helpers', () => {
   it('filterInbox', () => {
     const row = (name: string): InboxRow => ({
       kind: 'group', id: name, name, otherId: null, lastAt: '', lastFrom: null,
-      lastMessageId: null, unread: 0, members: 3, muted: false,
+      lastMessageId: null, unread: 0, members: 3, muted: false, request: null, otherTeam: null,
     })
     const rows = [row('מכבי בדרך'), row('חברים')]
     expect(filterInbox(rows, 'מכב').map((r) => r.name)).toEqual(['מכבי בדרך'])
@@ -79,6 +79,9 @@ describe('inbox helpers', () => {
 })
 
 describe('groupErrorHe', () => {
+  it('maps a QR-only invitee (security review 2026-10-16)', () => {
+    expect(groupErrorHe('invites_closed')).toBe('האוהד הזה מקבל הזמנות לקבוצה רק ממי שכבר מדבר איתו בפרטי')
+  })
   it('maps known codes to Hebrew messages', () => {
     expect(groupErrorHe('group_full')).toBe('הקבוצה מלאה (עד 20 אוהדים)')
     expect(groupErrorHe('not_admin')).toBe('רק מנהל הקבוצה יכול לעשות את זה')

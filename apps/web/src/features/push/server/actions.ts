@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { endpointSchema, prefsSchema, subscriptionSchema } from '../schema'
+import { dmPushPayload, endpointSchema, prefsSchema, subscriptionSchema } from '../schema'
 import { sendMessagePush } from './send'
 
 export const saveSubscriptionAction = actionClient.inputSchema(subscriptionSchema).action(async ({ parsedInput: s }) => {
@@ -24,7 +24,8 @@ export const removeSubscriptionAction = actionClient.inputSchema(endpointSchema)
 
 /**
  * After a private message is written (by the browser, encrypted), tell the other member. The notification carries
- * no message content: only the sender's nickname. Membership is checked with the sender's own session (RLS).
+ * no message content: only the sender's nickname ("בקשת הודעה מ-<nick>" while the thread is a request). Membership is
+ * checked with the sender's own session (RLS).
  */
 export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uuid() })).action(async ({ parsedInput }) => {
   const supabase = await createClient()
@@ -33,7 +34,7 @@ export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uu
   const me = claims?.claims.sub
   const { data: t } = await supabase
     .from('dm_threads')
-    .select('id,user_a,user_b,nick_a,nick_b')
+    .select('id,user_a,user_b,nick_a,nick_b,accepted_at')
     .eq('id', parsedInput.threadId)
     .maybeSingle()
   if (!me || !t) return { ok: true as const }
@@ -41,12 +42,10 @@ export const notifyDmAction = actionClient.inputSchema(z.object({ threadId: z.uu
   const { data: allowed } = await supabase.rpc('claim_message_push', { p_kind: 'dm', p_id: t.id })
   if (!allowed) return { ok: true as const }
   const meIsA = t.user_a === me
-  await sendMessagePush([meIsA ? t.user_b : t.user_a], {
-    title: 'הודעה פרטית חדשה',
-    body: `מ־${meIsA ? t.nick_a : t.nick_b}`,
-    url: `/inbox/${t.id}`,
-    tag: `dm:${t.id}`,
-  })
+  await sendMessagePush(
+    [meIsA ? t.user_b : t.user_a],
+    dmPushPayload({ threadId: t.id, senderNick: meIsA ? t.nick_a : t.nick_b, request: !t.accepted_at }),
+  )
   return { ok: true as const }
 })
 

@@ -17,6 +17,8 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000f3', 'לבן', 'mta'),
   ('00000000-0000-0000-0000-0000000000f4', 'שחור', 'mta'),
   ('00000000-0000-0000-0000-0000000000f5', 'אדום', 'hta');
+-- League DMs (20261016100000): opening a private thread needs a birth date.
+update public.profiles set birth_date = '1990-01-01';
 
 create function pg_temp.as_fan(p text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-0000-0000-0000000000' || p, 'role', 'authenticated')::text, true)

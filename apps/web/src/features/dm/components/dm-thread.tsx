@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage, safetyCode } from '@/lib/e2e/crypto'
@@ -8,9 +8,10 @@ import { notifyDmAction } from '@/features/push/server/actions'
 import { DayDivider, JumpButton, jumpToMessage, UnreadDivider, useNowMinute } from '@/features/chat/components/chat-parts'
 import { useFollowEnd, useReadPosition } from '@/features/chat/components/use-read-position'
 import { echoMatch, failurePlan, LOCAL_ID, replySnippet, startsNewDay, type FailureKind } from '@/features/chat/essentials'
-import { DM_PAGE } from '../schema'
-import { markReadAction } from '../server/actions'
+import { DM_PAGE, dmErrorHe, requestState, type RequestSide } from '../schema'
+import { acceptThreadAction, blockFromRequestAction, markReadAction } from '../server/actions'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
+import { RequestBar, WaitingNote } from './request-bar'
 import { Bubble, Composer, E2eNote, type ShownQuote } from './thread-parts'
 
 type Shown = { id: string; sender_id: string; created_at: string; text: string | null; reply_to: string | null; failed?: boolean }
@@ -28,7 +29,20 @@ const shown = (m: EncryptedRow & { text: string | null }): Shown => ({
 // Private messages never pass through the app server: this component encrypts, writes and reads
 // straight against the database with the fan's own session. The server stores ciphertext only (a reply adds the id of
 // the answered message; its text is found and decrypted here, on the device).
-export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: string; meId: string; otherId: string; otherNick: string }) {
+export function DmThread({
+  threadId,
+  meId,
+  otherId,
+  otherNick,
+  request: initialRequest = null,
+}: {
+  threadId: string
+  meId: string
+  otherId: string
+  otherNick: string
+  /** A message request (2026-10-16): incoming → accept or block; outgoing → one message, then wait. */
+  request?: RequestSide
+}) {
   const [supabase] = useState(() => createClient())
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
   const [messages, setMessages] = useState<Shown[]>([])
@@ -51,6 +65,8 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   // The message each of my pending replies answers, to put the quote back if the text is refused.
   const replyOf = useRef(new Map<string, Shown>())
   const now = useNowMinute()
+  const [request, setRequest] = useState<RequestSide>(initialRequest)
+  const [deciding, startDeciding] = useTransition()
 
   const all = pending.length ? [...messages, ...pending] : messages
   const isMine = useCallback((m: Shown) => m.sender_id === meId, [meId])
@@ -95,7 +111,11 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         })
       }
       setMessages((cur) => (cur.some((x) => x.id === s.id) ? cur : [...cur, s]))
-      if (r.sender_id !== meId) void markReadAction({ kind: 'dm', id: threadId })
+      if (r.sender_id !== meId) {
+        void markReadAction({ kind: 'dm', id: threadId })
+        // The other fan wrote back: my request is accepted (replying accepts).
+        setRequest((cur) => (cur === 'outgoing' ? null : cur))
+      }
     })
     void supabase.realtime.setAuth().then(() => {
       if (!cancelled) channel.subscribe()
@@ -144,10 +164,14 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
       if (error) {
         const m = error.message
         if (m.includes('blocked')) return fail(p, 'אי אפשר לשלוח לאוהד הזה', 'permanent')
+        if (m.includes('awaiting_accept')) return fail(p, dmErrorHe('awaiting_accept'), 'permanent')
+        if (/\bbanned\b/.test(m)) return fail(p, dmErrorHe('banned'), 'permanent')
         if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
         return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
       }
       confirmed.current.add(data.id)
+      // Writing back in a request I received accepts it (the database stamps it the same way).
+      setRequest((cur) => (cur === 'incoming' ? null : cur))
       replyOf.current.delete(p.id)
       setPending((cur) => cur.filter((x) => x.id !== p.id))
       setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text: p.text }]))
@@ -214,6 +238,9 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
   }
 
   const shownStatus = status ?? keyStatus
+  // Mine on the server or on the way: the opener of a request may send one, then waits.
+  const sentByMe = all.filter((m) => m.sender_id === meId && !m.failed).length
+  const reqState = requestState({ request, sentByMe })
 
   return (
     <div
@@ -261,6 +288,28 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
 
+      <RequestBar
+        state={reqState}
+        nick={otherNick}
+        pending={deciding}
+        onAccept={() =>
+          startDeciding(async () => {
+            const r = await acceptThreadAction({ threadId })
+            if (r?.data && 'ok' in r.data) setRequest(null)
+            else setStatus((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'לא הצלחנו לאשר. נסה שוב')
+          })
+        }
+        onBlock={() =>
+          startDeciding(async () => {
+            const r = await blockFromRequestAction({ threadId })
+            // Success goes back to the inbox; anything returned is a failure.
+            const e = r?.data && 'error' in r.data ? r.data.error : r?.serverError
+            if (e) setStatus(e)
+          })
+        }
+      />
+      <WaitingNote state={reqState} />
+      {reqState === 'open' && (
       <Composer
         ready={!!key}
         placeholder="הודעה פרטית…"
@@ -276,6 +325,7 @@ export function DmThread({ threadId, meId, otherId, otherNick }: { threadId: str
         }}
         above={!follow.atBottom ? <JumpButton count={follow.unread} onClick={follow.toEnd} /> : null}
       />
+      )}
       {shownStatus && (
         <p role="alert" className="mt-2 text-sm text-live">
           {shownStatus}

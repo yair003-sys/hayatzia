@@ -157,6 +157,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
 
           {gate ? (
             <SafetyGate
+              age={ride?.age ?? 'adult'}
               onDone={() => {
                 setConfirmed(true)
                 const next = gate

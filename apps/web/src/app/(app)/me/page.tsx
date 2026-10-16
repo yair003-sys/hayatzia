@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Lock, LogOut, Swords } from 'lucide-react'
-import { getSessionProfile } from '@/features/profile/server/queries'
+import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
+import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
 import { signOutAction } from '@/features/profile/server/actions'
 import { InstallApp } from '@/features/pwa/install-app'
 import { PushToggle } from '@/features/push/components/push-toggle'
@@ -45,11 +46,12 @@ async function ProfileCard() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, prefs, war, ride] = await Promise.all([
+  const [card, prefs, war, ride, priv] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyPrefs(s.userId),
     season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
     getMyRideProfile(),
+    getPrivateProfile(),
   ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
@@ -118,6 +120,7 @@ async function ProfileCard() {
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />
           <GenderPicker initial={ride?.gender ?? null} />
+          {priv && <DmRequestsSetting initial={priv.dmRequests} />}
           <form action={signOutAction}>
             <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted">
               <LogOut className="size-4" aria-hidden="true" />

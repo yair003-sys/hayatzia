@@ -31,7 +31,8 @@ export const tripSchema = z.object({
 })
 export const idSchema = z.object({ id: z.uuid() })
 /** The one-time 18+ confirmation and safety screen before the first ride. */
-export const rideConsentSchema = z.strictObject({ adult: z.literal(true) })
+// The safety screen only (2026-10-16): 18+ now comes from the birth date, not from a tap.
+export const rideConsentSchema = z.strictObject({})
 export const genderSchema = z.strictObject({ gender: z.enum(['m', 'f', 'x']) })
 export const rateRideSchema = z.strictObject({ tripId: z.uuid(), stars: z.number().int().min(1).max(5) })
 export const decideSchema = z.object({ tripId: z.uuid(), userId: z.uuid(), accept: z.boolean() })
