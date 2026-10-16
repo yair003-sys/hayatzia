@@ -117,20 +117,18 @@ jobs:
           echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
           echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
 
-      - name: Realtime tenant limits (record the local defaults, then raise them so the runner, not a config cap, is the limit)
+      - name: Realtime tenant limits (record the local defaults, then raise them so the runner, not a quota, is the limit)
         run: |
           RT=$(docker ps --format '{{.Names}}' | grep -m1 '^supabase_realtime_')
-          cols="external_id, max_concurrent_users, max_events_per_second, max_joins_per_second, max_channels_per_client, max_bytes_per_second"
+          IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$RT" | awk '{print $1}')
+          SECRET=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$RT" | sed -n 's/^API_JWT_SECRET=//p')
+          echo "::add-mask::$SECRET"
+          cols="max_concurrent_users, max_events_per_second, max_joins_per_second, max_channels_per_client, max_bytes_per_second"
           url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
           {
-            echo "- local defaults: \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -3 | tr '\n' ' ')\`"
-            if psql "$url" -Xq -c "update _realtime.tenants set max_concurrent_users = 100000, max_events_per_second = 100000, max_joins_per_second = 10000, max_channels_per_client = 100, max_bytes_per_second = 1000000000" 2>&1; then
-              docker restart "$RT" >/dev/null
-              for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$RT" 2>/dev/null)" = healthy ] && break; sleep 2; done
-              echo "- raised for this run: \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -3 | tr '\n' ' ')\` (Realtime restarted: $(docker inspect -f '{{.State.Health.Status}}' "$RT"))"
-            else
-              echo "- could not raise the limits (the defaults above applied)"
-            fi
+            echo "- local defaults (database row): \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -2 | tr '\n' ' ')\`"
+            echo "- management API: $(node load/realtime-limits.mjs "http://$IP:4000" "$SECRET" 2>&1 | tr '\n' ' ')"
+            echo "- database row now: \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -2 | tr '\n' ' ')\`"
           } | tee "$OUT/realtime-limits.txt"
 
       - name: Enable pg_stat_statements
@@ -224,7 +222,10 @@ jobs:
       - name: Plans and logs as annotations
         if: always()
         run: |
-          { echo "## k6.log (tail)"; tail -25 "$OUT/k6.log"; echo "## playwright during"; grep -E '✘|Error|expect|›' "$OUT/playwright-during.log" | head -30;
+          { echo "## k6 failed requests per 10 s (UTC)"; grep -o 'time="[^"]*" level=warning msg="Request Failed"' "$OUT/k6.log" | cut -c7-24 | uniq -c | head -40
+            echo "## k6.log (tail)"; tail -12 "$OUT/k6.log";
+            echo "## next.log: first 'unstable value' error in full"; grep -m1 -B2 -A14 'unstable value' "$OUT/next.log";
+            echo "## kong alerts"; docker logs "$(docker ps -a --format '{{.Names}}' | grep -m1 '^supabase_kong_')" 2>&1 | grep -E '\[(alert|crit|emerg|error)\]|exited|signal' | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -10; echo "## playwright during"; grep -E '✘|Error|expect|›' "$OUT/playwright-during.log" | head -30;
             echo "## playwright after"; grep -E '✘|Error|expect|›' "$OUT/playwright-after.log" | head -30; echo "## seed.log (tail)"; tail -8 "$OUT/seed.log";
             echo "## next.log (tail)"; tail -20 "$OUT/next.log"; } > "$OUT/logs.txt" 2>/dev/null || true
           bash load/annotate.sh "$OUT/logs.txt" logs 1 3

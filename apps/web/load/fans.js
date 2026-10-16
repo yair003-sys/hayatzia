@@ -415,7 +415,9 @@ export function api() {
 // The goal: fans of the two clubs flood the live room ("גול" is a crowd keyword: the burst counter and poll run).
 export function goal() {
   const fan = LIVE_FANS[exec.scenario.iterationInTest % LIVE_FANS.length]
-  sendMatch(fan, `[נתוני עומס] גווול!!! גול t=${Date.now()}`, 'goal_send', 'goal')
+  // Some fans shout "פנדל" (a crowd keyword): 15 different fans within 60 s open a crowd-verdict poll, as in a real match.
+  const text = Math.random() < 0.3 ? `[נתוני עומס] פנדל!! t=${Date.now()}` : `[נתוני עומס] גווול!!! גול t=${Date.now()}`
+  sendMatch(fan, text, 'goal_send', 'goal')
 }
 
 // ── Real pages (Next.js server rendering as the fan, cookie session) ─────────────────────────────────────────────
