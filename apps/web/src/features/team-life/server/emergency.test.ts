@@ -7,6 +7,7 @@ const INCIDENT = '55555555-5555-4555-8555-555555555555'
 const db = vi.hoisted(() => ({
   emergency: { data: null as unknown, error: null as null | { code: string; message: string } },
   admins: ['a1', 'a2'] as string[],
+  adminThrows: false,
   calls: [] as { fn: string; args: unknown }[],
   pushes: [] as { to: string[]; payload: unknown }[],
 }))
@@ -24,6 +25,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
     rpc: async (fn: string) => {
+      if (db.adminThrows) throw new Error('network down')
       db.calls.push({ fn, args: null })
       return { data: db.admins, error: null }
     },
@@ -42,6 +44,7 @@ import { reportEmergencyAction } from './emergency'
 beforeEach(() => {
   db.emergency = { data: [{ incident_id: INCIDENT, created: true, from_city: 'רעננה', fixture_id: 94 }], error: null }
   db.admins = ['a1', 'a2']
+  db.adminThrows = false
   db.calls = []
   db.pushes = []
 })
@@ -71,6 +74,21 @@ describe('reportEmergencyAction', () => {
     const r = await reportEmergencyAction({ tripId: TRIP })
     expect(r.data).toEqual({ error: 'רק הנהג והנוסעים שאושרו יכולים לדווח על חירום בנסיעה' })
     expect(db.pushes).toEqual([])
+  })
+
+  it('once the incident is recorded the fan never sees an error, even if alerting the admins fails', async () => {
+    db.adminThrows = true
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect((await reportEmergencyAction({ tripId: TRIP })).data).toEqual({ ok: true, created: true })
+    expect(err).toHaveBeenCalledWith('emergency push failed', 'Error')
+    err.mockRestore()
+  })
+
+  it('too many reports in an hour, or a banned fan: a plain line that still points to 100', async () => {
+    db.emergency = { data: null, error: { code: 'P0001', message: 'rate_limit' } }
+    expect((await reportEmergencyAction({ tripId: TRIP })).data).toEqual({ error: 'שלחת כמה התראות חירום בשעה האחרונה. בחירום חייגו 100' })
+    db.emergency = { data: null, error: { code: '42501', message: 'banned' } }
+    expect((await reportEmergencyAction({ tripId: TRIP })).data).toEqual({ error: 'לא הצלחנו להודיע לצוות. בחירום חייגו 100' })
   })
 
   it('an unknown failure still points to 100', async () => {

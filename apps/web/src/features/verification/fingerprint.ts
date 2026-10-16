@@ -12,3 +12,13 @@ export function normaliseDocNumber(n: string): string {
 export function docFingerprint(documentNumber: string, secret: string): string {
   return createHmac('sha256', secret).update(normaliseDocNumber(documentNumber)).digest('hex')
 }
+
+export function normaliseCountry(_c: string): string {
+  throw new Error('not implemented')
+}
+export function normalisePersonalNumber(_n: string, _c: string): string {
+  throw new Error('not implemented')
+}
+export function identityFingerprint(_n: string, _c: string, _secret: string): string {
+  throw new Error('not implemented')
+}

@@ -5,7 +5,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_ENV: 'local' } }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => null }))
 
-import { docFingerprint } from '../fingerprint'
+import { identityFingerprint } from '../fingerprint'
 import { MOCK_SIGNATURE_HEADER, buildMockBody, createMockProvider, signMock } from '../mock-provider'
 import { handleVerificationWebhook } from './webhook'
 
@@ -29,7 +29,9 @@ const body = buildMockBody({
   sessionId: SESSION,
   providerRef: 'mock-1',
   approved: true,
-  documentNumber: '123456782',
+  documentType: 'id_card',
+  personalNumber: '123456782',
+  country: 'ISR',
   birthDate: '1990-01-01',
 })
 const signed = (b = body, sig = signMock(b, SECRET)) =>
@@ -56,12 +58,48 @@ describe('POST /api/verification/webhook', () => {
           p_provider: 'mock',
           p_provider_ref: 'mock-1',
           p_approved: true,
-          p_fingerprint: docFingerprint('123456782', FP_KEY),
+          p_fingerprint: identityFingerprint('123456782', 'IL', FP_KEY),
           p_doc_birth_date: '1990-01-01',
         },
       },
     ])
     expect(JSON.stringify(calls)).not.toContain('123456782')
+  })
+
+  it('an Israeli ID card and passport of the same person give the same fingerprint (duplicate_identity in the database)', async () => {
+    const passport = buildMockBody({
+      sessionId: '22222222-2222-4222-8222-222222222222',
+      providerRef: 'mock-2',
+      approved: true,
+      documentType: 'passport',
+      personalNumber: '123456782',
+      country: 'IL',
+      birthDate: '1990-01-01',
+    })
+    await handleVerificationWebhook(signed(), deps())
+    await handleVerificationWebhook(signed(passport), deps())
+    expect(calls).toHaveLength(2)
+    expect(calls[0]?.args.p_fingerprint).toBe(calls[1]?.args.p_fingerprint)
+  })
+
+  it('a document without a personal number is sent without a fingerprint', async () => {
+    const noNumber = buildMockBody({ sessionId: SESSION, providerRef: 'mock-3', approved: true, documentType: 'passport', country: 'FRA' })
+    await handleVerificationWebhook(signed(noNumber), deps())
+    expect(calls[0]?.args).not.toHaveProperty('p_fingerprint')
+  })
+
+  it('a body over 64 KB is refused before it is read', async () => {
+    const big = new Request('http://localhost/api/verification/webhook', {
+      method: 'POST',
+      headers: { 'content-length': String(70_000), [MOCK_SIGNATURE_HEADER]: signMock(body, SECRET) },
+      body,
+    })
+    const res = await handleVerificationWebhook(big, deps())
+    expect(res.status).toBe(413)
+    expect(big.bodyUsed).toBe(false)
+    const huge = 'x'.repeat(70_000)
+    expect((await handleVerificationWebhook(signed(huge), deps())).status).toBe(413)
+    expect(calls).toEqual([])
   })
 
   it('a bad signature is refused before anything is written', async () => {

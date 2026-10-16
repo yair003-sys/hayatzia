@@ -43,7 +43,9 @@ describe('mock provider', () => {
       sessionId: SESSION,
       providerRef: 'mock-1',
       approved: true,
-      documentNumber: 'DEMO-1',
+      documentType: 'licence',
+      personalNumber: '012345678',
+      country: 'ISR',
       birthDate: '1990-01-01',
       licenceIssued: '2015-05-05',
     })
@@ -52,7 +54,8 @@ describe('mock provider', () => {
       providerRef: 'mock-1',
       approved: true,
       reasonCode: null,
-      documentNumber: 'DEMO-1',
+      personalNumber: '012345678',
+      country: 'ISR',
       docBirthDate: '1990-01-01',
       licenceIssued: '2015-05-05',
       docExpires: null,
@@ -73,6 +76,12 @@ describe('mock provider', () => {
     for (const body of ['not json', '{"session_id":"nope","provider_ref":"x","status":"approved"}', '{}']) {
       expect(await code(p.parseWebhook(req(body, signMock(body, SECRET))))).toBe('bad_payload')
     }
+  })
+
+  it('a document without a personal number comes back without one (the database refuses it: doc_unsupported)', async () => {
+    const p = createMockProvider({ appEnv: 'local', secret: SECRET })
+    const body = buildMockBody({ sessionId: SESSION, providerRef: 'mock-2', approved: true, documentType: 'passport', country: 'FRA' })
+    expect(await p.parseWebhook(req(body, signMock(body, SECRET)))).toMatchObject({ personalNumber: null, country: 'FRA' })
   })
 
   it('signatures are hex HMAC-SHA256', () => {

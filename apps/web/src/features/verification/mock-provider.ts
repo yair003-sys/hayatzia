@@ -30,6 +30,9 @@ export function buildMockBody(i: {
   approved: boolean
   reason?: string
   documentNumber?: string
+  documentType?: string
+  personalNumber?: string
+  country?: string
   birthDate?: string
   licenceIssued?: string
   expires?: string

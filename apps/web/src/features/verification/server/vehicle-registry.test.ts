@@ -30,6 +30,13 @@ describe('lookupVehicle (data.gov.il, mocked)', () => {
     expect(await lookupVehicle('12345678', { fetchImpl: f as unknown as typeof fetch })).toMatchObject({ model: 'ZRE18', year: null })
   })
 
+  it('keeps the registry\'s own number, and a record for another plate is no match', async () => {
+    const other = ok([{ mispar_rechev: 1234568, tozeret_nm: 'x', tzeva_rechev: 'y', shnat_yitzur: 2019 }])
+    expect(await lookupVehicle('1234567', { fetchImpl: other as unknown as typeof fetch })).toBeNull()
+    const same = ok([{ mispar_rechev: '1234567', tozeret_nm: 'x', tzeva_rechev: 'y', shnat_yitzur: 2019 }])
+    expect(await lookupVehicle('1234567', { fetchImpl: same as unknown as typeof fetch })).toMatchObject({ plate: '1234567' })
+  })
+
   it('null when the plate is not in the registry', async () => {
     expect(await lookupVehicle('7654321', { fetchImpl: ok([]) as unknown as typeof fetch })).toBeNull()
   })

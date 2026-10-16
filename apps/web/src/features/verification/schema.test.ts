@@ -18,6 +18,9 @@ const CODES = [
   'plate_not_found',
   'registry_unavailable',
   'bad_plate',
+  'licence_mismatch',
+  'doc_unsupported',
+  'car_in_use',
 ]
 
 describe('verificationErrorHe', () => {
@@ -59,6 +62,7 @@ describe('plates', () => {
     expect(normalisePlate('123')).toBeNull()
     expect(normalisePlate('123456789')).toBeNull()
     expect(normalisePlate('12-3a5-67')).toBeNull()
+    expect(normalisePlate('0123456')).toBeNull() // no plate starts with 0: the number stays exact as text
   })
   it('formats like the plate on the car', () => {
     expect(formatPlate('1234567')).toBe('12-345-67')

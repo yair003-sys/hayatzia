@@ -3,7 +3,7 @@
 -- only, idempotent, birth date, duplicate identity, licence age, expiry), attempts and the admin reset, the admin birth
 -- date fix, cars and plates, the verified badge data, and emergency incidents (who, window, rate limit, locks, admin).
 begin;
-select plan(89);
+select plan(107);
 
 -- e01 driver, e02 rider, e03 second account (duplicate identity), e04 suspended from rides, e05 banned, e06 admin,
 -- e07 unverified fan, e08 sessions and results, e09 expired approval.
@@ -194,7 +194,7 @@ select set_config('t.l1', public.begin_verification('licence')::text, true);
 reset role;
 select pg_temp.as_service();
 set local role service_role;
-select is(public.verification_result(current_setting('t.l1')::uuid, 'mock', 'ref-l1', true, null, null, '1990-01-01',
+select is(public.verification_result(current_setting('t.l1')::uuid, 'mock', 'ref-l1', true, null, pg_temp.fp('8'), '1990-01-01',
             (current_date - interval '1 year')::date, null), 'rejected', 'a licence held for one year is rejected');
 reset role;
 select is((select reason_code from public.fan_verifications where id = current_setting('t.l1')::uuid), 'licence_too_new', 'reason licence_too_new');
@@ -204,11 +204,27 @@ select set_config('t.l2', public.begin_verification('licence')::text, true);
 reset role;
 select pg_temp.as_service();
 set local role service_role;
-select is(public.verification_result(current_setting('t.l2')::uuid, 'mock', 'ref-l2', true, null, null, '1990-01-01',
+select is(public.verification_result(current_setting('t.l2')::uuid, 'mock', 'ref-l2', true, null, pg_temp.fp('8'), '1990-01-01',
             (current_date - interval '5 years')::date, current_date + 100), 'approved', 'a licence held for five years is approved');
 reset role;
 select is((select expires_at::date from public.fan_verifications where id = current_setting('t.l2')::uuid), current_date + 100,
   'the approval ends at the licence''s own expiry');
+
+-- The licence belongs to the verified person: same personal number (fingerprint) and birth date (security review).
+select pg_temp.as_fan('e07');
+set local role authenticated;
+select set_config('t.m1', public.begin_verification('licence')::text, true);
+select set_config('t.m2', public.begin_verification('licence')::text, true);
+reset role;
+select pg_temp.as_service();
+set local role service_role;
+select is(public.verification_result(current_setting('t.m1')::uuid, 'mock', 'ref-m1', true, null, pg_temp.fp('8'), '1990-01-01',
+            (current_date - interval '5 years')::date, null), 'rejected', 'a licence of another person is rejected');
+select is(public.verification_result(current_setting('t.m2')::uuid, 'mock', 'ref-m2', true, null, pg_temp.fp('7'), null,
+            (current_date - interval '5 years')::date, null), 'rejected', 'a licence without a birth date is rejected');
+reset role;
+select results_eq($$ select reason_code::text from public.fan_verifications where id in (current_setting('t.m1')::uuid, current_setting('t.m2')::uuid) order by provider_ref $$,
+  $$ values ('licence_mismatch'::text), ('dob_mismatch'::text) $$, 'reasons licence_mismatch and dob_mismatch');
 
 -- Re-verifying after expiry with the same ID supersedes the old approval.
 update public.fan_verifications set expires_at = now() - interval '1 day' where id = current_setting('t.s2')::uuid;
@@ -270,7 +286,23 @@ select is((select count(*)::int from public.admin_actions where target_user = pg
   'both admin actions are logged');
 select pg_temp.as_fan('e03');
 set local role authenticated;
-select lives_ok($$ select public.begin_verification('identity') $$, 'after the reset the fan can try again');
+select set_config('t.d4', public.begin_verification('identity')::text, true);
+reset role;
+select ok(current_setting('t.d4') <> '', 'after the reset the fan can try again');
+select pg_temp.as_service();
+set local role service_role;
+select is(public.verification_result(current_setting('t.d4')::uuid, 'mock', 'ref-d4', true, null, null, '1991-01-01', null, null),
+  'rejected', 'a document without a personal number is rejected');
+reset role;
+select is((select reason_code::text from public.fan_verifications where id = current_setting('t.d4')::uuid), 'doc_unsupported', 'reason doc_unsupported');
+
+-- L1: only sessions that did not end approved count (renewals keep working).
+insert into public.fan_verifications (user_id, kind, status, provider, provider_ref, reason_code)
+  select pg_temp.uid('e09'), 'identity', 'rejected', 'mock', 'old-e09-' || g, 'declined' from generate_series(1, 2) g;
+select pg_temp.as_fan('e09');
+set local role authenticated;
+select lives_ok($$ select public.begin_verification('identity') $$, 'an old approval does not use up an attempt');
+select throws_ok($$ select public.begin_verification('identity') $$, 'P0001', 'verify_limit', 'three sessions that were not approved, then the limit');
 reset role;
 
 -- ---------- 4. cars, plates, the badge ----------
@@ -282,10 +314,16 @@ reset role;
 select pg_temp.as_service();
 set local role service_role;
 select throws_ok($$ select public.set_fan_car(pg_temp.uid('e09'), '12', 'קיה', 'פיקנטו', 'אדום', 2020) $$, '22023', 'bad_plate', 'a plate is 7–8 digits');
+select throws_ok($$ select public.set_fan_car(pg_temp.uid('e09'), '0123456', 'קיה', 'פיקנטו', 'אדום', 2020) $$, '22023', 'bad_plate', 'no leading zero');
 select lives_ok($$ select public.set_fan_car(pg_temp.uid('e09'), '7654321', 'קיה', 'פיקנטו', 'אדום', 2020) $$, 'the server registers a checked car');
 select lives_ok($$ select public.set_fan_car(pg_temp.uid('e09'), '76543210', 'טויוטה', 'קורולה', 'כסף', 2021) $$, 'a new car replaces the old one');
 reset role;
 select is((select count(*)::int from public.fan_cars where user_id = pg_temp.uid('e09') and active), 1, 'one active car per driver');
+select pg_temp.as_fan('e09');
+set local role authenticated;
+select lives_ok($$ select public.claim_registry_lookup() from generate_series(1, 10) $$, 'ten registry lookups a day');
+select throws_ok($$ select public.claim_registry_lookup() $$, 'P0001', 'rate_limit', 'the eleventh is refused before any fetch');
+reset role;
 
 select pg_temp.as_fan('e01');
 set local role authenticated;
@@ -296,13 +334,24 @@ select pg_temp.as_fan('e02');
 set local role authenticated;
 select results_eq($$ select plate from public.my_ride_plates(array[current_setting('t.offer')::uuid]) $$,
   $$ values ('1234567'::text) $$, 'an accepted rider sees the plate');
-select results_eq($$ select identity_ok, driver_ok, car_make from public.ride_trust(array[pg_temp.uid('e01'), pg_temp.uid('e07')]) order by user_id $$,
-  $$ values (true, true, 'מאזדה'::text), (true, false, null::text) $$, 'the badge data: verified fan, verified driver, car');
+select results_eq($$ select identity_ok, driver_ok, car_make from public.ride_trust(array[pg_temp.uid('e01'), pg_temp.uid('e07'), pg_temp.uid('e03')]) order by user_id $$,
+  $$ values (true, true, 'מאזדה'::text) $$, 'the badge data, only for fans with a visible trip or request');
 reset role;
 select pg_temp.as_fan('e08');
 set local role authenticated;
 select is((select count(*)::int from public.my_ride_plates(array[current_setting('t.offer')::uuid])), 0, 'a pending rider does not see the plate');
 reset role;
+-- The driver's approval lapses: the accepted rider still sees the ride, others do not.
+update public.fan_verifications set expires_at = now() - interval '1 minute' where user_id = pg_temp.uid('e01') and kind = 'identity';
+select pg_temp.as_fan('e02');
+set local role authenticated;
+select is((select count(*)::int from public.trips where id = current_setting('t.offer')::uuid), 1, 'an accepted rider always sees the ride');
+reset role;
+select pg_temp.as_fan('e08');
+set local role authenticated;
+select is((select count(*)::int from public.trips where id = current_setting('t.offer')::uuid), 0, 'a pending rider does not');
+reset role;
+update public.fan_verifications set expires_at = now() + interval '2 years' where user_id = pg_temp.uid('e01') and kind = 'identity';
 
 -- ---------- 5. emergency ----------
 select pg_temp.as_fan('e01');
@@ -320,8 +369,21 @@ insert into public.trip_requests (trip_id) values (current_setting('t.e')::uuid)
 reset role;
 select pg_temp.as_fan('e01');
 set local role authenticated;
+select throws_ok($$ select * from public.report_ride_emergency(current_setting('t.e')::uuid) $$, '42501', 'not_in_ride',
+  'no emergency on a ride nobody was accepted to');
 update public.trip_requests set status = 'accepted' where trip_id = current_setting('t.e')::uuid and user_id = pg_temp.uid('e02');
 reset role;
+select pg_temp.as_fan('e05');
+set local role authenticated;
+select throws_ok($$ select * from public.report_ride_emergency(current_setting('t.e')::uuid) $$, '42501', 'banned', 'a banned fan cannot alert');
+reset role;
+-- Three reports in the last hour (other trips): the fourth is refused.
+insert into public.ride_incidents (trip_id, reporter_id, status) select gen_random_uuid(), pg_temp.uid('e02'), 'closed' from generate_series(1, 3);
+select pg_temp.as_fan('e02');
+set local role authenticated;
+select throws_ok($$ select * from public.report_ride_emergency(current_setting('t.e')::uuid) $$, 'P0001', 'rate_limit', 'three reports an hour');
+reset role;
+delete from public.ride_incidents where reporter_id = pg_temp.uid('e02');
 
 select pg_temp.as_fan('e07');
 set local role authenticated;
@@ -336,16 +398,18 @@ select throws_ok($$ select * from public.report_ride_emergency(current_setting('
 select results_eq($$ select created, from_city, fixture_id from public.report_ride_emergency(current_setting('t.e')::uuid) $$,
   $$ values (true, 'רעננה'::text, 94::bigint) $$, 'an accepted rider raises an emergency');
 select results_eq($$ select created from public.report_ride_emergency(current_setting('t.e')::uuid) $$,
-  $$ values (false) $$, 'again within 10 minutes: no new incident');
+  $$ values (false) $$, 'again: the open incident, no new one');
 reset role;
 select is((select count(*)::int from public.ride_incidents where trip_id = current_setting('t.e')::uuid), 1, 'one incident');
-select ok((select status = 'open' and driver_id = pg_temp.uid('e01') and reporter_id = pg_temp.uid('e02') and car like '%מאזדה%'
+select ok((select status = 'open' and driver_id = pg_temp.uid('e01') and reporter_id = pg_temp.uid('e02') and car_make = 'מאזדה'
+             and car_model = '3' and car_colour = 'לבן' and car_plate = '1234567'
              from public.ride_incidents where trip_id = current_setting('t.e')::uuid),
-  'open, with the driver, the reporter and the car');
+  'open, with the driver, the reporter and a snapshot of the car');
 select pg_temp.as_fan('e01');
 set local role authenticated;
 select results_eq($$ select created from public.report_ride_emergency(current_setting('t.e')::uuid) $$,
-  $$ values (true) $$, 'the driver can raise one too');
+  $$ values (false) $$, 'the driver presses too: the same open incident, no second push');
+select throws_ok($$ select public.remove_my_car() $$, 'P0001', 'car_in_use', 'the car stays while riders are accepted');
 delete from public.trips where id = current_setting('t.e')::uuid;
 select is(public.my_ride_case_open(), true, 'the driver''s ride case is open');
 reset role;
@@ -359,19 +423,23 @@ reset role;
 select is((select count(*)::int from public.trip_requests where trip_id = current_setting('t.e')::uuid and user_id = pg_temp.uid('e02')), 1,
   'the request cannot be withdrawn while open');
 
+select is((select count(*)::int from public.ride_incidents where trip_id = current_setting('t.e')::uuid), 1, 'still one incident');
+select pg_temp.as_fan('e09');
+set local role authenticated;
+select is(public.remove_my_car(), true, 'a driver with no ride removes the car');
+reset role;
 select set_config('t.i1', (select id::text from public.ride_incidents where reporter_id = pg_temp.uid('e02')), true);
-select set_config('t.i2', (select id::text from public.ride_incidents where reporter_id = pg_temp.uid('e01')), true);
 select pg_temp.as_fan('e06');
 set local role authenticated;
-select is(public.admin_incident_count(), 2, 'two unanswered incidents');
+select is(public.admin_incident_count(), 1, 'one unanswered incident');
 select ok((select bool_and(car like '%1234567%' and from_city = 'רעננה') from public.admin_open_incidents()), 'the admin sees route and car');
 select is(public.admin_ack_incident(current_setting('t.i1')::uuid), true, 'acknowledged');
-select is(public.admin_incident_count(), 1, 'one left unanswered');
-select is((select count(*)::int from public.admin_open_incidents()), 2, 'acknowledged incidents stay open in the list');
-select ok(public.admin_close_incident(current_setting('t.i1')::uuid) and public.admin_close_incident(current_setting('t.i2')::uuid), 'both closed');
+select is(public.admin_incident_count(), 0, 'none left unanswered');
+select is((select count(*)::int from public.admin_open_incidents()), 1, 'acknowledged incidents stay open in the list');
+select ok(public.admin_close_incident(current_setting('t.i1')::uuid), 'closed');
 select is(public.admin_incident_count(), 0, 'nothing unanswered');
 reset role;
-select is((select count(*)::int from public.admin_actions where action in ('incident_ack', 'incident_close')), 3, 'logged');
+select is((select count(*)::int from public.admin_actions where action in ('incident_ack', 'incident_close')), 2, 'logged');
 select pg_temp.as_fan('e01');
 set local role authenticated;
 delete from public.trips where id = current_setting('t.e')::uuid;
