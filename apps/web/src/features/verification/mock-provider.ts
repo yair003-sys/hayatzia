@@ -18,7 +18,9 @@ const mockBody = z.object({
   provider_ref: z.string().min(1).max(120),
   status: z.enum(['approved', 'declined']),
   reason: z.string().max(40).optional(),
-  document_number: z.string().max(40).optional(),
+  document_type: z.enum(['id_card', 'passport', 'licence']).optional(),
+  personal_number: z.string().max(40).optional(),
+  country: z.string().regex(/^[A-Za-z]{2,3}$/).optional(),
   birth_date: day.optional(),
   licence_issued: day.optional(),
   expires: day.optional(),
@@ -29,8 +31,7 @@ export function buildMockBody(i: {
   providerRef: string
   approved: boolean
   reason?: string
-  documentNumber?: string
-  documentType?: string
+  documentType?: 'id_card' | 'passport' | 'licence'
   personalNumber?: string
   country?: string
   birthDate?: string
@@ -42,7 +43,9 @@ export function buildMockBody(i: {
     provider_ref: i.providerRef,
     status: i.approved ? 'approved' : 'declined',
     reason: i.reason,
-    document_number: i.documentNumber,
+    document_type: i.documentType,
+    personal_number: i.personalNumber,
+    country: i.country,
     birth_date: i.birthDate,
     licence_issued: i.licenceIssued,
     expires: i.expires,
@@ -77,7 +80,8 @@ export function createMockProvider({ appEnv, secret }: { appEnv: AppEnv; secret:
         providerRef: p.data.provider_ref,
         approved: p.data.status === 'approved',
         reasonCode: p.data.reason ?? null,
-        documentNumber: p.data.document_number ?? null,
+        personalNumber: p.data.personal_number ?? null,
+        country: p.data.country ?? null,
         docBirthDate: p.data.birth_date ?? null,
         licenceIssued: p.data.licence_issued ?? null,
         docExpires: p.data.expires ?? null,

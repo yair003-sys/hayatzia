@@ -16,6 +16,7 @@ export class RegistryError extends Error {
 }
 
 type RegistryRecord = {
+  mispar_rechev?: unknown
   tozeret_nm?: unknown
   kinuy_mishari?: unknown
   degem_nm?: unknown
@@ -48,10 +49,11 @@ export async function lookupVehicle(
   }
   if (body?.success !== true) throw new RegistryError('unavailable')
   const r = body.result?.records?.[0]
-  if (!r) return null
+  // The registry's own number, as text, must be the plate asked for (plates never start with 0, so it is exact).
+  if (!r || String(r.mispar_rechev ?? '') !== plate) return null
   const year = Number(r.shnat_yitzur)
   return {
-    plate,
+    plate: String(r.mispar_rechev),
     make: text(r.tozeret_nm, 40),
     model: text(r.kinuy_mishari, 60) || text(r.degem_nm, 60),
     colour: text(r.tzeva_rechev, 30),

@@ -19,6 +19,14 @@
 --   one decision per session (a repeat changes nothing), the document birth date compared with profiles.birth_date
 --   (dob_mismatch), a licence held at least 2 years (licence_too_new), an expired document refused (doc_expired).
 --   Approval lasts 2 years (a licence until its own expiry when earlier) and supersedes the fan's older approval.
+-- - Security review (2026-10-16): the fingerprint is of the national personal number + issuing country (the same for
+--   an Israeli ID card, passport and driving licence), never of a document number; a document without one is
+--   rejected doc_unsupported. A licence must carry the birth date and the personal number of the fan's approved
+--   identity (licence_mismatch). Only sessions that did not end approved count towards the 3 attempts (renewals).
+--   Registry lookups are limited to 10 per fan per 24 h (claim_registry_lookup, before the fetch). Emergencies need
+--   an accepted rider, refuse banned fans, are capped at 3 per reporter per hour, and a trip has one open incident
+--   (later presses return it, one admin push). Accepted riders keep seeing their ride even if the driver's
+--   verification lapses. The car is snapshotted onto the incident; it cannot be removed while riders are accepted.
 -- - Cars: written only by the server after the Ministry of Transport registry lookup (set_fan_car, service role); one
 --   active car per driver; make/model/colour on the ride card, the plate only to the driver and accepted riders.
 -- - Emergency: report_ride_emergency(trip) by the driver or an accepted rider of an offer or seek, from 30 minutes
@@ -38,7 +46,7 @@ create table public.fan_verifications (
   status           text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'expired')),
   provider         varchar(20) not null default '',
   provider_ref     varchar(120) unique,
-  doc_fingerprint  text check (doc_fingerprint ~ '^[0-9a-f]{64}$'),
+  doc_fingerprint  text check (doc_fingerprint ~ '^[0-9a-f]{64}$'),  -- HMAC of personal number + country
   reason_code      varchar(40),
   counted          boolean not null default true,   -- false once an admin resets the attempts
   approved_at      timestamptz,
@@ -57,7 +65,7 @@ revoke all on public.fan_verifications from public, anon, authenticated;
 create table public.fan_cars (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users (id) on delete cascade,
-  plate       varchar(8) not null check (plate ~ '^[0-9]{7,8}$'),
+  plate       varchar(8) not null check (plate ~ '^[1-9][0-9]{6,7}$'),
   make        varchar(40) not null default '',
   model       varchar(60) not null default '',
   colour      varchar(30) not null default '',
@@ -121,7 +129,8 @@ begin
   if p_kind = 'licence' and not private.verified(me, 'identity') then
     raise exception 'verify_identity' using errcode = '42501';
   end if;
-  if (select count(*) from public.fan_verifications v where v.user_id = me and v.kind = p_kind and v.counted) >= 3 then
+  if (select count(*) from public.fan_verifications v
+       where v.user_id = me and v.kind = p_kind and v.counted and v.status in ('pending', 'rejected')) >= 3 then
     raise exception 'verify_limit' using errcode = 'P0001';
   end if;
   insert into public.fan_verifications (user_id, kind) values (me, p_kind) returning id into v_id;
@@ -152,15 +161,22 @@ begin
   select p.birth_date into v_dob from public.profiles p where p.user_id = v.user_id;
   if p_approved is not true then
     v_reason := coalesce(nullif(left(btrim(coalesce(p_reason, '')), 40), ''), 'rejected');
-  elsif v.kind = 'identity' and v_fp is null then
+  elsif p_fingerprint is null then
+    v_reason := 'doc_unsupported';                -- no national personal number on the document
+  elsif v_fp is null then
     v_reason := 'bad_fingerprint';
-  elsif (v.kind = 'identity' or p_doc_birth_date is not null) and (v_dob is null or p_doc_birth_date is distinct from v_dob) then
+  elsif v_dob is null or p_doc_birth_date is null or p_doc_birth_date <> v_dob then
     v_reason := 'dob_mismatch';
   elsif v.kind = 'identity' and exists (
           select 1 from public.fan_verifications o
            where o.doc_fingerprint = v_fp and o.kind = 'identity' and o.user_id <> v.user_id
              and (o.status in ('approved', 'expired') or private.ride_suspended(o.user_id) or private.is_banned(o.user_id))) then
     v_reason := 'duplicate_identity';
+  elsif v.kind = 'licence' and not exists (
+          select 1 from public.fan_verifications i
+           where i.user_id = v.user_id and i.kind = 'identity' and i.status = 'approved' and i.expires_at > now()
+             and i.doc_fingerprint = v_fp) then
+    v_reason := 'licence_mismatch';               -- the licence is not the verified person's
   elsif v.kind = 'licence' and (p_licence_issued is null or p_licence_issued > (current_date - interval '2 years')::date) then
     v_reason := 'licence_too_new';
   elsif p_doc_expires is not null and p_doc_expires < current_date then
@@ -170,8 +186,7 @@ begin
   if v_reason is not null then
     update public.fan_verifications f
        set status = 'rejected', reason_code = v_reason, provider = left(coalesce(p_provider, ''), 20),
-           provider_ref = left(p_provider_ref, 120), doc_fingerprint = case when v.kind = 'identity' then v_fp end,
-           updated_at = now()
+           provider_ref = left(p_provider_ref, 120), doc_fingerprint = v_fp, updated_at = now()
      where f.id = p_session;
     return 'rejected';
   end if;
@@ -185,7 +200,7 @@ begin
   update public.fan_verifications f
      set status = 'approved', reason_code = null, approved_at = now(), expires_at = v_expires,
          provider = left(coalesce(p_provider, ''), 20), provider_ref = left(p_provider_ref, 120),
-         doc_fingerprint = case when v.kind = 'identity' then v_fp end, updated_at = now()
+         doc_fingerprint = v_fp, updated_at = now()
    where f.id = p_session;
   return 'approved';
 end $$;
@@ -202,7 +217,7 @@ language sql stable security definer set search_path = '' as $$
          end,
          case when l.status = 'rejected' then l.reason_code::text end,
          greatest(3 - (select count(*)::int from public.fan_verifications c
-                        where c.user_id = p_user and c.kind = p_kind and c.counted), 0)
+                        where c.user_id = p_user and c.kind = p_kind and c.counted and c.status in ('pending', 'rejected')), 0)
     from (select 1) one
     left join lateral (select v.status, v.reason_code from public.fan_verifications v
                         where v.user_id = p_user and v.kind = p_kind order by v.created_at desc limit 1) l on true
@@ -236,7 +251,7 @@ create function public.set_fan_car(p_user uuid, p_plate text, p_make text, p_mod
 returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  if p_user is null or p_plate is null or p_plate !~ '^[0-9]{7,8}$' then
+  if p_user is null or p_plate is null or p_plate !~ '^[1-9][0-9]{6,7}$' then
     raise exception 'bad_plate' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('car:' || p_user::text, 0));
@@ -252,8 +267,41 @@ end $$;
 create function public.remove_my_car() returns boolean
 language plpgsql security definer set search_path = '' as $$
 begin
+  -- Riders were accepted to a ride in this car: it stays until the ride is over (kickoff + 4 hours).
+  if exists (select 1 from public.trips t join public.fixtures f on f.id = t.fixture_id
+              where t.user_id = auth.uid() and t.kind = 'offer' and f.kickoff_at > now() - interval '4 hours'
+                and exists (select 1 from public.trip_requests q where q.trip_id = t.id and q.status = 'accepted')) then
+    raise exception 'car_in_use' using errcode = 'P0001';
+  end if;
   update public.fan_cars c set active = false where c.user_id = auth.uid() and c.active;
   return found;
+end $$;
+
+-- Registry lookups: 10 per fan per 24 h, claimed before the server fetches data.gov.il. Rows older than a day are
+-- pruned on write.
+create table public.registry_lookups (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  created_at  timestamptz not null default now()
+);
+create index registry_lookups_user_idx on public.registry_lookups (user_id, created_at desc);
+alter table public.registry_lookups enable row level security;  -- no policies: through claim_registry_lookup()
+revoke all on public.registry_lookups from public, anon, authenticated;
+
+create function public.claim_registry_lookup() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('registry:' || me::text, 0));
+  delete from public.registry_lookups r where r.user_id = me and r.created_at <= now() - interval '24 hours';
+  if (select count(*) from public.registry_lookups r where r.user_id = me) >= 10 then
+    raise exception 'rate_limit' using errcode = 'P0001';
+  end if;
+  insert into public.registry_lookups (user_id) values (me);
 end $$;
 
 -- The badge and the car on ride cards: fans of the caller's club; the car only for a fan with a visible current offer.
@@ -270,6 +318,12 @@ language sql stable security definer set search_path = '' as $$
                         and f.kickoff_at > now() - interval '3 hours')
    where p.user_id = any (p_users[1:200])
      and p.team_id = (select public.my_team())
+     and (exists (select 1 from public.trips t join public.fixtures f on f.id = t.fixture_id
+                   where t.user_id = p.user_id and t.team_id = p.team_id and t.hidden_at is null
+                     and f.kickoff_at > now() - interval '3 hours' and private.ride_poster_ok(t.user_id, t.kind))
+          or exists (select 1 from public.trip_requests q join public.trips t on t.id = q.trip_id
+                       join public.fixtures f on f.id = t.fixture_id
+                      where q.user_id = p.user_id and q.team_id = p.team_id and f.kickoff_at > now() - interval '3 hours'))
 $$;
 
 -- Plates: an offer's car to its driver and accepted riders; on a seek, the accepted driver's car to the seeker and them.
@@ -356,8 +410,17 @@ begin
   return new;
 end $$;
 
+-- The caller was accepted to this trip (definer: reads trip_requests without its policies, so no recursion).
+create function private.accepted_on(p_trip uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.trip_requests q where q.trip_id = p_trip and q.user_id = auth.uid() and q.status = 'accepted')
+$$;
+revoke all on function private.accepted_on(uuid) from public, anon;
+grant execute on function private.accepted_on(uuid) to authenticated, service_role;
+
 create policy trips_verified_or_hidden on public.trips as restrictive for select to authenticated
-  using (user_id = (select auth.uid()) or (select public.is_app_admin()) or private.ride_poster_ok(user_id, kind));
+  using (user_id = (select auth.uid()) or (select public.is_app_admin()) or private.ride_poster_ok(user_id, kind)
+         or private.accepted_on(id));
 
 -- ---------- admin: attempts, birth date, issues ----------
 alter table public.admin_actions drop constraint admin_actions_action_check;
@@ -414,7 +477,7 @@ begin
     select x.user_id, p.nick::text, x.kind, x.reason_code::text, x.used, x.created_at
       from (select distinct on (v.user_id, v.kind) v.user_id, v.kind, v.status, v.reason_code, v.created_at,
                    (select count(*)::int from public.fan_verifications c
-                     where c.user_id = v.user_id and c.kind = v.kind and c.counted) as used
+                     where c.user_id = v.user_id and c.kind = v.kind and c.counted and c.status in ('pending', 'rejected')) as used
               from public.fan_verifications v
              where v.created_at > now() - interval '30 days'
              order by v.user_id, v.kind, v.created_at desc) x
@@ -433,7 +496,10 @@ create table public.ride_incidents (
   driver_id        uuid,
   from_city        varchar(40) not null default '',
   pickup           varchar(80) not null default '',
-  car              varchar(160) not null default '',
+  car_make         varchar(40) not null default '',  -- snapshot of the driver's car when the incident opened
+  car_model        varchar(60) not null default '',
+  car_colour       varchar(30) not null default '',
+  car_plate        varchar(8) not null default '',
   status           text not null default 'open' check (status in ('open', 'closed')),
   acknowledged_at  timestamptz,
   acknowledged_by  uuid,
@@ -443,7 +509,7 @@ create table public.ride_incidents (
 );
 create index ride_incidents_open_idx on public.ride_incidents (created_at desc) where status = 'open';
 create index ride_incidents_trip_open_idx on public.ride_incidents (trip_id) where status = 'open';
-create index ride_incidents_reporter_idx on public.ride_incidents (reporter_id, trip_id, created_at desc);
+create index ride_incidents_reporter_idx on public.ride_incidents (reporter_id, created_at desc);
 create index ride_incidents_driver_open_idx on public.ride_incidents (driver_id) where status = 'open';
 alter table public.ride_incidents enable row level security;  -- no policies: admins use the functions below
 revoke all on public.ride_incidents from public, anon, authenticated;
@@ -486,15 +552,23 @@ declare
   t record;
   v_id uuid;
   v_driver uuid;
-  v_car text;
+  v_make text;
+  v_model text;
+  v_colour text;
+  v_plate text;
 begin
   if me is null then
     raise exception 'not signed in' using errcode = '42501';
   end if;
+  if private.is_banned(me) then
+    raise exception 'banned' using errcode = '42501';
+  end if;
   select tr.id, tr.user_id, tr.kind, tr.from_city, tr.pickup, tr.fixture_id, tr.depart_before_min, f.kickoff_at into t
     from public.trips tr join public.fixtures f on f.id = tr.fixture_id
    where tr.id = p_trip;
+  -- A real ride: at least one accepted request, and the caller is the trip's owner or an accepted requester.
   if not found or t.kind not in ('offer', 'seek')
+     or not exists (select 1 from public.trip_requests q where q.trip_id = p_trip and q.status = 'accepted')
      or not (t.user_id = me or exists (select 1 from public.trip_requests q
                                         where q.trip_id = p_trip and q.user_id = me and q.status = 'accepted')) then
     raise exception 'not_in_ride' using errcode = '42501';
@@ -502,13 +576,17 @@ begin
   if now() < t.kickoff_at - make_interval(mins => t.depart_before_min + 30) or now() > t.kickoff_at + interval '4 hours' then
     raise exception 'emergency_window' using errcode = 'P0001';
   end if;
-  perform pg_advisory_xact_lock(hashtextextended('emergency:' || me::text || ':' || p_trip::text, 0));
-  select i.id into v_id from public.ride_incidents i
-   where i.reporter_id = me and i.trip_id = p_trip and i.created_at > now() - interval '10 minutes'
-   order by i.created_at desc limit 1;
+  -- One open incident per trip: later presses (anyone in the ride) get it back, and no second admin push.
+  perform pg_advisory_xact_lock(hashtextextended('emergency:' || p_trip::text, 0));
+  select i.id into v_id from public.ride_incidents i where i.trip_id = p_trip and i.status = 'open'
+   order by i.created_at limit 1;
   if v_id is not null then
     return query select v_id, false, t.from_city::text, t.fixture_id;
     return;
+  end if;
+  if (select count(*) from public.ride_incidents i
+       where i.reporter_id = me and i.created_at > now() - interval '1 hour') >= 3 then
+    raise exception 'rate_limit' using errcode = 'P0001';
   end if;
   v_driver := case
     when t.kind = 'offer' then t.user_id
@@ -516,10 +594,12 @@ begin
     else (select q.user_id from public.trip_requests q where q.trip_id = p_trip and q.status = 'accepted'
            order by q.created_at limit 1)
   end;
-  select concat_ws(' · ', nullif(btrim(c.make || ' ' || c.model), ''), nullif(c.colour, ''), c.plate) into v_car
-    from public.fan_cars c where c.user_id = v_driver and c.active;
-  insert into public.ride_incidents (trip_id, fixture_id, reporter_id, driver_id, from_city, pickup, car)
-    values (p_trip, t.fixture_id, me, v_driver, t.from_city, t.pickup, left(coalesce(v_car, ''), 160))
+  select x.make, x.model, x.colour, x.plate into v_make, v_model, v_colour, v_plate
+    from public.fan_cars x where x.user_id = v_driver and x.active;
+  insert into public.ride_incidents (trip_id, fixture_id, reporter_id, driver_id, from_city, pickup,
+                                     car_make, car_model, car_colour, car_plate)
+    values (p_trip, t.fixture_id, me, v_driver, t.from_city, t.pickup,
+            coalesce(v_make, ''), coalesce(v_model, ''), coalesce(v_colour, ''), coalesce(v_plate, ''))
     returning id into v_id;
   return query select v_id, true, t.from_city::text, t.fixture_id;
 end $$;
@@ -535,7 +615,8 @@ begin
   end if;
   return query
     select i.id, i.created_at, i.acknowledged_at, i.trip_id, f.kickoff_at, i.from_city::text, i.pickup::text,
-           rp.nick::text, dp.nick::text, i.car::text
+           rp.nick::text, dp.nick::text,
+           concat_ws(' · ', nullif(btrim(i.car_make || ' ' || i.car_model), ''), nullif(i.car_colour, ''), nullif(i.car_plate, ''))
       from public.ride_incidents i
       left join public.fixtures f on f.id = i.fixture_id
       left join public.profiles rp on rp.user_id = i.reporter_id
@@ -600,13 +681,13 @@ revoke all on function public.begin_verification(text), public.my_verification()
   public.remove_my_car(), public.ride_trust(uuid[]), public.my_ride_plates(uuid[]), public.report_ride_emergency(uuid),
   public.admin_reset_verification(uuid, text), public.admin_set_birth_date(uuid, date), public.admin_verification_issues(int),
   public.admin_open_incidents(int), public.admin_incident_count(), public.admin_ack_incident(uuid),
-  public.admin_close_incident(uuid)
+  public.admin_close_incident(uuid), public.claim_registry_lookup()
   from public, anon;
 grant execute on function public.begin_verification(text), public.my_verification(), public.my_verification_session(uuid),
   public.remove_my_car(), public.ride_trust(uuid[]), public.my_ride_plates(uuid[]), public.report_ride_emergency(uuid),
   public.admin_reset_verification(uuid, text), public.admin_set_birth_date(uuid, date), public.admin_verification_issues(int),
   public.admin_open_incidents(int), public.admin_incident_count(), public.admin_ack_incident(uuid),
-  public.admin_close_incident(uuid)
+  public.admin_close_incident(uuid), public.claim_registry_lookup()
   to authenticated;
 -- The provider result and car writes: the server only.
 revoke all on function public.verification_result(uuid, text, text, boolean, text, text, date, date, date),

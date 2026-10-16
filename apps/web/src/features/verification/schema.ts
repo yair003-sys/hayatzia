@@ -34,6 +34,9 @@ const ERRORS = {
   plate_not_found: 'לא מצאנו את מספר הרכב במאגר משרד התחבורה. בדוק את המספר',
   registry_unavailable: 'מאגר משרד התחבורה לא זמין כרגע. נסה שוב בעוד כמה דקות',
   bad_plate: 'מספר רכב הוא 7 או 8 ספרות',
+  licence_mismatch: 'הרישיון לא תואם לתעודה שאימתת. מאמתים רישיון נהיגה שלך, עם אותו מספר זהות',
+  doc_unsupported: 'המסמך הזה לא מתאים לאימות. אפשר תעודת זהות, דרכון או רישיון נהיגה עם מספר זהות',
+  car_in_use: 'אי אפשר להסיר את הרכב כשיש נוסעים שאושרו לנסיעה קרובה',
 } as const
 export type VerifyCode = keyof typeof ERRORS
 export const VERIFY_ERRORS: Readonly<Record<VerifyCode, string>> = ERRORS
@@ -67,10 +70,10 @@ export function statusLabel(status: VerifyStatus, reason: string | null): string
   }
 }
 
-/** "12-345-67" → "1234567"; null unless 7 or 8 digits (spaces and dashes allowed). */
+/** "12-345-67" → "1234567"; null unless 7 or 8 digits not starting with 0 (spaces and dashes allowed). */
 export function normalisePlate(input: string): string | null {
   const s = input.replace(/[\s-]/g, '')
-  return /^[0-9]{7,8}$/.test(s) ? s : null
+  return /^[1-9][0-9]{6,7}$/.test(s) ? s : null
 }
 
 /** As on the car: 7 digits "12-345-67", 8 digits "123-45-678". */
@@ -82,7 +85,7 @@ export function formatPlate(plate: string): string {
 
 export const VERIFIED_BADGE = 'מאומת'
 export const VERIFY_PRIVACY_NOTE =
-  'האימות נעשה אצל ספק חיצוני לאימות זהות. אנחנו שומרים רק את התוצאה וטביעה מוצפנת של מספר התעודה (כדי שלא יפתחו כמה חשבונות על אותה תעודה), בלי תמונות ובלי מספר התעודה עצמו.'
+  'האימות נעשה אצל ספק חיצוני לאימות זהות. אנחנו שומרים רק את התוצאה וטביעה מוצפנת של מספר הזהות (כדי שלא יפתחו כמה חשבונות לאותו אדם), בלי תמונות ובלי מספר הזהות עצמו.'
 export const DEMO_LABEL = 'סביבת בדיקה: האימות כאן לדוגמה בלבד (דמו), לא אימות אמיתי'
 export const DEMO_BUTTON = 'אמת אותי (דמו)'
 export const ROLLOUT_BANNER =

@@ -11,7 +11,13 @@ export type VerificationResult = {
   providerRef: string
   approved: boolean
   reasonCode: string | null
-  documentNumber: string | null
+  /**
+   * The national personal number on the document (an Israeli ID number on an ID card, passport or licence), used only
+   * to compute the fingerprint, never stored. Null when the document has none (rejected doc_unsupported).
+   */
+  personalNumber: string | null
+  /** Issuing country (ISO alpha-2 or alpha-3). */
+  country: string | null
   /** YYYY-MM-DD, compared with profiles.birth_date in the database, never stored. */
   docBirthDate: string | null
   /** Driving licence issue date, YYYY-MM-DD. */

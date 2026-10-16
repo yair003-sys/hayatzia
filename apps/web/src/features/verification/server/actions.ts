@@ -42,8 +42,9 @@ const isoYearsAgo = (years: number) => {
 
 /**
  * "אמת אותי (דמו)": the mock provider's fake session ends approved (staging and local only, never production). The
- * result goes through the same signed webhook path and database function as a real provider's: fake document number
- * DEMO-<user id> (so each demo account is a different "person"), the fan's own birth date, a licence from 5 years ago.
+ * result goes through the same signed webhook path and database function as a real provider's: fake personal number
+ * DEMO<user id> (so each demo account is a different "person", and the demo licence matches the demo ID), the fan's
+ * own birth date, a licence from 5 years ago.
  */
 export const demoApproveAction = actionClient.inputSchema(sessionSchema).action(async ({ parsedInput: { sessionId } }) => {
   if (getVerificationProvider()?.name !== 'mock') return { error: 'זמין רק בסביבת בדיקה' }
@@ -59,7 +60,9 @@ export const demoApproveAction = actionClient.inputSchema(sessionSchema).action(
     sessionId,
     providerRef: `mock-${sessionId}`,
     approved: true,
-    documentNumber: `DEMO-${s.me}`,
+    documentType: kind === 'licence' ? 'licence' : 'id_card',
+    personalNumber: `DEMO${s.me}`,
+    country: 'IL',
     ...(birthDate ? { birthDate } : {}),
     ...(kind === 'licence' ? { licenceIssued: isoYearsAgo(5) } : {}),
   })
@@ -83,6 +86,11 @@ export const registerCarAction = actionClient.inputSchema(plateSchema).action(as
   if (!plate) return { error: VERIFY_ERRORS.bad_plate }
   const s = await session()
   if (!s) return { error: 'צריך להתחבר מחדש' }
+  // One of the fan's 10 lookups a day, claimed before any request leaves for data.gov.il.
+  const { error: claimError } = await s.supabase.rpc('claim_registry_lookup')
+  if (claimError) {
+    return { error: claimError.message.includes('rate_limit') ? 'בדקת הרבה מספרי רכב היום. נסה שוב מחר' : 'לא הצלחנו לבדוק עכשיו. נסה שוב' }
+  }
   let vehicle
   try {
     vehicle = await lookupVehicle(plate)
@@ -114,7 +122,7 @@ export const removeCarAction = actionClient.inputSchema(emptySchema).action(asyn
   const s = await session()
   if (!s) return { error: 'צריך להתחבר מחדש' }
   const { error } = await s.supabase.rpc('remove_my_car')
-  if (error) return { error: 'לא הצלחנו להסיר את הרכב. נסה שוב' }
+  if (error) return { error: verificationErrorHe(error.message) ?? 'לא הצלחנו להסיר את הרכב. נסה שוב' }
   revalidatePath(PAGE)
   return { ok: true as const }
 })

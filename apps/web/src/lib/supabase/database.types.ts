@@ -1135,6 +1135,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"registry_lookups": {
+                  Row: {
+                    "created_at": string,"id": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: never,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: never,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"reports": {
                   Row: {
                     "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string | null,"ride_suspended": boolean,"status": string
@@ -1179,14 +1193,14 @@ isOneToOne: false
                   ]
                 },"ride_incidents": {
                   Row: {
-                    "acknowledged_at": string | null,"acknowledged_by": string | null,"car": string,"closed_at": string | null,"closed_by": string | null,"created_at": string,"driver_id": string | null,"fixture_id": number | null,"from_city": string,"id": string,"pickup": string,"reporter_id": string | null,"status": string,"trip_id": string
+                    "acknowledged_at": string | null,"acknowledged_by": string | null,"car_colour": string,"car_make": string,"car_model": string,"car_plate": string,"closed_at": string | null,"closed_by": string | null,"created_at": string,"driver_id": string | null,"fixture_id": number | null,"from_city": string,"id": string,"pickup": string,"reporter_id": string | null,"status": string,"trip_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id": string
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car_colour"?: string,"car_make"?: string,"car_model"?: string,"car_plate"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id": string
                   }
                   Update: {
-                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id"?: string
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car_colour"?: string,"car_make"?: string,"car_model"?: string,"car_plate"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id"?: string
                   }
                   Relationships: [
 
@@ -1568,6 +1582,9 @@ isOneToOne: false
       } },
 "claim_message_push":
 { Args: { "p_id": string,"p_kind": string }; Returns: boolean
+                           },
+"claim_registry_lookup":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "clear_fan_lineup":
 { Args: { "p_fixture": number }; Returns: boolean

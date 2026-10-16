@@ -20,9 +20,19 @@ export const reportEmergencyAction = actionClient.inputSchema(emergencySchema).a
   const supabase = await createClient()
   if (!supabase) return { error: 'לא הצלחנו להודיע לצוות. בחירום חייגו 100' }
   const { data, error } = await supabase.rpc('report_ride_emergency', { p_trip: tripId })
-  if (error) return { error: rideErrorHe(error.message) ?? 'לא הצלחנו להודיע לצוות. בחירום חייגו 100' }
+  if (error) {
+    if (error.message.includes('rate_limit')) return { error: 'שלחת כמה התראות חירום בשעה האחרונה. בחירום חייגו 100' }
+    return { error: rideErrorHe(error.message) ?? 'לא הצלחנו להודיע לצוות. בחירום חייגו 100' }
+  }
   const row = data?.[0]
-  if (row?.created) await notifyAdmins(row.incident_id, row.from_city, row.fixture_id)
+  // The incident is recorded: from here on the fan never sees an error, even if the push fails.
+  if (row?.created) {
+    try {
+      await notifyAdmins(row.incident_id, row.from_city, row.fixture_id)
+    } catch (e) {
+      console.error('emergency push failed', (e as Error).name ?? 'unknown')
+    }
+  }
   return { ok: true as const, created: !!row?.created }
 })
 
