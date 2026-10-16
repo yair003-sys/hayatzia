@@ -95,7 +95,8 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
         otherTeam: mineA ? t.team_b : t.team_a,
       }
     })
-    .filter((t) => !blocked.has(t.otherId))
+    // Fans I blocked are hidden; so is a request the other fan opened but never wrote in (nothing to decide on yet).
+    .filter((t) => !blocked.has(t.otherId) && !(t.request === 'incoming' && !t.lastMessageId))
 
   const invites: Invite[] = []
   const inviterIds = new Set<string>()
