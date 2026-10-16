@@ -503,7 +503,19 @@ isOneToOne: false
                     "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"team_a"?: string | null,"team_b"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string,"via_qr"?: boolean
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "dm_threads_team_a_fkey"
+      columns: ["team_a"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dm_threads_team_b_fkey"
+      columns: ["team_b"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"fan_bans": {
                   Row: {
@@ -1377,7 +1389,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "activity_broadcast":
+            "accept_dm_thread":
+{ Args: { "p_thread": string }; Returns: undefined
+                           },
+"activity_broadcast":
 { Args: { "p_kind": string,"p_user": string }; Returns: undefined
                            },
 "activity_like":
@@ -1401,36 +1416,6 @@ isOneToOne: false
 "activity_unread_count":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
-"accept_dm_thread":
-{ Args: { "p_thread": string }; Returns: undefined
-                           },
-"admin_most_blocked":
-{ Args: { "p_limit"?: number }; Returns: {
-              "blocked_by": number,"nick": string,"user_id": string
-            }[]
-                           },
-"my_private_profile":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "birth_date": string,"dm_requests": string,"qr_code": string
-            }[]
-                           },
-"open_dm_by_code":
-{ Args: { "p_code": string }; Returns: string
-                           },
-"qr_card":
-{ Args: { "p_code": string }; Returns: {
-              "nick": string,"team_id": string
-            }[]
-                           },
-"reset_qr_code":
-{ Args: Record<PropertyKey, never>; Returns: string
-                           },
-"set_birth_date":
-{ Args: { "p_date": string }; Returns: undefined
-                           },
-"set_dm_requests":
-{ Args: { "p_value": string }; Returns: undefined
-                           },
 "admin_ban_list":
 { Args: { "p_limit"?: number }; Returns: {
               "created_at": string,"nick": string,"reason": string,"until": string,"user_id": string
@@ -1441,6 +1426,11 @@ isOneToOne: false
                            },
 "admin_lift_ride_suspension":
 { Args: { "p_user": string }; Returns: boolean
+                           },
+"admin_most_blocked":
+{ Args: { "p_limit"?: number }; Returns: {
+              "blocked_by": number,"nick": string,"user_id": string
+            }[]
                            },
 "admin_open_count":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -1611,6 +1601,11 @@ isOneToOne: false
 "my_groups":
 { Args: { "with_invites": boolean }; Returns: string[]
                            },
+"my_private_profile":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "birth_date": string,"dm_requests": string,"qr_code": string
+            }[]
+                           },
 "my_ride_case_open":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -1627,8 +1622,16 @@ isOneToOne: false
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"open_dm_by_code":
+{ Args: { "p_code": string }; Returns: string
+                           },
 "open_event_poll":
 { Args: { "p_fixture": number,"p_kind": string,"p_options": Json,"p_options_in": Json,"p_question": string,"p_scope": string }; Returns: string
+                           },
+"qr_card":
+{ Args: { "p_code": string }; Returns: {
+              "nick": string,"team_id": string
+            }[]
                            },
 "remove_from_group":
 { Args: { "p_group": string,"p_user": string }; Returns: undefined
@@ -1640,6 +1643,9 @@ isOneToOne: false
 { Args: { "p_kind": string,"p_note"?: string,"p_ref": string }; Returns: {
               "report_id": string,"suspended": boolean
             }[]
+                           },
+"reset_qr_code":
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "ride_drivers":
 { Args: { "p_users": (string)[] }; Returns: {
@@ -1669,6 +1675,12 @@ isOneToOne: false
       } },
 "score_fixture":
 { Args: { "p_fixture": number }; Returns: undefined
+                           },
+"set_birth_date":
+{ Args: { "p_date": string }; Returns: undefined
+                           },
+"set_dm_requests":
+{ Args: { "p_value": string }; Returns: undefined
                            }
           }
           Enums: {
