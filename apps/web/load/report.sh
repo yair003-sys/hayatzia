@@ -40,6 +40,10 @@ q() { psql "$DB_URL" -XAt "$@" 2>/dev/null; }
       END { for (k in m) printf "%s %.0f%%\n", k, m[k] }' "$OUT/docker-stats.txt" | sort -t' ' -k2 -rn | head -6 | sed 's/^/- /'
   fi
   echo
+  echo "Gateway and container limits of the local stack:"
+  echo
+  cat "$OUT/limits.txt" 2>/dev/null
+  echo
   echo "Realtime tenant limits used for this run:"
   echo
   cat "$OUT/realtime-limits.txt" 2>/dev/null

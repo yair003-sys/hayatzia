@@ -25,6 +25,16 @@ const LOCAL = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/
 if (!BASE || !KEY) throw new Error('SUPABASE_URL and SUPABASE_KEY are required')
 if (!LOCAL.test(BASE)) throw new Error(`refusing: SUPABASE_URL must be the local stack, got ${BASE}`)
 if (APP && !LOCAL.test(APP)) throw new Error(`refusing: APP_URL must be the local build, got ${APP}`)
+// Direct mode: the local single-worker Kong of the CLI stack gives out long before the services do, so k6 can talk
+// straight to the PostgREST / Storage / Realtime containers on this runner's Docker network (private addresses only).
+const PRIVATE = /^(http|ws):\/\/(127\.0\.0\.1|localhost|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?(\/.*)?$/
+const REST = __ENV.REST_DIRECT || `${BASE}/rest/v1`
+const STORAGE = __ENV.STORAGE_DIRECT || `${BASE}/storage/v1`
+const RT_DIRECT = __ENV.REALTIME_DIRECT || ''
+for (const u of [REST, STORAGE, RT_DIRECT]) if (u && !PRIVATE.test(u)) throw new Error(`refusing: not a local address: ${u}`)
+const MODE = __ENV.REST_DIRECT ? 'direct to the service containers' : 'through the local Kong gateway'
+const url = (path) =>
+  path.startsWith('/rest/v1') ? REST + path.slice(8) : path.startsWith('/storage/v1') ? STORAGE + path.slice(11) : `${BASE}${path}`
 
 const PEAK = Number(__ENV.PEAK_VUS || 200)
 const PAGE_VUS = Number(__ENV.PAGE_VUS || 20)
@@ -173,16 +183,16 @@ function note(res, name) {
   return res
 }
 function get(fan, path, name, extra) {
-  return note(http.get(`${BASE}${path}`, { headers: hdr(fan, extra), tags: { name } }), name)
+  return note(http.get(url(path), { headers: hdr(fan, extra), tags: { name } }), name)
 }
 function head(fan, path, name) {
-  return note(http.request('HEAD', `${BASE}${path}`, null, { headers: hdr(fan, { Prefer: 'count=exact' }), tags: { name } }), name)
+  return note(http.request('HEAD', url(path), null, { headers: hdr(fan, { Prefer: 'count=exact' }), tags: { name } }), name)
 }
 function post(fan, path, body, name, extra) {
-  return note(http.post(`${BASE}${path}`, JSON.stringify(body), { headers: hdr(fan, extra), tags: { name } }), name)
+  return note(http.post(url(path), JSON.stringify(body), { headers: hdr(fan, extra), tags: { name } }), name)
 }
 function patch(fan, path, body, name, extra) {
-  return note(http.patch(`${BASE}${path}`, JSON.stringify(body), { headers: hdr(fan, extra), tags: { name } }), name)
+  return note(http.patch(url(path), JSON.stringify(body), { headers: hdr(fan, extra), tags: { name } }), name)
 }
 function rpc(fan, fn, args, name) {
   return post(fan, `/rest/v1/rpc/${fn}`, args || {}, name)
@@ -297,7 +307,7 @@ function square(fan) {
   const clip = pick(rows)
   if (Math.random() < 0.35) {
     // A fan likes a post once: 409 = already liked (counted as "conflict", not as a server error).
-    const r = http.post(`${BASE}/rest/v1/clip_likes`, JSON.stringify({ clip_id: clip.id }), {
+    const r = http.post(url('/rest/v1/clip_likes'), JSON.stringify({ clip_id: clip.id }), {
       headers: hdr(fan),
       tags: { name: 'square_like' },
       responseCallback: http.expectedStatuses({ min: 200, max: 299 }, 409),
@@ -443,7 +453,11 @@ export function pages() {
 }
 
 // ── Realtime (Phoenix protocol over websocket, as realtime-js v2 speaks it) ────────────────────────────────────
-const WS_URL = `${BASE.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${enc(KEY)}&vsn=1.0.0`
+const WS_URL = RT_DIRECT
+  ? `${RT_DIRECT}/socket/websocket?apikey=${enc(KEY)}&vsn=1.0.0`
+  : `${BASE.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${enc(KEY)}&vsn=1.0.0`
+// Realtime picks the tenant from the first label of the Host header (Kong sets it; direct mode must too).
+const WS_PARAMS = RT_DIRECT ? { headers: { Host: 'realtime-dev.localhost' }, tags: { name: 'realtime' } } : { tags: { name: 'realtime' } }
 export function realtime() {
   const fan = fanOf()
   const started = exec.scenario.startTime
@@ -459,7 +473,7 @@ export function realtime() {
   if (live) topics.push(['match', `match:${LIVE.id}`, false], ['room', `room:${LIVE.id}`, true])
   let ref = 0
   let planned = false
-  const res = ws.connect(WS_URL, { tags: { name: 'realtime' } }, (socket) => {
+  const res = ws.connect(WS_URL, WS_PARAMS, (socket) => {
     socket.on('open', () => {
       rtSessions.add(1)
       const pending = {}
@@ -546,6 +560,8 @@ export function handleSummary(d) {
   const val = (k, f) => (m[k] && m[k].values ? m[k].values[f] : undefined)
   const lines = []
   lines.push(`### k6: ${PEAK} api fans + ${WS_VUS} realtime sessions + ${APP ? PAGE_VUS : 0} page fans, goal ${GOAL_RATE}/s`)
+  lines.push('')
+  lines.push(`API and realtime traffic: ${MODE}. Pages: the Next.js build on this runner (it reaches Supabase through the local Kong).`)
   lines.push('')
   lines.push(
     `Run ${Math.round(dur)} s · requests ${val('http_reqs', 'count')} (${(val('http_reqs', 'rate') || 0).toFixed(1)}/s) · ` +

@@ -113,9 +113,26 @@ jobs:
             echo "SUPABASE_KEY=$ANON_KEY"
             echo "DB_URL=$DB_URL"
             echo "ADMIN_URL=$ADMIN_URL"
+            # The service containers on this runner's Docker network (k6 direct mode bypasses the local Kong).
+            ip() { docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$(docker ps --format '{{.Names}}' | grep -m1 "^supabase_$1_")" | awk '{print $1}'; }
+            echo "REST_DIRECT=http://$(ip rest):3000"
+            echo "STORAGE_DIRECT=http://$(ip storage):5000"
+            echo "REALTIME_DIRECT=ws://$(ip realtime):4000"
           } >> "$GITHUB_ENV"
           echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
           echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Local gateway (Kong) and container limits, for the report
+        run: |
+          {
+            for c in kong rest realtime storage db auth; do
+              n=$(docker ps --format '{{.Names}}' | grep -m1 "^supabase_${c}_")
+              env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$n" | grep -E '^(KONG_NGINX_WORKER_PROCESSES|KONG_NGINX_.*CONN|PGRST_DB_POOL|DB_POOL_SIZE|DATABASE_POOL|PGRST_DB_POOL_ACQUISITION_TIMEOUT)=' | tr '\n' ' ')
+              echo "- $c: nofile $(docker exec "$n" sh -c 'ulimit -n' 2>/dev/null) ${env}"
+            done
+            echo "- kong nginx: $(docker exec "$(docker ps --format '{{.Names}}' | grep -m1 '^supabase_kong_')" sh -c 'grep -hE "worker_processes|worker_connections" /usr/local/kong/nginx.conf /usr/local/kong/nginx-kong.conf 2>/dev/null | tr -s " " | tr "\n" " "' 2>/dev/null)"
+          } | tee "$OUT/limits.txt"
+          curl -fsS -o /dev/null -w "direct PostgREST %{http_code}\n" -H "apikey: $SUPABASE_KEY" "$REST_DIRECT/" || echo "::warning::PostgREST container not reachable directly"
 
       - name: Realtime tenant limits (record the local defaults, then raise them so the runner, not a quota, is the limit)
         run: |
