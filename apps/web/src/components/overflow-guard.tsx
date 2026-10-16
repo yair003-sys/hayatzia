@@ -21,13 +21,15 @@ function clips(el: Element): boolean {
   return ox !== 'visible'
 }
 
-/** An element outside the screen that no clipping box contains (its containing block or above). */
-function findCulprit(vw: number): string | null {
+/** An element outside the page's own box that no clipping box contains (its containing block or above). Measured
+ * against the body, not the screen: once the page overflows, a right-to-left page is already shifted sideways. */
+function findCulprit(): string | null {
+  const page = document.body.getBoundingClientRect()
   let best: { el: Element; out: number } | null = null
   for (const el of document.body.querySelectorAll('*')) {
     const r = el.getBoundingClientRect()
     if (r.width === 0 && r.height === 0) continue
-    const out = Math.max(0, -r.left, r.right - vw)
+    const out = Math.max(0, page.left - r.left, r.right - page.right)
     if (out <= 1) continue
     const pos = getComputedStyle(el).position
     if (pos === 'fixed') continue
@@ -56,7 +58,7 @@ export function OverflowGuard() {
         const root = document.documentElement
         const px = overflowPx(root.scrollWidth, root.clientWidth)
         if (px === 0) return setLabel(null)
-        const culprit = findCulprit(root.clientWidth)
+        const culprit = findCulprit()
         console.warn('[onefan] layout overflow', px, culprit)
         setLabel(overflowLabel(px, culprit))
       }, 600)
