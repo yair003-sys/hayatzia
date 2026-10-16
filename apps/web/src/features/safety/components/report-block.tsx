@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Flag, Ban } from 'lucide-react'
-import { REPORT_REASONS, type REPORT_KINDS } from '../schema'
+import { RIDE_HARM_HINT_HE, RIDE_HARM_REASON, RIDE_HARM_SENT_HE, reasonsFor, type REPORT_KINDS, type ReportReason } from '../schema'
 import { blockAction, reportAction } from '../server/actions'
 
 type Kind = (typeof REPORT_KINDS)[number]
@@ -13,7 +13,8 @@ type Props = { kind: Kind; refId: string; userId?: string; userNick?: string }
  * comments). Calls `onDone` with the line to show the fan (thanks, or what went wrong).
  */
 export function ReportForm({ kind, refId, onDone, className }: { kind: Kind; refId: string; onDone: (msg: string) => void; className?: string }) {
-  const [reason, setReason] = useState<(typeof REPORT_REASONS)[number]>(REPORT_REASONS[0])
+  const reasons = reasonsFor(kind)
+  const [reason, setReason] = useState<ReportReason>(reasons[0]!)
   const [note, setNote] = useState('')
   const [pending, start] = useTransition()
   return (
@@ -24,18 +25,19 @@ export function ReportForm({ kind, refId, onDone, className }: { kind: Kind; ref
         e.preventDefault()
         start(async () => {
           const r = await reportAction({ kind, ref: refId, reason, note })
-          onDone(r.data?.ok ? 'תודה. הדיווח הגיע לצוות.' : (r.data?.error ?? 'הדיווח לא נשלח'))
+          onDone(r.data?.ok ? (reason === RIDE_HARM_REASON ? RIDE_HARM_SENT_HE : 'תודה. הדיווח הגיע לצוות.') : (r.data?.error ?? 'הדיווח לא נשלח'))
         })
       }}
     >
       <label className="block text-sm">
         סיבה
         <select value={reason} onChange={(e) => setReason(e.target.value as typeof reason)} className="mt-1 w-full rounded-md border border-line bg-elev px-3 py-2">
-          {REPORT_REASONS.map((r) => (
+          {reasons.map((r) => (
             <option key={r}>{r}</option>
           ))}
         </select>
       </label>
+      {reason === RIDE_HARM_REASON && <p className="text-xs font-semibold text-live">{RIDE_HARM_HINT_HE}</p>}
       <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} placeholder="פרטים (לא חובה)" aria-label="פרטים" className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm" />
       <button type="submit" disabled={pending} className="min-h-11 w-full rounded-lg bg-live py-2 text-sm font-semibold text-white">
         שלח דיווח

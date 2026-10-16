@@ -10,6 +10,8 @@ const s = vi.hoisted(() => ({
   me: '' as string | null,
   /** What my_ban_active() answers: true / false, or a database error. */
   banned: false as boolean | 'error',
+  /** What my_ride_case_open() answers (ride safety, rule 11). */
+  rideCase: false as boolean | 'error',
   rpcs: [] as string[],
   admin: true,
   /** Objects per bucket, keyed by full path. */
@@ -45,7 +47,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     rpc: async (fn: string) => {
       s.rpcs.push(fn)
-      return s.banned === 'error' ? { data: null, error: { message: 'boom' } } : { data: s.banned, error: null }
+      const v = fn === 'my_ride_case_open' ? s.rideCase : s.banned
+      return v === 'error' ? { data: null, error: { message: 'boom' } } : { data: v, error: null }
     },
     auth: {
       getClaims: async () => ({ data: s.me ? { claims: { sub: s.me } } : null }),
@@ -91,6 +94,7 @@ import { deleteAccountAction } from './actions'
 beforeEach(() => {
   s.me = ME
   s.banned = false
+  s.rideCase = false
   s.rpcs = []
   s.admin = true
   s.files = {}
@@ -179,6 +183,23 @@ describe('deleteAccountAction', () => {
     expect(s.listed).toEqual([])
     expect(s.deleted).toEqual([])
     expect(s.files.clips).toEqual([`${ME}/a.mp4`])
+  })
+
+  it('refuses during an open ride case (suspension from rides or an open harm report), before touching any file', async () => {
+    s.files = { clips: [`${ME}/a.mp4`] }
+    s.rideCase = true
+    const r = await deleteAccountAction({ confirm: 'מחק' })
+    expect(r.data).toEqual({ error: 'אי אפשר למחוק חשבון בזמן בירור' })
+    expect(s.rpcs).toEqual(['my_ban_active', 'my_ride_case_open'])
+    expect(s.listed).toEqual([])
+    expect(s.deleted).toEqual([])
+  })
+
+  it('refuses when the ride case check itself fails', async () => {
+    s.rideCase = 'error'
+    const r = await deleteAccountAction({ confirm: 'מחק' })
+    expect(r.data).toEqual({ error: 'המחיקה נכשלה. נסה שוב' })
+    expect(s.deleted).toEqual([])
   })
 
   it('refuses when the suspension check itself fails', async () => {

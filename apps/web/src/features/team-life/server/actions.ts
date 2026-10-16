@@ -6,7 +6,8 @@ import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { sendPush } from '@/features/push/server/send'
 import { tripAcceptedLine, tripHref, tripRequestLine, type TripKind } from '@/features/activity/activity'
-import { decideSchema, eventSchema, goingSchema, idSchema, itemSchema, tripSchema } from '../schema'
+import { decideSchema, eventSchema, genderSchema, goingSchema, idSchema, itemSchema, rateRideSchema, rideConsentSchema, tripSchema } from '../schema'
+import { rideErrorHe } from '../ride-safety'
 
 async function db() {
   const supabase = await createClient()
@@ -15,7 +16,7 @@ async function db() {
 }
 type Db = Awaited<ReturnType<typeof db>>
 const limitMsg = (m: string, fallback: string) =>
-  moderationHe(m) ?? (m.includes('rate_limit') ? 'יותר מדי פרסומים בשעה האחרונה' : fallback)
+  moderationHe(m) ?? rideErrorHe(m) ?? (m.includes('rate_limit') ? 'יותר מדי פרסומים בשעה האחרונה' : fallback)
 
 export const createTripAction = actionClient.inputSchema(tripSchema).action(async ({ parsedInput: p }) => {
   const { error } = await (await db()).from('trips').insert({
@@ -26,6 +27,8 @@ export const createTripAction = actionClient.inputSchema(tripSchema).action(asyn
     seats: p.kind === 'offer' ? p.seats : 0,
     cost: p.cost,
     note: p.note,
+    pickup: p.pickup,
+    women_only: p.womenOnly,
   })
   if (error) return { error: limitMsg(error.message, 'הפרסום נכשל') }
   revalidatePath('/stand/trips')
@@ -51,7 +54,7 @@ export const decideSeatAction = actionClient.inputSchema(decideSchema).action(as
     .eq('user_id', p.userId)
     .neq('status', status)
     .select('user_id')
-  if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : 'לא הצלחנו לשמור' }
+  if (error) return { error: error.message.includes('trip_full') ? 'הנסיעה מלאה' : limitMsg(error.message, 'לא הצלחנו לשמור') }
   if (changed?.length) {
     if (p.accept) await pushTrip(await db(), 'trip_accepted', p.tripId, p.userId)
     else {
@@ -96,8 +99,47 @@ async function pushTrip(supabase: Db, kind: TripKind, tripId: string, rider?: st
   })
 }
 
+/**
+ * The one-time 18+ confirmation and safety screen (ride safety rules 2 and 8), on the fan's own row. The database stamps
+ * both times itself and never clears them.
+ */
+export const confirmRideSafetyAction = actionClient.inputSchema(rideConsentSchema).action(async () => {
+  const supabase = await db()
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  if (!me) return { error: 'צריך להתחבר מחדש' }
+  const at = new Date().toISOString()
+  const { error } = await supabase.from('profiles').update({ adult_confirmed_at: at, ride_safety_seen_at: at }).eq('user_id', me)
+  if (error) return { error: 'לא הצלחנו לשמור. נסה שוב' }
+  revalidatePath('/stand/trips')
+  return { ok: true as const }
+})
+
+/** "הכרטיס שלי": self-declared gender, shown only in rides (rule 1). */
+export const setGenderAction = actionClient.inputSchema(genderSchema).action(async ({ parsedInput: { gender } }) => {
+  const supabase = await db()
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  if (!me) return { error: 'צריך להתחבר מחדש' }
+  const { error } = await supabase.from('profiles').update({ gender }).eq('user_id', me)
+  if (error) return { error: 'לא הצלחנו לשמור. נסה שוב' }
+  revalidatePath('/me')
+  revalidatePath('/stand/trips')
+  return { ok: true as const }
+})
+
+/** Rating the driver after the match, once (rule 6). The database checks rider, time and the single rating. */
+export const rateRideAction = actionClient.inputSchema(rateRideSchema).action(async ({ parsedInput: { tripId, stars } }) => {
+  const { error } = await (await db()).from('ride_ratings').insert({ trip_id: tripId, stars })
+  if (error && error.code !== '23505') return { error: rideErrorHe(error.message) ?? 'הדירוג לא נשמר. נסה שוב' }
+  revalidatePath('/stand/trips')
+  return { ok: true as const }
+})
+
 export const deleteTripAction = actionClient.inputSchema(idSchema).action(async ({ parsedInput: { id } }) => {
-  await (await db()).from('trips').delete().eq('id', id)
+  // RLS keeps a ride that already left with riders, and every ride during an open ride case: then nothing is deleted.
+  const { data, error } = await (await db()).from('trips').delete().eq('id', id).select('id')
+  if (error || !data?.length) return { error: 'אי אפשר למחוק את הנסיעה הזאת: היא כבר יצאה לדרך או נמצאת בבירור' }
   revalidatePath('/stand/trips')
   return { ok: true as const }
 })

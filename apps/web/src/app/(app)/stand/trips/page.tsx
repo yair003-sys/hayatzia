@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { BackToStand } from '@/features/team-life/components/back'
 import { TripsBoard } from '@/features/team-life/components/boards'
 import { upcomingTeamMatches } from '@/features/team-life/server/matches'
-import { getTrips } from '@/features/team-life/server/queries'
+import { getMyRideProfile, getRidesToRate, getTrips } from '@/features/team-life/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 
@@ -30,6 +30,6 @@ async function Trips({ focus }: { focus?: string }) {
   if (s.status !== 'ready') return null
   const league = await getLeague()
   const matches = upcomingTeamMatches(league, s.team.id)
-  const trips = await getTrips(matches.map((m) => m.id))
-  return <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} />
+  const [trips, ride, toRate] = await Promise.all([getTrips(matches.map((m) => m.id)), getMyRideProfile(), getRidesToRate()])
+  return <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} ride={ride} toRate={toRate} />
 }

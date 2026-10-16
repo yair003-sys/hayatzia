@@ -1049,14 +1049,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"nick": string,"team_id": string,"terms_version": string,"user_id": string
+                    "adult_confirmed_at": string | null,"created_at": string,"gender": string | null,"nick": string,"ride_safety_seen_at": string | null,"team_id": string,"terms_version": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"nick": string,"team_id": string,"terms_version"?: string,"user_id": string
+                    "adult_confirmed_at"?: string | null,"created_at"?: string,"gender"?: string | null,"nick": string,"ride_safety_seen_at"?: string | null,"team_id": string,"terms_version"?: string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"nick"?: string,"team_id"?: string,"terms_version"?: string,"user_id"?: string
+                    "adult_confirmed_at"?: string | null,"created_at"?: string,"gender"?: string | null,"nick"?: string,"ride_safety_seen_at"?: string | null,"team_id"?: string,"terms_version"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1097,17 +1097,79 @@ isOneToOne: false
                   ]
                 },"reports": {
                   Row: {
-                    "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string | null,"status": string
+                    "created_at": string,"id": string,"kind": string,"note": string,"reason": string,"ref": string,"reporter_id": string | null,"ride_suspended": boolean,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"kind": string,"note"?: string,"reason": string,"ref": string,"reporter_id"?: string | null,"status"?: string
+                    "created_at"?: string,"id"?: string,"kind": string,"note"?: string,"reason": string,"ref": string,"reporter_id"?: string | null,"ride_suspended"?: boolean,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string | null,"status"?: string
+                    "created_at"?: string,"id"?: string,"kind"?: string,"note"?: string,"reason"?: string,"ref"?: string,"reporter_id"?: string | null,"ride_suspended"?: boolean,"status"?: string
                   }
                   Relationships: [
                     
+                  ]
+                },"ride_completions": {
+                  Row: {
+                    "created_at": string,"driver_id": string,"fixture_id": number,"trip_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"driver_id": string,"fixture_id": number,"trip_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"driver_id"?: string,"fixture_id"?: number,"trip_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
+                },"ride_driver_stats": {
+                  Row: {
+                    "driver_id": string,"ratings_count": number,"ratings_sum": number,"rides_completed": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "driver_id": string,"ratings_count"?: number,"ratings_sum"?: number,"rides_completed"?: number
+                  }
+                  Update: {
+                    "driver_id"?: string,"ratings_count"?: number,"ratings_sum"?: number,"rides_completed"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"ride_ratings": {
+                  Row: {
+                    "created_at": string,"driver_id": string,"rater_id": string,"stars": number,"trip_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"driver_id"?: string,"rater_id"?: string,"stars": number,"trip_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"driver_id"?: string,"rater_id"?: string,"stars"?: number,"trip_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"ride_suspensions": {
+                  Row: {
+                    "by_report": string | null,"created_at": string,"lifted_at": string | null,"lifted_by": string | null,"reason": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "by_report"?: string | null,"created_at"?: string,"lifted_at"?: string | null,"lifted_by"?: string | null,"reason"?: string,"user_id": string
+                  }
+                  Update: {
+                    "by_report"?: string | null,"created_at"?: string,"lifted_at"?: string | null,"lifted_by"?: string | null,"reason"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ride_suspensions_by_report_fkey"
+      columns: ["by_report"]
+isOneToOne: false
+      referencedRelation: "reports"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"stadiums": {
                   Row: {
@@ -1285,14 +1347,14 @@ isOneToOne: false
                   ]
                 },"trips": {
                   Row: {
-                    "cost": string,"created_at": string,"depart_before_min": number,"fixture_id": number,"from_city": string,"hidden_at": string | null,"id": string,"kind": string,"nick": string,"note": string,"seats": number,"team_id": string,"user_id": string
+                    "cost": string,"created_at": string,"depart_before_min": number,"fixture_id": number,"from_city": string,"hidden_at": string | null,"id": string,"kind": string,"nick": string,"note": string,"pickup": string,"seats": number,"team_id": string,"user_id": string,"women_only": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id": number,"from_city": string,"hidden_at"?: string | null,"id"?: string,"kind": string,"nick"?: string,"note"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string
+                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id": number,"from_city": string,"hidden_at"?: string | null,"id"?: string,"kind": string,"nick"?: string,"note"?: string,"pickup"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string,"women_only"?: boolean
                   }
                   Update: {
-                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id"?: number,"from_city"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"nick"?: string,"note"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string
+                    "cost"?: string,"created_at"?: string,"depart_before_min"?: number,"fixture_id"?: number,"from_city"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"nick"?: string,"note"?: string,"pickup"?: string,"seats"?: number,"team_id"?: string,"user_id"?: string,"women_only"?: boolean
                   }
                   Relationships: [
                     {
@@ -1347,6 +1409,9 @@ isOneToOne: false
 "admin_ban_user":
 { Args: { "p_days"?: number,"p_reason"?: string,"p_user": string }; Returns: string
                            },
+"admin_lift_ride_suspension":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "admin_open_count":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -1368,11 +1433,19 @@ isOneToOne: false
 "admin_restore_content":
 { Args: { "p_kind": string,"p_ref": string }; Returns: boolean
                            },
+"admin_ride_suspensions":
+{ Args: { "p_limit"?: number }; Returns: {
+              "by_report": string,"created_at": string,"nick": string,"reason": string,"user_id": string
+            }[]
+                           },
 "admin_set_report_status":
 { Args: { "p_report": string,"p_status": string }; Returns: undefined
                            },
 "admin_unban_user":
 { Args: { "p_user": string }; Returns: undefined
+                           },
+"admin_user_ids":
+{ Args: Record<PropertyKey, never>; Returns: string[]
                            },
 "alert_recipients":
 { Args: { "p_after"?: string,"p_fixture": number,"p_limit"?: number }; Returns: string[]
@@ -1508,6 +1581,19 @@ isOneToOne: false
 "my_groups":
 { Args: { "with_invites": boolean }; Returns: string[]
                            },
+"my_ride_case_open":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"my_ride_profile":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "adult_confirmed": boolean,"gender": string,"phone_ok": boolean,"phone_required": boolean,"ride_suspended": boolean,"safety_seen": boolean
+            }[]
+                           },
+"my_rides_to_rate":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "driver_nick": string,"kickoff_at": string,"trip_id": string
+            }[]
+                           },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
@@ -1519,6 +1605,19 @@ isOneToOne: false
                            },
 "rename_group":
 { Args: { "p_group": string,"p_name": string }; Returns: undefined
+                           },
+"report_ride_harm":
+{ Args: { "p_kind": string,"p_note"?: string,"p_ref": string }; Returns: {
+              "report_id": string,"suspended": boolean
+            }[]
+                           },
+"ride_drivers":
+{ Args: { "p_users": string[] }; Returns: {
+              "female": boolean,"member_since": string,"ratings_count": number,"ratings_sum": number,"rides_completed": number,"user_id": string
+            }[]
+                           },
+"ride_suspension_riders":
+{ Args: { "p_report": string }; Returns: string[]
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean

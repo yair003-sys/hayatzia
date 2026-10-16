@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CONTACT_MAX, CONTACT_TOPICS, REPORT_KINDS, REPORT_REASONS, contactSchema, reportSchema } from './schema'
+import { CONTACT_MAX, CONTACT_TOPICS, REPORT_KINDS, REPORT_REASONS, RIDE_HARM_REASON, contactSchema, isRideHarm, reasonsFor, reportSchema } from './schema'
 
 describe('report reasons', () => {
   it('include fake items / ticket sales (terms of use, 2026-10-15)', () => {
@@ -11,6 +11,24 @@ describe('report reasons', () => {
   })
   it('refuse a reason that is not on the list', () => {
     expect(reportSchema.safeParse({ kind: 'user', ref: 'x', reason: 'סתם' }).success).toBe(false)
+  })
+})
+
+describe('the ride-harm reason (ride safety, rule 9)', () => {
+  it('is offered on rides and fans only, never as the default', () => {
+    expect(reasonsFor('trip')).toContain(RIDE_HARM_REASON)
+    expect(reasonsFor('user')).toContain(RIDE_HARM_REASON)
+    expect(reasonsFor('trip')[0]).toBe('הטרדה')
+    expect(reasonsFor('clip')).not.toContain(RIDE_HARM_REASON)
+    expect(reasonsFor('clip')).toHaveLength(REPORT_REASONS.length - 1)
+  })
+  it('is accepted only for a ride or a fan', () => {
+    expect(reportSchema.safeParse({ kind: 'trip', ref: 'x', reason: RIDE_HARM_REASON }).success).toBe(true)
+    expect(reportSchema.safeParse({ kind: 'user', ref: 'x', reason: RIDE_HARM_REASON }).success).toBe(true)
+    expect(reportSchema.safeParse({ kind: 'clip', ref: 'x', reason: RIDE_HARM_REASON }).success).toBe(false)
+    expect(isRideHarm('trip', RIDE_HARM_REASON)).toBe(true)
+    expect(isRideHarm('trip', 'הטרדה')).toBe(false)
+    expect(isRideHarm('team_message', RIDE_HARM_REASON)).toBe(false)
   })
 })
 

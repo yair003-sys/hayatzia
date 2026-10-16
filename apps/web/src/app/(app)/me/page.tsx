@@ -21,6 +21,8 @@ import { AdminBadge } from '@/features/admin/components/admin-badge'
 import { ContactForm } from '@/features/safety/components/contact-form'
 import { LegalLinks } from '@/features/legal/components/legal-links'
 import { NOT_AFFILIATED } from '@/lib/legal'
+import { GenderPicker } from '@/features/team-life/components/ride-safety'
+import { getMyRideProfile } from '@/features/team-life/server/queries'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -43,10 +45,11 @@ async function ProfileCard() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, prefs, war] = await Promise.all([
+  const [card, prefs, war, ride] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyPrefs(s.userId),
     season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
+    getMyRideProfile(),
   ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
@@ -114,6 +117,7 @@ async function ProfileCard() {
           <InstallApp />
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />
+          <GenderPicker initial={ride?.gender ?? null} />
           <form action={signOutAction}>
             <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted">
               <LogOut className="size-4" aria-hidden="true" />

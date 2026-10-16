@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Ban, Check, EyeOff, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
-import { AUTO_HIDDEN_LABEL, BAN_DAYS, isRemovable, kindLabel, reportsOnTarget, reportTime } from '../schema'
+import { Ban, Car, Check, EyeOff, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
+import { AUTO_HIDDEN_LABEL, BAN_DAYS, RIDE_URGENT_LABEL, isRemovable, isUrgentRide, kindLabel, reportsOnTarget, reportTime } from '../schema'
 import type { QueueRow } from '../server/queries'
 import { banUserAction, removeContentAction, restoreContentAction, setReportStatusAction } from '../server/actions'
 
@@ -58,6 +58,12 @@ export function ReportCard({ r }: { r: QueueRow }) {
         </time>
       </header>
 
+      {isUrgentRide(r) && (
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-xs font-bold text-white">
+          <Car className="size-3.5" aria-hidden="true" />
+          {RIDE_URGENT_LABEL}
+        </p>
+      )}
       {hidden && (
         <p className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 text-xs font-semibold text-warn">
           <EyeOff className="size-3.5" aria-hidden="true" />

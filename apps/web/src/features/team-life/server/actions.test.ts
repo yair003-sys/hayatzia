@@ -19,6 +19,8 @@ const db = vi.hoisted(() => ({
   updateFilters: [] as Filter[],
   rpc: [] as { fn: string; args: unknown }[],
   pushes: [] as { to: string[]; payload: unknown }[],
+  inserted: [] as { table: string; row: unknown }[],
+  tripInsertError: null as null | { code: string; message: string },
 }))
 
 class Query {
@@ -28,8 +30,9 @@ class Query {
   select() {
     return this
   }
-  insert() {
+  insert(row: unknown) {
     this.op = 'insert'
+    db.inserted.push({ table: this.table, row })
     return this
   }
   update() {
@@ -51,6 +54,7 @@ class Query {
     return Promise.resolve(this.result()).then(onOk, onErr)
   }
   private result() {
+    if (this.table === 'trips' && this.op === 'insert') return { data: null, error: db.tripInsertError }
     if (this.table === 'trips') return { data: db.tripOwner ? { user_id: db.tripOwner } : null, error: null }
     if (this.table === 'profiles') return { data: db.nick ? { nick: db.nick } : null, error: null }
     if (this.table === 'trip_requests' && this.op === 'insert') return { data: null, error: db.insertError }
@@ -80,7 +84,7 @@ vi.mock('@/features/push/server/send', () => ({
   },
 }))
 
-import { decideSeatAction, requestSeatAction } from './actions'
+import { createTripAction, decideSeatAction, requestSeatAction } from './actions'
 
 beforeEach(() => {
   db.me = ME
@@ -92,6 +96,8 @@ beforeEach(() => {
   db.updateFilters = []
   db.rpc = []
   db.pushes = []
+  db.inserted = []
+  db.tripInsertError = null
 })
 
 describe('trip push: a request', () => {
@@ -166,6 +172,31 @@ describe('trip push: an acceptance', () => {
     db.blocked = false
     db.updated = [{ user_id: ME }]
     await decideSeatAction({ tripId: TRIP, userId: ME, accept: true })
+    expect(db.pushes).toEqual([])
+  })
+})
+
+describe('ride safety (migration 20261015220000_ride_safety)', () => {
+  const trip = { fixtureId: 7, kind: 'offer' as const, fromCity: 'חיפה', pickup: 'תחנת רכבת', departBeforeMin: 120, seats: 3, cost: 'share' as const }
+
+  it('stores the public pickup point and the women-only flag', async () => {
+    const r = await createTripAction({ ...trip, womenOnly: true })
+    expect(r.data).toEqual({ ok: true })
+    expect(db.inserted).toEqual([
+      {
+        table: 'trips',
+        row: { fixture_id: 7, kind: 'offer', from_city: 'חיפה', depart_before_min: 120, seats: 3, cost: 'share', note: '', pickup: 'תחנת רכבת', women_only: true },
+      },
+    ])
+  })
+
+  it("puts the database's ride refusals in the fan's words", async () => {
+    db.tripInsertError = { code: '42501', message: 'not_adult' }
+    expect((await createTripAction(trip)).data).toEqual({ error: 'נסיעות הן מגיל 18. צריך לאשר את זה פעם אחת לפני נסיעה' })
+    db.tripInsertError = { code: '42501', message: 'women_only' }
+    expect((await createTripAction(trip)).data).toEqual({ error: 'הנסיעה הזאת לאוהדות בלבד' })
+    db.insertError = { code: '42501', message: 'ride_suspended' }
+    expect((await requestSeatAction({ id: TRIP })).data?.error).toMatch(/מושעה מנסיעות/)
     expect(db.pushes).toEqual([])
   })
 })

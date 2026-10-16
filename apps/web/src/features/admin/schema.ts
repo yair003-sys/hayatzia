@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ReportKind } from '@/features/safety/schema'
+import { isRideHarm, type ReportKind } from '@/features/safety/schema'
 
 /** The three tabs of /admin/reports (reports.status). */
 export const QUEUE_STATUS = { open: 'פתוחים', handled: 'טופלו', dismissed: 'נדחו' } as const
@@ -73,6 +73,14 @@ export const ACTION_LABEL: Record<string, string> = {
   status: 'שינוי סטטוס',
   auto_hide: AUTO_HIDDEN_LABEL,
   restore: 'החזרת תוכן',
+  ride_suspend: 'השעיה מנסיעות',
+  ride_unsuspend: 'ביטול השעיה מנסיעות',
+}
+
+/** The red label on a harm-in-a-ride report (ride safety, rule 9). */
+export const RIDE_URGENT_LABEL = 'דחוף · נסיעה'
+export function isUrgentRide(r: { kind: string; reason: string }): boolean {
+  return isRideHarm(r.kind, r.reason)
 }
 
 export function actionLabel(action: string): string {
@@ -82,7 +90,7 @@ export function actionLabel(action: string): string {
 /** Who did it, for the audit trail: the admin's nickname, or "אוטומטי" for the database's own auto-hide. */
 export function actionBy(action: string, adminNick: string | null | undefined): string | null {
   if (adminNick) return adminNick
-  return action === 'auto_hide' ? 'אוטומטי' : null
+  return action === 'auto_hide' || action === 'ride_suspend' ? 'אוטומטי' : null
 }
 
 export function reportsOnTarget(n: number): string {
@@ -127,4 +135,5 @@ export const banSchema = z.object({
   reason: z.string().trim().max(120).default(''),
 })
 export const unbanSchema = z.object({ userId: z.uuid() })
+export const liftRideSchema = z.object({ userId: z.uuid() })
 export const statusSchema = z.object({ reportId: z.uuid(), status: z.enum(['open', 'handled', 'dismissed']) })

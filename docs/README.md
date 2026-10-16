@@ -9,6 +9,7 @@
 | `ENVIRONMENTS.md` | local / preview / production, env vars, secrets | Before running anything against a service |
 | `BRAND.md` | the onefan name, colours, logo and icons | Before touching colours, icons or the app name |
 | `ROADMAP.md` | Migration phases and status | To pick the next piece of work |
+| `RIDE_SAFETY.md` | Ride safety: what the app enforces and the incident procedure (Hebrew, for the owner and the lawyer) | When a ride harm report arrives, or before changing rides |
 | `superpowers/specs/` | Approved designs (the "why") | When starting a phase |
 | `superpowers/plans/` | Step-by-step implementation plans | When executing a phase |
 | `README.he.md` | Plain-Hebrew overview for the owner | When explaining to Yair |

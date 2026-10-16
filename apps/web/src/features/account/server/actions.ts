@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { BANNED_DELETE_HE, PARTIAL_DELETE_HE, USER_BUCKETS, deleteAccountSchema } from '../schema'
+import { BANNED_DELETE_HE, PARTIAL_DELETE_HE, RIDE_CASE_DELETE_HE, USER_BUCKETS, deleteAccountSchema } from '../schema'
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>
 
@@ -50,6 +50,11 @@ export const deleteAccountAction = actionClient.inputSchema(deleteAccountSchema)
   const { data: banned, error: banError } = await supabase.rpc('my_ban_active')
   if (banError || banned !== false) {
     return { error: banError ? 'המחיקה נכשלה. נסה שוב' : BANNED_DELETE_HE }
+  }
+  // Nor during a ride case (ride safety, rule 11): an active suspension from rides, or an open harm report about the fan.
+  const { data: rideCase, error: rideError } = await supabase.rpc('my_ride_case_open')
+  if (rideError || rideCase !== false) {
+    return { error: rideError ? 'המחיקה נכשלה. נסה שוב' : RIDE_CASE_DELETE_HE }
   }
 
   const admin = createAdminClient()

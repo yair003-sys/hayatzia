@@ -21,12 +21,19 @@ export const tripSchema = z.object({
   fixtureId: z.number().int().positive(),
   kind: z.enum(kinds(TRIP_KIND)),
   fromCity: z.string().trim().min(2, 'מאיפה יוצאים?').max(40),
+  // A public place (train station, stadium parking, a known junction), never a home address (ride safety, rule 4).
+  pickup: z.string().trim().min(3, 'איפה נפגשים? מקום ציבורי').max(80),
+  womenOnly: z.boolean().default(false),
   departBeforeMin: z.number().int().min(15).max(600),
   seats: z.number().int().min(0).max(8),
   cost: z.enum(['share', 'free']),
   note: z.string().trim().max(140).default(''),
 })
 export const idSchema = z.object({ id: z.uuid() })
+/** The one-time 18+ confirmation and safety screen before the first ride. */
+export const rideConsentSchema = z.strictObject({ adult: z.literal(true) })
+export const genderSchema = z.strictObject({ gender: z.enum(['m', 'f', 'x']) })
+export const rateRideSchema = z.strictObject({ tripId: z.uuid(), stars: z.number().int().min(1).max(5) })
 export const decideSchema = z.object({ tripId: z.uuid(), userId: z.uuid(), accept: z.boolean() })
 export const eventSchema = z.object({
   kind: z.enum(kinds(EVENT_KIND)),
