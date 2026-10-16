@@ -30,6 +30,7 @@
     "next": "16.4.1",
     "next-safe-action": "8.7.3",
     "nuqs": "2.10.2",
+    "qrcode": "1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "0.0.1",
