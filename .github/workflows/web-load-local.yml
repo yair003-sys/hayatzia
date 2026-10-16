@@ -212,6 +212,16 @@ jobs:
           cat "$OUT/report.md" >> "$GITHUB_STEP_SUMMARY" || true
           # Annotation with the headline (readable through the REST API).
           grep -m1 '^Run ' "$OUT/report.md" | sed 's/^/::notice title=load headline::/' || true
+          bash load/annotate.sh "$OUT/report.md" report 9
+
+      - name: Details as annotations (plans, logs)
+        if: always()
+        run: |
+          bash load/annotate.sh "$OUT/explain.txt" plans 6
+          { echo "## k6.log (tail)"; tail -40 "$OUT/k6.log"; echo "## playwright during"; tail -60 "$OUT/playwright-during.log";
+            echo "## playwright after"; tail -60 "$OUT/playwright-after.log"; echo "## seed.log (tail)"; tail -15 "$OUT/seed.log";
+            echo "## next.log (tail)"; tail -30 "$OUT/next.log"; } > "$OUT/logs.txt" 2>/dev/null || true
+          bash load/annotate.sh "$OUT/logs.txt" logs 3
 
       - name: Upload results
         if: always()
