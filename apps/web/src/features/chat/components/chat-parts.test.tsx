@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MessageRow } from './chat-parts'
+import { MessageAuthor, MessageRow } from './chat-parts'
 
 afterEach(cleanup)
 
@@ -38,5 +38,24 @@ describe('MessageRow actions', () => {
     row({ onReport: vi.fn() })
     expect(screen.queryByRole('button', { name: 'השב להודעה' })).toBeNull()
     expect(screen.getByRole('button', { name: 'דווח על ההודעה' })).toBeInTheDocument()
+  })
+})
+
+describe('MessageAuthor: private message from the chat (2026-10-16)', () => {
+  it('another fan\'s message has an avatar button that opens the private-message sheet', () => {
+    const onFan = vi.fn()
+    render(<MessageAuthor mine={false} userId="u2" nick="יריב" onFan={onFan} />)
+    fireEvent.click(screen.getByRole('button', { name: 'שלח הודעה פרטית ל-יריב' }))
+    expect(onFan).toHaveBeenCalledOnce()
+  })
+
+  it('my own message has none', () => {
+    render(<MessageAuthor mine userId="u1" nick="אני" onFan={vi.fn()} />)
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('no button when the chat does not offer private messages', () => {
+    render(<MessageAuthor mine={false} userId="u2" nick="יריב" />)
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })

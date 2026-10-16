@@ -70,7 +70,7 @@ describe('inbox helpers', () => {
   it('filterInbox', () => {
     const row = (name: string): InboxRow => ({
       kind: 'group', id: name, name, otherId: null, lastAt: '', lastFrom: null,
-      lastMessageId: null, unread: 0, members: 3, muted: false,
+      lastMessageId: null, unread: 0, members: 3, muted: false, request: null, otherTeam: null,
     })
     const rows = [row('מכבי בדרך'), row('חברים')]
     expect(filterInbox(rows, 'מכב').map((r) => r.name)).toEqual(['מכבי בדרך'])

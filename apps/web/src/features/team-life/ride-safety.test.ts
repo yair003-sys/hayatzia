@@ -99,6 +99,7 @@ describe('rideOver', () => {
 describe('ride copy', () => {
   it('maps the database codes to Hebrew', () => {
     expect(rideErrorHe('not_adult')).toMatch(/18/)
+    expect(rideErrorHe('no_birth_date')).toBe('צריך להשלים תאריך לידה')
     expect(rideErrorHe('ride_suspended')).toMatch(/מושעה מנסיעות/)
     expect(rideErrorHe('women_only')).toMatch(/לאוהדות בלבד/)
     expect(rideErrorHe('phone_required')).toMatch(/טלפון/)
