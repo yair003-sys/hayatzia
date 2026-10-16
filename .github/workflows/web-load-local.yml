@@ -1,0 +1,215 @@
+name: web-load-local (load test on a throwaway local stack)
+
+# Manual only. Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
+# Next.js app on it, then runs k6 (PostgREST / RPC / Storage / Realtime + the real pages as signed-in fans) and the
+# Playwright UI consistency checks at 375 px during and after the load. Never touches the staging or production
+# Supabase projects or Vercel: no environment, no secrets, and every step refuses a non-local URL.
+# Results: the job summary + the "load-results" artifact. Thresholds are informative; the job does not fail on them.
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'seeded fans'
+        default: '50000'
+      vus:
+        description: 'peak concurrent API fans (k6 VUs)'
+        default: '2000'
+      ws:
+        description: 'peak realtime sessions (websockets)'
+        default: '2000'
+      page_vus:
+        description: 'peak fans loading the real Next.js pages'
+        default: '60'
+      goal_rate:
+        description: 'match-room messages per second during the goal burst'
+        default: '300'
+      hold:
+        description: 'seconds at peak (after a 120 s ramp; then a 60 s goal window and a 30 s ramp down)'
+        default: '300'
+      sample:
+        description: 'fans that get a session (tokens)'
+        default: '5000'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-load-local
+  cancel-in-progress: false
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      NEXT_PUBLIC_APP_ENV: local     # never preview / production
+      NEXT_TELEMETRY_DISABLED: 1
+      OUT: ${{ github.workspace }}/load-out
+      USERS: ${{ inputs.users }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same pinned CLI as web-db.yml; k6 action pinned as in web-load.yml.
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: 2.120.0
+      - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1  # v1.2.2
+
+      - name: Check inputs
+        env:
+          I_USERS: ${{ inputs.users }}
+          I_VUS: ${{ inputs.vus }}
+          I_WS: ${{ inputs.ws }}
+          I_PAGE: ${{ inputs.page_vus }}
+          I_GOAL: ${{ inputs.goal_rate }}
+          I_HOLD: ${{ inputs.hold }}
+          I_SAMPLE: ${{ inputs.sample }}
+        run: |
+          for v in "$I_USERS" "$I_VUS" "$I_WS" "$I_PAGE" "$I_GOAL" "$I_HOLD" "$I_SAMPLE"; do
+            [[ "$v" =~ ^[0-9]+$ ]] || { echo "::error::inputs must be whole numbers"; exit 1; }
+          done
+          [ "$I_USERS" -ge 1000 ] && [ "$I_USERS" -le 200000 ] || { echo "::error::users must be 1000..200000"; exit 1; }
+          mkdir -p "$OUT"
+
+      - name: Start local Supabase (database + realtime + auth + storage; applies all migrations)
+        run: ./scripts/ci-step.sh "supabase start" supabase start -x studio,edge-runtime,logflare,vector,imgproxy
+
+      - name: Read the local stack's URLs and keys (refuses anything that is not on this runner)
+        run: |
+          supabase status -o env 2>/dev/null | grep -E '^[A-Z_]+=' > "$RUNNER_TEMP/sb.env"
+          echo "keys from supabase status: $(cut -d= -f1 "$RUNNER_TEMP/sb.env" | tr '\n' ' ')"
+          set -a; . "$RUNNER_TEMP/sb.env"; set +a
+          for s in "$JWT_SECRET" "$ANON_KEY" "$SERVICE_ROLE_KEY" "${SECRET_KEY:-}" "${PUBLISHABLE_KEY:-}"; do if [ -n "$s" ]; then echo "::add-mask::$s"; fi; done
+          local_re='^(http|postgresql)://([^@/]*@)?(127\.0\.0\.1|localhost):[0-9]+(/.*)?$'
+          [[ "$API_URL" =~ $local_re ]] || { echo "::error::API_URL is not local"; exit 1; }
+          [[ "$DB_URL" =~ $local_re ]] || { echo "::error::DB_URL is not local"; exit 1; }
+          if env | grep -qiE 'supabase\.co|loaqhisfhafjbrmtygrp|yblzcgetkfbdwsfogkqp|vercel\.app'; then
+            echo "::error::a hosted Supabase or Vercel address is in the environment; refusing to run"; exit 1
+          fi
+          ADMIN_URL="${DB_URL/postgres:postgres@/supabase_admin:postgres@}"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_KEY=$ANON_KEY"
+            echo "DB_URL=$DB_URL"
+            echo "ADMIN_URL=$ADMIN_URL"
+          } >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
+          echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Realtime tenant limits (record the local defaults, then raise them so the runner, not a config cap, is the limit)
+        run: |
+          RT=$(docker ps --format '{{.Names}}' | grep -m1 '^supabase_realtime_')
+          cols="external_id, max_concurrent_users, max_events_per_second, max_joins_per_second, max_channels_per_client, max_bytes_per_second"
+          url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
+          {
+            echo "- local defaults: \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -3 | tr '\n' ' ')\`"
+            if psql "$url" -Xq -c "update _realtime.tenants set max_concurrent_users = 100000, max_events_per_second = 100000, max_joins_per_second = 10000, max_channels_per_client = 100, max_bytes_per_second = 1000000000" 2>&1; then
+              docker restart "$RT" >/dev/null
+              for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$RT" 2>/dev/null)" = healthy ] && break; sleep 2; done
+              echo "- raised for this run: \`$(psql "$url" -XAt -c "select $cols from _realtime.tenants" 2>&1 | head -3 | tr '\n' ' ')\` (Realtime restarted: $(docker inspect -f '{{.State.Health.Status}}' "$RT"))"
+            else
+              echo "- could not raise the limits (the defaults above applied)"
+            fi
+          } | tee "$OUT/realtime-limits.txt"
+
+      - name: Enable pg_stat_statements
+        run: |
+          psql "$DB_URL" -Xq -c 'create extension if not exists pg_stat_statements with schema extensions'
+          psql "$DB_URL" -XAt -c 'select count(*) from extensions.pg_stat_statements' >/dev/null
+
+      - name: Seed fake fans and their history (load/seed.sql)
+        run: |
+          url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
+          start=$(date +%s)
+          ./scripts/ci-step.sh "seed" psql "$url" -X -v users="$USERS" -f load/seed.sql > "$OUT/seed.log"
+          code=$?
+          echo $(( $(date +%s) - start )) > "$OUT/seed-seconds.txt"
+          tail -5 "$OUT/seed.log"
+          [ $code -eq 0 ] || exit $code
+          grep -A2 '^ status' "$OUT/seed.log" | head -3 > "$OUT/seed-counts.txt" || true
+          psql "$url" -Xq -c "grant usage on schema load to postgres; grant select on all tables in schema load to postgres" || true
+
+      - name: Install the app
+        run: ./scripts/ci-step.sh install npm ci
+
+      - name: Build the app against the local stack
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.SUPABASE_KEY }}
+        run: ./scripts/ci-step.sh build npm run build
+
+      - name: Start the app (next start, local only)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.SUPABASE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ env.SERVICE_ROLE_KEY }}
+        run: |
+          nohup npx next start -p 3000 -H 127.0.0.1 > "$OUT/next.log" 2>&1 &
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://127.0.0.1:3000/login && break; sleep 1; done
+          curl -fsS -o /dev/null -w 'login page %{http_code} in %{time_total}s\n' http://127.0.0.1:3000/login
+
+      - name: Mint local sessions for a sample of fans
+        run: |
+          psql "$DB_URL" -X -v sample="${{ inputs.sample }}" -v outdir="$RUNNER_TEMP" -f load/sample.sql
+          node load/mint-tokens.mjs "$RUNNER_TEMP/fans.csv" "$RUNNER_TEMP/meta.csv" "$RUNNER_TEMP/fans.json"
+          echo "FANS_FILE=$RUNNER_TEMP/fans.json" >> "$GITHUB_ENV"
+          # One signed-in page as a smoke test: must render as the fan, not redirect to /login.
+          C=$(node -e 'const d=require(process.argv[1]);console.log(d.fans.find(f=>f.i===1).cookie)' "$RUNNER_TEMP/fans.json")
+          curl -sS -o "$OUT/smoke-stand.html" -w 'GET /stand as fan 1: %{http_code} %{time_total}s → %{url_effective}\n' -L -H "Cookie: $C" http://127.0.0.1:3000/stand
+          grep -q 'עומס·1' "$OUT/smoke-stand.html" && echo "the page shows fan 1's nickname" || echo "::warning::/stand did not render fan 1's nickname"
+
+      - name: Install Chromium for the UI checks
+        run: npx playwright install --with-deps chromium > /dev/null
+
+      - name: EXPLAIN the hot queries on the seeded data (before the load)
+        run: psql "$DB_URL" -X -f load/explain.sql > "$OUT/explain.txt" 2>&1 || true
+
+      - name: Run the load (k6) with the UI checks during it, then after it
+        env:
+          APP_URL: http://127.0.0.1:3000
+          PEAK_VUS: ${{ inputs.vus }}
+          WS_VUS: ${{ inputs.ws }}
+          PAGE_VUS: ${{ inputs.page_vus }}
+          GOAL_RATE: ${{ inputs.goal_rate }}
+          HOLD_S: ${{ inputs.hold }}
+          RAMP_S: '120'
+        run: |
+          ulimit -n 1048576 || ulimit -n 65535 || true
+          psql "$DB_URL" -Xq -c "select extensions.pg_stat_statements_reset()" \
+            -c "insert into load.meta values ('load_started', now()::text), ('likes_before', (select count(*) from public.clip_likes)::text) on conflict (k) do update set v = excluded.v"
+          bash load/sampler.sh "$OUT" "$DB_URL" &
+          SAMPLER=$!
+          OUT_DIR="$OUT" k6 run --quiet load/fans.js > "$OUT/k6.log" 2>&1 &
+          K6=$!
+          # During: once the ramp is done and the fans are at peak.
+          sleep $(( RAMP_S + 30 ))
+          PHASE=during OUT_DIR="$OUT" npx playwright test -c load/playwright.load.config.ts > "$OUT/playwright-during.log" 2>&1 || echo "UI checks during the load: some failed (see the summary)"
+          wait $K6 && c=0 || c=$?; echo "k6 exit $c (thresholds are informative)"
+          touch "$OUT/stop"; wait $SAMPLER || true
+          PHASE=after OUT_DIR="$OUT" npx playwright test -c load/playwright.load.config.ts > "$OUT/playwright-after.log" 2>&1 || echo "UI checks after the load: some failed (see the summary)"
+          tail -3 "$OUT/k6.log"
+
+      - name: Report (job summary)
+        if: always()
+        run: |
+          bash load/report.sh "$OUT" "$DB_URL" || true
+          cat "$OUT/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+          # Annotation with the headline (readable through the REST API).
+          grep -m1 '^Run ' "$OUT/report.md" | sed 's/^/::notice title=load headline::/' || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: load-results
+          path: |
+            load-out/
+            !load-out/stop
+          retention-days: 14
