@@ -359,14 +359,16 @@ reset role;
 select is((select count(*)::int from public.trip_requests where trip_id = current_setting('t.e')::uuid and user_id = pg_temp.uid('e02')), 1,
   'the request cannot be withdrawn while open');
 
+select set_config('t.i1', (select id::text from public.ride_incidents where reporter_id = pg_temp.uid('e02')), true);
+select set_config('t.i2', (select id::text from public.ride_incidents where reporter_id = pg_temp.uid('e01')), true);
 select pg_temp.as_fan('e06');
 set local role authenticated;
 select is(public.admin_incident_count(), 2, 'two unanswered incidents');
 select ok((select bool_and(car like '%1234567%' and from_city = 'רעננה') from public.admin_open_incidents()), 'the admin sees route and car');
-select is((select public.admin_ack_incident(id) from public.ride_incidents where reporter_id = pg_temp.uid('e02')), true, 'acknowledged');
+select is(public.admin_ack_incident(current_setting('t.i1')::uuid), true, 'acknowledged');
 select is(public.admin_incident_count(), 1, 'one left unanswered');
 select is((select count(*)::int from public.admin_open_incidents()), 2, 'acknowledged incidents stay open in the list');
-select is((select bool_and(public.admin_close_incident(id)) from public.ride_incidents), true, 'both closed');
+select ok(public.admin_close_incident(current_setting('t.i1')::uuid) and public.admin_close_incident(current_setting('t.i2')::uuid), 'both closed');
 select is(public.admin_incident_count(), 0, 'nothing unanswered');
 reset role;
 select is((select count(*)::int from public.admin_actions where action in ('incident_ack', 'incident_close')), 3, 'logged');
