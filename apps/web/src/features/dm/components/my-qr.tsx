@@ -54,8 +54,9 @@ export function MyQr({ code: initial, nick, origin }: { code: string; nick: stri
               onClick={() =>
                 start(async () => {
                   const r = await resetQrAction()
-                  if (r?.data && 'code' in r.data) {
-                    setCode(r.data.code)
+                  const next = r?.data?.code
+                  if (next) {
+                    setCode(next)
                     setMsg('נוצר ברקוד חדש')
                   } else setMsg((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'לא הצלחנו ליצור ברקוד חדש. נסה שוב')
                   setConfirming(false)
@@ -158,7 +159,7 @@ export function QrScanner() {
         <button
           type="button"
           className="su-btn su-btn-blue flex items-center justify-center gap-2"
-          onClick={() => setState(detectorCtor() && navigator.mediaDevices?.getUserMedia ? 'scanning' : 'unsupported')}
+          onClick={() => setState(detectorCtor() && typeof navigator.mediaDevices?.getUserMedia === 'function' ? 'scanning' : 'unsupported')}
         >
           <ScanLine className="size-5" aria-hidden="true" />
           סרוק ברקוד
