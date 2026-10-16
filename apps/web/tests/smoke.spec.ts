@@ -44,6 +44,19 @@ test('a tab URL loads directly and stays selected after refresh', async ({ page 
   await expect(current).toHaveAttribute('aria-current', 'page')
 })
 
+for (const path of ['/', '/login', '/stand', '/square', '/terms'] as const) {
+  test(`page ${path} is never wider than the phone screen`, async ({ page }) => {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }))
+    expect(scrollWidth - clientWidth).toBeLessThanOrEqual(1)
+    await expect(page.getByText(/^באג פריסה/)).toHaveCount(0)
+  })
+}
+
 test('non-production builds show the test environment banner', async ({ page }) => {
   await page.goto('/stand')
   await expect(page.getByRole('status')).toContainText('סביבת בדיקות')
