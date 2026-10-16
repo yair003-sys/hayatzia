@@ -1121,7 +1121,7 @@ isOneToOne: false
                     "created_at"?: string,"driver_id"?: string,"fixture_id"?: number,"trip_id"?: string
                   }
                   Relationships: [
-
+                    
                   ]
                 },"ride_driver_stats": {
                   Row: {
@@ -1143,7 +1143,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"driver_id"?: string,"rater_id"?: string,"stars": number,"trip_id": string
+                    "created_at"?: string,"driver_id": string,"rater_id"?: string,"stars": number,"trip_id": string
                   }
                   Update: {
                     "created_at"?: string,"driver_id"?: string,"rater_id"?: string,"stars"?: number,"trip_id"?: string
@@ -1612,7 +1612,7 @@ isOneToOne: false
             }[]
                            },
 "ride_drivers":
-{ Args: { "p_users": string[] }; Returns: {
+{ Args: { "p_users": (string)[] }; Returns: {
               "female": boolean,"member_since": string,"ratings_count": number,"ratings_sum": number,"rides_completed": number,"user_id": string
             }[]
                            },
