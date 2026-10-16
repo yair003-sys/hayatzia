@@ -22,8 +22,8 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000c5', 'זר', 'hta'),
   ('00000000-0000-0000-0000-0000000000c6', 'שישי', 'mta'),
   ('00000000-0000-0000-0000-0000000000c7', 'שביעי', 'mta');
--- Rides are 18+ (20261015220000_ride_safety): these fans confirmed it.
-update public.profiles set adult_confirmed_at = now();
+-- Rides are 18+ (20261015220000_ride_safety), read from the birth date since 20261016100000_league_dms.
+update public.profiles set adult_confirmed_at = now(), birth_date = '1990-01-01';
 insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4500, 'Hapoel Hadera')
   on conflict (api_id) do nothing;
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id)
