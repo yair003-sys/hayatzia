@@ -1,6 +1,6 @@
 # Private messages across the whole league, message requests and a personal QR code: design
 
-Status: owner approved the description in chat on 2026-10-16 ("כן"). Owner's words: "אני רוצה שהצאט הפרטי יהיה
+Status: approved by the owner in chat on 2026-10-16 ("כן"; answers to the builder check the same evening). Owner's words: "אני רוצה שהצאט הפרטי יהיה
 אפשרות גם לדבר עם אוהדים של קבוצות אחרות … זה קריטי". Engineering calls are Claude's, stated to the owner.
 
 ## Why
@@ -16,9 +16,18 @@ of different clubs meet in the match room and at the stadium; they must be able 
    it shows who sent it and the message; at the bottom: **"אשר והמשך שיחה"** or **"חסום"** (plus "דווח").
 4. A personal QR code in the private chat area ("הברקוד שלי"): another fan scans it at the stadium and can add / message
    them directly.
-5. Agreed guard for minors (owner said "כן" to the full description): a setting "מי יכול לשלוח לי בקשות" with
-   כולם / רק אוהדי הקבוצה שלי / רק דרך ברקוד. Default "כולם" for a fan who confirmed 18+ (`profiles.adult_confirmed_at`
-   not null); default "רק דרך ברקוד" for a fan who did not. The fan can change it.
+5. **Birth date at sign-up** (owner, 2026-10-16: "בהרשמה צריך לציין … תאריך לידה"). Required on sign-up; under 16
+   cannot register (replaces the "16+" checkbox). Existing fans are asked once on their next visit. Private: never
+   shown to other fans; the database derives "adult" (18+) from it. Rides use it instead of the 18+ tap
+   (`adult_confirmed_at` stays as legacy and is no longer the source). Self-declared.
+6. Guard for minors: a setting "מי יכול לשלוח לי בקשות" with כולם / רק אוהדי הקבוצה שלי / רק דרך ברקוד.
+   Default "כולם" for 18+; default "רק אוהדי הקבוצה שלי" (plus QR) for 16–17 (derived from the birth date). The
+   fan can change it.
+7. **No report with message content** (owner: "פשוט הוא יחסום את המשתמש וזהו"). The request screen offers
+   "אשר והמשך שיחה" and "חסום" only. No DM text ever reaches the server.
+8. **QR = consent** (owner: "כן"). A thread opened by scanning a fan's code starts already accepted, works under
+   any request setting, is outside the daily cap; only a block (either way) or a ban stops it.
+9. Rides need stronger driver verification later (owner); out of scope here, tracked in `docs/COMPANY.md`.
 
 ## Claude's engineering calls
 - **One message before acceptance.** Until the recipient accepts, the sender can send only the first message in that
@@ -39,8 +48,8 @@ of different clubs meet in the match room and at the stadium; they must be able 
   database), never the user id. The QR encodes `https://<site>/add/<code>`; scanning with any phone camera opens that
   page (sign-in first if needed), which shows the fan's card (nick, club, avatar) and "שלח הודעה". The fan can reset
   the code ("חדש ברקוד"); the old one stops working at once. Opening a thread through a code is done by a security
-  definer RPC `open_dm_by_code(code)` that resolves the code server-side and bypasses only the `qr` setting check,
-  never blocks. In-app scanning uses the browser's camera through a file/camera input or `BarcodeDetector` where
+  definer RPC `open_dm_by_code(code)` that resolves the code server-side, opens (or returns) the thread already
+  accepted, bypasses the request setting and the daily cap, never blocks or bans. In-app scanning uses the browser's camera through a file/camera input or `BarcodeDetector` where
   supported, with the phone camera as the always-working path; no new npm dependency unless needed (if a QR
   *generator* library is needed, add it through `web-deps.yml`).
 - **Encryption stays end to end.** The first message is encrypted like any other. To encrypt to a fan of another
@@ -50,15 +59,19 @@ of different clubs meet in the match room and at the stadium; they must be able 
 - **Push and inbox:** a request sends a push "בקשת הודעה מ-<nick>" with no message text, using the existing push
   pipeline and its throttle. The inbox shows a "בקשות" section (count badge) above the normal threads; a request row
   shows the sender's nick and club colours. Message text is decrypted on the device as today.
-- **Report:** the request screen and every thread get "דווח" (existing `reports` with a new target kind for a DM
-  thread / fan). Because the server cannot read DMs, the report form lets the reporter choose to attach the decrypted
-  text of the messages they are reporting (explicit, on their own device, opt-in). This is the only path where DM
-  text reaches the server and only by the recipient's explicit choice to report; state it in the UI. (Owner rule
-  "never add a path that sends plaintext to the server" — this is a user-initiated disclosure by the recipient of a
-  message sent to them, like forwarding a screenshot; flag it to the owner, and if he says no, the report carries
-  ids only.)
+- **Blocks as a signal:** since there is no DM report, the admin screen shows fans blocked by many distinct fans in
+  the last 30 days (a count by trigger, no content), so a serial harasser can be banned.
+- **Birth date:** `profiles.birth_date date` (check: ≥ 16 years old at insert / first set, not in the future, not
+  before 1900), set once by the fan (column grant for the first set only; changes go through support later),
+  never readable by other fans (column-level select, like gender). `private.is_adult(user)` derives 18+. The
+  sign-up form and a one-time prompt for existing fans (no birth date yet) collect it; until then a fan cannot
+  open new private threads or offer/request rides (existing threads keep working).
+- **Request setting storage:** `profiles.dm_requests` text check in ('everyone','team','qr') nullable; null means
+  the age-based default, computed at check time (so a fan who turns 18 moves to "everyone" unless they chose).
 - **Groups stay same-club** (unchanged); only 1:1 threads open to the league. Banned fans (`fan_bans`) cannot start
-  threads (existing ban checks).
+  threads: add the ban check to `dm_threads_stamp` and `open_dm_by_code`. `private.can_dm` for device keys also
+  allows "we share a group", so groups keep working whatever the request setting.
+- Chat messages show no sender avatar today: add one (the button) to the match room and team chat rows.
 - **Scale:** indexes for the new lookups (`profiles(qr_code)` unique; request listing by recipient and `accepted_at`;
   the daily cap counts by `(user_a|user_b, created_at)` using existing thread indexes or a sender column). No N+1 in
   the inbox: requests come in the same keyset-paginated query.
@@ -70,8 +83,10 @@ of different clubs meet in the match room and at the stadium; they must be able 
 ## UI (Hebrew, RTL, current look)
 - Match room / team chat: the sender's avatar is a button (`aria-label="שלח הודעה פרטית ל-<nick>"`), opens a small
   sheet: nick, club, "שלח הודעה פרטית"; for oneself nothing.
-- Thread screen for a request (recipient): the message(s), the sender's card, a sticky bar "אשר והמשך שיחה" /
-  "חסום" / "דווח". Sender side before acceptance: the composer shows "ההודעה נשלחה. אפשר לכתוב שוב כשיאשרו" and is
+- Thread screen for a request (recipient): the message, the sender's card, a sticky bar "אשר והמשך שיחה" /
+  "חסום".
+- Sign-up: a birth date field (day / month / year, RTL), with the reason in one line ("כדי להגן על בני נוער. לא
+  מוצג לאף אחד"). One-time sheet for existing fans with the same field. Sender side before acceptance: the composer shows "ההודעה נשלחה. אפשר לכתוב שוב כשיאשרו" and is
   disabled.
 - Inbox: "בקשות (N)" row at the top opening the requests list.
 - "הברקוד שלי" button in the private messages screen: big QR, nick, "חדש ברקוד", and "סרוק ברקוד".
