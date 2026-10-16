@@ -1262,6 +1262,10 @@
   .chat-reply-btn-text { font-size: 9.5px; font-weight: 700; line-height: 1; }
   .chat-msg-mine .chat-actions { inset-inline-end: -3.1rem; }
   .chat-msg-other .chat-actions { inset-inline-start: -3.1rem; }
+  /* The writer's avatar (a button to a private message, 2026-10-16) beside the nickname: a 44px target. */
+  .chat-author-row { display: flex; align-items: center; gap: 0.25rem; }
+  .chat-author { display: grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; margin-block: -0.25rem; border-radius: 999px; }
+  .chat-author .ib-avatar-sm { width: 1.75rem; height: 1.75rem; font-size: 0.8rem; }
   .chat-msg[data-active] .chat-actions, .chat-msg:focus-within .chat-actions { opacity: 1; pointer-events: auto; }
   @media (hover: hover) { .chat-msg:hover .chat-actions { opacity: 1; pointer-events: auto; } }
 

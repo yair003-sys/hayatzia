@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BellOff, MessagesSquare, Plus, Search } from 'lucide-react'
+import { BellOff, ChevronDown, Inbox as InboxIcon, MessagesSquare, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { chatTime } from '@/features/chat/schema'
-import { filterInbox, membersLabel, previewText, unreadLabel, type InboxRow, type Invite } from '../schema'
+import { teamById } from '@/features/teams/data'
+import { filterInbox, membersLabel, previewText, splitRequests, unreadLabel, type InboxRow, type Invite } from '../schema'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
 import { Avatar } from './avatar'
 import { InviteCard } from './invite-card'
@@ -24,6 +25,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
   const [previews, setPreviews] = useState<Map<string, string>>(() => new Map())
   const [q, setQ] = useState('')
   const [sheet, setSheet] = useState<SheetMode | null>(null)
+  const [showRequests, setShowRequests] = useState(false)
 
   useEffect(() => {
     if (!key && !status) return // wait for this device's key (status means it will never come)
@@ -70,7 +72,9 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
     }
   }, [rows, key, status, reveal, meId, supabase])
 
-  const shown = filterInbox(rows, q)
+  // Message requests (2026-10-16) sit in their own section above the chats.
+  const { requests, rows: chats } = splitRequests(rows)
+  const shown = filterInbox(chats, q)
   const empty = rows.length === 0 && invites.length === 0
 
   return (
@@ -81,7 +85,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
             <MessagesSquare className="size-7" strokeWidth={1.6} />
           </span>
           <p className="t-sec">עוד אין שיחות</p>
-          <p className="mb-3 text-sm text-muted">כתוב לאוהד מהקבוצה, או פתח קבוצה קטנה לחבר׳ה שאיתך ביציע.</p>
+          <p className="mb-3 text-sm text-muted">כתוב לכל אוהד בליגה, או פתח קבוצה קטנה לחבר׳ה שאיתך ביציע.</p>
           <button type="button" className="su-btn su-btn-blue" onClick={() => setSheet('dm')}>
             שיחה חדשה
           </button>
@@ -91,7 +95,36 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
         </div>
       ) : (
         <div className="space-y-3 pb-20">
-          {rows.length > 0 && (
+          {requests.length > 0 && (
+            <section aria-label="בקשות הודעה" className="space-y-2">
+              <button
+                type="button"
+                className="ib-row w-full"
+                aria-expanded={showRequests}
+                aria-controls="ib-requests"
+                onClick={() => setShowRequests((v) => !v)}
+              >
+                <span className="ib-avatar" aria-hidden="true">
+                  <InboxIcon className="size-[45%]" strokeWidth={2} />
+                </span>
+                <span className="ib-body text-start">
+                  <b className="ib-name">בקשות ({requests.length})</b>
+                  <span className="ib-preview">אוהדים שרוצים לשלוח לך הודעה</span>
+                </span>
+                <ChevronDown className={`size-5 shrink-0 text-dim transition-transform ${showRequests ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </button>
+              {showRequests && (
+                <ul id="ib-requests" className="ib-list" aria-label="בקשות">
+                  {requests.map((r) => (
+                    <li key={rowKey(r)}>
+                      <Row row={r} preview={previewOf(r, previews)} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+          {chats.length > 0 && (
             <label className="ib-search">
               <Search className="size-4 shrink-0" aria-hidden="true" />
               <span className="sr-only">חיפוש בשיחות</span>
@@ -111,7 +144,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
                 <Row row={r} preview={previewOf(r, previews)} />
               </li>
             ))}
-            {rows.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">לא נמצאו שיחות</li>}
+            {chats.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">לא נמצאו שיחות</li>}
           </ul>
         </div>
       )}
@@ -131,12 +164,20 @@ function previewOf(r: InboxRow, previews: Map<string, string>): string | null {
 
 function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
   const badge = unreadLabel(row.unread)
+  // A request shows the sender's club colours (they may be of another club).
+  const club = row.request === 'incoming' && row.otherTeam ? teamById(row.otherTeam) : undefined
   return (
     <Link href={row.kind === 'group' ? `/inbox/g/${row.id}` : `/inbox/${row.id}`} className="ib-row" data-unread={badge ? 'true' : undefined}>
       <Avatar id={row.kind === 'group' ? row.id : (row.otherId ?? row.id)} name={row.name} group={row.kind === 'group'} />
       <div className="ib-body">
         <div className="flex items-baseline gap-2">
           <b className="ib-name">{row.name}</b>
+          {club && (
+            <span className="flex shrink-0 items-center gap-1 self-center text-xs text-muted">
+              <span className="size-2.5 rounded-full" style={{ background: club.bar, boxShadow: `0 0 0 2px ${club.ring}` }} aria-hidden="true" />
+              {club.short}
+            </span>
+          )}
           {row.muted && <BellOff className="size-3.5 shrink-0 self-center text-dim" aria-label="מושתק" />}
           <time dateTime={row.lastAt} className="ib-time">
             {chatTime(row.lastAt)}

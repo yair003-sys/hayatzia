@@ -8,6 +8,7 @@ import { DmThread } from '@/features/dm/components/dm-thread'
 import { getThread } from '@/features/dm/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { ReportBlock } from '@/features/safety/components/report-block'
+import { teamById } from '@/features/teams/data'
 
 export const metadata: Metadata = { title: 'שיחה פרטית' }
 
@@ -33,16 +34,26 @@ async function Thread({ id }: { id: string }) {
   if (s.status !== 'ready') return null
   const t = await getThread(id, s.userId)
   if (!t) notFound()
+  const club = t.otherTeam ? teamById(t.otherTeam) : undefined
   return (
     <>
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar id={t.otherId} name={t.otherNick} />
-          <h1 className="t-page truncate">{t.otherNick}</h1>
+          <div className="min-w-0">
+            <h1 className="t-page truncate">{t.otherNick}</h1>
+            {club && (
+              <p className="flex items-center gap-1.5 text-xs text-muted">
+                <span className="size-2.5 rounded-full" style={{ background: club.bar }} aria-hidden="true" />
+                {club.name}
+              </p>
+            )}
+          </div>
         </div>
-        <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />
+        {/* A request offers block only (owner, 2026-10-16: no report of message content); an accepted chat keeps both. */}
+        {t.request !== 'incoming' && <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />}
       </header>
-      <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} />
+      <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} request={t.request} />
     </>
   )
 }

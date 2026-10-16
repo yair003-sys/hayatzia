@@ -3,6 +3,7 @@
 import { useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { AlertCircle, ArrowDown, Check, CheckCheck, CornerUpLeft, Flag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Avatar } from '@/features/dm/components/avatar'
 import { dayLabel, tickInfo, type SendState } from '../essentials'
 import { chatTime } from '../schema'
 import { scrollBehavior } from './use-read-position'
@@ -256,5 +257,18 @@ export function MessageRow({
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * The round avatar of another fan's message (2026-10-16): a button that opens "שלח הודעה פרטית" to that fan, whatever
+ * their club. Nothing on my own messages, or when the chat offers no private messages.
+ */
+export function MessageAuthor({ mine, userId, nick, onFan }: { mine: boolean; userId: string; nick: string; onFan?: () => void }) {
+  if (mine || !onFan) return null
+  return (
+    <button type="button" className="chat-author" onClick={onFan} aria-label={`שלח הודעה פרטית ל-${nick}`}>
+      <Avatar id={userId} name={nick} size="sm" />
+    </button>
   )
 }

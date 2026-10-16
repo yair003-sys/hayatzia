@@ -45,6 +45,10 @@ export type InboxRow = {
   unread: number
   members: number | null
   muted: boolean
+  /** Private threads only: a message request not yet accepted (incoming: someone asks me; outgoing: I asked). */
+  request: RequestSide
+  /** Private threads only: the other fan's club (stamped on the thread). */
+  otherTeam: string | null
 }
 
 export type Invite = { groupId: string; name: string; invitedBy: string; members: number; invitedAt: string }
@@ -163,4 +167,73 @@ export function pickDevices<T extends { user_id: string; id: string; created_at:
     out.push(...(mine ? [mine, ...rest.slice(0, perUser - 1)] : rest.slice(0, perUser)))
   }
   return out
+}
+
+// ---------- league-wide private messages, requests and the QR code (2026-10-16) ----------
+
+export type RequestSide = 'incoming' | 'outgoing' | null
+
+/** A thread is a request while it is not accepted; threads from before the change have no opener and are accepted. */
+export function requestOf(t: { accepted_at: string | null; opened_by: string | null }, meId: string): RequestSide {
+  if (t.accepted_at || !t.opened_by) return null
+  return t.opened_by === meId ? 'outgoing' : 'incoming'
+}
+
+/** What the thread screen shows: the recipient decides; the opener may send one message, then waits. */
+export type RequestState = 'open' | 'waiting' | 'decide'
+export function requestState({ request, sentByMe }: { request: RequestSide; sentByMe: number }): RequestState {
+  if (request === 'incoming') return 'decide'
+  if (request === 'outgoing' && sentByMe > 0) return 'waiting'
+  return 'open'
+}
+
+/** Incoming requests go to the "בקשות" section; everything else stays in the list, order kept. */
+export function splitRequests(rows: InboxRow[]): { requests: InboxRow[]; rows: InboxRow[] } {
+  const requests: InboxRow[] = []
+  const rest: InboxRow[] = []
+  for (const r of rows) (r.kind === 'dm' && r.request === 'incoming' ? requests : rest).push(r)
+  return { requests, rows: rest }
+}
+
+export const DM_REQUEST_OPTIONS = [
+  { value: 'everyone', label: 'כולם' },
+  { value: 'team', label: 'רק אוהדי הקבוצה שלי' },
+  { value: 'qr', label: 'רק דרך ברקוד' },
+] as const
+export type DmRequests = (typeof DM_REQUEST_OPTIONS)[number]['value']
+
+export const dmRequestsSchema = z.object({ value: z.enum(['everyone', 'team', 'qr']) })
+export const threadIdSchema = z.object({ threadId: z.uuid() })
+export const QR_CODE_RE = /^[A-Za-z0-9_-]{22,64}$/
+export const qrCodeSchema = z.object({ code: z.string().regex(QR_CODE_RE) })
+
+/** What the personal QR code encodes: the add page of this site (a random code, never the user id). */
+export function qrUrl(origin: string, code: string): string {
+  return `${origin.replace(/\/+$/, '')}/add/${code}`
+}
+
+const DM_CODES = ['requests_closed', 'awaiting_accept', 'rate_limit', 'bad_code', 'no_birth_date', 'blocked', 'banned', 'self', 'not_member', 'not_allowed'] as const
+
+const DM_ERRORS: Record<string, string> = {
+  requests_closed: 'האוהד הזה מקבל הודעות רק מאוהדי הקבוצה שלו או דרך ברקוד',
+  awaiting_accept: 'ההודעה נשלחה. אפשר לכתוב שוב כשיאשרו',
+  rate_limit: 'שלחת הרבה בקשות היום. נסה מחר',
+  bad_code: 'הברקוד לא תקף',
+  no_birth_date: 'צריך להשלים תאריך לידה',
+  blocked: 'אי אפשר לפתוח שיחה עם האוהד הזה',
+  banned: BANNED_HE,
+  self: 'זה הברקוד שלך',
+  not_member: 'השיחה כבר לא זמינה',
+  not_allowed: 'רק מי שקיבל את הבקשה יכול לאשר אותה',
+}
+
+/** The code inside a database error message ('' for anything else). */
+export function dmCode(message: string | undefined | null): string {
+  const m = message ?? ''
+  return DM_CODES.find((c) => m.includes(c)) ?? ''
+}
+
+/** Hebrew for a refusal of the private-message rules in the database. */
+export function dmErrorHe(code: string): string {
+  return DM_ERRORS[code] ?? 'פתיחת השיחה נכשלה. נסה שוב'
 }

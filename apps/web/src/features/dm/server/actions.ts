@@ -1,11 +1,15 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { sendMessagePush } from '@/features/push/server/send'
 import {
   createGroupSchema,
+  dmCode,
+  dmErrorHe,
+  dmRequestsSchema,
   groupErrorHe,
   groupIdSchema,
   groupMemberSchema,
@@ -14,31 +18,98 @@ import {
   muteSchema,
   orderedPair,
   otherUserSchema,
+  qrCodeSchema,
   renameSchema,
   teammateSearchSchema,
+  threadIdSchema,
 } from '../schema'
 import { z } from 'zod'
 import { searchTeammates } from './queries'
 
-/** Opens (or reuses) the conversation with a teammate. Carries no message content. */
+/**
+ * Opens (or reuses) the conversation with any fan of the league (2026-10-16). A new thread is a message request; the
+ * database decides who may open one (request setting, blocks, bans, birth date, daily cap). Carries no message content.
+ */
 export const openThreadAction = actionClient.inputSchema(otherUserSchema).action(async ({ parsedInput: { otherId } }) => {
   const supabase = await createClient()
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { data: claims } = await supabase.auth.getClaims()
   const me = claims?.claims.sub
   if (!me) redirect('/login')
+  if (me === otherId) return { error: 'אי אפשר לשלוח הודעה לעצמך' }
   const pair = orderedPair(me, otherId)
-  const existing = await supabase.from('dm_threads').select('id').eq('user_a', pair.user_a).eq('user_b', pair.user_b).maybeSingle()
-  let id = existing.data?.id
+  const find = () => supabase.from('dm_threads').select('id').eq('user_a', pair.user_a).eq('user_b', pair.user_b).maybeSingle()
+  let id = (await find()).data?.id
   if (!id) {
     const { data, error } = await supabase.from('dm_threads').insert(pair).select('id').single()
-    if (error) {
-      if (error.message.includes('blocked')) return { error: 'אי אפשר לפתוח שיחה עם האוהד הזה' }
-      return { error: 'פתיחת השיחה נכשלה' }
+    if (error?.code === '23505') {
+      // The other fan opened it at the same moment: one thread for the pair, and writing there is a reply.
+      id = (await find()).data?.id
+    } else if (error) {
+      return { error: dmErrorHe(dmCode(error.message)) }
+    } else {
+      id = data.id
     }
-    id = data.id
+    if (!id) return { error: dmErrorHe('') }
   }
   redirect(`/inbox/${id}`)
+})
+
+/** "אשר והמשך שיחה": only the fan who received the request (the database checks). */
+export const acceptThreadAction = actionClient.inputSchema(threadIdSchema).action(async ({ parsedInput }) => {
+  const supabase = await signedIn()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { error } = await supabase.rpc('accept_dm_thread', { p_thread: parsedInput.threadId })
+  if (error) return { error: dmErrorHe(dmCode(error.message)) }
+  revalidatePath('/inbox')
+  return { ok: true as const }
+})
+
+/**
+ * "חסום" on a request (owner, 2026-10-16: no report with message content, just block). Blocks the other member of the
+ * thread; the database then refuses every message either way and the inbox hides the thread.
+ */
+export const blockFromRequestAction = actionClient.inputSchema(threadIdSchema).action(async ({ parsedInput }) => {
+  const supabase = await signedIn()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const me = await myId(supabase)
+  const { data: t } = await supabase.from('dm_threads').select('user_a,user_b').eq('id', parsedInput.threadId).maybeSingle()
+  if (!me || !t) return { error: dmErrorHe('not_member') }
+  const other = t.user_a === me ? t.user_b : t.user_a
+  const { error } = await supabase.from('blocks').insert({ blocked_id: other })
+  if (error && error.code !== '23505') return { error: 'החסימה נכשלה. נסה שוב' }
+  revalidatePath('/inbox')
+  redirect('/inbox')
+})
+
+/** Scanned a fan's QR code: the thread opens accepted (the code is the fan's consent). */
+export const openByCodeAction = actionClient.inputSchema(qrCodeSchema).action(async ({ parsedInput }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const me = await myId(supabase)
+  if (!me) redirect(`/login?next=${encodeURIComponent(`/add/${parsedInput.code}`)}`)
+  const { data, error } = await supabase.rpc('open_dm_by_code', { p_code: parsedInput.code })
+  if (error || !data) return { error: dmErrorHe(dmCode(error?.message)) }
+  redirect(`/inbox/${data}`)
+})
+
+/** "חדש ברקוד": a new code; the old one (and any screenshot of it) stops working at once. */
+export const resetQrAction = actionClient.action(async () => {
+  const supabase = await signedIn()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data, error } = await supabase.rpc('reset_qr_code')
+  if (error || !data) return { error: 'לא הצלחנו ליצור ברקוד חדש. נסה שוב' }
+  return { ok: true as const, code: data }
+})
+
+/** "מי יכול לשלוח לי בקשות" in "הכרטיס שלי". */
+export const setDmRequestsAction = actionClient.inputSchema(dmRequestsSchema).action(async ({ parsedInput }) => {
+  const supabase = await signedIn()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { error } = await supabase.rpc('set_dm_requests', { p_value: parsedInput.value })
+  if (error) return { error: 'השמירה נכשלה. נסה שוב' }
+  revalidatePath('/me')
+  return { ok: true as const }
 })
 
 export const searchTeammatesAction = actionClient.inputSchema(teammateSearchSchema).action(async ({ parsedInput }) => {
