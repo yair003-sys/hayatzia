@@ -58,3 +58,24 @@ Seat maps, private cars, operator self-signup without admin approval, dynamic su
 ## Owner actions
 Sign the first operator agreement(s), open the payment processor account (J5), lawyer: platform role, refund and
 cancellation policy, consumer protection, minors on buses.
+
+## Builder-check answers (2026-10-16; owner: "מצויין בכל")
+Owner's decisions:
+- **Money flow and fees:** a fixed onefan fee per seat (amount set per trip, e.g. [₪5]) and an optional fixed
+  organiser fee per seat; the processor splits each payment directly (operator as sub-merchant), so onefan never
+  holds the operator's money. Pricing: `seat_price(n) = min(max_price, ceil(vehicle_cost / n) + onefan_fee +
+  organiser_fee)`, in agorot; it never rises as n grows. `bus_ledger` mirrors the split.
+- **Every passenger has their own account and verification:** a fan may book up to 4 seats; each extra seat is an
+  invitation another fan claims (verify, pickup point) before closing; unclaimed seats are released at closing and
+  never charged.
+- **Postponed match:** moved to another day → the trip is cancelled automatically and every hold released / payment
+  refunded in full; time changed on the same day → the trip stays, everyone is notified and may cancel with a full
+  refund until departure.
+Claude's calls:
+- **No long card holds:** bookings open at most 7 days before `closes_at`. At booking the fan approves, through the
+  processor's hosted page, a saved-card token and a charge "up to max_price × seats"; at closing the job charges the
+  final price through the token (or releases). A J5 authorisation is used instead only if the chosen processor's
+  hold validity covers the whole window.
+- **Boarding:** each passenger gets a boarding QR in the app; the operator scans it at the door (nickname + seat
+  shown); no real names or ID numbers are stored unless the lawyer says a passenger list is required.
+- Depends on the ride verification design (identity check + emergency button), built first.

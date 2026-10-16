@@ -60,3 +60,26 @@ Live GPS tracking, criminal record checks, in-app payment for private rides, aut
 ## Owner actions before production
 Choose and open an account with the identity provider (and later the SMS provider); lawyer review of the privacy
 page text about verification.
+
+## Builder-check answers (2026-10-16; owner: "מצויין בכל")
+Owner's decisions:
+- **Duplicate identity is blocked:** store a keyed fingerprint (HMAC-SHA256 with a server secret, never the number)
+  of the ID document number in `fan_verifications.doc_fingerprint`, unique among approved identities; a second
+  account with the same fingerprint, or a fingerprint of a fan suspended or banned from rides, is rejected
+  `duplicate_identity`. State this on the privacy page draft (for the lawyer).
+- **Drivers need a licence held ≥ 2 years** (licence issue date from the provider; `licence_too_new`).
+Claude's calls:
+- **Rollout switch:** gates run only when `private.setting_on('rides_require_verification')` (off until a real
+  provider account exists; the mock provider never runs in production). When it is turned on, unverified fans' open
+  offers/seeks are hidden from others and their pending requests cannot be accepted until they verify; nothing is
+  deleted; a banner explains.
+- **Which actions:** `offer` needs identity + licence + car; `seek` needs identity; answering a `seek` as the driver
+  needs identity + licence + car; requesting a seat needs identity; `meet` is unaffected.
+- **Fuel sharing stays** (`cost = 'share'` is cost-sharing between fans, not profit); no money flows through onefan
+  for private rides.
+- **Retries:** at most 3 provider sessions per fan per kind in total, then `verify_limit` and an admin can reset;
+  the admin screen can correct a fan's birth date (logged in `admin_actions`) to resolve `dob_mismatch`.
+- **Emergency alerts:** push to admins plus an "אירועי חירום פתוחים" list with an unanswered badge on the admin
+  screen; the UI and the incident procedure state that onefan is not a 24/7 call centre and 100 is the emergency
+  path.
+- **Car:** any real plate found in the registry (ownership is not proven); one active car per driver.
