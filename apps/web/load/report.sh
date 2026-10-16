@@ -12,6 +12,7 @@ q() { psql "$DB_URL" -XAt "$@" 2>/dev/null; }
   echo
   echo "Everything ran on one GitHub runner: $(nproc) vCPU, $(free -g | awk '/^Mem:/ {print $2}') GB RAM, local Supabase (Docker) + Next.js production build + k6 + Chromium."
   echo "No hosted Supabase project or Vercel was touched. Data: \"נתוני עומס\" seed (load/seed.sql)."
+  if [ -f "$OUT/fixes.txt" ]; then echo; cat "$OUT/fixes.txt"; else echo; echo "This run: the database exactly as the migrations make it (no fixes applied)."; fi
   echo
   echo "### Seed"
   echo
@@ -34,10 +35,16 @@ q() { psql "$DB_URL" -XAt "$@" 2>/dev/null; }
     awk -F'\t' '/^supabase_|^[a-z]/ && NF >= 3 { gsub("%", "", $2); if ($2 + 0 > max[$1]) max[$1] = $2 + 0 }
       END { for (k in max) printf "%s %.0f%%\n", k, max[k] }' "$OUT/docker-stats.txt" | sort -t' ' -k2 -rn | head -12 | sed 's/^/- /'
     echo
-    echo "Peak CPU of processes on the runner itself (ps, 100% = one core):"
+    echo "Processes on the runner itself, highest value seen of ps %cpu (= CPU time / time since the process started; 100% = one core):"
     echo
-    awk '/^-- runner/ {p = 1; next} /^## / {p = 0} p && NF >= 3 { if ($2 + 0 > m[$1]) m[$1] = $2 + 0 }
+    awk '/^-- runner/ {p = 1; next} /^## |^-- args/ {p = 0} p && NF >= 3 { if ($2 + 0 > m[$1]) m[$1] = $2 + 0 }
       END { for (k in m) printf "%s %.0f%%\n", k, m[k] }' "$OUT/docker-stats.txt" | sort -t' ' -k2 -rn | head -6 | sed 's/^/- /'
+    echo
+    echo "Busiest command lines at the last sample:"
+    echo
+    echo '```'
+    awk '/^-- args/ {p = 1; buf = ""; next} /^## / {p = 0} p {buf = buf $0 "\n"} END {printf "%s", buf}' "$OUT/docker-stats.txt"
+    echo '```'
   fi
   echo
   echo "Gateway and container limits of the local stack:"

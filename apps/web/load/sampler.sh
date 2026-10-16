@@ -17,6 +17,6 @@ while [ ! -f "$OUT/stop" ]; do
   mem=$(free -m | awk '/^Mem:/ {print $3}')
   printf '%s\t%s\t%s\t%s\t%s\n' "$t" "$rt" "$pg" "$load1" "$mem" >> "$OUT/samples.tsv"
   { echo "## $t"; docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' 2>/dev/null
-    echo "-- runner processes (k6, next, chromium…): command %cpu rss_kb"; ps -eo comm,pcpu,rss --sort=-pcpu | sed -n 2,7p; } >> "$OUT/docker-stats.txt"
+    echo "-- runner processes (k6, next, chromium…): command %cpu rss_kb"; ps -eo comm,pcpu,rss --sort=-pcpu | sed -n 2,7p; echo "-- args"; ps -eo pcpu,args --sort=-pcpu | sed -n 2,5p | cut -c1-120; } >> "$OUT/docker-stats.txt"
   sleep 8
 done

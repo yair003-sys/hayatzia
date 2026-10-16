@@ -180,6 +180,8 @@ function classify(res) {
 function note(res, name) {
   const k = classify(res)
   if (k) appErrors.add(1, { kind: k, name })
+  // A small sample of server errors with PostgREST's error code (bodies carry no secrets) for the report.
+  if (k === 'server' && Math.random() < 0.01) console.warn(`server error ${name} ${res.status} ${String(res.body).slice(0, 140)}`)
   return res
 }
 function get(fan, path, name, extra) {
@@ -496,6 +498,20 @@ export function realtime() {
         )
       }
       socket.on('message', (raw) => {
+        // Broadcasts and presence are by far the most messages: counted and timed from the raw text, without
+        // parsing, so the load generator measures the server rather than its own JSON parsing.
+        if (raw.indexOf('"event":"broadcast"') >= 0) {
+          const tp = /"topic":"(realtime:[^"]+)"/.exec(raw)
+          const kind = (tp && kindOf[tp[1]]) || 'other'
+          rtBroadcasts.add(1, { topic: kind })
+          const t = /t=(\d{13})/.exec(raw)
+          if (t) rtDelivery.add(Date.now() - Number(t[1]), { topic: kind })
+          return
+        }
+        if (raw.indexOf('"event":"presence_') >= 0) {
+          rtPresence.add(1)
+          return
+        }
         let m
         try {
           m = JSON.parse(raw)

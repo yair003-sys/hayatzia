@@ -30,6 +30,9 @@ on:
       sample:
         description: 'fans that get a session (tokens)'
         default: '5000'
+      fixes:
+        description: '1 = apply load/proposed-fixes.sql to the throwaway local database before the load (experiment)'
+        default: '0'
   push:
     branches: [load-test]
     paths: ['apps/web/load/run.env']
@@ -75,11 +78,12 @@ jobs:
           I_GOAL: ${{ inputs.goal_rate }}
           I_HOLD: ${{ inputs.hold }}
           I_SAMPLE: ${{ inputs.sample }}
+          I_FIXES: ${{ inputs.fixes }}
         run: |
           if [ "$EVENT" != workflow_dispatch ]; then
             # only KEY=number lines are taken from the file
             while IFS='=' read -r k v; do
-              if [[ "$k" =~ ^(USERS|VUS|WS|PAGE|GOAL|HOLD|SAMPLE)$ && "$v" =~ ^[0-9]+$ ]]; then printf -v "I_$k" '%s' "$v"; fi
+              if [[ "$k" =~ ^(USERS|VUS|WS|PAGE|GOAL|HOLD|SAMPLE|FIXES)$ && "$v" =~ ^[0-9]+$ ]]; then printf -v "I_$k" '%s' "$v"; fi
             done < load/run.env
           fi
           for v in "$I_USERS" "$I_VUS" "$I_WS" "$I_PAGE" "$I_GOAL" "$I_HOLD" "$I_SAMPLE"; do
@@ -88,7 +92,7 @@ jobs:
           [ "$I_USERS" -ge 1000 ] && [ "$I_USERS" -le 200000 ] || { echo "::error::users must be 1000..200000"; exit 1; }
           {
             echo "USERS=$I_USERS"; echo "PEAK_VUS=$I_VUS"; echo "WS_VUS=$I_WS"; echo "PAGE_VUS=$I_PAGE"
-            echo "GOAL_RATE=$I_GOAL"; echo "HOLD_S=$I_HOLD"; echo "SAMPLE=$I_SAMPLE"
+            echo "GOAL_RATE=$I_GOAL"; echo "HOLD_S=$I_HOLD"; echo "SAMPLE=$I_SAMPLE"; echo "FIXES=${I_FIXES:-0}"
           } | tee -a "$GITHUB_ENV"
           mkdir -p "$OUT"
 
@@ -206,6 +210,13 @@ jobs:
       - name: EXPLAIN the hot queries on the seeded data (before the load)
         run: psql "$DB_URL" -X -f load/explain.sql > "$OUT/explain.txt" 2>&1 || true
 
+      - name: Experiment - apply the proposed fixes to the local database (FIXES=1 only)
+        if: env.FIXES == '1'
+        run: |
+          url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
+          psql "$url" -X -f load/proposed-fixes.sql
+          echo "**This run: the proposed fixes (load/proposed-fixes.sql) were APPLIED to the throwaway local database.**" > "$OUT/fixes.txt"
+
       - name: Run the load (k6) with the UI checks during it, then after it
         env:
           APP_URL: http://127.0.0.1:3000
@@ -246,7 +257,8 @@ jobs:
         if: always()
         run: |
           { echo "## k6 failed requests per 10 s (UTC)"; grep -o 'time="[^"]*" level=warning msg="Request Failed"' "$OUT/k6.log" | cut -c7-24 | uniq -c | head -40
-            echo "## k6.log (tail)"; tail -12 "$OUT/k6.log";
+            echo "## k6 server error samples"; grep -o 'server error [^"]*' "$OUT/k6.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | cut -c1-200 | sort | uniq -c | sort -rn | head -8
+            echo "## k6.log (tail)"; tail -6 "$OUT/k6.log";
             echo "## next.log: first 'unstable value' error in full"; grep -m1 -B2 -A14 'unstable value' "$OUT/next.log";
             echo "## kong alerts"; docker logs "$(docker ps -a --format '{{.Names}}' | grep -m1 '^supabase_kong_')" 2>&1 | grep -E '\[(alert|crit|emerg|error)\]|exited|signal' | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -10; echo "## playwright during"; grep -E '✘|Error|expect|›' "$OUT/playwright-during.log" | head -30;
             echo "## playwright after"; grep -E '✘|Error|expect|›' "$OUT/playwright-after.log" | head -30; echo "## seed.log (tail)"; tail -8 "$OUT/seed.log";
