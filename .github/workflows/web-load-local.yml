@@ -1,6 +1,7 @@
 name: web-load-local (load test on a throwaway local stack)
 
-# Manual only. Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
+# Manual (workflow_dispatch, once this file is on main), or a push to the load-test branch, which reads its
+# parameters from apps/web/load/run.env (dispatch needs the file on the default branch). Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
 # Next.js app on it, then runs k6 (PostgREST / RPC / Storage / Realtime + the real pages as signed-in fans) and the
 # Playwright UI consistency checks at 375 px during and after the load. Never touches the staging or production
 # Supabase projects or Vercel: no environment, no secrets, and every step refuses a non-local URL.
@@ -29,6 +30,9 @@ on:
       sample:
         description: 'fans that get a session (tokens)'
         default: '5000'
+  push:
+    branches: [load-test]
+    paths: ['apps/web/load/run.env']
 
 permissions:
   contents: read
@@ -48,7 +52,6 @@ jobs:
       NEXT_PUBLIC_APP_ENV: local     # never preview / production
       NEXT_TELEMETRY_DISABLED: 1
       OUT: ${{ github.workspace }}/load-out
-      USERS: ${{ inputs.users }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -62,8 +65,9 @@ jobs:
           version: 2.120.0
       - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1  # v1.2.2
 
-      - name: Check inputs
+      - name: Parameters (dispatch inputs, or load/run.env on a push)
         env:
+          EVENT: ${{ github.event_name }}
           I_USERS: ${{ inputs.users }}
           I_VUS: ${{ inputs.vus }}
           I_WS: ${{ inputs.ws }}
@@ -72,10 +76,20 @@ jobs:
           I_HOLD: ${{ inputs.hold }}
           I_SAMPLE: ${{ inputs.sample }}
         run: |
+          if [ "$EVENT" != workflow_dispatch ]; then
+            # only KEY=number lines are taken from the file
+            while IFS='=' read -r k v; do
+              if [[ "$k" =~ ^(USERS|VUS|WS|PAGE|GOAL|HOLD|SAMPLE)$ && "$v" =~ ^[0-9]+$ ]]; then printf -v "I_$k" '%s' "$v"; fi
+            done < load/run.env
+          fi
           for v in "$I_USERS" "$I_VUS" "$I_WS" "$I_PAGE" "$I_GOAL" "$I_HOLD" "$I_SAMPLE"; do
-            [[ "$v" =~ ^[0-9]+$ ]] || { echo "::error::inputs must be whole numbers"; exit 1; }
+            [[ "$v" =~ ^[0-9]+$ ]] || { echo "::error::parameters must be whole numbers"; exit 1; }
           done
           [ "$I_USERS" -ge 1000 ] && [ "$I_USERS" -le 200000 ] || { echo "::error::users must be 1000..200000"; exit 1; }
+          {
+            echo "USERS=$I_USERS"; echo "PEAK_VUS=$I_VUS"; echo "WS_VUS=$I_WS"; echo "PAGE_VUS=$I_PAGE"
+            echo "GOAL_RATE=$I_GOAL"; echo "HOLD_S=$I_HOLD"; echo "SAMPLE=$I_SAMPLE"
+          } | tee -a "$GITHUB_ENV"
           mkdir -p "$OUT"
 
       - name: Start local Supabase (database + realtime + auth + storage; applies all migrations)
@@ -157,7 +171,7 @@ jobs:
 
       - name: Mint local sessions for a sample of fans
         run: |
-          psql "$DB_URL" -X -v sample="${{ inputs.sample }}" -v outdir="$RUNNER_TEMP" -f load/sample.sql
+          psql "$DB_URL" -X -v sample="$SAMPLE" -v outdir="$RUNNER_TEMP" -f load/sample.sql
           node load/mint-tokens.mjs "$RUNNER_TEMP/fans.csv" "$RUNNER_TEMP/meta.csv" "$RUNNER_TEMP/fans.json"
           echo "FANS_FILE=$RUNNER_TEMP/fans.json" >> "$GITHUB_ENV"
           # One signed-in page as a smoke test: must render as the fan, not redirect to /login.
@@ -174,11 +188,6 @@ jobs:
       - name: Run the load (k6) with the UI checks during it, then after it
         env:
           APP_URL: http://127.0.0.1:3000
-          PEAK_VUS: ${{ inputs.vus }}
-          WS_VUS: ${{ inputs.ws }}
-          PAGE_VUS: ${{ inputs.page_vus }}
-          GOAL_RATE: ${{ inputs.goal_rate }}
-          HOLD_S: ${{ inputs.hold }}
           RAMP_S: '120'
         run: |
           ulimit -n 1048576 || ulimit -n 65535 || true
