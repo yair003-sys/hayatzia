@@ -11,7 +11,8 @@
 \endif
 -- The fan, the live match and that fan's next match (all from the seed's load.* tables).
 select u.id as fan, u.team as fan_team, (select v from load.meta where k = 'live_fixture') as live,
-       coalesce((select f.id from load.fixtures f where f.status = 'NS' and u.team in (f.home, f.away) order by f.kickoff limit 1), 0) as next
+       coalesce((select f.id from load.fixtures f where f.status = 'NS' and u.team in (f.home, f.away) order by f.kickoff limit 1), 0) as next,
+       coalesce((select f.id from load.fixtures f where f.round = 11 and u.team in (f.home, f.away)), 0) as trips_fx
   from load.users u where u.i = :i \gset
 \echo 'fan #' :i ' club ' :fan_team ' live ' :live ' next ' :next
 
@@ -178,4 +179,68 @@ insert into realtime.messages (topic, extension, payload, event, private) values
 set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
 select set_config('realtime.topic', 'dm:' || :'thread', true) \gset _
 explain (analyze, buffers, costs off, summary on) select 1 from realtime.messages where topic = 'dm:' || :'thread' and extension = 'broadcast';
+rollback;
+
+-- ── What-if: proposed fixes, applied inside a transaction, measured on the same data, then rolled back ─────────
+\echo '### WHAT-IF trips count today (per-row ride_suspended + ride_poster_ok in the restrictive policies)'
+begin; set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select count(*) from public.trips where fixture_id = :trips_fx;
+\echo 'same answer? rows the fan sees:'
+select count(*) as trips_visible from public.trips where fixture_id = :trips_fx;
+rollback;
+\echo '### WHAT-IF trips count with the policy functions evaluated once per query (same rules)'
+begin;
+create function private.active_ride_suspensions() returns uuid[] language sql stable security definer set search_path = ''
+  as $f$ select coalesce(array_agg(s.user_id), '{}') from public.ride_suspensions s where s.lifted_at is null $f$;
+grant execute on function private.active_ride_suspensions() to authenticated;
+create function private.ride_verification_on() returns boolean language sql stable security definer set search_path = ''
+  as $f$ select private.setting_on('rides_require_verification') $f$;
+grant execute on function private.ride_verification_on() to authenticated;
+alter policy trips_not_ride_suspended on public.trips
+  using ((user_id = (select auth.uid())) or (select public.is_app_admin()) or user_id <> all (coalesce((select private.active_ride_suspensions()), '{}')));
+alter policy trips_verified_or_hidden on public.trips
+  using ((user_id = (select auth.uid())) or (select public.is_app_admin())
+         or not (select private.ride_verification_on())
+         or private.ride_poster_ok(user_id, kind) or private.accepted_on(id));
+set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select count(*) from public.trips where fixture_id = :trips_fx;
+\echo 'same answer? rows the fan sees:'
+select count(*) as trips_visible from public.trips where fixture_id = :trips_fx;
+rollback;
+
+\echo '### WHAT-IF home_player_reviews today (twice: cold, warm)'
+begin; set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select * from public.home_player_reviews(5);
+\echo 'same answer? rows and a checksum of them:'
+select count(*) as reviews, md5(string_agg(player_id || author_id || likes_count || liked, ',' order by player_id, author_id)) as checksum from public.home_player_reviews(5);
+rollback;
+\echo '### WHAT-IF home_player_reviews with the blocked fans read once (one definer helper) instead of per row'
+begin;
+create function private.blocked_ids(p_me uuid) returns uuid[] language sql stable security definer set search_path = ''
+  as $f$ select coalesce(array_agg(x), '{}') from (select b.blocked_id x from public.blocks b where b.user_id = p_me
+                                                   union select b.user_id from public.blocks b where b.blocked_id = p_me) z $f$;
+grant execute on function private.blocked_ids(uuid) to authenticated;
+create or replace function public.home_player_reviews(p_per_player integer default 5)
+ returns table(player_id text, author_id uuid, nick text, review text, stars smallint, likes_count integer, liked boolean, updated_at timestamptz)
+ language sql stable set search_path = '' as $f$
+  select t.player_id, t.user_id, t.nick::text, t.review::text, t.stars, t.likes_count,
+         exists (select 1 from public.player_rating_likes l
+                  where l.player_id = t.player_id and l.author_id = t.user_id and l.user_id = (select auth.uid())),
+         t.updated_at
+    from public.players pl
+    cross join lateral (
+      select x.player_id, x.user_id, x.nick, x.review, x.stars, x.likes_count, x.updated_at
+        from public.player_ratings x
+       where x.player_id = pl.id and x.review <> '' and x.updated_at > now() - interval '30 days'
+         and x.user_id <> all (coalesce((select private.blocked_ids((select auth.uid()))), '{}'))
+       order by x.likes_count desc, x.updated_at desc, x.user_id
+       limit least(greatest(coalesce(p_per_player, 5), 1), 20)
+    ) t
+   where pl.team_id = (select public.my_team())
+   order by t.player_id, t.likes_count desc, t.updated_at desc, t.user_id
+$f$;
+set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select * from public.home_player_reviews(5);
+\echo 'same answer? rows and a checksum of them:'
+select count(*) as reviews, md5(string_agg(player_id || author_id || likes_count || liked, ',' order by player_id, author_id)) as checksum from public.home_player_reviews(5);
 rollback;
