@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Re-emits a text file as GitHub notice annotations (≤ 10 per step, ~30 kB each), so the results can be read through
-# the REST API (check-run annotations) where artifacts and raw logs are not reachable.
-# Usage: annotate.sh FILE TITLE [MAX_PARTS]
-f="$1"; title="$2"; max="${3:-9}"
+# Re-emits a text file as GitHub notice annotations so the results can be read through the REST API (check-run
+# annotations) where artifacts and raw logs are not reachable. GitHub keeps 4096 characters per annotation, 10 notices
+# per step and 50 per job, so the file goes out in ~3.8 kB parts, FIRST..LAST of them in this step.
+# Usage: annotate.sh FILE TITLE FIRST LAST
+f="$1"; title="$2"; first="${3:-1}"; last="${4:-10}"
 [ -f "$f" ] || exit 0
-split -C 30000 -d -a 2 "$f" "$f.part."
+d=$(mktemp -d)
+split -C 3800 -d -a 3 "$f" "$d/p."
 n=0
-for p in "$f".part.*; do
+for p in "$d"/p.*; do
   n=$((n + 1))
-  [ "$n" -gt "$max" ] && break
+  [ "$n" -lt "$first" ] && continue
+  [ "$n" -gt "$last" ] && break
   msg=$(sed -e 's/%/%25/g' "$p" | sed ':a;N;$!ba;s/\r/%0D/g;s/\n/%0A/g')
   echo "::notice title=${title} ${n}::${msg}"
 done
-rm -f "$f".part.*
+total=$(ls "$d" | wc -l)
+rm -rf "$d"
+echo "$title: $total parts, emitted $first..$last"

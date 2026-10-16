@@ -212,16 +212,24 @@ jobs:
           cat "$OUT/report.md" >> "$GITHUB_STEP_SUMMARY" || true
           # Annotation with the headline (readable through the REST API).
           grep -m1 '^Run ' "$OUT/report.md" | sed 's/^/::notice title=load headline::/' || true
-          bash load/annotate.sh "$OUT/report.md" report 9
+          bash load/annotate.sh "$OUT/report.md" report 1 9
 
-      - name: Details as annotations (plans, logs)
+      # GitHub keeps 10 notices per step and 50 per job: the report continues over the next steps.
+      - name: Report as annotations (2)
+        if: always()
+        run: bash load/annotate.sh "$OUT/report.md" report 10 19
+      - name: Report as annotations (3)
+        if: always()
+        run: bash load/annotate.sh "$OUT/report.md" report 20 29
+      - name: Plans and logs as annotations
         if: always()
         run: |
-          bash load/annotate.sh "$OUT/explain.txt" plans 6
-          { echo "## k6.log (tail)"; tail -40 "$OUT/k6.log"; echo "## playwright during"; tail -60 "$OUT/playwright-during.log";
-            echo "## playwright after"; tail -60 "$OUT/playwright-after.log"; echo "## seed.log (tail)"; tail -15 "$OUT/seed.log";
-            echo "## next.log (tail)"; tail -30 "$OUT/next.log"; } > "$OUT/logs.txt" 2>/dev/null || true
-          bash load/annotate.sh "$OUT/logs.txt" logs 3
+          { echo "## k6.log (tail)"; tail -25 "$OUT/k6.log"; echo "## playwright during"; grep -E '✘|Error|expect|›' "$OUT/playwright-during.log" | head -30;
+            echo "## playwright after"; grep -E '✘|Error|expect|›' "$OUT/playwright-after.log" | head -30; echo "## seed.log (tail)"; tail -8 "$OUT/seed.log";
+            echo "## next.log (tail)"; tail -20 "$OUT/next.log"; } > "$OUT/logs.txt" 2>/dev/null || true
+          bash load/annotate.sh "$OUT/logs.txt" logs 1 3
+          grep -vE '^ +(Buffers|Planning|I/O Timings)' "$OUT/explain.txt" > "$OUT/explain-short.txt" || true
+          bash load/annotate.sh "$OUT/explain-short.txt" plans 1 7
 
       - name: Upload results
         if: always()

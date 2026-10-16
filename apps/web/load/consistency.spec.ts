@@ -50,7 +50,6 @@ async function layout(page: Page) {
 const shortCount = (n: number) => (n < 1000 ? String(n) : n < 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K` : `${Math.floor(n / 1000)}K`)
 const between = (x: number, a: number, b: number) => x >= Math.min(a, b) && x <= Math.max(a, b)
 
-test.describe.configure({ mode: 'serial' })
 
 const PAGES: [string, () => string][] = [
   ['home', () => '/stand'],
