@@ -4,7 +4,19 @@ import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { adminErrorHe, banSchema, fileToRemove, liftRideSchema, removeSchema, restoreSchema, statusSchema, unbanSchema } from '../schema'
+import {
+  adminErrorHe,
+  banSchema,
+  fileToRemove,
+  fixBirthDateSchema,
+  incidentSchema,
+  liftRideSchema,
+  removeSchema,
+  resetVerificationSchema,
+  restoreSchema,
+  statusSchema,
+  unbanSchema,
+} from '../schema'
 
 // Every action runs the database function with the admin's own session: the database checks is_app_admin() and refuses
 // anyone else ('not_admin'). The service key is used for one thing only: deleting the file of content that the
@@ -76,6 +88,48 @@ export const setReportStatusAction = actionClient.inputSchema(statusSchema).acti
   const supabase = await createClient()
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_set_report_status', { p_report: reportId, p_status: status })
+  if (error) return { error: adminErrorHe(error.message) }
+  revalidatePath(PAGE)
+  return { ok: true as const }
+})
+
+/** "אפס ניסיונות": the fan gets three new verification attempts of that kind (audited in the database). */
+export const resetVerificationAction = actionClient
+  .inputSchema(resetVerificationSchema)
+  .action(async ({ parsedInput: { userId, kind } }) => {
+    const supabase = await createClient()
+    if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+    const { error } = await supabase.rpc('admin_reset_verification', { p_user: userId, p_kind: kind })
+    if (error) return { error: adminErrorHe(error.message) }
+    revalidatePath(PAGE)
+    return { ok: true as const }
+  })
+
+/** "תקן תאריך לידה" after checking the document with the fan (resolves dob_mismatch; audited, the date is not logged). */
+export const fixBirthDateAction = actionClient.inputSchema(fixBirthDateSchema).action(async ({ parsedInput: { userId, birthDate } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { error } = await supabase.rpc('admin_set_birth_date', { p_user: userId, p_date: birthDate })
+  if (error) return { error: adminErrorHe(error.message) }
+  revalidatePath(PAGE)
+  return { ok: true as const }
+})
+
+/** "קיבלתי": an admin is on an open emergency (the badge counts the ones nobody acknowledged). */
+export const ackIncidentAction = actionClient.inputSchema(incidentSchema).action(async ({ parsedInput: { id } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { error } = await supabase.rpc('admin_ack_incident', { p_id: id })
+  if (error) return { error: adminErrorHe(error.message) }
+  revalidatePath(PAGE)
+  return { ok: true as const }
+})
+
+/** "סגור אירוע": the trip and its requests can be deleted again. */
+export const closeIncidentAction = actionClient.inputSchema(incidentSchema).action(async ({ parsedInput: { id } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { error } = await supabase.rpc('admin_close_incident', { p_id: id })
   if (error) return { error: adminErrorHe(error.message) }
   revalidatePath(PAGE)
   return { ok: true as const }

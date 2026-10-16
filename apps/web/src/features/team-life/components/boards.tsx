@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, MessageSquare, Shirt, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { Camera, MessageSquare, ShieldCheck, Shirt, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { openThreadAction } from '@/features/dm/server/actions'
@@ -16,9 +17,12 @@ import {
   RIDE_SUSPENDED_HE,
   WOMEN_DRIVERS_FILTER,
   WOMEN_ONLY_LABEL,
+  emergencyOpen,
   filterRides,
   trustLine,
 } from '../ride-safety'
+import { ROLLOUT_BANNER, VERIFIED_BADGE, formatPlate } from '@/features/verification/schema'
+import { EmergencyButton } from './emergency-button'
 import { RateRides, SafetyGate, ShareRide } from './ride-safety'
 import {
   createEventAction,
@@ -89,9 +93,21 @@ type TripsProps = {
   /** The fan's own ride state (null when it could not be read: the database still enforces every rule). */
   ride: RideProfile | null
   toRate: RideToRate[]
+  /** The fan's own verification (2026-10-16); null when it could not be read (the database still decides). */
+  verify: { required: boolean; identity: boolean; driver: boolean } | null
 }
 
-export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: TripsProps) {
+/** "מאומת" next to a verified fan in rides. */
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok">
+      <ShieldCheck className="size-3.5" aria-hidden="true" />
+      {VERIFIED_BADGE}
+    </span>
+  )
+}
+
+export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify }: TripsProps) {
   // A trip opened from a notification: its match is picked and the trip scrolled into view.
   const focused = focusId ? trips.find((t) => t.id === focusId) : undefined
   const [fixtureId, setFixtureId] = useState(matches.find((m) => m.id === focused?.fixture_id)?.id ?? matches[0]?.id)
@@ -152,6 +168,22 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
           {suspended && (
             <p role="status" className="rounded-lg border border-live/40 bg-surface p-3 text-sm">
               {RIDE_SUSPENDED_HE}
+            </p>
+          )}
+          {verify?.required && !verify.identity && (
+            <div role="status" className="space-y-2 rounded-lg border border-accent bg-surface p-3 text-sm">
+              <p>{ROLLOUT_BANNER}</p>
+              <Link href="/me/verify" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-semibold text-white">
+                לאימות
+              </Link>
+            </div>
+          )}
+          {verify?.required && verify.identity && !verify.driver && (
+            <p className="text-xs text-muted">
+              כדי להציע נסיעה צריך גם רישיון נהיגה ורכב רשום.{' '}
+              <Link href="/me/verify" className="underline">
+                לאימות
+              </Link>
             </p>
           )}
 
@@ -302,10 +334,13 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
               const accepted = t.requests.filter((r) => r.status === 'accepted').length
               const free = Math.max(t.seats - accepted, 0)
               const closedToMe = t.women_only && !isWoman
+              const verifiedAuthor = t.trust ? (t.kind === 'offer' ? t.trust.driver : t.trust.identity) : false
+              const inRide = t.kind !== 'meet' && (myReq?.status === 'accepted' || (mine && t.requests.some((r) => r.status === 'accepted')))
               return (
                 <li key={t.id} id={`trip-${t.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', t.id === focusedId && 'trip-focus')}>
                   <div className="flex flex-wrap items-center gap-2">
                     <b>{t.nick}</b>
+                    {verifiedAuthor && <VerifiedBadge />}
                     <span className="text-xs text-accent-text">{TRIP_KIND[t.kind]}</span>
                     {t.women_only && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold">{WOMEN_ONLY_LABEL}</span>}
                     {mine && (
@@ -315,6 +350,15 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
                     )}
                   </div>
                   {t.kind === 'offer' && t.driver && <p className="text-xs text-muted">{trustLine(t.driver)}</p>}
+                  {t.kind === 'offer' && t.trust?.car && <p className="text-sm">רכב: {t.trust.car}</p>}
+                  {t.plate && (
+                    <p className="text-sm">
+                      מספר רכב:{' '}
+                      <b dir="ltr" className="t-num">
+                        {formatPlate(t.plate)}
+                      </b>
+                    </p>
+                  )}
                   <p className="text-sm">
                     מ{t.from_city} · יציאה {departureLabel(match.kickoff, t.depart_before_min)}
                     {t.kind === 'offer' && <> · {free > 0 ? `${free} מקומות פנויים` : 'מלא'}</>} · {t.cost === 'free' ? 'בלי עלות' : 'השתתפות בדלק'}
@@ -327,7 +371,10 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
                         {t.requests.map((r) => (
                           <li key={r.user_id} className="space-y-1.5">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="flex-1">{r.nick}</span>
+                              <span className="flex flex-1 items-center gap-1.5">
+                                {r.nick}
+                                {r.verified && <VerifiedBadge />}
+                              </span>
                               {r.status === 'pending' ? (
                                 <>
                                   <button
@@ -388,9 +435,12 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate }: Trip
                         kickoffSec={match.kickoff}
                         departBeforeMin={t.depart_before_min}
                         match={match.label}
+                        car={t.trust?.car ?? null}
+                        verified={t.trust?.driver ?? false}
                       />
                     </div>
                   )}
+                  {inRide && emergencyOpen(match.kickoff, t.depart_before_min) && <EmergencyButton tripId={t.id} />}
                   {!mine && <ReportBlock kind="trip" refId={t.id} userId={t.user_id} userNick={t.nick} />}
                 </li>
               )

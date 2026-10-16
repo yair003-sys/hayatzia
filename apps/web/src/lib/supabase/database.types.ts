@@ -531,6 +531,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"fan_cars": {
+                  Row: {
+                    "active": boolean,"checked_at": string,"colour": string,"created_at": string,"id": string,"make": string,"model": string,"plate": string,"user_id": string,"year": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"checked_at"?: string,"colour"?: string,"created_at"?: string,"id"?: string,"make"?: string,"model"?: string,"plate": string,"user_id": string,"year"?: number | null
+                  }
+                  Update: {
+                    "active"?: boolean,"checked_at"?: string,"colour"?: string,"created_at"?: string,"id"?: string,"make"?: string,"model"?: string,"plate"?: string,"user_id"?: string,"year"?: number | null
+                  }
+                  Relationships: [
+
+                  ]
                 },"fan_event_going": {
                   Row: {
                     "event_id": string,"user_id": string
@@ -570,6 +584,20 @@ isOneToOne: false
       referencedRelation: "teams"
       referencedColumns: ["id"]
     }
+                  ]
+                },"fan_verifications": {
+                  Row: {
+                    "approved_at": string | null,"counted": boolean,"created_at": string,"doc_fingerprint": string | null,"expires_at": string | null,"id": string,"kind": string,"provider": string,"provider_ref": string | null,"reason_code": string | null,"status": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind": string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind"?: string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+
                   ]
                 },"fan_lineup_tallies": {
                   Row: {
@@ -1149,6 +1177,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"ride_incidents": {
+                  Row: {
+                    "acknowledged_at": string | null,"acknowledged_by": string | null,"car": string,"closed_at": string | null,"closed_by": string | null,"created_at": string,"driver_id": string | null,"fixture_id": number | null,"from_city": string,"id": string,"pickup": string,"reporter_id": string | null,"status": string,"trip_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id": string
+                  }
+                  Update: {
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"car"?: string,"closed_at"?: string | null,"closed_by"?: string | null,"created_at"?: string,"driver_id"?: string | null,"fixture_id"?: number | null,"from_city"?: string,"id"?: string,"pickup"?: string,"reporter_id"?: string | null,"status"?: string,"trip_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 },"ride_ratings": {
                   Row: {
                     "created_at": string,"driver_id": string,"rater_id": string,"stars": number,"trip_id": string
@@ -1416,6 +1458,9 @@ isOneToOne: false
 "activity_unread_count":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
+"admin_ack_incident":
+{ Args: { "p_id": string }; Returns: boolean
+                           },
 "admin_ban_list":
 { Args: { "p_limit"?: number }; Returns: {
               "created_at": string,"nick": string,"reason": string,"until": string,"user_id": string
@@ -1423,6 +1468,12 @@ isOneToOne: false
                            },
 "admin_ban_user":
 { Args: { "p_days"?: number,"p_reason"?: string,"p_user": string }; Returns: string
+                           },
+"admin_close_incident":
+{ Args: { "p_id": string }; Returns: boolean
+                           },
+"admin_incident_count":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "admin_lift_ride_suspension":
 { Args: { "p_user": string }; Returns: boolean
@@ -1434,6 +1485,11 @@ isOneToOne: false
                            },
 "admin_open_count":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"admin_open_incidents":
+{ Args: { "p_limit"?: number }; Returns: {
+              "acknowledged_at": string,"car": string,"created_at": string,"driver_nick": string,"from_city": string,"id": string,"kickoff_at": string,"pickup": string,"reporter_nick": string,"trip_id": string
+            }[]
                            },
 "admin_recent_actions":
 { Args: { "p_limit"?: number }; Returns: {
@@ -1450,6 +1506,9 @@ isOneToOne: false
               "created_at": string,"id": string,"kind": string,"note": string,"open_reports_on_target": number,"reason": string,"ref": string,"reporter_contact": string,"reporter_nick": string,"status": string,"target_exists": boolean,"target_hidden": boolean,"target_nick": string,"target_preview": string,"target_user_id": string
             }[]
                            },
+"admin_reset_verification":
+{ Args: { "p_kind": string,"p_user": string }; Returns: number
+                           },
 "admin_restore_content":
 { Args: { "p_kind": string,"p_ref": string }; Returns: boolean
                            },
@@ -1457,6 +1516,9 @@ isOneToOne: false
 { Args: { "p_limit"?: number }; Returns: {
               "by_report": string,"created_at": string,"nick": string,"reason": string,"user_id": string
             }[]
+                           },
+"admin_set_birth_date":
+{ Args: { "p_date": string,"p_user": string }; Returns: undefined
                            },
 "admin_set_report_status":
 { Args: { "p_report": string,"p_status": string }; Returns: undefined
@@ -1467,11 +1529,19 @@ isOneToOne: false
 "admin_user_ids":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
+"admin_verification_issues":
+{ Args: { "p_limit"?: number }; Returns: {
+              "created_at": string,"kind": string,"nick": string,"reason_code": string,"used": number,"user_id": string
+            }[]
+                           },
 "alert_recipients":
 { Args: { "p_after"?: string,"p_fixture": number,"p_limit"?: number }; Returns: string[]
                            },
 "answer_invite":
 { Args: { "p_group": string,"p_yes": boolean }; Returns: undefined
+                           },
+"begin_verification":
+{ Args: { "p_kind": string }; Returns: string
                            },
 "blocked_between":
 { Args: { "a": string,"b": string }; Returns: boolean
@@ -1609,6 +1679,11 @@ isOneToOne: false
 "my_ride_case_open":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"my_ride_plates":
+{ Args: { "p_trips": (string)[] }; Returns: {
+              "driver_id": string,"plate": string,"trip_id": string
+            }[]
+                           },
 "my_ride_profile":
 { Args: Record<PropertyKey, never>; Returns: {
               "adult_confirmed": boolean,"gender": string,"phone_ok": boolean,"phone_required": boolean,"ride_suspended": boolean,"safety_seen": boolean
@@ -1621,6 +1696,14 @@ isOneToOne: false
                            },
 "my_team":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"my_verification":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "car_colour": string,"car_make": string,"car_model": string,"car_plate": string,"car_year": number,"identity_left": number,"identity_reason": string,"identity_status": string,"licence_left": number,"licence_reason": string,"licence_status": string,"required": boolean
+            }[]
+                           },
+"my_verification_session":
+{ Args: { "p_session": string }; Returns: string
                            },
 "open_dm_by_code":
 { Args: { "p_code": string }; Returns: string
@@ -1636,8 +1719,16 @@ isOneToOne: false
 "remove_from_group":
 { Args: { "p_group": string,"p_user": string }; Returns: undefined
                            },
+"remove_my_car":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "rename_group":
 { Args: { "p_group": string,"p_name": string }; Returns: undefined
+                           },
+"report_ride_emergency":
+{ Args: { "p_trip": string }; Returns: {
+              "created": boolean,"fixture_id": number,"from_city": string,"incident_id": string
+            }[]
                            },
 "report_ride_harm":
 { Args: { "p_kind": string,"p_note"?: string,"p_ref": string }; Returns: {
@@ -1654,6 +1745,11 @@ isOneToOne: false
                            },
 "ride_suspension_riders":
 { Args: { "p_report": string }; Returns: string[]
+                           },
+"ride_trust":
+{ Args: { "p_users": (string)[] }; Returns: {
+              "car_colour": string,"car_make": string,"car_model": string,"driver_ok": boolean,"identity_ok": boolean,"user_id": string
+            }[]
                            },
 "same_team":
 { Args: { "other": string }; Returns: boolean
@@ -1678,6 +1774,12 @@ isOneToOne: false
                            },
 "set_birth_date":
 { Args: { "p_date": string }; Returns: undefined
+                           },
+"set_fan_car":
+{ Args: { "p_colour": string,"p_make": string,"p_model": string,"p_plate": string,"p_user": string,"p_year"?: number }; Returns: undefined
+                           },
+"verification_result":
+{ Args: { "p_approved": boolean,"p_doc_birth_date"?: string,"p_doc_expires"?: string,"p_fingerprint"?: string,"p_licence_issued"?: string,"p_provider": string,"p_provider_ref": string,"p_reason"?: string,"p_session": string }; Returns: string
                            },
 "set_dm_requests":
 { Args: { "p_value": string }; Returns: undefined

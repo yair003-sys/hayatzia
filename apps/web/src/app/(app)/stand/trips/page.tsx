@@ -6,6 +6,7 @@ import { upcomingTeamMatches } from '@/features/team-life/server/matches'
 import { getMyRideProfile, getRidesToRate, getTrips } from '@/features/team-life/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
+import { getMyVerification } from '@/features/verification/server/queries'
 
 export const metadata: Metadata = { title: 'נוסעים למשחק' }
 
@@ -30,6 +31,20 @@ async function Trips({ focus }: { focus?: string }) {
   if (s.status !== 'ready') return null
   const league = await getLeague()
   const matches = upcomingTeamMatches(league, s.team.id)
-  const [trips, ride, toRate] = await Promise.all([getTrips(matches.map((m) => m.id)), getMyRideProfile(), getRidesToRate()])
-  return <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} ride={ride} toRate={toRate} />
+  const [trips, ride, toRate, verification] = await Promise.all([
+    getTrips(matches.map((m) => m.id), s.userId),
+    getMyRideProfile(),
+    getRidesToRate(),
+    getMyVerification(),
+  ])
+  const verify = verification
+    ? {
+        required: verification.required,
+        identity: verification.identity.status === 'approved',
+        driver: verification.identity.status === 'approved' && verification.licence.status === 'approved' && !!verification.car,
+      }
+    : null
+  return (
+    <TripsBoard key={focus ?? ''} matches={matches} trips={trips} meId={s.userId} focusId={focus} ride={ride} toRate={toRate} verify={verify} />
+  )
 }

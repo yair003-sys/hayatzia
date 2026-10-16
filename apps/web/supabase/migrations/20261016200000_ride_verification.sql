@@ -130,8 +130,9 @@ end $$;
 
 -- The provider's decision, from the webhook (service role only). Returns the session's final status.
 create function public.verification_result(p_session uuid, p_provider text, p_provider_ref text, p_approved boolean,
-                                           p_reason text, p_fingerprint text, p_doc_birth_date date,
-                                           p_licence_issued date, p_doc_expires date)
+                                           p_reason text default null, p_fingerprint text default null,
+                                           p_doc_birth_date date default null, p_licence_issued date default null,
+                                           p_doc_expires date default null)
 returns text
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -230,7 +231,8 @@ $$;
 
 -- ===================== 3. cars =====================
 -- The server writes a car only after the registry lookup (service role). Five changes a day at most.
-create function public.set_fan_car(p_user uuid, p_plate text, p_make text, p_model text, p_colour text, p_year int)
+create function public.set_fan_car(p_user uuid, p_plate text, p_make text, p_model text, p_colour text,
+                                   p_year int default null)
 returns void
 language plpgsql security definer set search_path = '' as $$
 begin

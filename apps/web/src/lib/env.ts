@@ -16,6 +16,15 @@ export const env = createEnv({
     VAPID_PRIVATE_KEY: z.string().min(20).optional(),
     /** Shared secret the ingest workflow sends to POST /api/alerts/dispatch. Server only. Unset → dispatch refuses. */
     ALERTS_SECRET: z.string().min(20).optional(),
+    /**
+     * Identity verification provider for rides. Unset: the mock (demo) provider outside production, none in
+     * production. 'mock' is refused in production (features/verification/server/select-provider.ts).
+     */
+    VERIFICATION_PROVIDER: z.enum(['mock']).optional(),
+    /** Secret that signs the provider's webhook. Server only. Optional outside production (the mock signs in-process). */
+    VERIFICATION_WEBHOOK_SECRET: z.string().min(32).optional(),
+    /** Key of the ID-number fingerprint (HMAC). Server only, never rotated once used. Required in production at runtime. */
+    VERIFICATION_FINGERPRINT_SECRET: z.string().min(32).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_ENV: z.enum(APP_ENVS).default('local'),
@@ -37,6 +46,9 @@ export const env = createEnv({
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     ALERTS_SECRET: process.env.ALERTS_SECRET,
+    VERIFICATION_PROVIDER: process.env.VERIFICATION_PROVIDER,
+    VERIFICATION_WEBHOOK_SECRET: process.env.VERIFICATION_WEBHOOK_SECRET,
+    VERIFICATION_FINGERPRINT_SECRET: process.env.VERIFICATION_FINGERPRINT_SECRET,
   },
   emptyStringAsUndefined: true,
 })

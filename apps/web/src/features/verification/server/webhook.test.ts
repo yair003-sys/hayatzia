@@ -56,11 +56,8 @@ describe('POST /api/verification/webhook', () => {
           p_provider: 'mock',
           p_provider_ref: 'mock-1',
           p_approved: true,
-          p_reason: null,
           p_fingerprint: docFingerprint('123456782', FP_KEY),
           p_doc_birth_date: '1990-01-01',
-          p_licence_issued: null,
-          p_doc_expires: null,
         },
       },
     ])
