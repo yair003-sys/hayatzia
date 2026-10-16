@@ -110,7 +110,9 @@ export function rideOver(kickoffIso: string, status: string, now: Date = new Dat
 /** The database's ride refusals, in the fan's words (null for anything else). */
 export function rideErrorHe(message: string | undefined | null): string | null {
   const m = message ?? ''
-  if (m.includes('not_adult')) return 'נסיעות הן מגיל 18. צריך לאשר את זה פעם אחת לפני נסיעה'
+  // Since 2026-10-16 18+ comes from the birth date (asked once in the app), not from a tap.
+  if (m.includes('no_birth_date')) return 'צריך להשלים תאריך לידה'
+  if (m.includes('not_adult')) return 'נסיעות דרך onefan הן מגיל 18 בלבד'
   if (m.includes('ride_suspended')) return RIDE_SUSPENDED_HE
   if (m.includes('women_only')) return 'הנסיעה הזאת לאוהדות בלבד'
   if (m.includes('phone_required')) return 'כדי לנסוע צריך לאמת מספר טלפון'

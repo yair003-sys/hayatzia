@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { TabBar } from '@/components/tab-bar'
 import { BellGate } from '@/features/activity/components/bell-gate'
+import { BirthDateGate } from '@/features/profile/components/birth-date-gate'
 import { SessionGate } from '@/features/profile/components/session-gate'
 import { AlertBannerGate } from '@/features/push/components/alert-banner-gate'
 
@@ -9,6 +10,9 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
     <>
       <Suspense fallback={null}>
         <SessionGate />
+      </Suspense>
+      <Suspense fallback={null}>
+        <BirthDateGate />
       </Suspense>
       <Suspense fallback={null}>
         <AlertBannerGate />
