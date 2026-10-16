@@ -48,7 +48,7 @@ select is((select count(*)::int from public.device_keys), 1, 'teammates can fetc
 reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000014","role":"authenticated"}', true);
 set local role authenticated;
-select is((select count(*)::int from public.device_keys), 0, 'other clubs cannot fetch your keys when you take requests from your club only');
+select is((select count(*)::int from public.device_keys), 0, 'other clubs cannot fetch your keys without a thread');
 reset role;
 
 -- Fan 12 blocks 11: no more messages either way.

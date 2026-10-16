@@ -202,7 +202,7 @@ select throws_ok(format('insert into public.profiles (user_id, nick, team_id) va
   '42501', null, 'a profile without the current terms version is refused');
 select throws_ok(format('insert into public.profiles (user_id, nick, team_id, terms_version) values (%L, %L, %L, %L)', pg_temp.uid('e95'), 'ישן', 'mta', '2020-01-01'),
   '42501', null, 'an old terms version is refused');
-select lives_ok(format('insert into public.profiles (user_id, nick, team_id, terms_version) values (%L, %L, %L, %L)', pg_temp.uid('e95'), 'מסכים', 'mta', '2026-10-15'),
+select lives_ok(format('insert into public.profiles (user_id, nick, team_id, terms_version, birth_date) values (%L, %L, %L, %L, %L)', pg_temp.uid('e95'), 'מסכים', 'mta', '2026-10-15', '1990-01-01'),
   'a profile with the current terms version is created');
 select is((select terms_version::text from public.profiles where user_id = auth.uid()), '2026-10-15', 'the accepted version is stored');
 select throws_ok($$ update public.profiles set terms_version = 'legacy' where user_id = auth.uid() $$, '42501', null,

@@ -54,8 +54,8 @@ reset role;
 -- ---------- 2 + 3. profiles ----------
 select pg_temp.as_fan('a65');
 set local role authenticated;
-insert into public.profiles (user_id, nick, team_id, created_at, terms_version)
-  values ('00000000-0000-0000-0000-000000000a65', 'מזייף', 'mta', '2000-01-01T00:00:00Z', '2026-10-15');
+insert into public.profiles (user_id, nick, team_id, created_at, terms_version, birth_date)
+  values ('00000000-0000-0000-0000-000000000a65', 'מזייף', 'mta', '2000-01-01T00:00:00Z', '2026-10-15', '1990-01-01');
 select ok((select created_at > now() - interval '1 minute' from public.profiles where user_id = auth.uid()),
   'the join date is stamped by the database, not the fan');
 reset role;

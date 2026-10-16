@@ -4,7 +4,7 @@
 --    bans, blocks, device keys only when allowed.
 -- 3. QR: opening by code (accepted, outside the setting and the cap), reset, blocks; the most-blocked list for admins.
 begin;
-select plan(86);
+select plan(96);
 
 create function pg_temp.uid(p text) returns uuid language sql as $$
   select ('00000000-0000-0000-0000-000000000' || p)::uuid
@@ -98,6 +98,8 @@ set local role authenticated;
 select throws_ok(format($$ insert into public.profiles (user_id, nick, team_id, terms_version, birth_date)
   values (auth.uid(), 'צעיר', 'mta', '2026-10-15', %L) $$, (current_date - interval '16 years' + interval '1 day')::date),
   '22023', 'too_young', 'a fan one day short of 16 cannot sign up');
+select throws_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version) values (auth.uid(), 'בלי תאריך', 'mta', '2026-10-15') $$,
+  '42501', null, 'a fan cannot sign up without a birth date (L3)');
 reset role;
 
 -- Reset: a new code, the old one gone.
@@ -259,7 +261,8 @@ reset role;
 select ok((select accepted_at is not null from public.dm_threads where id = pg_temp.pair('d09', 'e03')),
   'writing in a thread the other side opened accepts it');
 
--- Device keys: only when a thread exists, the setting allows, or a group is shared.
+-- Device keys (security review M1): a thread between us, a shared group or the same club, never across a block either
+-- way. A fan's request setting does not open keys (no listing of who takes requests from everyone).
 select pg_temp.as_fan('d06');
 set local role authenticated;
 insert into public.device_keys (device_id, public_jwk) values ('devd06', '{"kty":"EC"}');
@@ -268,28 +271,74 @@ select pg_temp.as_fan('e02');
 set local role authenticated;
 insert into public.device_keys (device_id, public_jwk) values ('deve02', '{"kty":"EC"}');
 reset role;
+select pg_temp.as_fan('e01');
+set local role authenticated;
+insert into public.device_keys (device_id, public_jwk) values ('deve01', '{"kty":"EC"}');
+reset role;
+select pg_temp.as_fan('e05');
+set local role authenticated;
+insert into public.device_keys (device_id, public_jwk) values ('deve05', '{"kty":"EC"}');
+reset role;
 select pg_temp.as_fan('d01');
 set local role authenticated;
-select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 0,
-  'no keys of a fan whose setting refuses me');
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 0, 'no keys of a fan of another club without a thread');
 select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('e02')), 0, 'no keys of a fan who blocked me');
+reset role;
+select pg_temp.as_fan('d04');
+set local role authenticated;
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('e01')), 1,
+  'the opener of a cross-club thread reads the recipient''s keys right after opening it');
 reset role;
 select pg_temp.as_fan('e04');
 set local role authenticated;
-select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d01')), 1,
-  'keys of a fan who takes requests from everyone (I may write to them)');
-select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 0, 'same club, QR-only: no keys');
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d01')), 0,
+  'a stranger of another club gets no keys, whatever their request setting');
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 1, 'the same club reads keys as before, even QR-only');
 reset role;
+-- e05 (same club) blocks e04.
+insert into public.blocks (user_id, blocked_id) values (pg_temp.uid('e05'), pg_temp.uid('e04'));
 insert into public.dm_groups (id, team_id, name, created_by) values ('00000000-0000-0000-0000-00000000aa01', 'hta', 'קבוצה', pg_temp.uid('e04'));
 insert into public.dm_group_members (group_id, user_id, role, invited_by, joined_at) values
   ('00000000-0000-0000-0000-00000000aa01', pg_temp.uid('e04'), 'admin', pg_temp.uid('e04'), now()),
-  ('00000000-0000-0000-0000-00000000aa01', pg_temp.uid('d06'), 'member', pg_temp.uid('e04'), now());
+  ('00000000-0000-0000-0000-00000000aa01', pg_temp.uid('d06'), 'member', pg_temp.uid('e04'), now()),
+  ('00000000-0000-0000-0000-00000000aa01', pg_temp.uid('e05'), 'member', pg_temp.uid('e04'), now()),
+  ('00000000-0000-0000-0000-00000000aa01', pg_temp.uid('e08'), 'member', pg_temp.uid('e04'), now());
 select pg_temp.as_fan('e04');
 set local role authenticated;
 select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 1, 'group members read each other''s keys');
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('e05')), 0,
+  'not across a block, even in the same club and group');
 -- Groups stay same-club.
 select throws_ok(format('select public.invite_to_group(%L, array[%L]::uuid[])', '00000000-0000-0000-0000-00000000aa01', pg_temp.uid('d01')),
   'P0001', 'not_same_team', 'groups stay within one club');
+reset role;
+-- A member leaves; the QR-only member's keys stay readable for the others (L5).
+select pg_temp.as_fan('e08');
+set local role authenticated;
+select lives_ok($$ select public.leave_group('00000000-0000-0000-0000-00000000aa01') $$, 'a member leaves');
+reset role;
+select pg_temp.as_fan('e04');
+set local role authenticated;
+select is((select count(*)::int from public.device_keys where user_id = pg_temp.uid('d06')), 1,
+  'group members keep reading a QR-only member''s keys after someone leaves');
+reset role;
+
+-- A banned fan cannot write in a private thread either (L1).
+select pg_temp.as_fan('d02');
+set local role authenticated;
+insert into public.dm_threads (user_a, user_b) values (least(pg_temp.uid('d02'), pg_temp.uid('d07')), greatest(pg_temp.uid('d02'), pg_temp.uid('d07')));
+reset role;
+select pg_temp.as_fan('d07');
+set local role authenticated;
+select throws_ok(format($$ insert into public.dm_messages (thread_id, sender_device, iv, ciphertext, wrapped_keys)
+  values (%L, 'devd07', 'aXY=', 'eA==', '{}') $$, pg_temp.pair('d02', 'd07')), '42501', 'banned', 'a banned fan cannot send private messages');
+reset role;
+
+-- The gate answers only for the caller (L2): no opening for someone else, no QR bypass outside open_dm_by_code.
+select pg_temp.as_fan('d01');
+set local role authenticated;
+select throws_ok(format('select * from private.dm_thread_gate(%L, %L, true)', pg_temp.uid('d02'), pg_temp.uid('d06')),
+  '42501', 'not a member', 'the thread gate refuses another fan as the opener');
 reset role;
 
 -- ===================== 3. QR code and the most-blocked list =====================
@@ -314,6 +363,19 @@ select throws_ok(format('select public.open_dm_by_code(%L)', current_setting('t.
 select throws_ok(format('select * from public.qr_card(%L)', current_setting('t.old06')), 'P0002', 'bad_code',
   'nor shows a card');
 select throws_ok(format('select public.open_dm_by_code(%L)', pg_temp.code('d09')), '22023', 'self', 'own code');
+reset role;
+
+-- Group invites respect a QR-only setting unless a private thread already exists (L4).
+insert into public.dm_groups (id, team_id, name, created_by) values ('00000000-0000-0000-0000-00000000aa02', 'hta', 'שניה', pg_temp.uid('e07'));
+insert into public.dm_group_members (group_id, user_id, role, invited_by, joined_at) values
+  ('00000000-0000-0000-0000-00000000aa02', pg_temp.uid('e07'), 'admin', pg_temp.uid('e07'), now());
+select pg_temp.as_fan('e07');
+set local role authenticated;
+select throws_ok(format('select public.invite_to_group(%L, array[%L]::uuid[])', '00000000-0000-0000-0000-00000000aa02', pg_temp.uid('d06')),
+  'P0001', 'invites_closed', 'a QR-only fan cannot be invited by a stranger');
+select lives_ok(format('select public.open_dm_by_code(%L)', pg_temp.code('d06')), 'after scanning their code');
+select is(public.invite_to_group('00000000-0000-0000-0000-00000000aa02', array[pg_temp.uid('d06')]), array[pg_temp.uid('d06')],
+  'the invite goes through once a private thread exists');
 reset role;
 
 -- Blocks either way, bans and a missing birth date stop the QR too.
