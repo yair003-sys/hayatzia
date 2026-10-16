@@ -5,10 +5,11 @@ import { Suspense } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BanList } from '@/features/admin/components/ban-list'
+import { MostBlockedList } from '@/features/admin/components/most-blocked-list'
 import { ReportCard } from '@/features/admin/components/report-card'
 import { RideSuspensionList } from '@/features/admin/components/ride-suspension-list'
 import { QUEUE_STATUS, actionBy, actionLabel, kindLabel, queueStatus, reportTime, type QueueStatus } from '@/features/admin/schema'
-import { getBans, getRecentActions, getReportQueue, getRideSuspensions, isAppAdmin, type Cursor } from '@/features/admin/server/queries'
+import { getBans, getMostBlocked, getRecentActions, getReportQueue, getRideSuspensions, isAppAdmin, type Cursor } from '@/features/admin/server/queries'
 
 export const metadata: Metadata = { title: 'דיווחים', robots: { index: false, follow: false } }
 
@@ -34,11 +35,12 @@ function cursorOf(before: unknown, id: unknown): Cursor | null {
 
 async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor | null }) {
   if (!(await isAppAdmin())) notFound()
-  const [queue, bans, rideSuspensions, actions] = await Promise.all([
+  const [queue, bans, rideSuspensions, actions, mostBlocked] = await Promise.all([
     getReportQueue(status, cursor),
     getBans(),
     getRideSuspensions(),
     getRecentActions(),
+    getMostBlocked(),
   ])
 
   return (
@@ -91,6 +93,13 @@ async function Admin({ status, cursor }: { status: QueueStatus; cursor: Cursor |
           מושעים מנסיעות
         </h2>
         <RideSuspensionList rows={rideSuspensions} />
+      </section>
+
+      <section aria-labelledby="blocked-title" className="space-y-2">
+        <h2 id="blocked-title" className="me-label">
+          חסומים על ידי הרבה אוהדים
+        </h2>
+        <MostBlockedList rows={mostBlocked} />
       </section>
 
       <section aria-labelledby="bans-title" className="space-y-2">

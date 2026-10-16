@@ -21,6 +21,19 @@ export const endpointSchema = z.object({ endpoint: z.url().max(999) })
 
 export type PushPayload = { title: string; body: string; url: string; tag?: string }
 
+/**
+ * The notification about a private message: who wrote, never what (messages are end-to-end encrypted; the server
+ * cannot read them and the notification carries no text). A first message that is still a request says so.
+ */
+export function dmPushPayload(p: { threadId: string; senderNick: string; request: boolean }): Required<PushPayload> {
+  return {
+    title: p.request ? 'בקשת הודעה' : 'הודעה פרטית חדשה',
+    body: p.request ? `בקשת הודעה מ-${p.senderNick}` : `מ־${p.senderNick}`,
+    url: `/inbox/${p.threadId}`,
+    tag: `dm:${p.threadId}`,
+  }
+}
+
 /** Turns a URL-safe base64 VAPID key into the bytes PushManager.subscribe expects. */
 export function vapidKeyBytes(base64Url: string): Uint8Array<ArrayBuffer> {
   const pad = '='.repeat((4 - (base64Url.length % 4)) % 4)

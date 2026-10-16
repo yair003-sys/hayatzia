@@ -58,6 +58,16 @@ export async function getRecentActions(): Promise<ActionRow[]> {
 }
 
 /** Fans suspended from rides right now (ride safety, rule 9). */
+export type MostBlockedRow = Fns['admin_most_blocked']['Returns'][number]
+
+/** Fans blocked by many different fans in the last 30 days (counts only, never message content), most first. */
+export async function getMostBlocked(): Promise<MostBlockedRow[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.rpc('admin_most_blocked', { p_limit: 20 })
+  return (data ?? []).filter((r) => r.blocked_by >= 2)
+}
+
 export async function getRideSuspensions(): Promise<RideSuspensionRow[]> {
   const supabase = await createClient()
   if (!supabase) return []

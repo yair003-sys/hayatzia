@@ -60,6 +60,11 @@ are keyed by club and country (e.g. "אוהדי ברצלונה בישראל").
   rides, public pickup, trust line, ratings, share, safety screen, harm report → immediate ride suspension + admin push.
   Apply the migration to staging, verify, then production. **The lawyer reviews the incident procedure in
   `docs/RIDE_SAFETY.md` and terms section 6.** When SMS exists, turn on `rides_require_phone` (see `docs/RIDE_SAFETY.md`).
+- League-wide DMs (2026-10-16, branch `league-dms`, migration `20261016100000_league_dms`, spec
+  `superpowers/specs/2026-10-16-league-dms-design.md`): 1:1 threads open across clubs as message requests (one message
+  before acceptance, accept or block), request setting, daily caps, personal QR code (`/inbox/qr`, `/add/<code>`),
+  chat avatar → private message, birth date at sign-up (16+) and a one-time prompt; rides read 18+ from it; admins see
+  the most-blocked fans. **Built, CI green; waiting for staging, the owner's check at phone size, then production.**
 - Before launch: add the owner as admin on staging and production (SQL editor, once per project: `insert into public.app_admins (user_id) select id from auth.users where email = '<owner email>';`), then check that "דיווחים פתוחים" shows in "הכרטיס שלי".
 - Before launch: clean the owner's test likes, ratings, lineups and posts in production; Vercel account 2FA; player photos once a licensed source exists.
 
