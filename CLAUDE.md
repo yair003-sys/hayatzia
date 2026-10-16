@@ -6,6 +6,11 @@ Read this first, every session. Then read `docs/README.md` for the map of all do
 - The owner (Yair) is not a programmer. Reply in **Hebrew only**, in plain words. No English terms unless unavoidable.
 - He decides product; Claude decides engineering, and says each engineering call out loud in one plain line.
 
+## Company hub: keep `docs/COMPANY.md` current (owner's standing rule)
+- `docs/COMPANY.md` is the owner's company hub (Hebrew): open tasks, decisions log, accounts, documents, done list.
+- Update it in the same commit whenever a task ends, a new task appears, or the owner makes a decision; bump its "עדכון אחרון" date.
+- The repo is public: never write secrets, amounts of money, investor details or personal data there.
+
 ## Always keep local and production data apart (owner's standing rule)
 - Production data is used **only** by the production deployment. Legacy app: `https://yair003-sys.github.io/hayatzia/` (Firebase project `hayatzia-2b0ff`, enforced by the `ENV` switch in `index.html`). New app: Vercel production + the Supabase **production** project.
 - Local runs and tests use local or mocked services only (legacy: `?emu=1` + the `demo-hayatzia` project; new app: Supabase CLI locally, or mocks). Previews use the Supabase **staging** project.

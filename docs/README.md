@@ -13,5 +13,6 @@
 | `superpowers/specs/` | Approved designs (the "why") | When starting a phase |
 | `superpowers/plans/` | Step-by-step implementation plans | When executing a phase |
 | `README.he.md` | Plain-Hebrew overview for the owner | When explaining to Yair |
+| `COMPANY.md` | Company hub (Hebrew): open tasks, decisions log, accounts, documents, done list | Every session; update it whenever a task ends, a task is added or a decision is made |
 
 Keep these files current. When code and docs disagree, fix the docs in the same commit.
