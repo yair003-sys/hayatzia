@@ -1,6 +1,17 @@
 // Ride safety pack (spec docs/superpowers/specs/2026-10-15-ride-safety-design.md). Pure helpers and copy; the rules
 // themselves are enforced by the database (migration 20261015220000_ride_safety).
 
+import { todayIso, yearsBefore } from '@/features/first-run/schema'
+
+/** 18+ for rides, from the birth date (2026-10-16), as the database decides (private.is_adult). */
+export type RideAge = 'adult' | 'minor' | 'none'
+export function rideAge(birthDate: string | null, today: string = todayIso()): RideAge {
+  if (!birthDate) return 'none'
+  return birthDate <= yearsBefore(today, 18) ? 'adult' : 'minor'
+}
+export const RIDES_ADULT_ONLY = 'נסיעות דרך onefan הן מגיל 18 בלבד'
+export const RIDES_NEED_BIRTH_DATE = 'כדי לנסוע צריך להשלים תאריך לידה'
+
 /** profiles.gender: self-declared, shown only in rides. */
 export const GENDER = { m: 'אוהד', f: 'אוהדת', x: 'לא מציין' } as const
 export type Gender = keyof typeof GENDER
@@ -112,7 +123,7 @@ export function rideErrorHe(message: string | undefined | null): string | null {
   const m = message ?? ''
   // Since 2026-10-16 18+ comes from the birth date (asked once in the app), not from a tap.
   if (m.includes('no_birth_date')) return 'צריך להשלים תאריך לידה'
-  if (m.includes('not_adult')) return 'נסיעות דרך onefan הן מגיל 18 בלבד'
+  if (m.includes('not_adult')) return RIDES_ADULT_ONLY
   if (m.includes('ride_suspended')) return RIDE_SUSPENDED_HE
   if (m.includes('women_only')) return 'הנסיעה הזאת לאוהדות בלבד'
   if (m.includes('phone_required')) return 'כדי לנסוע צריך לאמת מספר טלפון'

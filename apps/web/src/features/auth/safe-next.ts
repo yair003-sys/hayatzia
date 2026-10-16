@@ -4,7 +4,7 @@
 const SAFE_NEXT = new Set(['/onboarding', '/stand', '/matches', '/square', '/inbox', '/me'])
 const ADD_PAGE = /^\/add\/[A-Za-z0-9_-]{22,64}$/
 
-export function safeNext(param: string | null | undefined): string {
-  if (!param) return '/onboarding'
-  return SAFE_NEXT.has(param) || ADD_PAGE.test(param) ? param : '/onboarding'
+export function safeNext(param: string | null | undefined, fallback = '/onboarding'): string {
+  if (!param) return fallback
+  return SAFE_NEXT.has(param) || ADD_PAGE.test(param) ? param : fallback
 }

@@ -4,7 +4,20 @@ import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Phone, Share2, ShieldCheck, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ADULT_CONFIRM, EMERGENCY_NUMBERS, GENDER, GENDER_NOTE, SAFETY_TIPS, shareText, type Gender } from '../ride-safety'
+import { birthDateSchema } from '@/features/first-run/schema'
+import { setBirthDateAction } from '@/features/profile/server/actions'
+import { BirthDateFields } from '@/features/profile/components/birth-date-fields'
+import {
+  EMERGENCY_NUMBERS,
+  GENDER,
+  GENDER_NOTE,
+  RIDES_ADULT_ONLY,
+  RIDES_NEED_BIRTH_DATE,
+  SAFETY_TIPS,
+  shareText,
+  type Gender,
+  type RideAge,
+} from '../ride-safety'
 import { confirmRideSafetyAction, rateRideAction, setGenderAction } from '../server/actions'
 import type { RideToRate } from '../server/queries'
 
@@ -28,12 +41,13 @@ export function EmergencyNumbers({ className }: { className?: string }) {
 }
 
 /**
- * Before the first ride (offer or request): safety tips, emergency numbers and the one-time 18+ confirmation
- * (ride safety, rules 2 and 8). Stored once with the time; the database refuses rides without it.
+ * Before the first ride (offer or request): safety tips and emergency numbers (ride safety, rules 2 and 8). Since
+ * 2026-10-16 18+ comes from the birth date: an adult just continues; under 18 sees that rides are 18+; a fan with no
+ * birth date is asked for it here. The database refuses rides either way.
  */
-export function SafetyGate({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
-  const [adult, setAdult] = useState(false)
+export function SafetyGate({ age, onDone, onCancel }: { age: RideAge; onDone: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null)
+  const [birthDate, setBirthDate] = useState('')
   const [pending, start] = useTransition()
   const router = useRouter()
   const titleId = useId()
@@ -43,42 +57,70 @@ export function SafetyGate({ onDone, onCancel }: { onDone: () => void; onCancel:
         <ShieldCheck className="size-5 text-accent-text" aria-hidden="true" />
         לפני הנסיעה הראשונה
       </h2>
-      <ul className="list-disc space-y-1 ps-5 text-sm leading-relaxed">
-        {SAFETY_TIPS.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-      <p className="text-sm font-semibold">בחירום או אחרי פגיעה:</p>
-      <EmergencyNumbers />
-      <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
-        <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="size-5" />
-        {ADULT_CONFIRM}
-      </label>
-      <p className="text-xs text-muted">נסיעות דרך onefan הן מגיל 18 בלבד. האישור נשמר פעם אחת.</p>
+      {age === 'minor' ? (
+        <p className="text-sm">{RIDES_ADULT_ONLY}</p>
+      ) : age === 'none' ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{RIDES_NEED_BIRTH_DATE}</p>
+          <BirthDateFields onChange={setBirthDate} />
+        </div>
+      ) : (
+        <>
+          <ul className="list-disc space-y-1 ps-5 text-sm leading-relaxed">
+            {SAFETY_TIPS.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-semibold">בחירום או אחרי פגיעה:</p>
+          <EmergencyNumbers />
+        </>
+      )}
       {error && (
         <p role="alert" className="text-sm text-live">
           {error}
         </p>
       )}
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={!adult || pending}
-          onClick={() =>
-            start(async () => {
-              const r = await confirmRideSafetyAction({ adult: true })
-              if (r.data?.ok) {
-                router.refresh()
-                onDone()
-              } else setError(r.data?.error ?? r.serverError ?? 'לא הצלחנו לשמור. נסה שוב')
-            })
-          }
-          className="min-h-11 flex-1 rounded-lg bg-accent font-semibold text-white disabled:opacity-40"
-        >
-          הבנתי, אפשר להמשיך
-        </button>
+        {age === 'adult' && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await confirmRideSafetyAction({})
+                if (r?.data && 'ok' in r.data) {
+                  router.refresh()
+                  onDone()
+                } else setError((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'לא הצלחנו לשמור. נסה שוב')
+              })
+            }
+            className="min-h-11 flex-1 rounded-lg bg-accent font-semibold text-white disabled:opacity-40"
+          >
+            הבנתי, אפשר להמשיך
+          </button>
+        )}
+        {age === 'none' && (
+          <button
+            type="button"
+            disabled={pending || !birthDate}
+            onClick={() =>
+              start(async () => {
+                const parsed = birthDateSchema.safeParse(birthDate)
+                if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'התאריך לא תקין')
+                const r = await setBirthDateAction({ birthDate: parsed.data })
+                if (r?.data && 'ok' in r.data) {
+                  setError(null)
+                  router.refresh() // the gate comes back as adult or under 18
+                } else setError((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'השמירה נכשלה. נסה שוב')
+              })
+            }
+            className="min-h-11 flex-1 rounded-lg bg-accent font-semibold text-white disabled:opacity-40"
+          >
+            שמירת תאריך הלידה
+          </button>
+        )}
         <button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-line px-4">
-          לא עכשיו
+          {age === 'minor' ? 'סגירה' : 'לא עכשיו'}
         </button>
       </div>
     </section>

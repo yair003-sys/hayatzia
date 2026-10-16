@@ -110,7 +110,8 @@ export const confirmRideSafetyAction = actionClient.inputSchema(rideConsentSchem
   const me = claims?.claims.sub
   if (!me) return { error: 'צריך להתחבר מחדש' }
   const at = new Date().toISOString()
-  const { error } = await supabase.from('profiles').update({ adult_confirmed_at: at, ride_safety_seen_at: at }).eq('user_id', me)
+  // 18+ comes from the birth date since 2026-10-16; only the safety screen is recorded here (time stamped by the database).
+  const { error } = await supabase.from('profiles').update({ ride_safety_seen_at: at }).eq('user_id', me)
   if (error) return { error: 'לא הצלחנו לשמור. נסה שוב' }
   revalidatePath('/stand/trips')
   return { ok: true as const }

@@ -93,6 +93,7 @@ const GROUP_ERRORS: Record<string, string> = {
   group_full: `הקבוצה מלאה (עד ${GROUP_MAX} אוהדים)`,
   not_admin: 'רק מנהל הקבוצה יכול לעשות את זה',
   blocked: 'אי אפשר להוסיף את האוהד הזה',
+  invites_closed: 'האוהד הזה מקבל הזמנות לקבוצה רק ממי שכבר מדבר איתו בפרטי',
   not_same_team: 'אפשר להזמין רק אוהדים מהקבוצה שלך',
   invite_expired: 'ההזמנה פגה',
   no_members: 'בחר לפחות אוהד אחד',

@@ -17,7 +17,7 @@ type Step = 'phone' | 'club' | 'confirm'
  * switched on later, and then a verified phone becomes required (one phone = one fan). Step 3 picks the club
  * from a carousel (country row first; Israel only for now) and a nickname, then a final "for life" check.
  */
-export function SignupFlow() {
+export function SignupFlow({ next }: { next?: string }) {
   const [step, setStep] = useState<Step>('phone')
   const [club, setClub] = useState(0)
   const [nick, setNick] = useState('')
@@ -157,7 +157,7 @@ export function SignupFlow() {
         className="su-btn su-btn-green"
         disabled={isPending || !accepted}
         onClick={() => {
-          if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true, birthDate })
+          if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true, birthDate, next })
         }}
       >
         {isPending ? 'שומר…' : 'כן, זו הקבוצה שלי'}

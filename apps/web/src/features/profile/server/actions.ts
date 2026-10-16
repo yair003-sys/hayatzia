@@ -7,6 +7,7 @@ import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { TERMS_VERSION } from '@/lib/legal'
 import { birthDateCode, birthDateErrorHe } from '@/features/first-run/schema'
+import { safeNext } from '@/features/auth/safe-next'
 import { createProfileSchema, setBirthDateSchema } from '../schema'
 
 /**
@@ -31,7 +32,8 @@ export const createProfileAction = actionClient.inputSchema(createProfileSchema)
     if (code) return { error: birthDateErrorHe(code) }
     return { error: moderationHe(error.message) ?? 'השמירה נכשלה. נסה שוב' }
   }
-  redirect('/stand')
+  // A fan who signed up from a scanned QR code goes back to that card; anything else to the stand.
+  redirect(safeNext(parsedInput.next, '/stand'))
 })
 
 /** The one-time prompt for fans who signed up before the birth date existed. Set once (the database refuses a change). */

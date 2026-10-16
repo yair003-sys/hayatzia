@@ -18,6 +18,8 @@ export const createProfileSchema = z.object({
   birthDate: birthDateSchema,
   /** The terms + privacy policy (2026-10-15). Required on the server, so the box cannot be skipped. */
   accept: z.literal(true, { error: 'צריך לאשר את תנאי השימוש ומדיניות הפרטיות' }),
+  /** Where to continue after sign-up (a scanned QR card); checked by safeNext on the server. */
+  next: z.string().max(200).optional(),
 })
 
 export type CreateProfileInput = z.infer<typeof createProfileSchema>

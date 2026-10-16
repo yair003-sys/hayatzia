@@ -165,6 +165,7 @@ export function DmThread({
         const m = error.message
         if (m.includes('blocked')) return fail(p, 'אי אפשר לשלוח לאוהד הזה', 'permanent')
         if (m.includes('awaiting_accept')) return fail(p, dmErrorHe('awaiting_accept'), 'permanent')
+        if (/\bbanned\b/.test(m)) return fail(p, dmErrorHe('banned'), 'permanent')
         if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
         return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
       }

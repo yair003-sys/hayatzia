@@ -26,7 +26,7 @@ describe('SafetyGate: 18+ comes from the birth date (2026-10-16)', () => {
   it('no birth date yet: asks for it', () => {
     render(<SafetyGate age="none" onDone={vi.fn()} onCancel={vi.fn()} />)
     expect(screen.getByText('כדי לנסוע צריך להשלים תאריך לידה')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'יום' })).toBeInTheDocument()
+    expect(screen.getAllByRole('combobox')).toHaveLength(3) // day, month, year
     expect(screen.queryByRole('button', { name: 'הבנתי, אפשר להמשיך' })).toBeNull()
   })
 })

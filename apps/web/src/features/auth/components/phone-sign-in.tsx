@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { OTP_LENGTH, toE164Israel } from '../phone'
+import { safeNext } from '../safe-next'
 
 /** Sign in with a one-time SMS code (Supabase phone auth). */
 export function PhoneSignIn() {
@@ -30,7 +32,8 @@ export function PhoneSignIn() {
     start(async () => {
       const { error: e } = await createClient().auth.verifyOtp({ phone: sentTo, token: code, type: 'sms' })
       if (e) return setError('הקוד שגוי או שפג תוקפו')
-      router.replace('/onboarding')
+      // A scanned QR code sent the fan here with ?next=/add/<code>: back to that card (it sends new fans to sign-up).
+      router.replace(safeNext(new URLSearchParams(window.location.search).get('next')) as Route)
       router.refresh()
     })
   }

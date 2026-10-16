@@ -26,7 +26,7 @@ async function Card({ code }: { code: string }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') return <p className="text-center text-muted">הברקוד פועל רק כשהשרת מחובר.</p>
   if (s.status === 'signed-out') redirect(`/login?next=${encodeURIComponent(`/add/${code}`)}`)
-  if (s.status === 'no-profile') redirect('/onboarding')
+  if (s.status === 'no-profile') redirect(`/onboarding?next=${encodeURIComponent(`/add/${code}`)}`)
   const card = await getQrCard(code)
   return <AddCard code={code} card={card} />
 }
