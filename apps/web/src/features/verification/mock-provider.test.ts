@@ -64,7 +64,7 @@ describe('mock provider', () => {
     const body = buildMockBody({ sessionId: SESSION, providerRef: 'mock-1', approved: true })
     expect(await code(p.parseWebhook(req(body)))).toBe('bad_signature')
     expect(await code(p.parseWebhook(req(body, signMock(body, 'x'.repeat(40)))))).toBe('bad_signature')
-    expect(await code(p.parseWebhook(req(body.replace('true', 'false'), signMock(body, SECRET))))).toBe('bad_signature')
+    expect(await code(p.parseWebhook(req(body.replace('"approved"', '"declined"'), signMock(body, SECRET))))).toBe('bad_signature')
     expect(await code(p.parseWebhook(req(body, 'abc')))).toBe('bad_signature')
   })
 
