@@ -4,7 +4,7 @@
 --    bans, blocks, device keys only when allowed.
 -- 3. QR: opening by code (accepted, outside the setting and the cap), reset, blocks; the most-blocked list for admins.
 begin;
-select plan(85);
+select plan(86);
 
 create function pg_temp.uid(p text) returns uuid language sql as $$
   select ('00000000-0000-0000-0000-000000000' || p)::uuid
@@ -141,6 +141,8 @@ select lives_ok(format('insert into public.dm_threads (user_a, user_b) values (%
 reset role;
 select ok((select accepted_at is null and opened_by = pg_temp.uid('d01') and not via_qr from public.dm_threads where id = pg_temp.pair('d01', 'd02')),
   'the new thread is a request opened by the fan');
+select is((select case when user_a = pg_temp.uid('d01') then team_a || '>' || team_b else team_b || '>' || team_a end
+             from public.dm_threads where id = pg_temp.pair('d01', 'd02')), 'mta>hta', 'both clubs are stamped on the thread');
 select pg_temp.as_fan('d01');
 set local role authenticated;
 select lives_ok(format($$ insert into public.dm_messages (thread_id, sender_device, iv, ciphertext, wrapped_keys)

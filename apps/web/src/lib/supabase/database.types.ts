@@ -493,14 +493,14 @@ isOneToOne: false
                   ]
                 },"dm_threads": {
                   Row: {
-                    "accepted_at": string | null,"created_at": string,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"nick_a": string,"nick_b": string,"opened_by": string | null,"unread_a": number,"unread_b": number,"user_a": string,"user_b": string,"via_qr": boolean
+                    "accepted_at": string | null,"created_at": string,"id": string,"last_at": string,"last_from": string | null,"last_message_id": string | null,"nick_a": string,"nick_b": string,"opened_by": string | null,"team_a": string | null,"team_b": string | null,"unread_a": number,"unread_b": number,"user_a": string,"user_b": string,"via_qr": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a": string,"user_b": string,"via_qr"?: boolean
+                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"team_a"?: string | null,"team_b"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a": string,"user_b": string,"via_qr"?: boolean
                   }
                   Update: {
-                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string,"via_qr"?: boolean
+                    "accepted_at"?: string | null,"created_at"?: string,"id"?: string,"last_at"?: string,"last_from"?: string | null,"last_message_id"?: string | null,"nick_a"?: string,"nick_b"?: string,"opened_by"?: string | null,"team_a"?: string | null,"team_b"?: string | null,"unread_a"?: number,"unread_b"?: number,"user_a"?: string,"user_b"?: string,"via_qr"?: boolean
                   }
                   Relationships: [
                     

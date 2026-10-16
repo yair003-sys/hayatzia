@@ -225,9 +225,16 @@ end $$;
 alter table public.dm_threads
   add column accepted_at timestamptz,
   add column opened_by uuid,                 -- no foreign key: the thread goes with either member's account
-  add column via_qr boolean not null default false;
+  add column via_qr boolean not null default false,
+  -- Both clubs, stamped (a club never changes): the inbox and the request card show the other fan's colours without
+  -- reading profiles of another club.
+  add column team_a text references public.teams (id),
+  add column team_b text references public.teams (id);
 -- Threads from before count as accepted: nothing changes for current fans.
-update public.dm_threads set accepted_at = created_at where accepted_at is null;
+update public.dm_threads t
+   set accepted_at = coalesce(t.accepted_at, t.created_at),
+       team_a = (select p.team_id from public.profiles p where p.user_id = t.user_a),
+       team_b = (select p.team_id from public.profiles p where p.user_id = t.user_b);
 -- The daily cap counts a fan's new requests.
 create index dm_threads_opened_idx on public.dm_threads (opened_by, created_at desc) where not via_qr;
 
@@ -259,7 +266,7 @@ grant execute on function private.can_dm(uuid) to authenticated;  -- inside the 
 -- Every rule for opening a thread; raises with a code, returns the two nicknames (the caller may not read the other's
 -- profile across clubs). p_qr: opened through the other fan's code (setting and cap skipped).
 create function private.dm_thread_gate(p_me uuid, p_other uuid, p_qr boolean)
-returns table (me_nick text, other_nick text)
+returns table (me_nick text, other_nick text, me_team text, other_team text)
 language plpgsql security definer set search_path = '' as $$
 declare
   setting text;
@@ -292,7 +299,8 @@ begin
       raise exception 'rate_limit' using errcode = 'P0001';
     end if;
   end if;
-  return query select mine.nick::text, (select p.nick::text from public.profiles p where p.user_id = p_other);
+  return query select mine.nick::text, p.nick::text, mine.team_id::text, p.team_id::text
+                 from public.profiles p where p.user_id = p_other;
 end $$;
 revoke all on function private.dm_thread_gate(uuid, uuid, boolean) from public, anon;
 grant execute on function private.dm_thread_gate(uuid, uuid, boolean) to authenticated;  -- from the invoker trigger
@@ -314,6 +322,8 @@ begin
   select * into g from private.dm_thread_gate(me, other, qr);
   new.nick_a := case when me = new.user_a then g.me_nick else g.other_nick end;
   new.nick_b := case when me = new.user_b then g.me_nick else g.other_nick end;
+  new.team_a := case when me = new.user_a then g.me_team else g.other_team end;
+  new.team_b := case when me = new.user_b then g.me_team else g.other_team end;
   new.via_qr := qr;
   new.opened_by := me;
   new.accepted_at := case when qr then now() end;
