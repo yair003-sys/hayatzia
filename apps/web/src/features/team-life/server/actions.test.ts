@@ -192,7 +192,7 @@ describe('ride safety (migration 20261015220000_ride_safety)', () => {
 
   it("puts the database's ride refusals in the fan's words", async () => {
     db.tripInsertError = { code: '42501', message: 'not_adult' }
-    expect((await createTripAction(trip)).data).toEqual({ error: 'נסיעות הן מגיל 18. צריך לאשר את זה פעם אחת לפני נסיעה' })
+    expect((await createTripAction(trip)).data).toEqual({ error: 'נסיעות דרך onefan הן מגיל 18 בלבד' })
     db.tripInsertError = { code: '42501', message: 'women_only' }
     expect((await createTripAction(trip)).data).toEqual({ error: 'הנסיעה הזאת לאוהדות בלבד' })
     db.insertError = { code: '42501', message: 'ride_suspended' }
