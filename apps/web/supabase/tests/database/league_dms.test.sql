@@ -38,7 +38,7 @@ insert into public.profiles (user_id, nick, team_id, created_at, birth_date) val
   (pg_temp.uid('d04'), 'דלת', 'mta', now() - interval '30 days', null),
   (pg_temp.uid('d05'), 'הא', 'mta', now() - interval '2 days', '1995-03-03'),
   (pg_temp.uid('d06'), 'וו', 'hta', now() - interval '30 days', '1992-02-02'),
-  (pg_temp.uid('d07'), 'זין', 'mta', now() - interval '30 days', '1991-01-01'),
+  (pg_temp.uid('d07'), 'זיו', 'mta', now() - interval '30 days', '1991-01-01'),
   (pg_temp.uid('d08'), 'מנהל', 'mta', now() - interval '30 days', '1980-01-01'),
   (pg_temp.uid('d09'), 'פותח', 'mta', now() - interval '30 days', '1993-01-01'),
   (pg_temp.uid('d10'), 'בלי', 'mta', now() - interval '30 days', null);

@@ -12,9 +12,10 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-000000000012', 'בית', 'mta'),
   ('00000000-0000-0000-0000-000000000013', 'גימל', 'mta'),
   ('00000000-0000-0000-0000-000000000014', 'דלת', 'hta');
--- League DMs (20261016100000): opening a thread needs a birth date; 11 takes requests from its own club only.
+-- League DMs (20261016100000): opening a thread needs a birth date; 11 and 14 take requests from their own club only.
 update public.profiles set birth_date = '1990-01-01';
-update public.profiles set dm_requests = 'team' where user_id = '00000000-0000-0000-0000-000000000011';
+update public.profiles set dm_requests = 'team'
+ where user_id in ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000014');
 
 -- Fan 11 publishes a device key and opens a thread with 12.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000011","role":"authenticated"}', true);
