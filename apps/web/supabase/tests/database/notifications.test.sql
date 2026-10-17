@@ -163,10 +163,11 @@ select is((select count(*)::int from c1 where claimed_at is not null and sent_at
 set local role service_role;
 select is((select count(*)::int from public.claim_alerts(50)), 5, 'the next claim gets only the rest (leased rows are skipped)');
 select is((select count(*)::int from public.claim_alerts(50)), 0, 'nothing is claimed twice while the lease holds');
+reset role;
+-- mark_alerts_sent is run here as the superuser (it reads the temp table c1); it is granted to service_role in production.
 select lives_ok($$ select public.mark_alerts_sent((select array_agg(id) from c1)) $$, 'the dispatch marks delivered after a successful send');
 select is((select count(*)::int from c1 c join public.match_alerts m on m.id = c.id where m.sent_at is not null), 2,
   'the two leased alerts are now marked sent');
-reset role;
 
 select * from finish();
 rollback;
