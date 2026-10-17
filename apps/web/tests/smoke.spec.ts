@@ -62,20 +62,24 @@ test('non-production builds show the test environment banner', async ({ page }) 
   await expect(page.getByRole('status')).toContainText('סביבת בדיקות')
 })
 
-// Stadium redesign (2026-10-17): the opt-in home must obey the owner's layout rule too. The onefan_design=stadium
-// cookie selects it; at 375px it may not be wider than the screen or trip the OverflowGuard. (In CI there is no
-// Supabase, so this exercises the signed-out stadium shell — the backdrop, the wordmark and the fixed, clipped
-// floodlight layer. To check it with real data, sign in on a preview, turn "עיצוב חדש (ניסיוני)" on in הכרטיס שלי,
-// and reload /stand at phone width.)
-test('the stadium home fits the phone screen at 375px', async ({ page, context }) => {
-  await context.addCookies([{ name: 'onefan_design', value: 'stadium', url: 'http://127.0.0.1:3000' }])
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/stand')
-  await page.waitForLoadState('networkidle')
-  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }))
-  expect(scrollWidth - clientWidth).toBeLessThanOrEqual(1)
-  await expect(page.getByText(/^באג פריסה/)).toHaveCount(0)
-})
+// Stadium redesign (stage 3, 2026-10-17): with the onefan_design=stadium cookie the whole app wears the stadium
+// look. Every restyled screen must still obey the owner's 375px rule — no wider than the phone, no OverflowGuard.
+// In CI there is no Supabase, so these exercise the signed-out stadium shell on the public pages (/login) and the
+// signed-in shell with no session (/stand): the fixed, clipped floodlight backdrop, the dark-glass tab bar and the
+// retinted surfaces. Signed-in screens with real data (chat, square, inbox, my card, players, trips, match room)
+// need a session, so verify those on a preview: sign in, turn "עיצוב חדש (ניסיוני)" on in הכרטיס שלי, and reload
+// each at phone width.
+for (const path of ['/stand', '/login'] as const) {
+  test(`the stadium design fits the phone screen at 375px on ${path}`, async ({ page, context }) => {
+    await context.addCookies([{ name: 'onefan_design', value: 'stadium', url: 'http://127.0.0.1:3000' }])
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }))
+    expect(scrollWidth - clientWidth).toBeLessThanOrEqual(1)
+    await expect(page.getByText(/^באג פריסה/)).toHaveCount(0)
+  })
+}

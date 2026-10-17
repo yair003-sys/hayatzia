@@ -31,7 +31,6 @@ export async function StadiumHome() {
   if (s.status !== 'ready') {
     return (
       <div className="std">
-        <StadiumBackdrop />
         <h1 className="std-wordmark t-page" dir="ltr">
           onefan
         </h1>
@@ -43,7 +42,6 @@ export async function StadiumHome() {
   const theme = { '--t-acc': acc.accent, '--t-acc2': acc.accent2, '--t-rgb': acc.rgb, '--t-text': acc.text, '--t-on': acc.on } as CSSProperties
   return (
     <div className="std" style={theme}>
-      <StadiumBackdrop />
       <StadiumHeader team={team} userId={userId} />
       <div className="std-stage">
         <Suspense fallback={<div className="std-card skeleton h-12" aria-hidden="true" />}>
@@ -58,19 +56,6 @@ export async function StadiumHome() {
           </div>
         </Suspense>
       </div>
-    </div>
-  )
-}
-
-/** Floodlight sweeps and a crowd mosaic in the club colour, all CSS, behind the content and never interactive. A
- *  fixed, clipped layer: it cannot widen the page (the OverflowGuard ignores anything inside a fixed ancestor). */
-function StadiumBackdrop() {
-  return (
-    <div className="std-bg" aria-hidden="true">
-      <span className="std-beam std-beam-1" />
-      <span className="std-beam std-beam-2" />
-      <span className="std-beam std-beam-3" />
-      <span className="std-mosaic" />
     </div>
   )
 }

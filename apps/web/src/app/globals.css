@@ -1469,3 +1469,75 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
     .std-beam { transform: rotate(0deg); }
   }
 }
+
+/* ── App-wide stadium (stadium redesign, stage 3, 2026-10-17): the whole app in the stadium look, opt-in.
+   The shell decor renders a hidden .std-app-active marker only when the onefan_design cookie is "stadium", so every
+   rule here is gated on body:has(.std-app-active) and nothing changes for the classic design. The club colours arrive
+   as --t-* on :root (a tiny <style> from the shell); each rule falls back to the brand colours when they are absent.
+
+   The lever is the shared design tokens: re-pointed inside the signed-in wrapper (.app-main) and the sign-up screens
+   (.su-page), so every card, chip, border and link built from bg-surface / border-line / text-accent-text reads as
+   stadium glass without touching the screens themselves. Surfaces stay near-opaque for contrast on the dark night;
+   the fixed backdrop shows only in the gaps. Solid accent buttons keep the brand's Electric Blue (brand rule); the
+   club colour carries through links, icons, active states, chips and the floodlit glow. ─────────────────────────── */
+@layer components {
+  /* The night behind everything, in case the fixed backdrop ever fails to paint. */
+  body:has(.std-app-active) { background: #060912; }
+
+  /* Re-point the shared tokens inside the app shell and the sign-up screens. */
+  body:has(.std-app-active) .app-main,
+  body:has(.std-app-active) .su-page {
+    /* club-accent plumbing, so any reused .sh-*/.std-* element picks up the club colour */
+    --acc: var(--t-acc, var(--color-accent));
+    --acc2: var(--t-acc2, var(--color-accent-2));
+    --acc-text: var(--t-text, var(--color-accent-text));
+    --acc-on: var(--t-on, #fff);
+    --acc-soft: rgb(var(--t-rgb, 0 102 255) / 0.16);
+    --acc-line: rgb(var(--t-rgb, 0 102 255) / 0.4);
+    --pitch-fg: #f3f5f8;
+    --pitch-dim: rgb(243 245 248 / 0.62);
+    /* stadium night surfaces: dark glass over the floodlit backdrop, opaque enough to keep text ≥ 4.5:1 */
+    --color-canvas: #060912;
+    --color-elev: rgb(10 14 26 / 0.82);
+    --color-surface: rgb(13 18 32 / 0.82);
+    --color-surface-2: rgb(17 23 40 / 0.86);
+    --color-surface-3: rgb(24 32 53 / 0.9);
+    --color-line: rgb(255 255 255 / 0.1);
+    --color-line-soft: rgb(255 255 255 / 0.06);
+    --color-line-strong: rgb(255 255 255 / 0.22);
+    /* links, icons, highlights and soft fills take the club colour; solid --color-accent stays brand blue */
+    --color-accent-text: var(--t-text, #5c9dff);
+    --color-accent-soft: rgb(var(--t-rgb, 0 102 255) / 0.18);
+  }
+
+  /* A touch of club glow on the plain surface cards so they feel lit, not flat, on the stadium night. */
+  body:has(.std-app-active) .app-main .sh-card,
+  body:has(.std-app-active) .app-main .sh-tile {
+    background:
+      radial-gradient(130% 100% at 50% -30%, rgb(var(--t-rgb, 0 102 255) / 0.1), transparent 60%),
+      linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* Bottom tab bar: dark glass, the active tab in the club colour. The bar is a sibling of .app-main, so it reads the
+     club colour straight from --t-* on :root (the token re-point above does not reach it). Links, labels and targets
+     are untouched — only the look changes. */
+  body:has(.std-app-active) .tb-pill {
+    background: rgb(6 9 18 / 0.82);
+    border-color: rgb(var(--t-rgb, 0 102 255) / 0.2);
+    box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.95), 0 0 24px -12px rgb(var(--t-rgb, 0 102 255) / 0.6);
+  }
+  body:has(.std-app-active) .tb-pill[data-dark='true'] { background: rgb(0 0 0 / 0.82); }
+  body:has(.std-app-active) .tb-link[aria-current='page'] { color: #fff; background: rgb(var(--t-rgb, 0 102 255) / 0.2); }
+  body:has(.std-app-active) .tb-link[aria-current='page'] .tb-icon { color: var(--t-text, var(--color-accent-text)); }
+  body:has(.std-app-active) .tb-link[data-main] .tb-icon { border-color: #060912; }
+
+  /* Sign-up screens (login / onboarding): the stadium backdrop replaces the brand glow, and the primary button keeps
+     a readable on-colour for light club palettes (falls back to the brand gradient when there is no club). */
+  body:has(.std-app-active) .su-page::before { display: none; }
+  body:has(.std-app-active) .su-btn-blue {
+    color: var(--acc-on, #fff);
+    background: linear-gradient(180deg, var(--acc2, var(--color-accent-2)), var(--acc, var(--color-accent)));
+  }
+}
