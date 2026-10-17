@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { getBlockedIds } from '@/features/safety/server/queries'
+import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { carLine, rideAge, type DriverTrust, type Gender, type RideAge } from '../ride-safety'
 
 export type Trip = {
@@ -31,21 +31,23 @@ export type TripTrust = { identity: boolean; driver: boolean; car: string | null
 
 /**
  * Trips of the fan's club for the given matches, with the requests the fan may see (own, or all when driver). `me` is
- * the signed-in fan (for the plates of rides they drive or ride in).
+ * the signed-in fan (for the plates of rides they drive or ride in). null when the trips or the fan's blocks could not
+ * be read: the screen says "could not load" (never a blocked fan's ride because the blocks read failed).
  */
-export async function getTrips(fixtureIds: number[], me?: string): Promise<Trip[]> {
+export async function getTrips(fixtureIds: number[], me?: string): Promise<Trip[] | null> {
   const supabase = await createClient()
   if (!supabase || fixtureIds.length === 0) return []
-  const [{ data: trips }, blocked] = await Promise.all([
+  const [{ data: trips, error }, blocked] = await Promise.all([
     supabase
       .from('trips')
       .select('id,user_id,nick,fixture_id,kind,from_city,depart_before_min,seats,cost,note,pickup,women_only,created_at')
       .in('fixture_id', fixtureIds)
       .order('created_at', { ascending: false })
       .limit(200),
-    getBlockedIds(),
+    getBlockedIdsOrNull(),
   ])
-  const list = (trips ?? []).filter((t) => !blocked.includes(t.user_id))
+  if (error || !trips || !blocked) return null
+  const list = trips.filter((t) => !blocked.includes(t.user_id))
   if (!list.length) return []
   const [{ data: reqs }, { data: drivers }] = await Promise.all([
     supabase
@@ -146,20 +148,22 @@ export type FanEvent = {
   going: boolean
 }
 
-export async function getUpcomingEvents(): Promise<FanEvent[]> {
+/** null when the events or the fan's blocks could not be read ("could not load", never a blocked fan's event). */
+export async function getUpcomingEvents(): Promise<FanEvent[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
   const since = new Date(Date.now() - 3 * 3600_000).toISOString()
-  const [{ data }, blocked] = await Promise.all([
+  const [{ data, error }, blocked] = await Promise.all([
     supabase
       .from('fan_events')
       .select('id,user_id,nick,kind,title,starts_at,area,note,going_count')
       .gte('starts_at', since)
       .order('starts_at')
       .limit(100),
-    getBlockedIds(),
+    getBlockedIdsOrNull(),
   ])
-  const list = (data ?? []).filter((e) => !blocked.includes(e.user_id))
+  if (error || !data || !blocked) return null
+  const list = data.filter((e) => !blocked.includes(e.user_id))
   if (!list.length) return []
   const { data: mine } = await supabase.from('fan_event_going').select('event_id').in('event_id', list.map((e) => e.id))
   const going = new Set(mine?.map((g) => g.event_id))
@@ -180,7 +184,8 @@ export type MarketItem = {
   url: string | null
 }
 
-export async function getMarket(category?: string): Promise<MarketItem[]> {
+/** null when the items or the fan's blocks could not be read ("could not load", never a blocked fan's item). */
+export async function getMarket(category?: string): Promise<MarketItem[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
   let q = supabase
@@ -190,8 +195,9 @@ export async function getMarket(category?: string): Promise<MarketItem[]> {
     .order('created_at', { ascending: false })
     .limit(60)
   if (category) q = q.eq('category', category)
-  const [{ data }, blocked] = await Promise.all([q, getBlockedIds()])
-  const list = (data ?? []).filter((i) => !blocked.includes(i.user_id))
+  const [{ data, error }, blocked] = await Promise.all([q, getBlockedIdsOrNull()])
+  if (error || !data || !blocked) return null
+  const list = data.filter((i) => !blocked.includes(i.user_id))
   const paths = list.map((i) => i.media_path).filter((p): p is string => !!p)
   const signed = paths.length ? (await supabase.storage.from('market').createSignedUrls(paths, 3600)).data : []
   const urls = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]))

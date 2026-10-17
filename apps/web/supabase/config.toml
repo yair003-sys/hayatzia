@@ -4,3 +4,9 @@ project_id = "hayatzia-local"
 
 [db]
 major_version = 17
+
+[api]
+# The schemas PostgREST exposes (the CLI's default). NEVER add `private`: its security-definer helpers are callable by
+# signed-in fans so that row rules and triggers can use them (see migrations/20261017093000_perf_review.sql). The same
+# rule holds in the hosted projects (dashboard → API → exposed schemas).
+schemas = ["public", "graphql_public"]

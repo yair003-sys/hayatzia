@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Lock, QrCode } from 'lucide-react'
+import { LoadError } from '@/components/load-error'
 import { InboxList } from '@/features/dm/components/inbox-list'
 import { InboxLive } from '@/features/dm/components/inbox-live'
 import { getInbox } from '@/features/dm/server/queries'
@@ -36,7 +37,17 @@ async function Inbox() {
   const s = await getSessionProfile()
   if (s.status === 'disabled') return <p className="text-muted">ההודעות פועלות רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
-  const { rows, invites } = await getInbox(s.userId)
+  const inbox = await getInbox(s.userId)
+  if (!inbox) {
+    return (
+      <>
+        {/* Still live: a new message refreshes the screen, which tries the read again. */}
+        <InboxLive meId={s.userId} />
+        <LoadError />
+      </>
+    )
+  }
+  const { rows, invites } = inbox
   return (
     <>
       <InboxLive meId={s.userId} />

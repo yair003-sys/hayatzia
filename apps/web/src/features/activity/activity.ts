@@ -35,12 +35,15 @@ export function activityLine({ kind, nick, count }: { kind: ActivityKind; nick: 
 }
 
 /** The red badge: hidden at 0; the database caps the count at 100, shown as "99+". */
-export function badgeLabel(count: number): string | null {
+/** null = the count could not be read: "!" (never a made-up 0). */
+export function badgeLabel(count: number | null): string | null {
+  if (count === null) return '!'
   if (count <= 0) return null
   return count >= 100 ? '99+' : String(count)
 }
 
-export function bellLabel(count: number): string {
+export function bellLabel(count: number | null): string {
+  if (count === null) return 'התראות, לא הצלחנו לטעון. נסה שוב'
   const b = badgeLabel(count)
   return b ? `התראות, ${b} חדשות` : 'התראות'
 }

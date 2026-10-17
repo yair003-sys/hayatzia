@@ -16,7 +16,8 @@ import { roomState } from '@/features/match-room/schema'
 import { getMatchMessages } from '@/features/match-room/server/queries'
 import { getCrowd } from '@/features/crowd-verdict/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
-import { getBlockedIds } from '@/features/safety/server/queries'
+import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
+import { LoadError } from '@/components/load-error'
 import type { DisplayTeam } from '@/features/matches/api-teams'
 import { MatchExtras } from '@/features/stage4/components/match-extras'
 import { FanLineupSection } from '@/features/lineup/components/fan-lineup-section'
@@ -108,7 +109,9 @@ async function MatchContent({ id, tab: tabParam }: { id: number; tab: string | s
 async function MatchRoomSection(props: { fixtureId: number; kickoff: number; home: DisplayTeam; away: DisplayTeam }) {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return null
-  const [initial, hidden, crowd] = await Promise.all([getMatchMessages(props.fixtureId), getBlockedIds(), getCrowd(props.fixtureId)])
+  const [initial, hidden, crowd] = await Promise.all([getMatchMessages(props.fixtureId), getBlockedIdsOrNull(), getCrowd(props.fixtureId)])
+  // A failed history read is "could not load", never an empty room that fills with live messages only.
+  if (!initial || !hidden) return <LoadError />
   const side = (t: DisplayTeam) => ({ id: t.id, short: t.short, bar: t.bar })
   return (
     <MatchRoom

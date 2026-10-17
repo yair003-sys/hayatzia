@@ -5,11 +5,12 @@ import { getSquadWithRatings } from '@/features/ratings/server/queries'
 import type { PlayerRow } from '@/features/ratings/schema'
 import { createClient } from '@/lib/supabase/server'
 
+/** A count is null when its read failed: the tile shows a dash and the home offers "נסה שוב", never a made-up 0. */
 export type StandHome = {
-  events: number
-  market: number
-  trips: number
-  chants: number
+  events: number | null
+  market: number | null
+  trips: number | null
+  chants: number | null
   squad: PlayerRow[]
 }
 
@@ -18,6 +19,11 @@ export function clubApiIds(league: League | null, teamId: string): number[] {
   return Object.entries(league?.teams ?? {})
     .filter(([id, t]) => displayTeam(Number(id), t.name).id === teamId)
     .map(([id]) => Number(id))
+}
+
+/** A head count's number, or null when the read failed (load test 2026-10-17, finding 6). */
+export function countOf(r: { count: number | null; error: unknown }): number | null {
+  return r.error || r.count === null ? null : r.count
 }
 
 /**
@@ -33,16 +39,16 @@ export async function getStandHome(teamId: string, userId: string, nextFixtureId
     supabase.from('fan_events').select('id', { count: 'exact', head: true }).gte('starts_at', since),
     supabase.from('market_items').select('id', { count: 'exact', head: true }).eq('sold', false),
     nextFixtureId === null
-      ? Promise.resolve({ count: 0 })
+      ? Promise.resolve({ count: 0, error: null })
       : supabase.from('trips').select('id', { count: 'exact', head: true }).eq('fixture_id', nextFixtureId),
     supabase.from('chants').select('id', { count: 'exact', head: true }),
     getSquadWithRatings(teamId, userId),
   ])
   return {
-    events: events.count ?? 0,
-    market: market.count ?? 0,
-    trips: trips.count ?? 0,
-    chants: chants.count ?? 0,
+    events: countOf(events),
+    market: countOf(market),
+    trips: countOf(trips),
+    chants: countOf(chants),
     squad,
   }
 }

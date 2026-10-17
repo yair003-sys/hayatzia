@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { getBlockedIds } from '@/features/safety/server/queries'
+import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import {
   ACTIVITY_PAGE,
   activityHref,
@@ -46,12 +46,15 @@ const URL_TTL = 60 * 60
 const clock = () => Date.now()
 const ACTIVITY_KEEP_MS = 60 * 24 * 60 * 60 * 1000
 
-/** The badge: the fan's rows changed since the last visit, capped at 100 ("99+"). 0 when anything fails. */
-export async function getUnreadCount(): Promise<number> {
+/**
+ * The badge: the fan's rows changed since the last visit, capped at 100 ("99+"). null when the read failed: the bell
+ * then says it could not load and tries again, instead of showing no count (load test 2026-10-17, finding 6).
+ */
+export async function getUnreadCount(): Promise<number | null> {
   const supabase = await createClient()
   if (!supabase) return 0
   const { data, error } = await supabase.rpc('activity_unread_count')
-  return !error && typeof data === 'number' ? data : 0
+  return !error && typeof data === 'number' ? data : null
 }
 
 /**
@@ -59,9 +62,9 @@ export async function getUnreadCount(): Promise<number> {
  * requests whatever the page holds (Review Focus 4): the rows with their post / trip joined in (one query, with the
  * fan's last visit read alongside), then the actors' nicks (one `in` on the profiles key) and the thumbnails (one
  * signing call per bucket), in parallel. Never a lookup per row. Highlighting is left to the client, which keeps the
- * first render's `seenAt` for the whole visit.
+ * first render's `seenAt` for the whole visit. null when a read failed.
  */
-export async function getActivityPage(me: string, before?: Cursor | null): Promise<ActivityPage> {
+export async function getActivityPage(me: string, before?: Cursor | null): Promise<ActivityPage | null> {
   const empty: ActivityPage = { items: [], next: null, seenAt: null, newestAt: null }
   const supabase = await createClient()
   if (!supabase) return empty
@@ -81,10 +84,12 @@ export async function getActivityPage(me: string, before?: Cursor | null): Promi
   }
   const [{ data, error }, seen, blocked] = await Promise.all([
     q,
-    before ? Promise.resolve({ data: null }) : supabase.from('activity_seen').select('seen_at').eq('user_id', me).maybeSingle(),
-    getBlockedIds(),
+    before ? Promise.resolve({ data: null, error: null }) : supabase.from('activity_seen').select('seen_at').eq('user_id', me).maybeSingle(),
+    getBlockedIdsOrNull(),
   ])
-  if (error || !data?.length) return { ...empty, seenAt: seen.data?.seen_at ?? null }
+  // A failed read is "could not load", never "no activity" (load test 2026-10-17, finding 6).
+  if (error || !data || seen.error || !blocked) return null
+  if (!data.length) return { ...empty, seenAt: seen.data?.seen_at ?? null }
 
   const more = data.length > ACTIVITY_PAGE
   const page = more ? data.slice(0, ACTIVITY_PAGE) : data

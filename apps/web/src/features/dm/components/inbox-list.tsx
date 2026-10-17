@@ -20,7 +20,8 @@ const rowKey = (r: { kind: string; id: string }) => `${r.kind}:${r.id}`
  * ciphertext (one query per kind) and decrypted here on the device; the server never sees them.
  */
 export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRow[]; invites: Invite[] }) {
-  const [supabase] = useState(() => createClient())
+  // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
+  // 2026-10-17, finding 7).
   const { key, status, reveal } = useDeviceKey(meId)
   const [previews, setPreviews] = useState<Map<string, string>>(() => new Map())
   const [q, setQ] = useState('')
@@ -29,6 +30,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
 
   useEffect(() => {
     if (!key && !status) return // wait for this device's key (status means it will never come)
+    const supabase = createClient()
     let cancelled = false
     void (async () => {
       const ids = (kind: InboxRow['kind']) => rows.filter((r) => r.kind === kind && r.lastMessageId).map((r) => r.lastMessageId as string)
@@ -70,7 +72,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
     return () => {
       cancelled = true
     }
-  }, [rows, key, status, reveal, meId, supabase])
+  }, [rows, key, status, reveal, meId])
 
   // Message requests (2026-10-16) sit in their own section above the chats.
   const { requests, rows: chats } = splitRequests(rows)

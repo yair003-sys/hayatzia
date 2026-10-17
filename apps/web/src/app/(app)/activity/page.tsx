@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Bell } from 'lucide-react'
+import { LoadError } from '@/components/load-error'
 import { ActivityFeed } from '@/features/activity/components/activity-feed'
 import { getActivityPage } from '@/features/activity/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
@@ -23,6 +24,7 @@ async function Activity() {
   if (s.status === 'disabled') return <p className="text-muted">ההתראות פועלות רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
   const page = await getActivityPage(s.userId)
+  if (!page) return <LoadError />
   return (
     <ActivityFeed
       meId={s.userId}

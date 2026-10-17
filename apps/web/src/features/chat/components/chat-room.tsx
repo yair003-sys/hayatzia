@@ -30,7 +30,8 @@ export type ChatRoomProps = {
   initial: ChatMessage[]
   /** Sends a message (optionally a reply to `replyTo`, a message of the same chat). */
   send: (body: string, replyTo?: string) => Promise<SendResult>
-  loadOlder: (cursor: Cursor) => Promise<ChatMessage[]>
+  /** null = the read failed: the button says so and stays (never "no older messages"). */
+  loadOlder: (cursor: Cursor) => Promise<ChatMessage[] | null>
   /** When set, the composer is replaced by this note (room closed, read-only fan…). */
   readOnly?: ReactNode
   placeholder?: string
@@ -95,6 +96,7 @@ export function ChatRoom({
   const [pending, setPending] = useState<ChatMessage[]>([])
   const [hasOlder, setHasOlder] = useState(initial.length >= PAGE_SIZE)
   const [loadingOlder, setLoadingOlder] = useState(false)
+  const [olderFailed, setOlderFailed] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
@@ -330,7 +332,9 @@ export function ChatRoom({
               onClick={async () => {
                 setLoadingOlder(true)
                 try {
-                  const older = await loadOlder({ createdAt: firstSaved.created_at, id: firstSaved.id })
+                  const older = await loadOlder({ createdAt: firstSaved.created_at, id: firstSaved.id }).catch(() => null)
+                  setOlderFailed(older === null)
+                  if (older === null) return
                   setMessages((cur) => mergeMessages(cur, older))
                   setHasOlder(older.length >= PAGE_SIZE)
                 } finally {
@@ -339,7 +343,7 @@ export function ChatRoom({
               }}
               className="min-h-11 rounded-full border border-line px-3 py-1 text-xs text-muted disabled:opacity-50"
             >
-              {loadingOlder ? 'טוען…' : 'הודעות קודמות'}
+              {loadingOlder ? 'טוען…' : olderFailed ? 'לא הצלחנו לטעון. נסה שוב' : 'הודעות קודמות'}
             </button>
           </li>
         )}

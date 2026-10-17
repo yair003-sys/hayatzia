@@ -6,7 +6,8 @@ import { TeamChat } from '@/features/team-chat/components/team-chat'
 import { getTeamMessages } from '@/features/team-chat/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
-import { getBlockedIds } from '@/features/safety/server/queries'
+import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
+import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'צ׳אט הקבוצה' }
 
@@ -30,7 +31,7 @@ async function ChatScreen() {
     return <p className="text-muted">הצ׳אט פועל רק כשהשרת מחובר (לא בסביבה הזאת).</p>
   }
   if (s.status !== 'ready') return <ChatSkeleton />
-  const [initial, hidden] = await Promise.all([getTeamMessages(), getBlockedIds()])
+  const [initial, hidden] = await Promise.all([getTeamMessages(), getBlockedIdsOrNull()])
   return (
     <>
       <header className="mb-4 flex items-center gap-3">
@@ -40,7 +41,12 @@ async function ChatScreen() {
           <p className="text-xs text-muted">רק אוהדי {s.team.short} רואים את הצ׳אט הזה</p>
         </div>
       </header>
-      <TeamChat teamId={s.team.id} meId={s.userId} initial={initial} hidden={hidden} color={s.team.bg} clubName={s.team.name} />
+      {/* A failed history read is "could not load", never an empty chat that fills with live messages only. */}
+      {initial && hidden ? (
+        <TeamChat teamId={s.team.id} meId={s.userId} initial={initial} hidden={hidden} color={s.team.bg} clubName={s.team.name} />
+      ) : (
+        <LoadError />
+      )}
     </>
   )
 }

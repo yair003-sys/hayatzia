@@ -7,6 +7,7 @@ import { getMyRideProfile, getRidesToRate, getTrips } from '@/features/team-life
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getMyVerification } from '@/features/verification/server/queries'
+import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'נוסעים למשחק' }
 
@@ -37,6 +38,7 @@ async function Trips({ focus }: { focus?: string }) {
     getRidesToRate(),
     getMyVerification(),
   ])
+  if (!trips) return <LoadError />
   const verify = verification
     ? {
         required: verification.required,

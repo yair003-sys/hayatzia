@@ -31,7 +31,7 @@ async function SquareScreen({ team }: { team: boolean }) {
     <>
       <h1 className="sr-only">הכיכר</h1>
       <SquareFeed
-        key={`${audience}:${clips[0]?.id ?? ''}`}
+        key={`${audience}:${clips?.[0]?.id ?? (clips ? '' : 'failed')}`}
         initial={clips}
         meId={s.userId}
         myTeamId={s.team.id}

@@ -27,5 +27,7 @@ export const loadMoreActivityAction = actionClient.inputSchema(z.object({ cursor
   const me = claims?.claims.sub
   if (!before || !me) return { items: [], next: null }
   const page = await getActivityPage(me, before)
+  // A failed read is not "no more rows": the list shows "could not load" and keeps its "more" button.
+  if (!page) return null
   return { items: page.items, next: page.next }
 })

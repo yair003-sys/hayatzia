@@ -125,7 +125,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
           return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
         }}
         loadOlder={async (cursor) =>
-          (await loadOlderMatchMessagesAction({ fixtureId, ...cursor })).data?.messages ?? []
+          (await loadOlderMatchMessagesAction({ fixtureId, ...cursor })).data?.messages ?? null
         }
       />
     </section>

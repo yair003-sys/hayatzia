@@ -20,6 +20,8 @@
 ## Data
 - Reads: `features/*/server/queries.ts`, cached when shared (`'use cache'` + `cacheLife` + `cacheTag`).
 - Writes: `features/*/server/actions.ts` with next-safe-action + Zod. Return typed results, never throw raw errors to the client.
+- A read that fails is never shown as data: the query helper returns `null` (not `0` / `[]`) and the screen shows `components/load-error.tsx` ("לא הצלחנו לטעון. נסה שוב"); an empty state only when the read worked and found nothing (load test 2026-10-17).
+- The browser Supabase client (`lib/supabase/client.ts`) is created in effects and event handlers only, never while rendering; the server client awaits `connection()` (request time only).
 - Every list is paginated by keyset (`created_at, id`) with a matching index.
 - Every new table: RLS enabled, policies written, indexes for its queries, and a line in `docs/DATA_MODEL.md`.
 
