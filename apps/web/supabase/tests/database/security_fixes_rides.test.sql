@@ -130,7 +130,12 @@ insert into public.fan_verifications (user_id, kind, status, doc_fingerprint, is
   (pg_temp.uid(9),  'identity', 'approved', repeat('a', 64), null,  now(), now() + interval '2 years'),
   (pg_temp.uid(10), 'identity', 'approved', repeat('b', 64), null,  now(), now() + interval '2 years'),
   (pg_temp.uid(11), 'identity', 'approved', repeat('c', 64), true,  now(), now() + interval '2 years'),
-  (pg_temp.uid(12), 'identity', 'approved', repeat('d', 64), false, now(), now() + interval '2 years');
+  (pg_temp.uid(12), 'identity', 'approved', repeat('d', 64), false, now(), now() + interval '2 years'),
+  -- drv (14) is the women-only offer's driver: fully verified so the offer is visible when the switch is on,
+  -- otherwise no rider could request it (an unverified driver's offer is hidden by trips_verified_or_hidden).
+  (pg_temp.uid(14), 'identity', 'approved', repeat('e', 64), null,  now(), now() + interval '2 years'),
+  (pg_temp.uid(14), 'licence',  'approved', null,            null,  now(), now() + interval '2 years');
+insert into public.fan_cars (user_id, plate, active) values (pg_temp.uid(14), '1234567', true);
 
 update private.app_settings set value = 'true' where key = 'rides_require_verification';
 select ok(not private.ride_female_ok(pg_temp.uid(13)), 'M3: switch on — a female with no identity does not qualify');
