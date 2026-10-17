@@ -74,9 +74,16 @@ Vitest `src/features/dm/requests.test.ts` (one generic message for both).
   `ride_female_ok`). While the switch is **off** (production today), the self-declared gender check is unchanged, so
   honest users see no difference now.
 
+UI (review follow-up 2026-10-17): the set-once rule is also reflected in the app, so an honest fan who mis-set their
+gender does not hit a dead end. `GenderPicker` (`src/features/team-life/components/ride-safety.tsx`) is read-only once
+gender holds a value, with a note to contact support; `setGenderAction` maps `gender_locked` to that message
+(`GENDER_LOCKED_HE`) instead of the generic retry. The first (null → value) set is unchanged.
+
 **Proof.** pgTAP `security_fixes_rides.test.sql`: (a) a fan cannot change their own gender once set, an admin can; (b)
 with the switch on, a non-verified fan cannot join a women-only ride and a verified-female one can, the marker overrides
-the gender; (c) with the switch off, today's behaviour is unchanged.
+the gender; (c) with the switch off, today's behaviour is unchanged. Vitest: `components/ride-safety.test.tsx` (picker
+read-only once set), `server/actions.test.ts` (first set succeeds; a second change returns the locked message),
+`ride-safety.test.ts` (`gender_locked` copy).
 
 ## M4 — unlimited uploads + orphans
 
@@ -87,7 +94,9 @@ orphan objects with no row.
 - A per-fan cap of **300 objects per bucket** (clips / stand / market), enforced by a BEFORE INSERT trigger
   `private.storage_upload_cap` on `storage.objects`. 300 objects was chosen over a byte-sum because a count is cheap and
   index-friendly to enforce on every insert, and with the per-file size limits (50 / 15 / 10 MB) it bounds a fan's
-  storage. (Documented in the migration comment.)
+  storage. (Documented in the migration comment.) The count is a name-prefix **range** (`'<owner>/' .. '<owner>0'`) so it
+  rides the existing `storage.objects (bucket_id, name)` index (review follow-up 2026-10-17: not a scan over a function
+  expression on every upload).
 - `scripts/cleanup-clips.ts` now also deletes objects in the `clips` bucket with no matching `clips` row older than an
   hour, using the service-role function `public.orphan_clip_objects`.
 

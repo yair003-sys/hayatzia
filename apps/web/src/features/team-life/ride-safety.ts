@@ -17,6 +17,8 @@ export const RIDES_NEED_BIRTH_DATE = 'כדי לנסוע צריך להשלים ת
 export const GENDER = { m: 'אוהד', f: 'אוהדת', x: 'לא מציין' } as const
 export type Gender = keyof typeof GENDER
 export const GENDER_NOTE = 'מוצג רק בנסיעות; זו הצהרה שלך'
+// Gender is set once (security review 2026-10-17): after it holds a value only support can change it.
+export const GENDER_LOCKED_HE = 'המגדר כבר נקבע ומוצג רק בנסיעות. לשינוי פנו לתמיכה.'
 
 export const PICKUP_SUGGESTIONS = ['תחנת רכבת', 'חניון האצטדיון', 'צומת מרכזי'] as const
 export const PICKUP_LABEL = 'נקודת איסוף ציבורית'
@@ -152,6 +154,7 @@ export function rideErrorHe(message: string | undefined | null): string | null {
   if (m.includes('not_adult')) return RIDES_ADULT_ONLY
   if (m.includes('ride_suspended')) return RIDE_SUSPENDED_HE
   if (m.includes('women_only')) return 'הנסיעה הזאת לאוהדות בלבד'
+  if (m.includes('gender_locked')) return GENDER_LOCKED_HE
   if (m.includes('phone_required')) return 'כדי לנסוע צריך לאמת מספר טלפון'
   if (m.includes('ride_started')) return 'המשחק כבר התחיל, ואי אפשר לשנות את הנסיעה'
   if (m.includes('ride_not_over')) return 'אפשר לדרג אחרי המשחק'

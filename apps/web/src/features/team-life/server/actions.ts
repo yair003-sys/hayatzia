@@ -124,7 +124,9 @@ export const setGenderAction = actionClient.inputSchema(genderSchema).action(asy
   const me = claims?.claims.sub
   if (!me) return { error: 'צריך להתחבר מחדש' }
   const { error } = await supabase.from('profiles').update({ gender }).eq('user_id', me)
-  if (error) return { error: 'לא הצלחנו לשמור. נסה שוב' }
+  // Gender is set once: a second change is refused with gender_locked; show the "contact support" message, never the
+  // generic retry (which could never succeed). The null→value first set is unaffected.
+  if (error) return { error: rideErrorHe(error.message) ?? 'לא הצלחנו לשמור. נסה שוב' }
   revalidatePath('/me')
   revalidatePath('/stand/trips')
   return { ok: true as const }

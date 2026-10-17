@@ -419,8 +419,12 @@ begin
     return new;
   end if;
   owner_folder := (storage.foldername(new.name))[1];
+  -- Count the fan's objects by a name-prefix RANGE ('<owner>/' .. '<owner>0'), so it uses the existing
+  -- storage.objects (bucket_id, name) index instead of scanning the bucket and filtering on a function expression.
   if (select count(*) from storage.objects o
-       where o.bucket_id = new.bucket_id and (storage.foldername(o.name))[1] = owner_folder) >= 300 then
+       where o.bucket_id = new.bucket_id
+         and o.name >= owner_folder || '/'
+         and o.name <  owner_folder || '0') >= 300 then
     raise exception 'upload_cap' using errcode = 'P0001';
   end if;
   return new;

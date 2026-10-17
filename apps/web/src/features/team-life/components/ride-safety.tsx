@@ -10,6 +10,7 @@ import { BirthDateFields } from '@/features/profile/components/birth-date-fields
 import {
   EMERGENCY_NUMBERS,
   GENDER,
+  GENDER_LOCKED_HE,
   GENDER_NOTE,
   RIDES_ADULT_ONLY,
   RIDES_NEED_BIRTH_DATE,
@@ -233,12 +234,14 @@ function RateOne({ ride }: { ride: RideToRate }) {
   )
 }
 
-/** "הכרטיס שלי": self-declared gender, shown only in rides (rule 1). */
+/** "הכרטיס שלי": self-declared gender, shown only in rides (rule 1). Set once: after it holds a value the picker is
+ *  read-only and a note sends the fan to support (the database refuses a change; the UI must not offer a dead end). */
 export function GenderPicker({ initial }: { initial: Gender | null }) {
   const [value, setValue] = useState<Gender | null>(initial)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const titleId = useId()
+  const locked = value !== null
   return (
     <fieldset aria-describedby={`${titleId}-note`} className="space-y-2 rounded-2xl border border-line p-3">
       <legend id={titleId} className="px-1 text-sm font-medium">
@@ -250,7 +253,7 @@ export function GenderPicker({ initial }: { initial: Gender | null }) {
             key={g}
             type="button"
             aria-pressed={value === g}
-            disabled={pending}
+            disabled={pending || locked}
             onClick={() =>
               start(async () => {
                 const r = await setGenderAction({ gender: g })
@@ -260,14 +263,18 @@ export function GenderPicker({ initial }: { initial: Gender | null }) {
                 } else setMsg(r.data?.error ?? r.serverError ?? 'לא הצלחנו לשמור. נסה שוב')
               })
             }
-            className={cn('min-h-11 rounded-xl border text-sm', value === g ? 'border-accent bg-accent-soft font-semibold' : 'border-line text-muted')}
+            className={cn(
+              'min-h-11 rounded-xl border text-sm',
+              value === g ? 'border-accent bg-accent-soft font-semibold' : 'border-line text-muted',
+              locked && value !== g && 'opacity-40',
+            )}
           >
             {GENDER[g]}
           </button>
         ))}
       </div>
       <p id={`${titleId}-note`} className="text-xs text-dim">
-        {GENDER_NOTE}
+        {locked ? GENDER_LOCKED_HE : GENDER_NOTE}
       </p>
       {msg && (
         <p role="status" className="text-xs text-muted">

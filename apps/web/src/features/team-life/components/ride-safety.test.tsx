@@ -5,9 +5,24 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('../server/actions', () => ({ confirmRideSafetyAction: vi.fn(), rateRideAction: vi.fn(), setGenderAction: vi.fn() }))
 vi.mock('@/features/profile/server/actions', () => ({ setBirthDateAction: vi.fn() }))
 
-import { SafetyGate } from './ride-safety'
+import { SafetyGate, GenderPicker } from './ride-safety'
 
 afterEach(cleanup)
+
+describe('GenderPicker: gender is set once (2026-10-17)', () => {
+  it('lets a fan choose while unset', () => {
+    render(<GenderPicker initial={null} />)
+    for (const label of ['אוהד', 'אוהדת', 'לא מציין']) expect(screen.getByRole('button', { name: label })).toBeEnabled()
+    expect(screen.getByText('מוצג רק בנסיעות; זו הצהרה שלך')).toBeInTheDocument()
+  })
+
+  it('is read-only once set, with a note to contact support (no dead-end retry)', () => {
+    render(<GenderPicker initial="m" />)
+    for (const label of ['אוהד', 'אוהדת', 'לא מציין']) expect(screen.getByRole('button', { name: label })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'אוהד' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('המגדר כבר נקבע ומוצג רק בנסיעות. לשינוי פנו לתמיכה.')).toBeInTheDocument()
+  })
+})
 
 describe('SafetyGate: 18+ comes from the birth date (2026-10-16)', () => {
   it('an adult by birth date sees the tips and continues, with no "I am 18+" tap', () => {

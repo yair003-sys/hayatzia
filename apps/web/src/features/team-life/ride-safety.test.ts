@@ -106,6 +106,7 @@ describe('ride copy', () => {
     expect(rideErrorHe('no_birth_date')).toBe('צריך להשלים תאריך לידה')
     expect(rideErrorHe('ride_suspended')).toMatch(/מושעה מנסיעות/)
     expect(rideErrorHe('women_only')).toMatch(/לאוהדות בלבד/)
+    expect(rideErrorHe('gender_locked')).toMatch(/לתמיכה/)
     expect(rideErrorHe('phone_required')).toMatch(/טלפון/)
     expect(rideErrorHe('ride_started')).toMatch(/המשחק כבר התחיל/)
     expect(rideErrorHe('something else')).toBeNull()
