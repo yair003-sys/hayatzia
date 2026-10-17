@@ -7,8 +7,18 @@ import { checkInAction } from '../server/actions'
 
 type Stub = { number: number; away: boolean; stadium: string }
 
-/** "📍 הייתי שם": asks the phone for its location; the server checks it is within 500 m of the stadium. */
-export function CheckinButton({ fixtureId, done, label }: { fixtureId: number; done: boolean; label: string }) {
+/** A short double-buzz on a successful check-in. Guarded for SSR and phones without a vibrator; never throws. */
+function buzz() {
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([0, 60, 40, 90])
+  } catch {
+    // haptics are optional; nothing else depends on them
+  }
+}
+
+/** "📍 הייתי שם": asks the phone for its location; the server checks it is within 500 m of the stadium.
+ *  `haptics` (stadium design only, default off) adds a short buzz on success; classic callers leave it off. */
+export function CheckinButton({ fixtureId, done, label, haptics = false }: { fixtureId: number; done: boolean; label: string; haptics?: boolean }) {
   const [state, setState] = useState<'idle' | 'locating' | 'done'>(done ? 'done' : 'idle')
   const [stub, setStub] = useState<Stub | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -21,6 +31,7 @@ export function CheckinButton({ fixtureId, done, label }: { fixtureId: number; d
       async (pos) => {
         const r = await checkInAction({ fixtureId, lat: pos.coords.latitude, lng: pos.coords.longitude })
         if (r.data && 'number' in r.data) {
+          if (haptics) buzz()
           setStub(r.data)
           setState('done')
         } else {

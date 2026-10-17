@@ -1394,6 +1394,11 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
       radial-gradient(120% 80% at 50% -10%, rgb(var(--t-rgb, 0 102 255) / 0.16), transparent 60%),
       radial-gradient(90% 60% at 50% 115%, rgb(var(--t-rgb, 0 102 255) / 0.12), transparent 70%),
       linear-gradient(180deg, #060912 0%, #080b16 55%, #05070d 100%); }
+  /* A living, breathing stadium: the top floodlit glow swells and fades on a slow 7s loop. */
+  .std-bg::before { content: ''; position: absolute; inset: 0; transform-origin: 50% 0;
+    background: radial-gradient(90% 58% at 50% -6%, rgb(var(--t-rgb, 0 102 255) / 0.22), transparent 62%);
+    animation: std-breathe 7s ease-in-out infinite; }
+  @keyframes std-breathe { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 0.95; transform: scale(1.07); } }
   .std-beam { position: absolute; top: -24%; inset-inline-start: 50%; width: min(62vw, 440px); height: 150%;
     transform-origin: top center; filter: blur(18px); mix-blend-mode: screen; opacity: 0.55;
     background: linear-gradient(to bottom, rgb(var(--t-rgb, 0 102 255) / 0.5), rgb(255 255 255 / 0.1) 22%, transparent 58%);
@@ -1453,7 +1458,6 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .std-kick-team:first-child { text-align: start; }
   .std-kick-team:last-child { text-align: end; }
   .std-kick-team[data-mine='true'] { color: var(--acc-text); }
-  .std-kick-row .hm-cd { font-size: 30px; color: #fff; text-shadow: 0 0 20px var(--acc-soft); }
   .std-kick-empty { display: flex; flex-direction: column; gap: 6px; }
   .std-kick-rest { font-size: 13.5px; line-height: 1.5; color: var(--color-muted); }
 
@@ -1464,8 +1468,56 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
       linear-gradient(180deg, rgb(13 18 32 / 0.82), rgb(8 11 22 / 0.82));
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
+  /* ── Scoreboard type: the big-screen display face. .std-score for numerals, .std-title for section headers. ── */
+  .std-score { font-family: var(--font-score), var(--font-brand); font-weight: 800; letter-spacing: 0; line-height: 0.92;
+    font-variant-numeric: tabular-nums; }
+  .std-title { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start;
+    font-family: var(--font-score), var(--font-sans); font-weight: 800; font-size: clamp(20px, 6.5vw, 30px); line-height: 1.02;
+    letter-spacing: 0.01em; }
+  .std-title::after { content: ''; margin-top: 7px; width: 42px; height: 4px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--acc), var(--acc2)); box-shadow: 0 0 14px var(--acc-soft); }
+
+  /* overlapping fan heads behind the crowd count (decorative, club-coloured) */
+  .std-crowd .std-score { font-size: 19px; }
+  .std-faces { display: inline-flex; flex-direction: row-reverse; margin-inline-end: 2px; }
+  .std-faces i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #060912; margin-inline-start: -8px;
+    background: linear-gradient(160deg, var(--acc2), var(--acc)); box-shadow: 0 0 8px var(--acc-soft); }
+  .std-faces i:first-child { margin-inline-start: 0; }
+
+  /* the next-match hero: a scoreboard with the giant countdown, crowd mosaic behind */
+  .std-kick { position: relative; overflow: hidden; }
+  .std-kick-mosaic { position: absolute; inset: 0; z-index: -1; opacity: 0.4;
+    background-image:
+      radial-gradient(circle, rgb(var(--t-rgb, 0 102 255) / 0.5) 1px, transparent 1.6px),
+      radial-gradient(circle, rgb(255 255 255 / 0.18) 1px, transparent 1.6px);
+    background-size: 12px 12px, 19px 19px; background-position: 0 0, 6px 5px;
+    -webkit-mask: radial-gradient(120% 92% at 50% 118%, #000, transparent 72%); mask: radial-gradient(120% 92% at 50% 118%, #000, transparent 72%); }
+  .std-kick-hero { align-items: center; text-align: center; gap: 10px; }
+  .std-kick-hero .std-kick-eyebrow { justify-content: center; }
+  .std-kick-hero .std-kick-row { width: 100%; }
+  .std-kick-team.std-score { font-size: clamp(26px, 9vw, 40px); font-weight: 800; }
+  .std-kick-vs { color: var(--pitch-dim, rgb(243 245 248 / 0.62)); font-size: 13px; font-weight: 700; }
+  .std-kick-clock { display: flex; justify-content: center; padding-top: 2px; }
+  .std-kick-clock .hm-cd { font-family: var(--font-score), var(--font-brand); font-size: clamp(34px, 12vw, 52px); color: #fff;
+    letter-spacing: 0.01em; text-shadow: 0 0 26px var(--acc-soft), 0 0 3px rgb(var(--t-rgb, 0 102 255) / 0.6); }
+  .std-kick-empty { align-items: flex-start; }
+
+  /* the check-in moment on the home ("אני ביציע הערב") */
+  .std-checkin { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 22px; border: 1px solid var(--acc-line);
+    background:
+      radial-gradient(130% 100% at 50% -20%, var(--acc-soft), transparent 62%),
+      linear-gradient(180deg, rgb(13 18 32 / 0.82), rgb(8 11 22 / 0.82));
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -28px rgb(0 0 0 / 0.9); }
+  .std-checkin-head { display: flex; align-items: center; gap: 8px; font-family: var(--font-score), var(--font-sans);
+    font-weight: 800; font-size: 18px; letter-spacing: 0.01em; }
+  .std-checkin-sub { font-size: 13px; line-height: 1.5; color: var(--color-muted); }
+  .std-live-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--color-live);
+    box-shadow: 0 0 10px rgb(255 61 87 / 0.7); animation: sh-ping 1.6s infinite; }
+
   @media (prefers-reduced-motion: reduce) {
-    .std-beam, .std-mosaic, .std-crowd-dot { animation: none; }
+    .std-beam, .std-mosaic, .std-crowd-dot, .std-live-dot { animation: none; }
+    .std-bg::before { animation: none; opacity: 0.7; }
     .std-beam { transform: rotate(0deg); }
   }
 }
@@ -1539,5 +1591,118 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   body:has(.std-app-active) .su-btn-blue {
     color: var(--acc-on, #fff);
     background: linear-gradient(180deg, var(--acc2, var(--color-accent-2)), var(--acc, var(--color-accent)));
+  }
+
+  /* ── Scoreboard type, app-wide: every prominent count and score switches to the big-screen condensed face, and the
+     section headers get the scoreboard weight. Classic never sees --font-score. ─────────────────────────────────── */
+  body:has(.std-app-active) .t-num,
+  body:has(.std-app-active) .sh-stats b,
+  body:has(.std-app-active) .sh-ln .sc,
+  body:has(.std-app-active) .lc-score,
+  body:has(.std-app-active) .hm-cd,
+  body:has(.std-app-active) .lu-card-n,
+  body:has(.std-app-active) .cw-total b,
+  body:has(.std-app-active) .cw-sides b {
+    font-family: var(--font-score), var(--font-brand);
+    letter-spacing: 0;
+  }
+  body:has(.std-app-active) .sh-sec,
+  body:has(.std-app-active) .lu-head > h2,
+  body:has(.std-app-active) .lu-sec-h {
+    font-family: var(--font-score), var(--font-display);
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Tap feedback: cards and primary buttons dip and glow in the club colour on press / keyboard focus. The dip is
+     an :active transform (snaps, so no transition is forced onto every button's own transitions). ───────────────── */
+  body:has(.std-app-active) .app-main .sh-card,
+  body:has(.std-app-active) .app-main .sh-tile,
+  body:has(.std-app-active) .app-main .std-card {
+    transition: transform 0.15s var(--ease-soft), box-shadow 0.2s;
+  }
+  body:has(.std-app-active) .app-main .sh-card:active,
+  body:has(.std-app-active) .app-main .sh-tile:active,
+  body:has(.std-app-active) .app-main .std-card:active,
+  body:has(.std-app-active) .app-main button:active {
+    transform: scale(0.98);
+  }
+  body:has(.std-app-active) .app-main .sh-card:focus-visible,
+  body:has(.std-app-active) .app-main .sh-tile:focus-visible,
+  body:has(.std-app-active) .app-main button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--acc, var(--color-accent)), 0 0 18px rgb(var(--t-rgb, 0 102 255) / 0.5);
+  }
+
+  /* ── Screen-entry swell: a brief light-bloom on each stadium page entry (fixed + clipped, never widens the page). ─ */
+  body:has(.std-app-active) .std-bloom {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none; mix-blend-mode: screen;
+    background: radial-gradient(70% 48% at 50% 0%, rgb(var(--t-rgb, 0 102 255) / 0.5), transparent 60%);
+    animation: std-bloom 0.52s ease-out forwards;
+  }
+  @keyframes std-bloom { 0% { opacity: 0; transform: scale(0.9); } 35% { opacity: 0.9; } 100% { opacity: 0; transform: scale(1.14); } }
+
+  /* ── The goal explosion. Fixed + overflow:hidden, so rings and confetti are clipped and can never cause page scroll.
+     It only renders in the stadium match room (celebrateGoals). Reduced motion strips it to a static banner below. ── */
+  body:has(.std-app-active) .std-goal {
+    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; overflow: hidden; pointer-events: none;
+    background: radial-gradient(60% 50% at 50% 45%, rgb(var(--t-rgb, 0 102 255) / 0.3), rgb(6 9 18 / 0.62) 70%);
+    animation: std-goal-in 0.3s ease-out;
+    padding: 16px;
+  }
+  @keyframes std-goal-in { from { opacity: 0; } to { opacity: 1; } }
+  body:has(.std-app-active) .std-goal-rings { position: absolute; inset: 0; display: grid; place-items: center; }
+  body:has(.std-app-active) .std-goal-rings span {
+    position: absolute; width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--acc, var(--color-accent));
+    opacity: 0; animation: std-ring 1.7s ease-out infinite;
+  }
+  @keyframes std-ring { 0% { transform: scale(0.2); opacity: 0.85; } 100% { transform: scale(11); opacity: 0; } }
+  body:has(.std-app-active) .std-goal-confetti { position: absolute; inset: 0; overflow: hidden; }
+  body:has(.std-app-active) .std-goal-confetti i {
+    position: absolute; top: -6%; inset-inline-start: calc(var(--i) * 3.4%); width: 9px; height: 14px; border-radius: 1px;
+    background: var(--acc, var(--color-accent)); opacity: 0.95; animation: std-confetti 1.9s linear forwards;
+    animation-delay: calc(var(--i) * 0.03s);
+  }
+  body:has(.std-app-active) .std-goal-confetti i[data-alt='1'] { background: var(--acc2, var(--color-accent-2)); width: 7px; height: 11px; }
+  @keyframes std-confetti { 0% { transform: translateY(-10%) rotate(0); opacity: 1; } 100% { transform: translateY(115vh) rotate(560deg); opacity: 0.15; } }
+  body:has(.std-app-active) .std-goal-card { position: relative; z-index: 2; text-align: center; animation: std-shake 0.5s ease-in-out; }
+  body:has(.std-app-active) .std-goal-word {
+    font-family: var(--font-score), var(--font-brand); font-weight: 900; font-size: clamp(64px, 26vw, 140px); line-height: 0.9;
+    letter-spacing: 0.01em; color: #fff; animation: pop 0.45s var(--ease-spring);
+    text-shadow: 0 0 30px var(--acc, var(--color-accent)), 0 0 64px rgb(var(--t-rgb, 0 102 255) / 0.55), 0 6px 0 rgb(0 0 0 / 0.3);
+  }
+  body:has(.std-app-active) .std-goal-scorer {
+    margin-top: 6px; font-family: var(--font-score), var(--font-sans); font-weight: 800; font-size: clamp(20px, 7vw, 32px);
+    color: var(--acc-text, var(--color-accent-text));
+  }
+  body:has(.std-app-active) .std-goal-crowd { margin-top: 10px; font-size: 14px; color: #c9d1dd; }
+  body:has(.std-app-active) .std-goal-crowd b { color: #fff; font-size: 22px; margin-inline-end: 5px; }
+  body:has(.std-app-active) .std-goal-x {
+    position: absolute; z-index: 3; pointer-events: auto; top: calc(env(safe-area-inset-top, 0px) + 12px); inset-inline-end: 12px;
+    display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: #fff;
+    background: rgb(0 0 0 / 0.5); border: 1px solid rgb(255 255 255 / 0.25);
+  }
+  @keyframes std-shake {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    15% { transform: translate3d(-5px, 2px, 0); }
+    30% { transform: translate3d(5px, -2px, 0); }
+    45% { transform: translate3d(-4px, -2px, 0); }
+    60% { transform: translate3d(4px, 2px, 0); }
+    75% { transform: translate3d(-2px, 1px, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body:has(.std-app-active) .std-bloom,
+    body:has(.std-app-active) .std-goal-confetti,
+    body:has(.std-app-active) .std-goal-rings { display: none; }
+    body:has(.std-app-active) .std-goal { animation: none; }
+    body:has(.std-app-active) .std-goal-card,
+    body:has(.std-app-active) .std-goal-word { animation: none; }
+    /* static but bold: a solid card instead of the full-screen flash */
+    body:has(.std-app-active) .std-goal { background: rgb(6 9 18 / 0.86); }
+    body:has(.std-app-active) .std-goal-card {
+      padding: 20px 26px; border-radius: 22px; border: 1px solid var(--acc-line, rgb(0 102 255 / 0.4));
+      background: linear-gradient(180deg, rgb(17 23 40 / 0.95), rgb(8 11 22 / 0.95));
+    }
   }
 }

@@ -8,8 +8,11 @@ import { displayTeam } from '@/features/matches/api-teams'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
-import { teamAccent } from '@/features/stand-home/schema'
+import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds } from '@/features/stand-home/server/queries'
+import { roomState } from '@/features/match-room/schema'
+import { CheckinButton } from '@/features/stage4/components/checkin-button'
+import { getCheckedIn } from '@/features/stage4/server/queries'
 import type { Team } from '@/features/teams/data'
 import { LoadError } from '@/components/load-error'
 import { nextClubFixture } from '../../schema'
@@ -47,8 +50,11 @@ export async function StadiumHome() {
         <Suspense fallback={<div className="std-card skeleton h-12" aria-hidden="true" />}>
           <StadiumCrowd teamId={team.id} />
         </Suspense>
-        <Suspense fallback={<div className="std-card skeleton h-44" aria-hidden="true" />}>
+        <Suspense fallback={<div className="std-card skeleton h-56" aria-hidden="true" />}>
           <StadiumKickoff team={team} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <StadiumCheckin team={team} />
         </Suspense>
         <Suspense fallback={<div className="std-card skeleton h-52" aria-hidden="true" />}>
           <div className="std-chat-wrap">
@@ -92,8 +98,41 @@ async function StadiumCrowd({ teamId }: { teamId: string }) {
   return (
     <p className="std-crowd">
       <span className="std-crowd-dot" aria-hidden="true" />
-      יחד איתך עכשיו <b className="t-num">{n === null ? '—' : n.toLocaleString('he-IL')}</b> אוהדים
+      {/* A club-coloured cluster of fan heads behind the number: decoration, not real people, so it is hidden from
+          screen readers. The number itself is the real active-fans count. */}
+      <span className="std-faces" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+      </span>
+      יחד איתך עכשיו <b className="std-score">{n === null ? '—' : n.toLocaleString('he-IL')}</b> אוהדים
     </p>
+  )
+}
+
+/** The check-in moment ("אני ביציע הערב"): the real "הייתי שם" action, shown only while a match of the fan's club is
+ *  live or around kick-off (the exact window the match page uses). Never shown otherwise, never faked. */
+async function StadiumCheckin({ team }: { team: Team }) {
+  await connection()
+  const league = await getLeague()
+  if (!league) return null
+  const ids = clubApiIds(league, team.id)
+  const ticket = pickTicket(league.fixtures, ids, clock())
+  if (!ticket) return null
+  const active = ['open', 'closing'].includes(roomState(ticket.t, clock()))
+  if (!active) return null
+  const live = isTicketLive(ticket, clock())
+  const checked = await getCheckedIn(ticket.id)
+  return (
+    <section className="std-checkin" aria-label="צ׳ק-אין למשחק">
+      <p className="std-checkin-head">
+        {live && <span className="std-live-dot" aria-hidden="true" />}
+        {live ? 'המשחק חי עכשיו' : 'ערב משחק'}
+      </p>
+      <p className="std-checkin-sub">אתה באצטדיון? תן לכולם לדעת שאתה ביציע הערב.</p>
+      <CheckinButton fixtureId={ticket.id} done={checked} label={team.short} haptics />
+    </section>
   )
 }
 
@@ -114,9 +153,11 @@ async function StadiumKickoff({ team }: { team: Team }) {
   const next = nextClubFixture(league.fixtures, ids, now)
   if (!next) {
     return (
-      <section className="std-card std-kick-empty" aria-label="המשחק הבא">
+      <section className="std-kick std-kick-empty" aria-label="המשחק הבא">
+        <span className="std-kick-mosaic" aria-hidden="true" />
         <p className="std-kick-eyebrow">אין משחק קרוב בלוח</p>
-        <p className="std-kick-rest">כשייקבע המשחק הבא, האורות יידלקו כאן. בינתיים — נתראה ביציע.</p>
+        <p className="std-title">האורות ייידלקו כאן</p>
+        <p className="std-kick-rest">כשייקבע המשחק הבא, הספירה לאחור תתחיל כאן. בינתיים — נתראה ביציע.</p>
       </section>
     )
   }
@@ -125,22 +166,26 @@ async function StadiumKickoff({ team }: { team: Team }) {
   const away = nameOf(next.a)
   const atHome = ids.includes(next.h)
   return (
-    <section className="std-kick" aria-label="המשחק הבא">
+    <section className="std-kick std-kick-hero" aria-label="המשחק הבא">
+      <span className="std-kick-mosaic" aria-hidden="true" />
       <p className="std-kick-eyebrow">
         המשחק הבא · {kickoffDay(next.t)} {kickoffTime(next.t)}
         {next.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
       </p>
       {/* No aria-label: the link reads its own content, so the live countdown (role=timer) is heard too. */}
       <Link href={`/matches/${next.id}`} className="std-kick-row">
-        <span className="std-kick-team" data-mine={atHome}>
+        <span className="std-kick-team std-score" data-mine={atHome}>
           {home.short}
           <span className="sr-only"> נגד {away.short},</span>
         </span>
-        <Countdown at={next.t * 1000} />
-        <span className="std-kick-team" data-mine={!atHome} aria-hidden="true">
+        <span className="std-kick-vs" aria-hidden="true">נגד</span>
+        <span className="std-kick-team std-score" data-mine={!atHome} aria-hidden="true">
           {away.short}
         </span>
       </Link>
+      <div className="std-kick-clock">
+        <Countdown at={next.t * 1000} />
+      </div>
     </section>
   )
 }

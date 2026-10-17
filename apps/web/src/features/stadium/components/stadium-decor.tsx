@@ -1,5 +1,6 @@
 import { designVersion } from '@/lib/design-version'
 import { StadiumBackdrop } from './stadium-backdrop'
+import { StadiumEntryFlash } from './stadium-entry-flash'
 import { stadiumThemeCss } from '../server/theme'
 
 // The stadium shell decor (stadium redesign, stage 3, 2026-10-17). Two near-identical server components that turn the
@@ -19,6 +20,7 @@ export async function AppStadiumDecor() {
     <>
       {css && <style>{css}</style>}
       <StadiumBackdrop />
+      <StadiumEntryFlash />
       <i className="std-app-active" aria-hidden="true" hidden />
     </>
   )
@@ -30,6 +32,7 @@ export async function PublicStadiumDecor() {
   return (
     <>
       <StadiumBackdrop />
+      <StadiumEntryFlash />
       <i className="std-app-active" data-scope="public" aria-hidden="true" hidden />
     </>
   )

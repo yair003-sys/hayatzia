@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { roomState, type RoomState } from '../schema'
+import { goalFromChannelEvent, type GoalMoment } from '../goal'
+import { GoalOverlay } from './goal-overlay'
 import { loadOlderMatchMessagesAction, sendMatchMessageAction } from '../server/actions'
 import { PinnedStrip } from '@/features/crowd-verdict/components/pinned-strip'
 import { PollCard } from '@/features/crowd-verdict/components/poll-card'
@@ -24,6 +26,8 @@ type Props = {
   initial: ChatMessage[]
   hidden: string[]
   crowd: CrowdState
+  /** Stadium design only: show the goal-explosion overlay on a real goal event. Off (classic) renders nothing extra. */
+  celebrateGoals?: boolean
 }
 
 const STATE_LABEL: Record<RoomState, string> = {
@@ -33,10 +37,26 @@ const STATE_LABEL: Record<RoomState, string> = {
   closed: 'החדר נסגר',
 }
 
-export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd }: Props) {
+export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd, celebrateGoals = false }: Props) {
   const myGroup = myTeamId === home.id ? 'h' : myTeamId === away.id ? 'a' : 'n'
   const c = useCrowd(crowd, fixtureId, myGroup)
   const inRoom = usePresence(`room:${fixtureId}`, meId)
+
+  // The goal moment (stadium only). We tap the same broadcast the crowd polls ride on: a new 'goal' poll is the real
+  // goal event. When off (classic), the crowd handler is passed straight through and no overlay is ever mounted.
+  const [goal, setGoal] = useState<GoalMoment | null>(null)
+  const dismissGoal = useCallback(() => setGoal(null), [])
+  const handleChannel = useCallback(
+    (event: string, payload: unknown) => {
+      if (celebrateGoals) {
+        const moment = goalFromChannelEvent(event, payload)
+        if (moment) setGoal(moment)
+      }
+      c.onChannelEvent(event, payload)
+    },
+    [celebrateGoals, c],
+  )
+  const onChannelEvent = celebrateGoals ? handleChannel : c.onChannelEvent
   const openPolls = [...c.polls].reverse().filter((p) => pollState(p, c.now) === 'open')
   // With two club cards open at minute 60, jump to the one this fan can vote in.
   const openPoll = openPolls.find((p) => canVote(p, myTeamId, c.now)) ?? openPolls[0] ?? null
@@ -99,7 +119,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         presenceTopic={`room:${fixtureId}`}
         openAtEnd={false}
         inserts={inserts}
-        onChannelEvent={c.onChannelEvent}
+        onChannelEvent={onChannelEvent}
         pinned={
           <PinnedStrip
             poll={openPoll}
@@ -128,6 +148,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
           (await loadOlderMatchMessagesAction({ fixtureId, ...cursor })).data?.messages ?? null
         }
       />
+      {celebrateGoals && goal && <GoalOverlay scorer={goal.scorer} celebrating={inRoom} onDismiss={dismissGoal} />}
     </section>
   )
 }
