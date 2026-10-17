@@ -53,6 +53,9 @@ async function clubRatingStatsCached(teamId: string): Promise<RatingStat[] | nul
     .from('player_rating_stats')
     .select('player_id,sum,count,players!inner(team_id)')
     .eq('players.team_id', teamId)
+  // Permission denied: this project lacks the service-role grant (migration 20261017120000 not applied yet). Like no
+  // service key: the caller reads through the fan's session, never a failure shown to the fan.
+  if (error?.code === '42501') return null
   if (error) console.error('club rating stats read failed', error.code)
   // Thrown, not returned: a failure is never kept in the cache.
   if (error || !data) throw new Error('club rating stats read failed')

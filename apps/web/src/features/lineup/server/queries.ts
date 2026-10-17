@@ -115,6 +115,8 @@ async function lineupAggregatesCached(fixtureId: number, teamId: string): Promis
   // No service key in this environment (fixed per deployment): the caller reads through the fan's session instead.
   if (!db) return null
   const totals = await db.from('fan_lineup_totals').select('fans,formations').eq('fixture_id', fixtureId).eq('team_id', teamId).maybeSingle()
+  // Permission denied (no service-role grant in this project): like no service key, the fan's session reads them.
+  if (totals.error?.code === '42501') return null
   logErrors({ totals: totals.error })
   // Thrown, not returned: a failure is never kept in the cache.
   if (totals.error) throw new Error('fan lineup totals read failed')

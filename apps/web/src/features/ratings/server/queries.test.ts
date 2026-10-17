@@ -41,6 +41,11 @@ describe('getClubRatingStats', () => {
     state.config = { tables: { player_rating_stats: ok([{ player_id: 'mta_9', sum: 1, count: 1 }]) } }
     expect(await getClubRatingStats('mta')).toBeNull()
   })
+  it('service role without the grant (migration not applied yet): the fan session reads them, no error shown', async () => {
+    state.admin = { tables: { player_rating_stats: { data: null, error: { code: '42501', message: 'permission denied' } } } }
+    state.config = { tables: { player_rating_stats: ok([{ player_id: 'mta_9', sum: 4, count: 1 }]) } }
+    expect(await getClubRatingStats('mta')).toEqual([{ player_id: 'mta_9', sum: 4, count: 1 }])
+  })
   it('without a service key: the fan session reads them (RLS), as before', async () => {
     state.config = { tables: { player_rating_stats: ok([{ player_id: 'mta_9', sum: 4, count: 1 }]) } }
     expect(await getClubRatingStats('mta')).toEqual([{ player_id: 'mta_9', sum: 4, count: 1 }])

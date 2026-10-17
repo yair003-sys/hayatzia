@@ -37,6 +37,8 @@ async function matchRatingStatsCached(fixtureId: number, teamId: string): Promis
     .select('player_id,sum,count,players!inner(team_id)')
     .eq('fixture_id', fixtureId)
     .eq('players.team_id', teamId)
+  // Permission denied (no service-role grant in this project): like no service key, the fan's session reads them.
+  if (error?.code === '42501') return null
   if (error) console.error('match rating stats read failed', error.code)
   // Thrown, not returned: a failure is never kept in the cache.
   if (error || !data) throw new Error('match rating stats read failed')
