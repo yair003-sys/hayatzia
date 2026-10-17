@@ -1,5 +1,7 @@
 'use server'
 
+import { updateTag } from 'next/cache'
+import { getSessionProfile } from '@/features/profile/server/queries'
 import { moderationHe } from '@/lib/moderation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
@@ -25,6 +27,10 @@ export const ratePlayerAction = actionClient.inputSchema(rateSchema).action(asyn
     : await supabase.from('player_ratings').insert({ player_id: playerId, stars, review })
   if (error)
     return { error: moderationHe(error.message) ?? (error.message.includes('not_your_player') ? 'מדרגים רק שחקנים של הקבוצה שלך' : 'השמירה נכשלה') }
+  // The club's shared averages (getClubRatingStats): the fan sees their own rating counted on the next render. The
+  // database only accepts a player of the fan's own club, so that club's entry is the one that changed.
+  const s = await getSessionProfile()
+  if (s.status === 'ready') updateTag(`rating-stats:${s.team.id}`)
   return { ok: true as const, previous: existing.data?.stars ?? null }
 })
 

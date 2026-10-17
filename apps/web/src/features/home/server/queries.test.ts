@@ -4,12 +4,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { failed, ok, type FakeConfig } from '@/test-utils/fake-supabase'
 
-const state = vi.hoisted(() => ({ config: {} as FakeConfig, admin: null as FakeConfig | null, blocked: [] as string[] | null }))
+const state = vi.hoisted(() => ({
+  config: {} as FakeConfig,
+  admin: null as FakeConfig | null,
+  pub: {} as FakeConfig,
+  blocked: [] as string[] | null,
+}))
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({ cacheLife: () => {}, cacheTag: () => {} }))
 vi.mock('@/lib/supabase/server', async () => {
   const { fakeSupabase } = await import('@/test-utils/fake-supabase')
   return { createClient: async () => fakeSupabase(state.config) }
+})
+vi.mock('@/lib/supabase/public', async () => {
+  const { fakeSupabase } = await import('@/test-utils/fake-supabase')
+  return { createPublicClient: () => fakeSupabase(state.pub) }
 })
 vi.mock('@/lib/supabase/admin', async () => {
   const { fakeSupabase } = await import('@/test-utils/fake-supabase')
@@ -69,15 +78,43 @@ describe('stories and hot posts', () => {
 })
 
 describe('getHomePlayers', () => {
-  const player = { id: 'mta_1', number: 1, name_short: 'מליקה', position: 'GK', player_rating_stats: { sum: 8, count: 2 } }
-  it('the squad when the reads work', async () => {
-    state.config = { tables: { players: ok([player]) }, rpc: { home_player_reviews: ok([]) } }
-    expect((await getHomePlayers('mta', ME))?.map((p) => [p.id, p.count])).toEqual([['mta_1', 2]])
+  // The squad comes from the shared per-club cache (public client), the averages from the shared per-club stats
+  // (service role; the fan's session where there is no service key), the reviews per fan.
+  const player = { id: 'mta_1', number: 1, name_he: 'מליקה', name_short: 'מליקה', position: 'GK', injured: false, in_xi: true, pitch_x: 50, pitch_y: 90 }
+  const other = { ...player, id: 'mta_9', number: 9, name_short: 'חלאילי', position: 'ST' }
+  const review = { player_id: 'mta_9', author_id: ME, nick: 'אני', stars: 5, review: 'מלך', updated_at: '2026-10-17T10:00:00Z', likes_count: 1, liked: false }
+  beforeEach(() => {
+    state.pub = { tables: { players: ok([player, other]) } }
   })
-  it('null when the squad or the reviews cannot be read', async () => {
-    state.config = { tables: { players: failed }, rpc: { home_player_reviews: ok([]) } }
+  it('the squad with the club averages and my reviews, most-rated first', async () => {
+    state.config = { tables: { player_rating_stats: ok([{ player_id: 'mta_9', sum: 8, count: 2 }]) }, rpc: { home_player_reviews: ok([review]) } }
+    const players = await getHomePlayers('mta', ME)
+    expect(players?.map((p) => [p.id, p.avg, p.count])).toEqual([
+      ['mta_9', 4, 2],
+      ['mta_1', null, 0],
+    ])
+    expect(players?.[0]?.reviews).toEqual([expect.objectContaining({ user_id: ME, mine: true })])
+  })
+  it('with the service key, the averages come from the club-wide read', async () => {
+    state.admin = { tables: { player_rating_stats: ok([{ player_id: 'mta_1', sum: 10, count: 2, players: { team_id: 'mta' } }]) } }
+    state.config = { tables: { player_rating_stats: failed }, rpc: { home_player_reviews: ok([]) } }
+    expect((await getHomePlayers('mta', ME))?.map((p) => [p.id, p.avg])).toEqual([
+      ['mta_1', 5],
+      ['mta_9', null],
+    ])
+  })
+  it('null when the squad, the averages or the reviews cannot be read', async () => {
+    state.config = { rpc: { home_player_reviews: ok([]) } }
+    state.pub = { tables: { players: failed } }
     expect(await getHomePlayers('mta', ME)).toBeNull()
-    state.config = { tables: { players: ok([player]) }, rpc: { home_player_reviews: failed } }
+    state.pub = { tables: { players: ok([player]) } }
+    state.config = { tables: { player_rating_stats: failed }, rpc: { home_player_reviews: ok([]) } }
+    expect(await getHomePlayers('mta', ME)).toBeNull()
+    state.admin = { tables: { player_rating_stats: failed } }
+    state.config = { rpc: { home_player_reviews: ok([]) } }
+    expect(await getHomePlayers('mta', ME)).toBeNull()
+    state.admin = null
+    state.config = { rpc: { home_player_reviews: failed } }
     expect(await getHomePlayers('mta', ME)).toBeNull()
   })
 })

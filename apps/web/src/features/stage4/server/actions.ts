@@ -1,5 +1,6 @@
 'use server'
 
+import { updateTag } from 'next/cache'
 import { moderationHe } from '@/lib/moderation'
 import { z } from 'zod'
 import { actionClient } from '@/lib/safe-action'
@@ -36,6 +37,8 @@ export const rateMatchAction = actionClient
       const { error } = await supabase.from('match_ratings').update({ score: r.score }).eq('fixture_id', fixtureId).eq('player_id', r.playerId)
       if (error) return { error: 'הדירוג לא נשמר' }
     }
+    // The club's shared player-of-the-match totals (getMatchRatingStats): the fan sees their scores counted.
+    if (fresh.length || changed.length) updateTag(`match-ratings:${fixtureId}`)
     return { ok: true }
   })
 

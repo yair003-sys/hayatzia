@@ -29,18 +29,29 @@ export function countOf(r: { count: number | null; error: unknown }): number | n
 /**
  * The earlier home sections' data in one round of parallel queries (no N+1): counts for events / unsold market items /
  * trips to the next match / chants, and the squad. (The club chat preview moved to features/home.)
- * Team-private (RLS), reads the session: never cached.
+ * The counts are team-private with per-fan exceptions (RLS: a fan also counts their own hidden rows, suspended or
+ * unverified ride posters their own trips), so they read the session and are never cached; the squad uses the shared
+ * per-club caches (getSquadWithRatings). `nextFixtureId` may still be on its way (the page reads the league
+ * meanwhile): only the trips count waits for it.
  */
-export async function getStandHome(teamId: string, userId: string, nextFixtureId: number | null): Promise<StandHome> {
+export async function getStandHome(
+  teamId: string,
+  userId: string,
+  nextFixtureId: number | null | Promise<number | null>,
+): Promise<StandHome> {
   const supabase = await createClient()
   if (!supabase) return { events: 0, market: 0, trips: 0, chants: 0, squad: [] }
   const since = new Date(Date.now() - 3 * 3600_000).toISOString()
+  const tripsCount = async () => {
+    const id = await nextFixtureId
+    return id === null
+      ? { count: 0, error: null }
+      : await supabase.from('trips').select('id', { count: 'exact', head: true }).eq('fixture_id', id)
+  }
   const [events, market, trips, chants, squad] = await Promise.all([
     supabase.from('fan_events').select('id', { count: 'exact', head: true }).gte('starts_at', since),
     supabase.from('market_items').select('id', { count: 'exact', head: true }).eq('sold', false),
-    nextFixtureId === null
-      ? Promise.resolve({ count: 0, error: null })
-      : supabase.from('trips').select('id', { count: 'exact', head: true }).eq('fixture_id', nextFixtureId),
+    tripsCount(),
     supabase.from('chants').select('id', { count: 'exact', head: true }),
     getSquadWithRatings(teamId, userId),
   ])

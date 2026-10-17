@@ -37,4 +37,8 @@ describe('getStandHome', () => {
   it('no next match: 0 trips (a real zero)', async () => {
     expect((await getStandHome('mta', 'me', null)).trips).toBe(0)
   })
+  it('the next match may still be on its way (read with the league in parallel): the same counts', async () => {
+    expect(await getStandHome('mta', 'me', Promise.resolve(1))).toMatchObject({ events: 2, market: 3, trips: 338, chants: 7 })
+    expect((await getStandHome('mta', 'me', Promise.resolve(null))).trips).toBe(0)
+  })
 })

@@ -108,18 +108,27 @@ async function StandHome() {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return null
   const team = s.team
-  const league = await getLeague()
-  const ids = clubApiIds(league, team.id)
-  const now = clock()
-  const ticket = league ? pickTicket(league.fixtures, ids, now) : null
-  const next = league ? nextClubFixture(league.fixtures, ids, now) : null
-  // The next match has its own card at the top; the ticket stays for a live or just-finished match.
-  const active = ticket ? ['open', 'closing'].includes(roomState(ticket.t, now)) : false
-  const showTicket = !ticket || ticket.id !== next?.id || active
-  const [data, checked] = await Promise.all([
-    getStandHome(team.id, s.userId, next?.id ?? null),
-    ticket && active ? getCheckedIn(ticket.id) : Promise.resolve(false),
+  // One round trip, not two: the counts and the squad start with the league; only the trips count and the check-in
+  // wait for it (they need the next match / the ticket).
+  const plan = getLeague().then((league) => {
+    const ids = clubApiIds(league, team.id)
+    const now = clock()
+    const ticket = league ? pickTicket(league.fixtures, ids, now) : null
+    const next = league ? nextClubFixture(league.fixtures, ids, now) : null
+    // The next match has its own card at the top; the ticket stays for a live or just-finished match.
+    const active = ticket ? ['open', 'closing'].includes(roomState(ticket.t, now)) : false
+    return { league, ids, now, ticket, next, active }
+  })
+  const [{ league, ids, now, ticket, next, active }, data, checked] = await Promise.all([
+    plan,
+    getStandHome(
+      team.id,
+      s.userId,
+      plan.then((p) => p.next?.id ?? null),
+    ),
+    plan.then((p) => (p.ticket && p.active ? getCheckedIn(p.ticket.id) : false)),
   ])
+  const showTicket = !ticket || ticket.id !== next?.id || active
   const nameOf = (apiId: number) => displayTeam(apiId, league?.teams[String(apiId)]?.name)
   const live = league ? liveNow(league.fixtures, now) : []
 

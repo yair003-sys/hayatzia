@@ -1,5 +1,6 @@
 'use server'
 
+import { updateTag } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { lineupErrorHe, saveLineupSchema } from '../schema'
@@ -16,5 +17,7 @@ export const saveFanLineupAction = actionClient
       p_slots: slots.map((s) => ({ slot: s.slot, player_id: s.playerId })),
     })
     if (error) return { error: lineupErrorHe(error.message) }
+    // The club's shared totals and fans' XI for this match (getLineupAggregates): the fan sees their pick counted.
+    updateTag(`fan-lineup:${fixtureId}`)
     return { ok: true }
   })

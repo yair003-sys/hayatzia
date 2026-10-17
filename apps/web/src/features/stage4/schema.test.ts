@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chantSchema, checkinErrorHe, motmRanking, ratingsSchema } from './schema'
+import { chantSchema, checkinErrorHe, motmRanking, motmSquad, ratingsSchema } from './schema'
 
 describe('check-in errors', () => {
   it('explain why in plain Hebrew', () => {
@@ -40,5 +40,19 @@ describe('chantSchema', () => {
   it('needs a title, lyrics up to 2000', () => {
     expect(chantSchema.safeParse({ title: 'הצהובים עולים', lyrics: 'אולה' }).success).toBe(true)
     expect(chantSchema.safeParse({ title: ' ', lyrics: '' }).success).toBe(false)
+  })
+})
+
+describe('motmSquad (from the shared, cached club squad)', () => {
+  it('numbered players only, the sample XI first, then by number; the shared array is untouched', () => {
+    const squad = Object.freeze([
+      Object.freeze({ id: 'b', number: 7, in_xi: false }),
+      Object.freeze({ id: 'c', number: null, in_xi: true }),
+      Object.freeze({ id: 'a', number: 9, in_xi: true }),
+      Object.freeze({ id: 'd', number: 1, in_xi: true }),
+      Object.freeze({ id: 'e', number: 3, in_xi: false }),
+    ])
+    expect(motmSquad(squad).map((p) => p.id)).toEqual(['d', 'a', 'e', 'b'])
+    expect(squad.map((p) => p.id)).toEqual(['b', 'c', 'a', 'd', 'e'])
   })
 })

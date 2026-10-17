@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
@@ -49,13 +50,14 @@ const ACTIVITY_KEEP_MS = 60 * 24 * 60 * 60 * 1000
 /**
  * The badge: the fan's rows changed since the last visit, capped at 100 ("99+"). null when the read failed: the bell
  * then says it could not load and tries again, instead of showing no count (load test 2026-10-17, finding 6).
+ * Deduplicated per request: the home renders its own bell and the layout's floating bell asks too (perf round 2).
  */
-export async function getUnreadCount(): Promise<number | null> {
+export const getUnreadCount = cache(async (): Promise<number | null> => {
   const supabase = await createClient()
   if (!supabase) return 0
   const { data, error } = await supabase.rpc('activity_unread_count')
   return !error && typeof data === 'number' ? data : null
-}
+})
 
 /**
  * One page of the fan's list, newest first, keyset on (updated_at, id) over activity_feed_idx. A fixed number of

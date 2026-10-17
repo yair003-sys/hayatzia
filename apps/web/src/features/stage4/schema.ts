@@ -27,6 +27,14 @@ export function motmRanking(stats: RatingStat[]): { playerId: string; avg: numbe
     .sort((a, b) => b.avg - a.avg || b.count - a.count)
 }
 
+/**
+ * The squad offered for player-of-the-match ratings: numbered players only, the sample XI first, then by shirt number
+ * (the order of the table read it replaces). A new array: the club's cached squad is shared and never changed.
+ */
+export function motmSquad<P extends { number: number | null; in_xi: boolean }>(players: readonly P[]): P[] {
+  return players.filter((p) => p.number !== null).sort((a, b) => Number(b.in_xi) - Number(a.in_xi) || (a.number ?? 0) - (b.number ?? 0))
+}
+
 export const ratingsSchema = z.object({
   fixtureId: z.number().int().positive(),
   ratings: z
