@@ -117,7 +117,7 @@ select ok(exists (select 1 from pg_constraint where conname = 'dm_messages_wrapp
 
 -- ---------- 9. subscriptions per fan ----------
 insert into public.push_subscriptions (user_id, endpoint, p256dh, auth, created_at)
-  select '00000000-0000-0000-0000-000000000a63', 'https://push.example/cap' || g, 'k', 'a', now() - make_interval(secs => 20 - g)
+  select '00000000-0000-0000-0000-000000000a63', 'https://fcm.googleapis.com/cap' || g, 'k', 'a', now() - make_interval(secs => 20 - g)
   from generate_series(1, 14) g;
 select is((select count(*)::int from public.push_subscriptions where user_id = '00000000-0000-0000-0000-000000000a63'), 10,
   'a fan keeps at most 10 notification subscriptions');

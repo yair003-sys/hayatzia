@@ -100,6 +100,8 @@ const GROUP_ERRORS: Record<string, string> = {
   not_member: 'ההזמנה כבר לא בתוקף, או שאתה כבר לא בקבוצה',
   bad_name: 'שם הקבוצה צריך להיות 2–40 תווים',
   offensive_name: 'שם הקבוצה מכיל מילה לא ראויה. נסה שם אחר',
+  group_limit: 'פתחת הרבה קבוצות היום. נסה מחר',
+  invite_limit: 'שלחת הרבה הזמנות היום. נסה מחר',
   banned: BANNED_HE,
 }
 
@@ -213,12 +215,17 @@ export function qrUrl(origin: string, code: string): string {
   return `${origin.replace(/\/+$/, '')}/add/${code}`
 }
 
-const DM_CODES = ['requests_closed', 'awaiting_accept', 'rate_limit', 'bad_code', 'no_birth_date', 'blocked', 'banned', 'self', 'not_member', 'not_allowed'] as const
+const DM_CODES = ['requests_blocked', 'requests_closed', 'awaiting_accept', 'rate_limit', 'bad_code', 'no_birth_date', 'blocked', 'banned', 'self', 'not_member', 'not_allowed'] as const
+
+// A single generic refusal for a closed setting and a reached cap alike (security review 2026-10-17): it must never
+// reveal that the target takes requests from their club / QR only, which would out a likely minor.
+const BLOCKED_REQUEST_HE = 'לא ניתן לשלוח בקשת הודעה לאוהד הזה כרגע. נסו שוב מאוחר יותר'
 
 const DM_ERRORS: Record<string, string> = {
-  requests_closed: 'האוהד הזה מקבל הודעות רק מאוהדי הקבוצה שלו או דרך ברקוד',
+  requests_blocked: BLOCKED_REQUEST_HE,
+  requests_closed: BLOCKED_REQUEST_HE,
   awaiting_accept: 'ההודעה נשלחה. אפשר לכתוב שוב כשיאשרו',
-  rate_limit: 'שלחת הרבה בקשות היום. נסה מחר',
+  rate_limit: BLOCKED_REQUEST_HE,
   bad_code: 'הברקוד לא תקף',
   no_birth_date: 'צריך להשלים תאריך לידה',
   blocked: 'אי אפשר לפתוח שיחה עם האוהד הזה',

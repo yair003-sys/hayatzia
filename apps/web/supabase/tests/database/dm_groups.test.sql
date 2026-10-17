@@ -74,8 +74,9 @@ insert into public.blocks (blocked_id) values ('00000000-0000-0000-0000-00000000
 reset role;
 select pg_temp.as_fan('00000000-0000-0000-0000-0000000000d1');
 set local role authenticated;
-select throws_ok($$ select public.invite_to_group(current_setting('t.g')::uuid, array['00000000-0000-0000-0000-0000000000d6']::uuid[]) $$,
-  'P0001', 'blocked', 'no invite when a block exists with anyone in the group');
+-- L2 (2026-10-17): a block with a member is a silent skip, never a distinct error that would reveal the block.
+select is(public.invite_to_group(current_setting('t.g')::uuid, array['00000000-0000-0000-0000-0000000000d6']::uuid[]), '{}'::uuid[],
+  'a fan with a block to a member is silently skipped, not refused with a tell-tale error');
 
 -- ── 20 fans at most, pending invites included ──
 select lives_ok($$ select set_config('t.g2', public.create_group('עשרים', array(select ('00000000-0000-0000-0000-0000000001' || lpad(i::text, 2, '0'))::uuid

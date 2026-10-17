@@ -24,7 +24,7 @@ select lives_ok($$ insert into public.device_keys (device_id, public_jwk) values
 select lives_ok($$ insert into public.dm_threads (user_a, user_b) values ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000012') $$,
   'open a thread with a fan of the same club');
 select throws_ok($$ insert into public.dm_threads (user_a, user_b) values ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000014') $$,
-  '42501', 'requests_closed', 'no thread with a fan of another club who takes requests from their club only');
+  'P0001', 'requests_blocked', 'no thread with a fan of another club who takes requests from their club only (generic refusal)');
 select throws_ok($$ insert into public.dm_threads (user_a, user_b) values ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000013') $$,
   '42501', null, 'cannot open a thread between two other fans');
 select lives_ok($$ insert into public.dm_messages (thread_id, sender_device, iv, ciphertext, wrapped_keys)

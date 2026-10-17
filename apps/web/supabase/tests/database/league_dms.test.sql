@@ -191,16 +191,16 @@ reset role;
 select pg_temp.as_fan('d01');
 set local role authenticated;
 select throws_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d01'), pg_temp.uid('d03')),
-  greatest(pg_temp.uid('d01'), pg_temp.uid('d03'))), '42501', 'requests_closed', 'a minor gets no requests from other clubs');
+  greatest(pg_temp.uid('d01'), pg_temp.uid('d03'))), 'P0001', 'requests_blocked', 'a minor gets no requests from other clubs (generic refusal)');
 select throws_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d01'), pg_temp.uid('d06')),
-  greatest(pg_temp.uid('d01'), pg_temp.uid('d06'))), '42501', 'requests_closed', 'a QR-only fan gets no requests');
+  greatest(pg_temp.uid('d01'), pg_temp.uid('d06'))), 'P0001', 'requests_blocked', 'a QR-only fan gets no requests (generic refusal)');
 reset role;
 select pg_temp.as_fan('d02');
 set local role authenticated;
 select lives_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d02'), pg_temp.uid('d03')),
   greatest(pg_temp.uid('d02'), pg_temp.uid('d03'))), 'a minor gets requests from their own club');
 select throws_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d02'), pg_temp.uid('d06')),
-  greatest(pg_temp.uid('d02'), pg_temp.uid('d06'))), '42501', 'requests_closed', 'QR-only means even the same club');
+  greatest(pg_temp.uid('d02'), pg_temp.uid('d06'))), 'P0001', 'requests_blocked', 'QR-only means even the same club (generic refusal)');
 reset role;
 
 -- Who may open at all.
@@ -234,7 +234,7 @@ select lives_ok($$ do $d$ begin
   insert into public.dm_threads (user_a, user_b) values (least(auth.uid(), pg_temp.uid('e21')), greatest(auth.uid(), pg_temp.uid('e21')));
 end $d$ $$, '20 requests in a day');
 select throws_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d09'), pg_temp.uid('e22')),
-  greatest(pg_temp.uid('d09'), pg_temp.uid('e22'))), 'P0001', 'rate_limit', 'the 21st request in a day is refused');
+  greatest(pg_temp.uid('d09'), pg_temp.uid('e22'))), 'P0001', 'requests_blocked', 'the 21st request in a day is refused (generic)');
 reset role;
 select pg_temp.as_fan('d05');
 set local role authenticated;
@@ -247,7 +247,7 @@ select lives_ok($$ do $d$ begin
   insert into public.dm_threads (user_a, user_b) values (least(auth.uid(), pg_temp.uid('e06')), greatest(auth.uid(), pg_temp.uid('e06')));
 end $d$ $$, 'a new account sends 5 requests');
 select throws_ok(format('insert into public.dm_threads (user_a, user_b) values (%L, %L)', least(pg_temp.uid('d05'), pg_temp.uid('e07')),
-  greatest(pg_temp.uid('d05'), pg_temp.uid('e07'))), 'P0001', 'rate_limit', 'the 6th request of a new account is refused');
+  greatest(pg_temp.uid('d05'), pg_temp.uid('e07'))), 'P0001', 'requests_blocked', 'the 6th request of a new account is refused (generic)');
 reset role;
 
 -- Both sides write first at the same moment: one thread (unique pair), and the other side's message is a reply.

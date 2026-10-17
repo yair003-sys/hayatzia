@@ -21,6 +21,7 @@ const db = vi.hoisted(() => ({
   pushes: [] as { to: string[]; payload: unknown }[],
   inserted: [] as { table: string; row: unknown }[],
   tripInsertError: null as null | { code: string; message: string },
+  profileUpdateError: null as null | { code: string; message: string },
 }))
 
 class Query {
@@ -56,6 +57,7 @@ class Query {
   private result() {
     if (this.table === 'trips' && this.op === 'insert') return { data: null, error: db.tripInsertError }
     if (this.table === 'trips') return { data: db.tripOwner ? { user_id: db.tripOwner } : null, error: null }
+    if (this.table === 'profiles' && this.op === 'update') return { data: null, error: db.profileUpdateError }
     if (this.table === 'profiles') return { data: db.nick ? { nick: db.nick } : null, error: null }
     if (this.table === 'trip_requests' && this.op === 'insert') return { data: null, error: db.insertError }
     if (this.table === 'trip_requests' && this.op === 'update') {
@@ -84,7 +86,7 @@ vi.mock('@/features/push/server/send', () => ({
   },
 }))
 
-import { createTripAction, decideSeatAction, requestSeatAction } from './actions'
+import { createTripAction, decideSeatAction, requestSeatAction, setGenderAction } from './actions'
 
 beforeEach(() => {
   db.me = ME
@@ -98,6 +100,21 @@ beforeEach(() => {
   db.pushes = []
   db.inserted = []
   db.tripInsertError = null
+  db.profileUpdateError = null
+})
+
+describe('setGenderAction: gender is set once (2026-10-17)', () => {
+  it('saves the first value (null → value)', async () => {
+    const r = await setGenderAction({ gender: 'f' })
+    expect(r.data).toEqual({ ok: true })
+    expect(db.inserted).toEqual([]) // it updates, never inserts
+  })
+
+  it('a second change returns the "contact support" message, never the generic retry', async () => {
+    db.profileUpdateError = { code: '42501', message: 'gender_locked' }
+    const r = await setGenderAction({ gender: 'm' })
+    expect(r.data).toEqual({ error: 'המגדר כבר נקבע ומוצג רק בנסיעות. לשינוי פנו לתמיכה.' })
+  })
 })
 
 describe('trip push: a request', () => {
