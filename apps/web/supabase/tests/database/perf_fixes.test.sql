@@ -65,7 +65,10 @@ insert into public.trips (user_id, fixture_id, kind, from_city, pickup, seats) v
   (pg_temp.uid('d11'), 97, 'offer', 'לוד', 'תחנה', 2);
 update public.trips set hidden_at = now() where user_id = pg_temp.uid('d11');
 insert into public.trip_requests (trip_id, user_id, status)
-  select id, pg_temp.uid('d09'), 'accepted' from public.trips where user_id = pg_temp.uid('d01') and kind = 'offer';
+  select id, pg_temp.uid('d09'), 'pending' from public.trips where user_id = pg_temp.uid('d01') and kind = 'offer';
+select pg_temp.as_fan('d01');  -- only the driver accepts (trip_requests_guard)
+update public.trip_requests set status = 'accepted' where user_id = pg_temp.uid('d09');
+select pg_temp.as_owner();
 
 -- What one fan sees: 'poster/kind' of every visible trip, in a fixed order.
 create function pg_temp.seen() returns text language sql as $$
