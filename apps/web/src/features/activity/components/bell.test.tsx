@@ -1,13 +1,14 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACTIVITY_SEEN_EVENT } from '../activity'
-import { Bell, FloatingBell } from './bell'
+import { Bell, FloatingBell, RETRY_UNKNOWN_MS } from './bell'
 
 type Listener = (m: { event: string; payload: unknown }) => void
 const h = vi.hoisted(() => ({
   pathname: '/stand',
   rpc: vi.fn(),
   listeners: [] as { topic: string; fn: Listener }[],
+  created: 0,
 }))
 
 vi.mock('next/link', () => ({
@@ -18,7 +19,12 @@ vi.mock('next/link', () => ({
   ),
 }))
 vi.mock('next/navigation', () => ({ usePathname: () => h.pathname }))
-vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ rpc: h.rpc }) }))
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => {
+    h.created++
+    return { rpc: h.rpc }
+  },
+}))
 vi.mock('@/lib/supabase/shared-channel', () => ({
   listenPrivate: (_c: unknown, topic: string, fn: Listener) => {
     const entry = { topic, fn }
@@ -177,4 +183,37 @@ describe('Bell', () => {
     expect(h.rpc).toHaveBeenCalledWith('activity_unread_count')
     expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 2 חדשות')
   })
+
+  it('an unknown count (the server read failed) says so, is read again, and never shows a made-up 0', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST003' } })
+    render(<Bell meId={ME} count={null} />)
+    const link = screen.getByRole('link', { name: 'התראות, לא הצלחנו לטעון. נסה שוב' })
+    expect(link).toHaveTextContent('!')
+    await tick(1000) // the read on mount fails too
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, לא הצלחנו לטעון. נסה שוב')
+    const calls = h.rpc.mock.calls.length
+    h.rpc.mockResolvedValue({ data: 5, error: null })
+    await tick(RETRY_UNKNOWN_MS + 1000)
+    expect(h.rpc.mock.calls.length).toBeGreaterThan(calls)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 5 חדשות')
+  })
+
+  it('a failed read keeps the last known count, and nothing is read again while it is known', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST003' } })
+    render(<Bell meId={ME} count={4} />)
+    await tick(1000)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 4 חדשות')
+    const calls = h.rpc.mock.calls.length
+    await tick(RETRY_UNKNOWN_MS * 2)
+    expect(h.rpc.mock.calls.length).toBe(calls)
+  })
+
+  it('the browser Supabase client is created in the effect, not while rendering (load test finding 7)', () => {
+    h.created = 0
+    const { unmount } = render(<Bell meId={ME} count={1} />)
+    // render() runs the effects too; what matters is that the render itself did not create it (see bell.server.test).
+    expect(h.created).toBe(1)
+    unmount()
+  })
 })
+

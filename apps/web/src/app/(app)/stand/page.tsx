@@ -28,6 +28,7 @@ import { MatchTicket } from '@/features/stand-home/components/match-ticket'
 import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
 import { CheckinButton } from '@/features/stage4/components/checkin-button'
+import { LoadError } from '@/components/load-error'
 import { getCheckedIn } from '@/features/stage4/server/queries'
 import { DONE_STATUSES } from '@/features/matches/schema'
 import { roomState } from '@/features/match-room/schema'
@@ -99,6 +100,9 @@ async function Home() {
 
 const clock = () => Date.now()
 
+/** A count whose read failed shows a dash (and the home offers "נסה שוב"), never a made-up 0. */
+const shownCount = (n: number | null) => (n === null ? '—' : n)
+
 /** The earlier home's sections that the sketch does not replace (live games, match day, trips, links, sample XI). */
 async function StandHome() {
   const s = await getSessionProfile()
@@ -165,7 +169,7 @@ async function StandHome() {
         <span className="sh-card-h">
           <Car className="size-5" aria-hidden="true" />
           <b>נוסעים למשחק</b>
-          <span className="sh-chip open">{data.trips} נסיעות</span>
+          <span className="sh-chip open">{shownCount(data.trips)} נסיעות</span>
           <ChevronLeft className="size-4 text-dim" aria-hidden="true" />
         </span>
         {next ? (
@@ -183,19 +187,20 @@ async function StandHome() {
         <Link href="/stand/events" className="sh-tile">
           <i aria-hidden="true"><CalendarDays className="size-5" strokeWidth={1.75} /></i>
           <b>אירועים</b>
-          <span>{data.events} קרובים</span>
+          <span>{shownCount(data.events)} קרובים</span>
         </Link>
         <Link href="/stand/market" className="sh-tile">
           <i aria-hidden="true"><Shirt className="size-5" strokeWidth={1.75} /></i>
           <b>שוק אוהדים</b>
-          <span>{data.market} מודעות</span>
+          <span>{shownCount(data.market)} מודעות</span>
         </Link>
         <Link href="/stand/chants" className="sh-tile">
           <i aria-hidden="true"><Music className="size-5" strokeWidth={1.75} /></i>
           <b>שירי הקהל</b>
-          <span>{data.chants} שירים</span>
+          <span>{shownCount(data.chants)} שירים</span>
         </Link>
       </nav>
+      {[data.trips, data.events, data.market, data.chants].includes(null) && <LoadError compact />}
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="sh-sec flex-1">הרכב לדוגמה</h2>

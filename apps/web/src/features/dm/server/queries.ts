@@ -58,8 +58,10 @@ export type GroupDetails = {
  * The inbox: private threads and groups merged, newest first, plus pending group invites.
  * One query per kind and one nicknames query; metadata only (message contents are never read here). Message requests
  * (unaccepted threads) come in the same thread query, marked, so the inbox needs no extra round trip.
+ * null when any of the three reads failed: the inbox says "could not load" instead of showing part of the list (load
+ * test 2026-10-17, finding 6: 1 chat on screen while the fan had 5).
  */
-export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invites: Invite[] }> {
+export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invites: Invite[] } | null> {
   const supabase = await createClient()
   if (!supabase) return { rows: [], invites: [] }
   const [threadsRes, memberships, blocksRes] = await Promise.all([
@@ -75,9 +77,10 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
       .limit(100),
     supabase.from('blocks').select('blocked_id'),
   ])
-  const blocked = new Set(blocksRes.data?.map((b) => b.blocked_id))
+  if (threadsRes.error || memberships.error || blocksRes.error || !threadsRes.data || !memberships.data || !blocksRes.data) return null
+  const blocked = new Set(blocksRes.data.map((b) => b.blocked_id))
 
-  const rows: InboxRow[] = (threadsRes.data ?? [])
+  const rows: InboxRow[] = threadsRes.data
     .map((t) => {
       const mineA = t.user_a === userId
       return {
@@ -101,7 +104,7 @@ export async function getInbox(userId: string): Promise<{ rows: InboxRow[]; invi
   const invites: Invite[] = []
   const inviterIds = new Set<string>()
   const pending: { groupId: string; name: string; invitedBy: string; members: number; invitedAt: string }[] = []
-  for (const m of memberships.data ?? []) {
+  for (const m of memberships.data) {
     const g = m.dm_groups
     if (!g) continue
     if (m.role === 'invited') {

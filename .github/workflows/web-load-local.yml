@@ -1,7 +1,9 @@
 name: web-load-local (load test on a throwaway local stack)
 
-# Manual (workflow_dispatch, once this file is on main), or a push to the load-test branch, which reads its
-# parameters from apps/web/load/run.env (dispatch needs the file on the default branch). Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
+# Manual from main: gh workflow run web-load-local.yml -f users=50000 -f vus=2000 -f ws=2000 -f page_vus=60 -f goal_rate=300
+# -f hold=300 (dispatch needs this file on the default branch). Before that, or for a branch: a push that changes
+# apps/web/load/run.env on one of the branches below runs it with the parameters in that file.
+# Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
 # Next.js app on it, then runs k6 (PostgREST / RPC / Storage / Realtime + the real pages as signed-in fans) and the
 # Playwright UI consistency checks at 375 px during and after the load. Never touches the staging or production
 # Supabase projects or Vercel: no environment, no secrets, and every step refuses a non-local URL.
@@ -31,10 +33,10 @@ on:
         description: 'fans that get a session (tokens)'
         default: '5000'
       fixes:
-        description: '1 = apply load/proposed-fixes.sql to the throwaway local database before the load (experiment)'
+        description: '1 = also apply load/proposed-fixes.sql (the 2026-10-17 experiment; since migration 20261017090000 the fixes are in the migrations)'
         default: '0'
   push:
-    branches: [load-test]
+    branches: [load-test, perf-fixes]
     paths: ['apps/web/load/run.env']
 
 permissions:

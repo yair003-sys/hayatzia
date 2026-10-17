@@ -71,7 +71,8 @@ async function decryptOne(supabase: Client, meId: string, row: unknown): Promise
 export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: string; prefs: NotificationPrefs; myClubApiIds: number[] }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [supabase] = useState(() => createClient())
+  // The browser Supabase client is taken in the handlers and the effect below, never while rendering on the server
+  // (load test 2026-10-17, finding 7: its auth start reads the clock, which Next.js reports during prerendering).
   const [banner, setBanner] = useState<ShownBanner | null>(null)
   // A mouse over the banner or focus inside it holds it. Kept per banner, so a dismissed one never holds the next,
   // and hover and focus apart, so leaving with the mouse does not release a keyboard focus (or the reverse).
@@ -127,6 +128,7 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
 
   const lookUp = useCallback(
     async (event: BannerEvent, alertId?: number): Promise<Content | null> => {
+      const supabase = createClient()
       const href = bannerHref(event)
       switch (event.kind) {
         case 'match': {
@@ -210,10 +212,11 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
         }
       }
     },
-    [supabase, meId, trips],
+    [meId, trips],
   )
 
   useEffect(() => {
+    const supabase = createClient()
     const gate = arrivalGate() // newer replaces older, also when lookups finish out of order
     const handle = async (event: BannerEvent, alertId?: number) => {
       const n = gate.arrive()
@@ -245,7 +248,7 @@ export function AlertBanner({ meId, prefs: serverPrefs, myClubApiIds }: { meId: 
         offInbox()
       }
     })
-  }, [supabase, meId, lookUp])
+  }, [meId, lookUp])
 
   const open = useCallback(
     (href: string) => {

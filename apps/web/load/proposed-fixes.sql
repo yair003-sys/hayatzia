@@ -1,3 +1,5 @@
+-- SUPERSEDED: fixes 1-4 below now ship as migration supabase/migrations/20261017090000_perf_fixes.sql (with pgTAP
+-- tests in supabase/tests/database/perf_fixes.test.sql). This file is kept as the record of the experiment runs.
 -- LOAD TEST EXPERIMENT ONLY (not a migration, never applied to staging or production by this file): the two fixes
 -- proposed in docs/load-test-2026-10-17.md, applied to the throwaway local database of web-load-local.yml when the
 -- run is started with FIXES=1, so the same load can be measured with and without them. Same answers as today

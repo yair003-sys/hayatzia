@@ -31,7 +31,8 @@ const byTime = (a: Item, b: Item) => a.created_at.localeCompare(b.created_at) ||
 // Group messages never pass through the app server: encrypted on this device for every device of every
 // current member, written and read straight against the database with the fan's own session.
 export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: string; meId: string; nicks: Record<string, string> }) {
-  const [supabase] = useState(() => createClient())
+  // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
+  // 2026-10-17, finding 7).
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
   const [items, setItems] = useState<Item[]>([])
   const [nicks, setNicks] = useState<Record<string, string>>(initialNicks)
@@ -68,10 +69,10 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       const missing = [...new Set(ids.filter((id): id is string => !!id && !known.current.has(id)))]
       if (missing.length === 0) return
       for (const id of missing) known.current.add(id)
-      const { data } = await supabase.from('profiles').select('user_id,nick').in('user_id', missing)
+      const { data } = await createClient().from('profiles').select('user_id,nick').in('user_id', missing)
       if (data?.length) setNicks((cur) => ({ ...cur, ...Object.fromEntries(data.map((p) => [p.user_id, p.nick])) }))
     },
-    [supabase],
+    [],
   )
 
   // Opening the group clears its unread counter.
@@ -82,6 +83,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   // History (messages + system lines, merged by time) + live messages.
   useEffect(() => {
     if (!key) return
+    const supabase = createClient()
     let cancelled = false
     // My blocks first: the live channel does not know who I blocked, so it waits for this list.
     const blocksReady = supabase
@@ -142,7 +144,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       cancelled = true
       void supabase.removeChannel(channel)
     }
-  }, [key, groupId, meId, supabase, reveal, learnNicks])
+  }, [key, groupId, meId, reveal, learnNicks])
 
   const fail = (p: Msg, why: string, kind: FailureKind = 'retry') => {
     setStatus(why)
@@ -164,6 +166,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   const deliver = async (p: Msg) => {
     if (!key || p.text === null) return
     setStatus(null)
+    const supabase = createClient()
     try {
       // Current members at the moment of sending: never invitees or removed fans, never fans I blocked.
       const [mem, blk] = await Promise.all([

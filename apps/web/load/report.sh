@@ -95,6 +95,9 @@ q() { psql "$DB_URL" -XAt "$@" 2>/dev/null; }
   done
   if [ -f "$OUT/next.log" ]; then
     echo
+    # Finding 7 of 2026-10-17: the browser Supabase client created while rendering on the server (should be 0).
+    echo "**next start**: \"Date.now() while prerendering\" errors: $(grep -c 'unstable value Date.now()' "$OUT/next.log")"
+    echo
     echo "**next start** (errors, top 10):"
     echo
     echo '```'

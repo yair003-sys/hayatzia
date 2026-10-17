@@ -43,7 +43,8 @@ export function DmThread({
   /** A message request (2026-10-16): incoming → accept or block; outgoing → one message, then wait. */
   request?: RequestSide
 }) {
-  const [supabase] = useState(() => createClient())
+  // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
+  // 2026-10-17, finding 7).
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
   const [messages, setMessages] = useState<Shown[]>([])
   const [pending, setPending] = useState<Shown[]>([])
@@ -81,6 +82,7 @@ export function DmThread({
   // History + live.
   useEffect(() => {
     if (!key) return
+    const supabase = createClient()
     let cancelled = false
     void supabase
       .from('dm_messages')
@@ -124,7 +126,7 @@ export function DmThread({
       cancelled = true
       void supabase.removeChannel(channel)
     }
-  }, [key, threadId, meId, supabase, reveal])
+  }, [key, threadId, meId, reveal])
 
   const fail = (p: Shown, why: string, kind: FailureKind = 'retry') => {
     setStatus(why)
@@ -156,7 +158,7 @@ export function DmThread({
       if (!devices.some((d) => d.user_id === otherId && enc.wrapped_keys[d.id])) {
         return fail(p, 'ההודעה לא נשלחה', 'permanent')
       }
-      const { data, error } = await supabase
+      const { data, error } = await createClient()
         .from('dm_messages')
         .insert({ thread_id: threadId, ...enc, reply_to: p.reply_to })
         .select('id,sender_id,created_at,reply_to')

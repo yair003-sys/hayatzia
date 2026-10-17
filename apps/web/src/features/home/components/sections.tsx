@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Users } from 'lucide-react'
 import { Brand } from '@/components/brand'
+import { LoadError } from '@/components/load-error'
 import { Bell } from '@/features/activity/components/bell'
 import { getUnreadCount } from '@/features/activity/server/queries'
 import { HomeCrowdWar } from '@/features/crowd-war/components/crowd-war'
@@ -27,6 +28,8 @@ import { StoriesRow } from './stories-row'
 // The home's sections (redesign 2026-10-14). Each is its own Server Component, rendered by the page inside its own
 // <Suspense> so the screen streams section by section. They always show, with an empty state when there is no data
 // yet (owner, 2026-10-14); only the next match and the mini table are left out when there is no match or table.
+// A section whose read failed says "לא הצלחנו לטעון. נסה שוב" instead of its empty state (load test 2026-10-17,
+// finding 6): an empty state is a claim about the data.
 
 type Fan = { team: Team; userId: string }
 
@@ -62,6 +65,7 @@ async function HeaderBell({ userId }: { userId: string }) {
 export async function StoriesSection({ team, userId, nick }: Fan & { nick: string }) {
   await connection()
   const [league, groups] = await Promise.all([getLeague(), getStories(team.id, userId)])
+  if (!groups) return <LoadError compact />
   const circles = league ? homeCircles(league.fixtures, clubApiIds(league, team.id), clock()) : { lineup: null, rate: null }
   return (
     <StoriesRow
@@ -161,11 +165,11 @@ export async function NextMatchSection({ team }: { team: Team }) {
 /** Always shown while the club has a squad (it always has): the cards say "not rated yet" / invite the first review. */
 export async function PlayersSection({ team, userId }: Fan) {
   const players = await getHomePlayers(team.id, userId)
-  if (players.length === 0) return null
+  if (players?.length === 0) return null
   return (
     <section aria-labelledby="hm-players-h" className="hm-sec">
       <SectionHead id="hm-players-h" title="השחקנים בעיני האוהדים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
-      <PlayerReviews players={players} />
+      {players ? <PlayerReviews players={players} /> : <LoadError compact />}
     </section>
   )
 }
@@ -177,7 +181,7 @@ export async function HotSection({ team, userId, nick }: Fan & { nick: string })
   return (
     <section aria-labelledby="hm-hot-h" className="hm-sec">
       <SectionHead id="hm-hot-h" emoji="🔥" title="החם בכיכר היום" more={{ href: '/square', label: 'לכיכר' }} />
-      <HotClips clips={clips} meId={userId} myTeamId={team.id} myNick={nick} teamShort={team.short} />
+      {clips ? <HotClips clips={clips} meId={userId} myTeamId={team.id} myNick={nick} teamShort={team.short} /> : <LoadError compact />}
     </section>
   )
 }
@@ -185,8 +189,21 @@ export async function HotSection({ team, userId, nick }: Fan & { nick: string })
 // ── 7. team chat ──────────────────────────────────────────────────────────────────────────
 /** Always shown; an empty chat invites the first message. */
 export async function ChatSection({ team }: { team: Team }) {
-  const { messages, hidden } = await getChatPreview(team.id)
-  return <ChatPreview teamId={team.id} initial={messages} hidden={hidden} />
+  const preview = await getChatPreview(team.id)
+  if (!preview) {
+    return (
+      <section aria-labelledby="hm-chat-h" className="hm-chat">
+        <h2 id="hm-chat-h" className="hm-h2">
+          עכשיו בצ׳אט של האוהדים
+        </h2>
+        <LoadError compact />
+        <Link href="/stand/chat" className="hm-join">
+          הצטרף לשיחה
+        </Link>
+      </section>
+    )
+  }
+  return <ChatPreview teamId={team.id} initial={preview.messages} hidden={preview.hidden} />
 }
 
 // ── 8. mini table ─────────────────────────────────────────────────────────────────────────
@@ -242,7 +259,16 @@ export async function MiniTableSection({ team }: { team: Team }) {
 // ── 9. fans of the week ───────────────────────────────────────────────────────────────────
 /** Always shown; before anyone has points this week it says how to get in. */
 export async function FansOfWeekSection({ team }: { team: Team }) {
-  return <FansOfWeek fans={await getFansOfWeek(team.id)} />
+  const fans = await getFansOfWeek(team.id)
+  if (!fans) {
+    return (
+      <section aria-labelledby="hm-fans-h" className="hm-sec">
+        <SectionHead id="hm-fans-h" emoji="🏆" title="אוהדי השבוע" />
+        <LoadError compact />
+      </section>
+    )
+  }
+  return <FansOfWeek fans={fans} />
 }
 
 /** A section's place while it loads: the shape of what comes, no text. */

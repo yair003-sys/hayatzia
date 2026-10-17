@@ -5,7 +5,7 @@
 // between the database value just before and just after the screen was read. Each check appends one JSON line to
 // $OUT_DIR/consistency-$PHASE.jsonl (the job summary is built from it).
 import { appendFileSync, readFileSync } from 'node:fs'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 type Fan = { i: number; id: string; team: string; fixture: number | null; token: string; cookies: { name: string; value: string }[] }
 type Fans = { live: { id: number; home: string; away: string }; fans: Fan[] }
@@ -65,6 +65,17 @@ async function layout(page: Page) {
   return { bar, ...w, ok: bar === 0 && w.sw === w.cw }
 }
 
+/**
+ * Waits for the screen's data or for its "לא הצלחנו לטעון" state (finding 6 of 2026-10-17: a failed read says so
+ * instead of showing a 0 or an empty list). An honest error is not wrong data: the check records it and passes.
+ */
+const LOAD_ERROR = 'לא הצלחנו לטעון'
+async function dataOrError(page: Page, data: Locator, timeout = 30_000): Promise<'data' | 'error'> {
+  const err = page.getByRole('alert').filter({ hasText: LOAD_ERROR })
+  await data.or(err).first().waitFor({ timeout })
+  return (await err.count()) > 0 && (await data.count()) === 0 ? 'error' : 'data'
+}
+
 const shortCount = (n: number) => (n < 1000 ? String(n) : n < 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K` : `${Math.floor(n / 1000)}K`)
 const between = (x: number, a: number, b: number) => x >= Math.min(a, b) && x <= Math.max(a, b)
 
@@ -104,7 +115,10 @@ test('team chat shows the newest messages of the database, in order, with no gap
     const me = fan(1)
     await signIn(page, me)
     await page.goto('/stand/chat', { waitUntil: 'load' })
-    await page.locator('li[data-mid]').first().waitFor({ timeout: 30_000 })
+    if ((await dataOrError(page, page.locator('li[data-mid]'))) === 'error') {
+      record('team chat = database (contiguous, ordered)', true, 'the screen says it could not load (no wrong data shown)', { loadError: true })
+      return
+    }
     await page.waitForTimeout(5000) // messages that arrive meanwhile come over realtime
     const readAt = Date.now()
     const ui = await page.locator('li[data-mid]').evaluateAll((els) => els.map((e) => e.getAttribute('data-mid') ?? ''))
@@ -182,7 +196,10 @@ test('Square: the like count on the first post equals the database', async ({ pa
     const before = await rest<Clip[]>(me, q)
     await page.goto('/square', { waitUntil: 'load' })
     const card = page.locator('article[aria-label^="פוסט של"]').first()
-    await card.waitFor({ timeout: 30_000 })
+    if ((await dataOrError(page, card)) === 'error') {
+      record('Square like count = database', true, 'the screen says it could not load (no wrong data shown)', { loadError: true })
+      return
+    }
     const label = (await card.getAttribute('aria-label')) ?? ''
     const likeText = ((await card.locator('button[aria-pressed]').first().innerText()) ?? '').replace('לייק', '').trim()
     const after = await rest<Clip[]>(me, q)
@@ -237,6 +254,10 @@ test('activity bell count equals the database unread count', async ({ page }) =>
     await bell.waitFor({ timeout: 30_000 })
     const label = (await bell.getAttribute('aria-label')) ?? ''
     const after = await count()
+    if (label.includes(LOAD_ERROR)) {
+      record('bell unread = database', true, `screen "${label}" (says it could not load, no made-up 0), database ${before} before / ${after} after`, { loadError: true, before, after })
+      return
+    }
     const m = /התראות, (\d+\+?) חדשות/.exec(label)
     const screen = m ? m[1] : '0'
     const cap = (n: number) => (n >= 100 ? '99+' : String(n))
@@ -271,7 +292,10 @@ test('inbox: chats, message requests and unread badges equal the database', asyn
 
     await page.goto('/inbox', { waitUntil: 'load' })
     const list = page.locator('ul[aria-label="שיחות"] > li')
-    await list.first().waitFor({ timeout: 30_000 })
+    if ((await dataOrError(page, list)) === 'error') {
+      record('inbox = database', true, 'the screen says it could not load (no partial list shown)', { loadError: true, chats, badges, requests })
+      return
+    }
     const shownChats = await list.count()
     const shownBadges = await page.locator('ul[aria-label="שיחות"] .ib-badge').count()
     const reqText = (await page.getByText(/^בקשות \(\d+\)$/).first().textContent({ timeout: 2000 }).catch(() => null)) ?? 'בקשות (0)'

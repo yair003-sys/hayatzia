@@ -38,7 +38,7 @@ export function TeamChat({
         // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.
         return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
       }}
-      loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? []}
+      loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? null}
     />
   )
 }

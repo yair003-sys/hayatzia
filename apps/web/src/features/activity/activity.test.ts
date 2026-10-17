@@ -65,6 +65,11 @@ describe('badge', () => {
     expect(bellLabel(5)).toBe('התראות, 5 חדשות')
     expect(bellLabel(100)).toBe('התראות, 99+ חדשות')
   })
+
+  it('an unknown count (the read failed) is never shown as 0', () => {
+    expect(badgeLabel(null)).toBe('!')
+    expect(bellLabel(null)).toBe('התראות, לא הצלחנו לטעון. נסה שוב')
+  })
 })
 
 describe('relativeTime', () => {

@@ -3,17 +3,21 @@
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { ImagePlus } from 'lucide-react'
+import { LoadError } from '@/components/load-error'
 import { FEED_SIZE, type Audience, type Clip } from '../schema'
 import { loadMoreSquareAction } from '../server/actions'
 import { ClipCard } from './clip-card'
 import { UploadClip } from './upload-clip'
 
-type Props = { initial: Clip[]; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode }
+/** `initial` null = the first page could not be read: "could not load" with a retry, never "the Square is empty". */
+type Props = { initial: Clip[] | null; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode }
 
 /** Reels: one post per screen, swipe up for the next; the next page loads as the last post comes into view. */
 export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
-  const [clips, setClips] = useState(initial)
-  const [hasMore, setHasMore] = useState(initial.length >= FEED_SIZE)
+  const [clips, setClips] = useState(initial ?? [])
+  const [hasMore, setHasMore] = useState((initial?.length ?? 0) >= FEED_SIZE)
+  // A page that failed to load: the feed says so and offers a retry (the observer does not fire again by itself).
+  const [moreFailed, setMoreFailed] = useState(false)
   const [pending, start] = useTransition()
   const end = useRef<HTMLDivElement>(null)
   const last = clips.filter((c) => !c.uploading).at(-1)
@@ -48,21 +52,31 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
     />
   )
 
+  const loadMore = (after: Clip) =>
+    start(async () => {
+      const r = await loadMoreSquareAction({ createdAt: after.created_at, id: after.id, audience }).catch(() => null)
+      const more = r?.data?.clips
+      if (!more) {
+        setMoreFailed(true)
+        return
+      }
+      setMoreFailed(false)
+      setClips((cur) => [...cur, ...more.filter((m) => !cur.some((x) => x.id === m.id))])
+      setHasMore(more.length >= FEED_SIZE)
+    })
+
   useEffect(() => {
     const el = end.current
-    if (!el || !hasMore || !last) return
+    if (!el || !hasMore || !last || moreFailed) return
     const io = new IntersectionObserver(([e]) => {
       if (!e?.isIntersecting || pending) return
-      start(async () => {
-        const r = await loadMoreSquareAction({ createdAt: last.created_at, id: last.id, audience })
-        const more = r.data?.clips ?? []
-        setClips((cur) => [...cur, ...more.filter((m) => !cur.some((x) => x.id === m.id))])
-        setHasMore(more.length >= FEED_SIZE)
-      })
+      loadMore(last)
     })
     io.observe(el)
     return () => io.disconnect()
-  }, [hasMore, last, audience, pending])
+    // `loadMore` is recreated every render; the values above decide when to observe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, last, audience, pending, moreFailed])
 
   return (
     <div className="sq-root">
@@ -70,7 +84,11 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
         {tabs}
         {upload}
       </div>
-      {clips.length === 0 ? (
+      {initial === null && clips.length === 0 ? (
+        <div className="sq-empty">
+          <LoadError />
+        </div>
+      ) : clips.length === 0 ? (
         <div className="sq-empty">
           <span className="sq-empty-ico" aria-hidden="true">
             <ImagePlus className="size-7" strokeWidth={1.5} />
@@ -88,7 +106,7 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
           ))}
           {hasMore && (
             <div ref={end} className="grid h-24 snap-start place-items-center text-sm text-muted">
-              {pending ? 'טוען עוד…' : ''}
+              {moreFailed && last ? <LoadError compact onRetry={() => loadMore(last)} /> : pending ? 'טוען עוד…' : ''}
             </div>
           )}
         </div>

@@ -13,7 +13,8 @@ export type EncryptedRow = EncryptedMessage & { id: string; sender_id: string; c
  * Plaintext never leaves the browser.
  */
 export function useDeviceKey(meId: string) {
-  const [supabase] = useState(() => createClient())
+  // The browser Supabase client is taken in the effect and the callback, never while rendering on the server (load
+  // test 2026-10-17, finding 7).
   const [key, setKey] = useState<DeviceKey | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const pubs = useRef(new Map<string, string>()) // `${user}/${device}` → public JWK
@@ -34,25 +35,25 @@ export function useDeviceKey(meId: string) {
         return
       }
       const k = loaded.key
-      const { error } = await supabase.from('device_keys').insert({ device_id: k.id, public_jwk: k.publicJwk })
+      const { error } = await createClient().from('device_keys').insert({ device_id: k.id, public_jwk: k.publicJwk })
       if (error && error.code !== '23505') console.warn('device key', error.message)
       if (!cancelled) setKey(k)
     })()
     return () => {
       cancelled = true
     }
-  }, [meId, supabase])
+  }, [meId])
 
   const devicesOf = useCallback(
     async (userIds: string[]): Promise<(PublicDevice & { user_id: string; created_at: string })[]> => {
       if (userIds.length === 0) return []
-      const { data } = await supabase.from('device_keys').select('user_id,device_id,public_jwk,created_at').in('user_id', userIds)
+      const { data } = await createClient().from('device_keys').select('user_id,device_id,public_jwk,created_at').in('user_id', userIds)
       return (data ?? []).map((d) => {
         pubs.current.set(`${d.user_id}/${d.device_id}`, d.public_jwk)
         return { user_id: d.user_id, id: d.device_id, publicJwk: d.public_jwk, created_at: d.created_at }
       })
     },
-    [supabase],
+    [],
   )
 
   /** Decrypts rows with this device's key; `text` is null when this device cannot read a row. */

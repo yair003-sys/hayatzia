@@ -5,5 +5,16 @@ import nextTs from 'eslint-config-next/typescript'
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'playwright-report/**', 'test-results/**', 'src/lib/supabase/database.types.ts', 'load/**']),
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    'playwright-report/**',
+    'test-results/**',
+    'src/lib/supabase/database.types.ts',
+    // The load test's k6 and node scripts (plain JS run by k6 / node); its TypeScript files are linted with the app.
+    'load/**/*.js',
+    'load/**/*.mjs',
+  ]),
 ])
