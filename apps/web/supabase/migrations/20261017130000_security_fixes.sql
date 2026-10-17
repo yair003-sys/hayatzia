@@ -66,11 +66,20 @@ end $$;
 
 -- Keep the linking request while either fan is in an open harm case (not only the deleter). Only the rider deletes
 -- their own request row; extend the lock so the trip's driver being in a case also keeps it (the evidence stays).
+-- Security definer so the driver's trip is looked up WITHOUT RLS (a ride-suspended driver's trip is hidden from the
+-- rider, so an inline subquery in the policy would see nothing and wrongly allow the delete).
+create function private.trip_request_driver_in_case(p_trip uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.trips t where t.id = p_trip and private.ride_case_open(t.user_id))
+$$;
+revoke all on function private.trip_request_driver_in_case(uuid) from public, anon;
+grant execute on function private.trip_request_driver_in_case(uuid) to authenticated, service_role;
+
 drop policy trip_requests_keep_during_case on public.trip_requests;
 create policy trip_requests_keep_during_case on public.trip_requests as restrictive for delete to authenticated
   using (
     not (select private.ride_case_open(auth.uid()))
-    and not exists (select 1 from public.trips t where t.id = trip_id and private.ride_case_open(t.user_id))
+    and not private.trip_request_driver_in_case(trip_id)
   );
 
 -- ============================================================================================================

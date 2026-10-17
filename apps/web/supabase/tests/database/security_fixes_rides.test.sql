@@ -43,11 +43,15 @@ insert into public.fixtures (id, league_id, season, round, kickoff_at, status, h
   (9103, 383, 2026, 'R3', now() + interval '2 days', 'NS', 604, 4500),
   (9104, 383, 2026, 'R4', now() + interval '2 days', 'NS', 604, 4500);
 
--- Offers (as postgres: auth.uid() null → the ride gate is skipped; the stamp fills team/nick).
+-- Offers (as postgres: auth.uid() null → the ride gate is skipped; the stamp fills team/nick). The women-only offer
+-- (9104) is created here too, before any JWT claim is set, so its gate is skipped regardless of the switch.
 insert into public.trips (user_id, fixture_id, kind, from_city, pickup, seats) values
   (pg_temp.uid(2), 9101, 'offer', 'חיפה', 'תחנה', 3),
   (pg_temp.uid(4), 9102, 'offer', 'חיפה', 'תחנה', 3),
   (pg_temp.uid(6), 9103, 'offer', 'חיפה', 'תחנה', 3);
+insert into public.trips (user_id, fixture_id, kind, from_city, pickup, seats, women_only) values
+  (pg_temp.uid(14), 9104, 'offer', 'חיפה', 'תחנה', 3, true);
+select set_config('t.tw', (select id::text from public.trips where fixture_id = 9104), true);
 select set_config('t.ta', (select id::text from public.trips where fixture_id = 9101), true);
 select set_config('t.tb', (select id::text from public.trips where fixture_id = 9102), true);
 select set_config('t.tc', (select id::text from public.trips where fixture_id = 9103), true);
@@ -135,10 +139,7 @@ select ok(not private.ride_female_ok(pg_temp.uid(10)), 'M3: switch on — a veri
 select ok(private.ride_female_ok(pg_temp.uid(11)), 'M3: switch on — the document-sex marker (female) qualifies');
 select ok(not private.ride_female_ok(pg_temp.uid(12)), 'M3: switch on — the marker (not female) overrides a female gender');
 
--- Integration: a women-only offer (as postgres, offer gate skipped), switch ON.
-insert into public.trips (user_id, fixture_id, kind, from_city, pickup, seats, women_only) values
-  (pg_temp.uid(14), 9104, 'offer', 'חיפה', 'תחנה', 3, true);
-select set_config('t.tw', (select id::text from public.trips where fixture_id = 9104), true);
+-- Integration on the women-only offer (9104, created in setup), switch ON.
 select pg_temp.as_fan(13);
 set local role authenticated;
 select throws_ok(format('insert into public.trip_requests (trip_id) values (%L)', current_setting('t.tw')), '42501', 'women_only',
