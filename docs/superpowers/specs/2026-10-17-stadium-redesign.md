@@ -1,6 +1,6 @@
 # "האורות נדלקים": עיצוב חדש כגרסה נפרדת (stadium redesign)
 
-סטטוס: אושר בצ'אט ב-17.10.2026. העיצוב הוויזואלי אושר על קנבס העיצוב (onefan – האורות נדלקים).
+סטטוס: שלב 1 נבנה (בענף `redesign-stadium`, לא מוזג ל-main). אושר בצ'אט ב-17.10.2026. העיצוב הוויזואלי אושר על קנבס העיצוב (onefan – האורות נדלקים).
 הבעלים בחר לבנות אותו בקוד "כעותק לצד הקיים, הגרסה הנוכחית לא משתנה" ו"תשפץ בהעתק". החלטות הנדסה — של Claude.
 
 ## למה
@@ -35,3 +35,17 @@
 ## בדיקות
 - unit: `designVersion()` קורא נכון את הקוקי; הטוגל מדליק/מכבה.
 - הדף נטען ב-classic וב-stadium; smoke ב-375px על שני המצבים (אין OverflowGuard, אין גלילה אופקית).
+
+## מה נבנה בשלב 1 (בענף `redesign-stadium`)
+- **המתג:** `apps/web/src/lib/design-version.ts` — `designVersion()` קורא את הקוקי `onefan_design` בצד השרת
+  (`stadium` ⇒ 'stadium', אחרת 'classic'). `apps/web/src/features/profile/server/design-actions.ts` —
+  `setDesignVersion(v)` מדליק (`stadium`, שנה) או מנקה את הקוקי, ואז `revalidatePath('/', 'layout')`.
+- **הטוגל:** `apps/web/src/features/profile/components/design-toggle.tsx` — מתג "עיצוב חדש (ניסיוני)" בהגדרות של
+  "הכרטיס שלי" (`/me`). ברירת המחדל כבוי.
+- **דף הבית:** `apps/web/src/app/(app)/stand/page.tsx` בוחר עץ רכיבים לפי `designVersion()` — classic נשאר בדיוק כמו
+  קודם; stadium מרנדר את `apps/web/src/features/home/components/stadium/stadium-home.tsx`. אותן שאילתות שרת
+  (`getSessionProfile`, `getLeague`, `nextClubFixture`, `getActiveFans`, `getChatPreview` דרך `ChatSection`), אותו
+  מידע אמיתי, מצבי ריק/שגיאה ישרים. העיצוב (רקע אצטדיון, אלומות פנסים, פסיפס קהל, ספירה לאחור, "יחד איתך עכשיו N
+  אוהדים") ב-`globals.css` תחת `.std`, בצבעי הקבוצה (`teamAccent` ⇐ `--acc`), עם `prefers-reduced-motion`.
+- **איך מדליקים:** בדפדפן, "הכרטיס שלי" → להדליק "עיצוב חדש (ניסיוני)" (מגדיר קוקי `onefan_design=stadium`), ואז דף
+  הבית מציג את מראה האצטדיון. לכיבוי — לכבות את אותו מתג (מנקה את הקוקי).

@@ -27,6 +27,8 @@ import { FanPitch } from '@/features/stand-home/components/fan-pitch'
 import { MatchTicket } from '@/features/stand-home/components/match-ticket'
 import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
+import { designVersion } from '@/lib/design-version'
+import { StadiumHome } from '@/features/home/components/stadium/stadium-home'
 import { CheckinButton } from '@/features/stage4/components/checkin-button'
 import { LoadError } from '@/components/load-error'
 import { getCheckedIn } from '@/features/stage4/server/queries'
@@ -38,9 +40,19 @@ export const metadata: Metadata = { title: { absolute: 'onefan' } }
 export default function Page() {
   return (
     <Suspense fallback={<HomeSkeleton />}>
-      <Home />
+      <HomeSwitch />
     </Suspense>
   )
+}
+
+/**
+ * The design switch (stadium redesign, 2026-10-17): a per-browser cookie picks the component tree. Default and
+ * off = the classic home exactly as before; "stadium" = the new look. Same reads, same data either way; the choice
+ * is a display layer only. Reading the cookie is request-time, so it stays inside the page's <Suspense>.
+ */
+async function HomeSwitch() {
+  const version = await designVersion()
+  return version === 'stadium' ? <StadiumHome /> : <Home />
 }
 
 function HomeSkeleton() {

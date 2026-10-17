@@ -4,6 +4,8 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { IdCard, Lock, Swords } from 'lucide-react'
 import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
+import { DesignToggle } from '@/features/profile/components/design-toggle'
+import { designVersion } from '@/lib/design-version'
 import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
 import { SignOutButton } from '@/features/profile/components/sign-out-button'
 import { InstallApp } from '@/features/pwa/install-app'
@@ -47,12 +49,13 @@ async function ProfileCard() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, prefs, war, ride, priv] = await Promise.all([
+  const [card, prefs, war, ride, priv, design] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyPrefs(s.userId),
     season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
     getMyRideProfile(),
     getPrivateProfile(),
+    designVersion(),
   ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
@@ -117,6 +120,7 @@ async function ProfileCard() {
           <Suspense fallback={null}>
             <AdminBadge />
           </Suspense>
+          <DesignToggle initial={design} />
           <InstallApp />
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />

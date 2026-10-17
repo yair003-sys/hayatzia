@@ -61,3 +61,21 @@ test('non-production builds show the test environment banner', async ({ page }) 
   await page.goto('/stand')
   await expect(page.getByRole('status')).toContainText('סביבת בדיקות')
 })
+
+// Stadium redesign (2026-10-17): the opt-in home must obey the owner's layout rule too. The onefan_design=stadium
+// cookie selects it; at 375px it may not be wider than the screen or trip the OverflowGuard. (In CI there is no
+// Supabase, so this exercises the signed-out stadium shell — the backdrop, the wordmark and the fixed, clipped
+// floodlight layer. To check it with real data, sign in on a preview, turn "עיצוב חדש (ניסיוני)" on in הכרטיס שלי,
+// and reload /stand at phone width.)
+test('the stadium home fits the phone screen at 375px', async ({ page, context }) => {
+  await context.addCookies([{ name: 'onefan_design', value: 'stadium', url: 'http://127.0.0.1:3000' }])
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/stand')
+  await page.waitForLoadState('networkidle')
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }))
+  expect(scrollWidth - clientWidth).toBeLessThanOrEqual(1)
+  await expect(page.getByText(/^באג פריסה/)).toHaveCount(0)
+})

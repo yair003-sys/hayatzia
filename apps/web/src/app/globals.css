@@ -1367,3 +1367,105 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .lg-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 0.35rem; color: var(--color-muted);
     text-decoration: underline; text-underline-offset: 3px; }
 }
+
+/* ── Stadium home (stadium redesign, 2026-10-17): the opt-in "stadium at night" look, behind the onefan_design cookie.
+   Inside .std, --acc* are the fan's club colours (teamAccent), like .sh; only the wordmark is the brand green. The
+   floodlights and the crowd shimmer are the only motion, and prefers-reduced-motion stops them. The backdrop is a
+   fixed, clipped layer, so it never widens the page at 375px (the owner's hard rule). ─────────────────────────────── */
+@layer components {
+  .std {
+    --acc: var(--t-acc, var(--color-accent));
+    --acc2: var(--t-acc2, var(--color-accent-2));
+    --acc-text: var(--t-text, var(--color-accent-text));
+    --acc-on: var(--t-on, #fff);
+    --acc-soft: rgb(var(--t-rgb, 0 102 255) / 0.16);
+    --acc-line: rgb(var(--t-rgb, 0 102 255) / 0.4);
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 70vh;
+  }
+
+  /* backdrop: night sky, floodlight beams, crowd mosaic — all decorative, none of it interactive */
+  .std-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgb(var(--t-rgb, 0 102 255) / 0.16), transparent 60%),
+      radial-gradient(90% 60% at 50% 115%, rgb(var(--t-rgb, 0 102 255) / 0.12), transparent 70%),
+      linear-gradient(180deg, #060912 0%, #080b16 55%, #05070d 100%); }
+  .std-beam { position: absolute; top: -24%; inset-inline-start: 50%; width: min(62vw, 440px); height: 150%;
+    transform-origin: top center; filter: blur(18px); mix-blend-mode: screen; opacity: 0.55;
+    background: linear-gradient(to bottom, rgb(var(--t-rgb, 0 102 255) / 0.5), rgb(255 255 255 / 0.1) 22%, transparent 58%);
+    animation: std-sweep 11s var(--ease-soft) infinite alternate; }
+  .std-beam-1 { inset-inline-start: 16%; animation-delay: 0s; }
+  .std-beam-2 { inset-inline-start: 50%; opacity: 0.4; animation-duration: 14s; animation-delay: -4s; }
+  .std-beam-3 { inset-inline-start: 84%; animation-duration: 9s; animation-delay: -2s; }
+  .std-mosaic { position: absolute; inset-inline: 0; bottom: 0; height: 46%; opacity: 0.5;
+    background-image:
+      radial-gradient(circle, rgb(var(--t-rgb, 0 102 255) / 0.65) 1px, transparent 1.7px),
+      radial-gradient(circle, rgb(255 255 255 / 0.28) 1px, transparent 1.7px);
+    background-size: 13px 13px, 21px 21px; background-position: 0 0, 7px 6px;
+    -webkit-mask: linear-gradient(to top, #000 0%, transparent 92%); mask: linear-gradient(to top, #000 0%, transparent 92%);
+    animation: std-twinkle 6s ease-in-out infinite; }
+
+  @keyframes std-sweep { from { transform: rotate(-11deg); } to { transform: rotate(11deg); } }
+  @keyframes std-twinkle { 0%, 100% { opacity: 0.42; } 50% { opacity: 0.6; } }
+
+  /* header */
+  .std-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-block: 6px 2px; }
+  .std-wordmark-link { display: inline-flex; flex: none; align-items: center; min-height: 2.75rem; }
+  .std-wordmark { font-family: var(--font-brand); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; color: #00FF66;
+    text-shadow: 0 0 18px rgb(0 255 102 / 0.45); }
+  .std-head-club { display: flex; min-width: 0; flex-direction: column; align-items: center; line-height: 1.15; text-align: center; }
+  .std-head-club span { font-size: 11px; font-weight: 400; color: var(--pitch-dim, rgb(243 245 248 / 0.62)); }
+  .std-head-club b { overflow: hidden; max-width: 100%; font-size: 16px; font-weight: 800; color: var(--acc-text);
+    text-overflow: ellipsis; white-space: nowrap; }
+
+  .std-stage { display: flex; flex-direction: column; gap: 16px; }
+
+  /* "יחד איתך עכשיו N אוהדים" */
+  .std-crowd { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #c9d1dd; }
+  .std-crowd b { color: var(--acc-text); font-size: 17px; }
+  .std-crowd-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--color-ok);
+    box-shadow: 0 0 10px rgb(0 255 102 / 0.7); animation: sh-ping 1.6s infinite; }
+
+  /* cards */
+  .std-card { padding: 16px; border: 1px solid var(--acc-line); border-radius: 22px;
+    background:
+      radial-gradient(130% 100% at 50% -20%, var(--acc-soft), transparent 62%),
+      linear-gradient(180deg, rgb(13 18 32 / 0.82), rgb(8 11 22 / 0.82));
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -28px rgb(0 0 0 / 0.9); }
+
+  /* next match: the countdown hero */
+  .std-kick { display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 24px;
+    border: 1px solid var(--acc-line);
+    background:
+      radial-gradient(140% 110% at 50% -30%, var(--acc-soft), transparent 60%),
+      linear-gradient(180deg, rgb(14 20 36 / 0.85), rgb(7 10 20 / 0.85));
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 28px 56px -30px rgb(0 0 0 / 0.95); }
+  .std-kick-eyebrow { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--pitch-dim, rgb(243 245 248 / 0.62)); font-variant-numeric: tabular-nums; }
+  .std-kick-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; min-height: 48px; }
+  .std-kick-team { min-width: 0; overflow: hidden; font-size: 17px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .std-kick-team:first-child { text-align: start; }
+  .std-kick-team:last-child { text-align: end; }
+  .std-kick-team[data-mine='true'] { color: var(--acc-text); }
+  .std-kick-row .hm-cd { font-size: 30px; color: #fff; text-shadow: 0 0 20px var(--acc-soft); }
+  .std-kick-empty { display: flex; flex-direction: column; gap: 6px; }
+  .std-kick-rest { font-size: 13.5px; line-height: 1.5; color: var(--color-muted); }
+
+  /* the reused club-chat card sits on the stadium backdrop: lift it onto a glass panel to match the other cards */
+  .std-chat-wrap .hm-chat { border-color: var(--acc-line);
+    background:
+      radial-gradient(130% 100% at 50% -20%, var(--acc-soft), transparent 62%),
+      linear-gradient(180deg, rgb(13 18 32 / 0.82), rgb(8 11 22 / 0.82));
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .std-beam, .std-mosaic, .std-crowd-dot { animation: none; }
+    .std-beam { transform: rotate(0deg); }
+  }
+}
