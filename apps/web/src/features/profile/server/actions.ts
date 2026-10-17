@@ -47,8 +47,18 @@ export const setBirthDateAction = actionClient.inputSchema(setBirthDateSchema).a
   return { ok: true as const }
 })
 
-export async function signOutAction() {
+/**
+ * Signs out, and first removes this device's push subscription so a signed-out browser gets no more notifications
+ * (security review 2026-10-17). The current device's endpoint is read in the browser and passed in the form; without
+ * it (no push, or JS off) sign-out still works.
+ */
+export async function signOutAction(formData?: FormData) {
   const supabase = await createClient()
+  const endpoint = formData?.get('endpoint')
+  if (supabase && typeof endpoint === 'string' && endpoint) {
+    // Own-row RLS: a fan can delete only their own subscription, so this never touches another fan's device.
+    await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint)
+  }
   await supabase?.auth.signOut()
   redirect('/')
 }

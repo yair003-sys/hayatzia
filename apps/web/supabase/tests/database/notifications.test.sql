@@ -1,7 +1,7 @@
 -- Notifications: per-fan settings, goal / full-time alerts written by a trigger on fixtures (no duplicates,
 -- no backfill floods), who receives them, message-push filtering, and the dispatch claim.
 begin;
-select plan(46);
+select plan(48);
 
 -- n1 mta (row 'all'), n2 hta ('team'), n3 mhf ('team'), n4 bei ('off', messages off), n5 mhf (no row),
 -- n6 mta (no row, no device). Everyone but n6 has a push device.
@@ -20,7 +20,7 @@ insert into public.profiles (user_id, nick, team_id) values
   ('00000000-0000-0000-0000-0000000000e5', 'חדש', 'mhf'),
   ('00000000-0000-0000-0000-0000000000e6', 'בלי', 'mta');
 insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
-  select ('00000000-0000-0000-0000-0000000000e' || i)::uuid, 'https://push.example/n' || i, 'k', 'a' from generate_series(1, 5) i;
+  select ('00000000-0000-0000-0000-0000000000e' || i)::uuid, 'https://fcm.googleapis.com/n' || i, 'k', 'a' from generate_series(1, 5) i;
 insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4486, 'Hapoel Tel Aviv')
   on conflict (api_id) do nothing;
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id, home_goals, away_goals) values
@@ -157,10 +157,15 @@ select is((select count(*)::int from c1), 2, 'a claim takes fresh alerts');
 select is((select count(*)::int from c1 where fixture_id = 75), 0, 'an older stale backlog never takes the place of fresh goals');
 select is((select count(*)::int from public.match_alerts where fixture_id = 75 and sent_at is null), 0,
   'stale alerts are marked sent without being claimed (no push)');
-select is((select count(*)::int from c1 where sent_at is not null), 2, 'claiming marks the alerts sent');
+-- Security review 2026-10-17: claiming takes a lease (claimed_at); the alert is marked sent only after a successful
+-- send (mark_alerts_sent), so a cut-off dispatch loses nothing and a leased alert is not re-claimed meanwhile.
+select is((select count(*)::int from c1 where claimed_at is not null and sent_at is null), 2, 'claiming leases the alerts, not marks them sent');
 set local role service_role;
-select is((select count(*)::int from public.claim_alerts(50)), 5, 'the next claim gets only the rest');
-select is((select count(*)::int from public.claim_alerts(50)), 0, 'nothing is claimed twice');
+select is((select count(*)::int from public.claim_alerts(50)), 5, 'the next claim gets only the rest (leased rows are skipped)');
+select is((select count(*)::int from public.claim_alerts(50)), 0, 'nothing is claimed twice while the lease holds');
+select lives_ok($$ select public.mark_alerts_sent((select array_agg(id) from c1)) $$, 'the dispatch marks delivered after a successful send');
+select is((select count(*)::int from c1 c join public.match_alerts m on m.id = c.id where m.sent_at is not null), 2,
+  'the two leased alerts are now marked sent');
 reset role;
 
 select * from finish();

@@ -16,7 +16,6 @@ import {
   inviteSchema,
   markReadSchema,
   muteSchema,
-  orderedPair,
   otherUserSchema,
   qrCodeSchema,
   renameSchema,
@@ -37,21 +36,11 @@ export const openThreadAction = actionClient.inputSchema(otherUserSchema).action
   const me = claims?.claims.sub
   if (!me) redirect('/login')
   if (me === otherId) return { error: 'אי אפשר לשלוח הודעה לעצמך' }
-  const pair = orderedPair(me, otherId)
-  const find = () => supabase.from('dm_threads').select('id').eq('user_a', pair.user_a).eq('user_b', pair.user_b).maybeSingle()
-  let id = (await find()).data?.id
-  if (!id) {
-    const { data, error } = await supabase.from('dm_threads').insert(pair).select('id').single()
-    if (error?.code === '23505') {
-      // The other fan opened it at the same moment: one thread for the pair, and writing there is a reply.
-      id = (await find()).data?.id
-    } else if (error) {
-      return { error: dmErrorHe(dmCode(error.message)) }
-    } else {
-      id = data.id
-    }
-    if (!id) return { error: dmErrorHe('') }
-  }
+  // request_dm opens (or returns) the thread. A generic refusal (cap reached or the target takes no requests) returns
+  // null with no error, so the message never reveals which: a minor's team/QR-only setting looks like a full cap.
+  const { data: id, error } = await supabase.rpc('request_dm', { p_other: otherId })
+  if (error) return { error: dmErrorHe(dmCode(error.message)) }
+  if (!id) return { error: dmErrorHe('requests_blocked') }
   redirect(`/inbox/${id}`)
 })
 

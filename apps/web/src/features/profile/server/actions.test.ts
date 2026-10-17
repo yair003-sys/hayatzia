@@ -7,6 +7,8 @@ const s = vi.hoisted(() => ({
   inserts: [] as unknown[],
   redirects: [] as string[],
   rpcs: [] as { fn: string; args: unknown }[],
+  deletes: [] as { table: string; column: string; value: unknown }[],
+  signedOut: 0,
   insertError: null as null | { code: string; message: string },
   rpcError: null as null | { message: string },
 }))
@@ -19,12 +21,23 @@ vi.mock('next/navigation', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
-    auth: { getClaims: async () => ({ data: { claims: { sub: ME } } }) },
-    from: () => ({
+    auth: {
+      getClaims: async () => ({ data: { claims: { sub: ME } } }),
+      signOut: async () => {
+        s.signedOut += 1
+      },
+    },
+    from: (table: string) => ({
       insert: async (row: unknown) => {
         s.inserts.push(row)
         return { error: s.insertError }
       },
+      delete: () => ({
+        eq: async (column: string, value: unknown) => {
+          s.deletes.push({ table, column, value })
+          return { error: null }
+        },
+      }),
     }),
     rpc: async (fn: string, args: unknown) => {
       s.rpcs.push({ fn, args })
@@ -33,7 +46,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-import { createProfileAction, setBirthDateAction } from './actions'
+import { createProfileAction, setBirthDateAction, signOutAction } from './actions'
 
 const BIRTH = '1990-05-01'
 
@@ -41,6 +54,8 @@ beforeEach(() => {
   s.inserts = []
   s.redirects = []
   s.rpcs = []
+  s.deletes = []
+  s.signedOut = 0
   s.insertError = null
   s.rpcError = null
 })
@@ -95,5 +110,23 @@ describe('setBirthDateAction: the one-time prompt for fans from before', () => {
     s.rpcError = { message: 'already_set' }
     const r = await setBirthDateAction({ birthDate: BIRTH })
     expect(r.data).toEqual({ error: 'תאריך הלידה כבר נשמר' })
+  })
+})
+
+describe('signOutAction: remove this device\'s push subscription (2026-10-17)', () => {
+  it('deletes the subscription for the endpoint passed from the browser, then signs out', async () => {
+    const fd = new FormData()
+    fd.set('endpoint', 'https://fcm.googleapis.com/dev')
+    await signOutAction(fd)
+    expect(s.deletes).toEqual([{ table: 'push_subscriptions', column: 'endpoint', value: 'https://fcm.googleapis.com/dev' }])
+    expect(s.signedOut).toBe(1)
+    expect(s.redirects).toEqual(['/'])
+  })
+
+  it('still signs out when there is no endpoint (no push on this device)', async () => {
+    await signOutAction()
+    expect(s.deletes).toEqual([])
+    expect(s.signedOut).toBe(1)
+    expect(s.redirects).toEqual(['/'])
   })
 })

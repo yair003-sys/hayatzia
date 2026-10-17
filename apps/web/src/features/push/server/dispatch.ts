@@ -41,9 +41,11 @@ const CLAIM_BATCH = 5
 const SAFETY_MS = 20_000
 
 /**
- * Claims unsent match alerts in small rounds while time remains, and pushes them. Claiming marks them sent first, so
- * a failed or concurrent run never pushes one twice; alerts not yet claimed when time runs out stay for the next call
- * (`more: true`). The database marks alerts older than 30 minutes as sent without claiming them (stale). Within a
+ * Claims unsent match alerts in small rounds while time remains, and pushes them. Claiming only takes a short lease;
+ * an alert is marked sent (mark_alerts_sent) after its round's pushes go out, so a run cut off mid-round loses nothing
+ * — the lease lapses and the next call re-claims it (security review 2026-10-17). A concurrent run skips leased rows,
+ * and alerts not yet claimed when time runs out stay for the next call (`more: true`). The database marks alerts older
+ * than 30 minutes as sent without claiming them (stale). Within a
  * round, different matches go out in parallel and each match in id order, so its lock-screen notification (one tag per
  * match) ends on the latest score or full time. The text comes from describeAlerts (shared with the in-app banner);
  * recipients are read once per match per call. Logs counts only.
@@ -94,6 +96,8 @@ export async function dispatchAlerts(
         }
       }),
     )
+    // Mark delivered only now, after the round's pushes went out (a crash before this leaves them to be re-claimed).
+    await admin.rpc('mark_alerts_sent', { p_ids: claimed.map((a) => a.id) })
     if (claimed.length < CLAIM_BATCH) break
   }
   console.info(`alerts dispatched: sent=${sent} skipped=${skipped} more=${more}`)

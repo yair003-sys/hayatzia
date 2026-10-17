@@ -2,10 +2,10 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { IdCard, Lock, LogOut, Swords } from 'lucide-react'
+import { IdCard, Lock, Swords } from 'lucide-react'
 import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
 import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
-import { signOutAction } from '@/features/profile/server/actions'
+import { SignOutButton } from '@/features/profile/components/sign-out-button'
 import { InstallApp } from '@/features/pwa/install-app'
 import { PushToggle } from '@/features/push/components/push-toggle'
 import { pushConfigured } from '@/features/push/server/send'
@@ -126,12 +126,7 @@ async function ProfileCard() {
             אימות לנסיעות
           </Link>
           {priv && <DmRequestsSetting initial={priv.dmRequests} />}
-          <form action={signOutAction}>
-            <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted">
-              <LogOut className="size-4" aria-hidden="true" />
-              יציאה מהחשבון
-            </button>
-          </form>
+          <SignOutButton />
           <ContactForm />
           <DeleteAccount />
         </div>

@@ -28,6 +28,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
     rpc: async (fn: string, args: { p_limit?: number }) => {
       if (fn === 'alert_recipients') return { data: ['u1'], error: null }
+      if (fn === 'mark_alerts_sent') return { data: null, error: null }
       mocks.claims += 1
       mocks.onClaim?.()
       return { data: mocks.queue.splice(0, args.p_limit ?? 5), error: null }

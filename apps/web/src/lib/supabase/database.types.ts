@@ -665,14 +665,14 @@ isOneToOne: false
                   ]
                 },"fan_verifications": {
                   Row: {
-                    "approved_at": string | null,"counted": boolean,"created_at": string,"doc_fingerprint": string | null,"expires_at": string | null,"id": string,"kind": string,"provider": string,"provider_ref": string | null,"reason_code": string | null,"status": string,"updated_at": string,"user_id": string
+                    "approved_at": string | null,"counted": boolean,"created_at": string,"doc_fingerprint": string | null,"expires_at": string | null,"id": string,"is_female": boolean | null,"kind": string,"provider": string,"provider_ref": string | null,"reason_code": string | null,"status": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind": string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id": string
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"is_female"?: boolean | null,"kind": string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"kind"?: string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string
+                    "approved_at"?: string | null,"counted"?: boolean,"created_at"?: string,"doc_fingerprint"?: string | null,"expires_at"?: string | null,"id"?: string,"is_female"?: boolean | null,"kind"?: string,"provider"?: string,"provider_ref"?: string | null,"reason_code"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     
@@ -745,14 +745,14 @@ isOneToOne: false
                   ]
                 },"match_alerts": {
                   Row: {
-                    "away_goals": number,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null
+                    "away_goals": number,"claimed_at": string | null,"created_at": string,"fixture_id": number,"home_goals": number,"id": number,"kind": string,"scoring_api_id": number | null,"sent_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "away_goals": number,"created_at"?: string,"fixture_id": number,"home_goals": number,"id"?: number,"kind": string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                    "away_goals": number,"claimed_at"?: string | null,"created_at"?: string,"fixture_id": number,"home_goals": number,"id"?: number,"kind": string,"scoring_api_id"?: number | null,"sent_at"?: string | null
                   }
                   Update: {
-                    "away_goals"?: number,"created_at"?: string,"fixture_id"?: number,"home_goals"?: number,"id"?: number,"kind"?: string,"scoring_api_id"?: number | null,"sent_at"?: string | null
+                    "away_goals"?: number,"claimed_at"?: string | null,"created_at"?: string,"fixture_id"?: number,"home_goals"?: number,"id"?: number,"kind"?: string,"scoring_api_id"?: number | null,"sent_at"?: string | null
                   }
                   Relationships: [
                     {
@@ -1534,6 +1534,15 @@ isOneToOne: false
 "admin_set_birth_date":
 { Args: { "p_date": string,"p_user": string }; Returns: undefined
                            },
+"admin_set_gender":
+{ Args: { "p_gender": string,"p_user": string }; Returns: undefined
+                           },
+"mark_alerts_sent":
+{ Args: { "p_ids": (number)[] }; Returns: undefined
+                           },
+"request_dm":
+{ Args: { "p_other": string }; Returns: string
+                           },
 "admin_set_report_status":
 { Args: { "p_report": string,"p_status": string }; Returns: undefined
                            },
@@ -1566,6 +1575,7 @@ isOneToOne: false
 "claim_alerts":
 { Args: { "p_limit": number }; Returns: {
               "away_goals": number,
+"claimed_at": string | null,
 "created_at": string,
 "fixture_id": number,
 "home_goals": number,

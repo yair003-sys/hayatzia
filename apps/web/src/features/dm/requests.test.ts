@@ -17,9 +17,12 @@ const OTHER = '00000000-0000-4000-8000-000000000002'
 
 describe('dmErrorHe (league-wide messages, 2026-10-16)', () => {
   it('maps the database codes to Hebrew', () => {
-    expect(dmErrorHe('requests_closed')).toBe('האוהד הזה מקבל הודעות רק מאוהדי הקבוצה שלו או דרך ברקוד')
+    // Security review 2026-10-17: a single generic refusal for a closed setting and a reached cap alike.
+    const generic = 'לא ניתן לשלוח בקשת הודעה לאוהד הזה כרגע. נסו שוב מאוחר יותר'
+    expect(dmErrorHe('requests_blocked')).toBe(generic)
+    expect(dmErrorHe('requests_closed')).toBe(generic)
+    expect(dmErrorHe('rate_limit')).toBe(generic)
     expect(dmErrorHe('awaiting_accept')).toBe('ההודעה נשלחה. אפשר לכתוב שוב כשיאשרו')
-    expect(dmErrorHe('rate_limit')).toBe('שלחת הרבה בקשות היום. נסה מחר')
     expect(dmErrorHe('bad_code')).toBe('הברקוד לא תקף')
     expect(dmErrorHe('no_birth_date')).toBe('צריך להשלים תאריך לידה')
     expect(dmErrorHe('blocked')).toBe('אי אפשר לפתוח שיחה עם האוהד הזה')

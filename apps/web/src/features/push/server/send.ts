@@ -2,7 +2,7 @@ import 'server-only'
 import webpush from 'web-push'
 import { env } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { PushPayload } from '../schema'
+import { isPushEndpoint, type PushPayload } from '../schema'
 
 /** True when this environment can send notifications (VAPID pair + server key configured). */
 export function pushConfigured(): boolean {
@@ -62,11 +62,14 @@ export async function sendPush(userIds: readonly string[], payload: PushPayload)
         if (error) console.warn('push subscriptions read failed', error.code)
         if (error || !subs?.length) break
         await eachLimited(subs, CONCURRENCY, async (s) => {
+          // Re-check the host here too (defence in depth): never send to an address that is not a real push service,
+          // even if a row slipped past the database constraint. Security review 2026-10-17.
+          if (!isPushEndpoint(s.endpoint)) return
           try {
             await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, {
               TTL: 60 * 60,
               urgency: 'normal',
-              timeout: 8000,
+              timeout: 3000,
             })
             delivered++
           } catch (e) {
