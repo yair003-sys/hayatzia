@@ -1537,12 +1537,6 @@ isOneToOne: false
 "admin_set_gender":
 { Args: { "p_gender": string,"p_user": string }; Returns: undefined
                            },
-"mark_alerts_sent":
-{ Args: { "p_ids": (number)[] }; Returns: undefined
-                           },
-"request_dm":
-{ Args: { "p_other": string }; Returns: string
-                           },
 "admin_set_report_status":
 { Args: { "p_report": string,"p_status": string }; Returns: undefined
                            },
@@ -1674,6 +1668,9 @@ isOneToOne: false
 "mark_activity_seen":
 { Args: { "p_upto": string }; Returns: undefined
                            },
+"mark_alerts_sent":
+{ Args: { "p_ids": (number)[] }; Returns: undefined
+                           },
 "mark_read":
 { Args: { "p_id": string,"p_kind": string }; Returns: undefined
                            },
@@ -1738,6 +1735,11 @@ isOneToOne: false
 "open_event_poll":
 { Args: { "p_fixture": number,"p_kind": string,"p_options": Json,"p_options_in": Json,"p_question": string,"p_scope": string }; Returns: string
                            },
+"orphan_clip_objects":
+{ Args: { "p_limit"?: number }; Returns: {
+              "name": string
+            }[]
+                           },
 "qr_card":
 { Args: { "p_code": string }; Returns: {
               "nick": string,"team_id": string
@@ -1761,6 +1763,9 @@ isOneToOne: false
 { Args: { "p_kind": string,"p_note"?: string,"p_ref": string }; Returns: {
               "report_id": string,"suspended": boolean
             }[]
+                           },
+"request_dm":
+{ Args: { "p_other": string }; Returns: string
                            },
 "reset_qr_code":
 { Args: Record<PropertyKey, never>; Returns: string
