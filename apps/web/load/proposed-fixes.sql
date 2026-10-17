@@ -59,5 +59,39 @@ create or replace function public.home_player_reviews(p_per_player integer defau
    order by t.player_id, t.likes_count desc, t.updated_at desc, t.user_id
 $$;
 
+-- 3. "My ratings" (getSquadWithRatings: player_ratings where user_id = me) had no index on user_id (it is the second
+--    column of the primary key), so every call walked the whole primary key.
+create index if not exists player_ratings_user_idx on public.player_ratings (user_id);
+
+-- 4. Crowd verdict during a burst: once 15 fans wrote a keyword within 60 s, every further keyword message called
+--    crowd_tick(), which waits for the match's advisory lock until the other writer commits, so a goal moment's
+--    messages queued one behind the other. The chat trigger now only ticks when the lock is free right away
+--    (pg_try_advisory_xact_lock); a message that finds it taken skips the tick, the next message or the app's own
+--    crowd_tick call does it. Everything else in the function is unchanged.
+create or replace function public.match_messages_crowd() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  k text := public.crowd_keyword(new.body);
+  c integer;
+  t record;
+begin
+  if k is null then
+    return null;
+  end if;
+  insert into public.match_chat_bursts (fixture_id, kind, user_id, at) values (new.fixture_id, k, new.user_id, now())
+    on conflict (fixture_id, kind, user_id) do update set at = excluded.at;
+  delete from public.match_chat_bursts where fixture_id = new.fixture_id and kind = k and at < now() - interval '2 minutes';
+  select count(*) into c from public.match_chat_bursts
+    where fixture_id = new.fixture_id and kind = k and at > now() - interval '60 seconds';
+  if c >= 15 and pg_try_advisory_xact_lock(hashtext('crowd:' || new.fixture_id)) then
+    perform public.crowd_tick(new.fixture_id);
+    select * into t from public.crowd_chat_template(k);
+    if public.crowd_open_poll(new.fixture_id, k, 'chat', t.question, t.options, null, null) is not null then
+      delete from public.match_chat_bursts where fixture_id = new.fixture_id and kind = k;
+    end if;
+  end if;
+  return null;
+end $$;
+
 commit;
 select 'proposed fixes applied to the local load-test database' as status;

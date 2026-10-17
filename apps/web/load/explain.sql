@@ -190,10 +190,10 @@ select count(*) as trips_visible from public.trips where fixture_id = :trips_fx;
 rollback;
 \echo '### WHAT-IF trips count with the policy functions evaluated once per query (same rules)'
 begin;
-create function private.active_ride_suspensions() returns uuid[] language sql stable security definer set search_path = ''
+create or replace function private.active_ride_suspensions() returns uuid[] language sql stable security definer set search_path = ''
   as $f$ select coalesce(array_agg(s.user_id), '{}') from public.ride_suspensions s where s.lifted_at is null $f$;
 grant execute on function private.active_ride_suspensions() to authenticated;
-create function private.ride_verification_on() returns boolean language sql stable security definer set search_path = ''
+create or replace function private.ride_verification_on() returns boolean language sql stable security definer set search_path = ''
   as $f$ select private.setting_on('rides_require_verification') $f$;
 grant execute on function private.ride_verification_on() to authenticated;
 alter policy trips_not_ride_suspended on public.trips
@@ -216,7 +216,7 @@ select count(*) as reviews, md5(string_agg(player_id || author_id || likes_count
 rollback;
 \echo '### WHAT-IF home_player_reviews with the blocked fans read once (one definer helper) instead of per row'
 begin;
-create function private.blocked_ids(p_me uuid) returns uuid[] language sql stable security definer set search_path = ''
+create or replace function private.blocked_ids(p_me uuid) returns uuid[] language sql stable security definer set search_path = ''
   as $f$ select coalesce(array_agg(x), '{}') from (select b.blocked_id x from public.blocks b where b.user_id = p_me
                                                    union select b.user_id from public.blocks b where b.blocked_id = p_me) z $f$;
 grant execute on function private.blocked_ids(uuid) to authenticated;
@@ -243,4 +243,15 @@ set local role authenticated; select set_config('request.jwt.claims', json_build
 explain (analyze, costs off, summary on) select * from public.home_player_reviews(5);
 \echo 'same answer? rows and a checksum of them:'
 select count(*) as reviews, md5(string_agg(player_id || author_id || likes_count || liked, ',' order by player_id, author_id)) as checksum from public.home_player_reviews(5);
+rollback;
+
+\echo '### WHAT-IF my ratings today (player_ratings where user_id = me: no index on user_id)'
+begin; set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select player_id, stars, review from public.player_ratings where user_id = :'fan';
+rollback;
+\echo '### WHAT-IF my ratings with an index on player_ratings (user_id)'
+begin;
+create index if not exists player_ratings_user_idx on public.player_ratings (user_id);
+set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub', :'fan', 'role', 'authenticated')::text, true) \gset _
+explain (analyze, costs off, summary on) select player_id, stars, review from public.player_ratings where user_id = :'fan';
 rollback;
