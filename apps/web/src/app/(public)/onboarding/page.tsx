@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { SignupFlow } from '@/features/profile/components/signup-flow'
 import { safeNext } from '@/features/auth/safe-next'
 import { getSessionProfile } from '@/features/profile/server/queries'
+import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'בחירת קבוצה' }
 
@@ -23,6 +24,8 @@ async function OnboardingGate({ next }: { next?: string }) {
   const s = await getSessionProfile()
   if (s.status === 'signed-out') redirect('/login')
   if (s.status === 'ready' || s.status === 'disabled') redirect(safeNext(next, '/stand') as Route)
+  // The profile read failed: not a new fan, so no sign-up form.
+  if (s.status === 'error') return <LoadError />
   // Only a safe next (a scanned QR card) is carried through the sign-up.
   const back = safeNext(next, '')
   return <SignupFlow next={back || undefined} />

@@ -8,6 +8,9 @@ export type SessionProfile =
   | { status: 'signed-out' }
   | { status: 'no-profile'; userId: string }
   | { status: 'ready'; userId: string; nick: string; team: Team }
+  // The profile read failed (load test 2026-10-17: under load this sent signed-in fans to onboarding, and onboarding
+  // then back to the home). Nobody is redirected; the layout says "could not load" and offers a retry.
+  | { status: 'error'; userId: string }
 
 /** The signed-in fan and their profile. Deduplicated per request. Reads cookies: call inside <Suspense>. */
 export const getSessionProfile = cache(async (): Promise<SessionProfile> => {
@@ -16,11 +19,12 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile> => {
   const { data } = await supabase.auth.getClaims()
   const userId = data?.claims.sub
   if (!userId) return { status: 'signed-out' }
-  const { data: row } = await supabase
+  const { data: row, error } = await supabase
     .from('profiles')
     .select('nick, team_id')
     .eq('user_id', userId)
     .maybeSingle()
+  if (error) return { status: 'error', userId }
   const team = row ? teamById(row.team_id) : undefined
   if (!row || !team) return { status: 'no-profile', userId }
   return { status: 'ready', userId, nick: row.nick, team }

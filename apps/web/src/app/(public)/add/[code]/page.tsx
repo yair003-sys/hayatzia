@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { AddCard } from '@/features/dm/components/add-card'
 import { getQrCard } from '@/features/dm/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
+import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'הוספת אוהד', robots: { index: false } }
 
@@ -27,6 +28,7 @@ async function Card({ code }: { code: string }) {
   if (s.status === 'disabled') return <p className="text-center text-muted">הברקוד פועל רק כשהשרת מחובר.</p>
   if (s.status === 'signed-out') redirect(`/login?next=${encodeURIComponent(`/add/${code}`)}`)
   if (s.status === 'no-profile') redirect(`/onboarding?next=${encodeURIComponent(`/add/${code}`)}`)
+  if (s.status === 'error') return <LoadError />
   const card = await getQrCard(code)
   return <AddCard code={code} card={card} />
 }
