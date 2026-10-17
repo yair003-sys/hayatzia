@@ -1,6 +1,49 @@
 import 'server-only'
+import { cacheLife, cacheTag } from 'next/cache'
+import { getClubPlayers } from '@/features/teams/server/queries'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { motmRanking } from '../schema'
+import { motmRanking, motmSquad, type RatingStat } from '../schema'
+
+/**
+ * The fans' 1–10 totals of the club's players for one match (match_rating_stats), or null when the read failed. Under
+ * RLS every fan of the club reads exactly these rows (match_rating_stats_own_club: the player is in the fan's club), so
+ * they are read once per match and club with the service role and cached for 30 s (tags `match-ratings:<match>`,
+ * `match-ratings:<match>:<club>`; rateMatchAction refreshes them at once). `teamId` must be the signed-in fan's own club
+ * (from the caller's session profile). Without a service key, the fan's session reads them (RLS), as before.
+ */
+export async function getMatchRatingStats(fixtureId: number, teamId: string): Promise<RatingStat[] | null> {
+  try {
+    const cached = await matchRatingStatsCached(fixtureId, teamId)
+    if (cached) return cached
+  } catch {
+    return null
+  }
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data, error } = await supabase.from('match_rating_stats').select('player_id,sum,count').eq('fixture_id', fixtureId)
+  return error || !data ? null : data
+}
+
+async function matchRatingStatsCached(fixtureId: number, teamId: string): Promise<RatingStat[] | null> {
+  'use cache'
+  cacheLife({ stale: 30, revalidate: 30, expire: 120 })
+  cacheTag(`match-ratings:${fixtureId}`, `match-ratings:${fixtureId}:${teamId}`)
+  const db = createAdminClient()
+  // No service key in this environment (fixed per deployment): the caller reads through the fan's session instead.
+  if (!db) return null
+  const { data, error } = await db
+    .from('match_rating_stats')
+    .select('player_id,sum,count,players!inner(team_id)')
+    .eq('fixture_id', fixtureId)
+    .eq('players.team_id', teamId)
+  // Permission denied (no service-role grant in this project): like no service key, the fan's session reads them.
+  if (error?.code === '42501') return null
+  if (error) console.error('match rating stats read failed', error.code)
+  // Thrown, not returned: a failure is never kept in the cache.
+  if (error || !data) throw new Error('match rating stats read failed')
+  return data.map((s) => ({ player_id: s.player_id, sum: s.sum, count: s.count }))
+}
 
 /** Has the fan checked in to this match? */
 export async function getCheckedIn(fixtureId: number): Promise<boolean> {
@@ -21,20 +64,23 @@ export async function getAttendance(season: number): Promise<{ games: number; aw
 
 export type MotmRow = { playerId: string; name: string; short: string; number: number | null; position: string; avg: number; count: number; mine: number | null }
 
-/** The fans' ratings of their club's players for one match, best first, plus the fan's own scores. */
+/**
+ * The fans' ratings of their club's players for one match, best first, plus the fan's own scores. The squad and the
+ * club's totals come from the shared caches; only the fan's own scores are read per request (RLS).
+ */
 export async function getMotm(fixtureId: number, teamId: string): Promise<{ ranking: MotmRow[]; squad: Omit<MotmRow, 'avg' | 'count' | 'mine'>[]; mine: Record<string, number> }> {
   const supabase = await createClient()
   if (!supabase) return { ranking: [], squad: [], mine: {} }
   const [players, stats, mine] = await Promise.all([
-    supabase.from('players').select('id,name_he,name_short,number,position,in_xi').eq('team_id', teamId).not('number', 'is', null).order('in_xi', { ascending: false }).order('number'),
-    supabase.from('match_rating_stats').select('player_id,sum,count').eq('fixture_id', fixtureId),
+    getClubPlayers(teamId),
+    getMatchRatingStats(fixtureId, teamId),
     supabase.from('match_ratings').select('player_id,score').eq('fixture_id', fixtureId),
   ])
-  const squad = (players.data ?? []).map((p) => ({ playerId: p.id, name: p.name_he, short: p.name_short, number: p.number, position: p.position }))
+  const squad = motmSquad(players ?? []).map((p) => ({ playerId: p.id, name: p.name_he, short: p.name_short, number: p.number, position: p.position }))
   const byId = new Map(squad.map((p) => [p.playerId, p]))
   const myScores: Record<string, number> = {}
   for (const r of mine.data ?? []) myScores[r.player_id] = r.score
-  const ranking = motmRanking(stats.data ?? [])
+  const ranking = motmRanking(stats ?? [])
     .filter((r) => byId.has(r.playerId))
     .map((r) => ({ ...byId.get(r.playerId)!, avg: r.avg, count: r.count, mine: myScores[r.playerId] ?? null }))
   return { ranking, squad, mine: myScores }

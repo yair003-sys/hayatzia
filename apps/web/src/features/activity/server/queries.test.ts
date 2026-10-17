@@ -12,7 +12,12 @@ vi.mock('@/lib/supabase/server', async () => {
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => null }))
 vi.mock('@/features/safety/server/queries', () => ({ getBlockedIdsOrNull: async () => state.blocked }))
 
-const { getActivityPage, getUnreadCount } = await import('./queries')
+const { getActivityPage } = await import('./queries')
+// getUnreadCount is memoised per request: a fresh module per case.
+const unreadCount = async () => {
+  vi.resetModules()
+  return (await import('./queries')).getUnreadCount()
+}
 
 const ME = '11111111-1111-4111-8111-111111111111'
 const row = { id: 1, kind: 'clip_like', actor_id: null, actor_count: 2, updated_at: new Date().toISOString(), trip_id: null, clips: null, team_photos: null, trips: null }
@@ -25,11 +30,11 @@ beforeEach(() => {
 describe('getUnreadCount', () => {
   it('the number when the read works', async () => {
     state.config = { rpc: { activity_unread_count: ok(5) } }
-    expect(await getUnreadCount()).toBe(5)
+    expect(await unreadCount()).toBe(5)
   })
   it('null (not 0) when the read fails', async () => {
     state.config = { rpc: { activity_unread_count: failed } }
-    expect(await getUnreadCount()).toBeNull()
+    expect(await unreadCount()).toBeNull()
   })
 })
 

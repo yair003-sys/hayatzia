@@ -30,10 +30,11 @@ async function Trips({ focus }: { focus?: string }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') return <p className="text-muted">פועל רק כשהשרת מחובר.</p>
   if (s.status !== 'ready') return null
-  const league = await getLeague()
-  const matches = upcomingTeamMatches(league, s.team.id)
-  const [trips, ride, toRate, verification] = await Promise.all([
-    getTrips(matches.map((m) => m.id), s.userId),
+  // The fan's own ride state does not need the league: it is read alongside it, only the trips wait for the matches.
+  const matchesP = getLeague().then((league) => upcomingTeamMatches(league, s.team.id))
+  const [matches, trips, ride, toRate, verification] = await Promise.all([
+    matchesP,
+    matchesP.then((ms) => getTrips(ms.map((m) => m.id), s.userId)),
     getMyRideProfile(),
     getRidesToRate(),
     getMyVerification(),

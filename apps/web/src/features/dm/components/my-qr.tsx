@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { toString as qrSvg } from 'qrcode'
 import { RefreshCw, ScanLine } from 'lucide-react'
 import { QR_CODE_RE, qrUrl } from '../schema'
 import { resetQrAction } from '../server/actions'
@@ -22,9 +21,12 @@ export function MyQr({ code: initial, nick, origin }: { code: string; nick: stri
   useEffect(() => {
     let cancelled = false
     const url = qrUrl(origin ?? window.location.origin, code)
-    void qrSvg(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }).then((svg) => {
-      if (!cancelled) setSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`)
-    })
+    // The QR encoder is loaded only here, on this screen (perf round 2): it stays out of every other page's JS.
+    void import('qrcode')
+      .then(({ toString: qrSvg }) => qrSvg(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }))
+      .then((svg) => {
+        if (!cancelled) setSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`)
+      })
     return () => {
       cancelled = true
     }

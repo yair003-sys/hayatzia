@@ -1,35 +1,65 @@
 import 'server-only'
+import { cacheLife, cacheTag } from 'next/cache'
+import { getClubPlayers } from '@/features/teams/server/queries'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { average, positionGroup, type PlayerRow, type Review } from '../schema'
+import { RATING_STATS_TAG, ratingStatsTag, squadWithRatings, type RatingStat } from '../club'
+import type { PlayerRow, Review } from '../schema'
 
-/** The fan's club squad with average rating and the fan's own rating. Team-private (RLS), never cached. */
+/**
+ * The fan's club squad with average rating and the fan's own rating. The squad and the averages are the same for every
+ * fan of the club and come from the shared caches; only the fan's own ratings are read per request (RLS). A failed read
+ * falls back to empty, as before (load test 2026-10-17, finding 6, "not changed").
+ */
 export async function getSquadWithRatings(teamId: string, userId: string): Promise<PlayerRow[]> {
   const supabase = await createClient()
   if (!supabase) return []
   const [players, stats, mine] = await Promise.all([
-    supabase.from('players').select('id,number,name_he,name_short,position,injured,in_xi,pitch_x,pitch_y').eq('team_id', teamId),
-    supabase.from('player_rating_stats').select('player_id,sum,count'),
+    getClubPlayers(teamId),
+    getClubRatingStats(teamId),
     supabase.from('player_ratings').select('player_id,stars,review').eq('user_id', userId),
   ])
-  const statBy = new Map((stats.data ?? []).map((s) => [s.player_id, s]))
-  const mineBy = new Map((mine.data ?? []).map((m) => [m.player_id, m]))
-  return (players.data ?? [])
-    .map((p) => {
-      const s = statBy.get(p.id)
-      const m = mineBy.get(p.id)
-      return {
-        ...p,
-        avg: s ? average(s.sum, s.count) : null,
-        count: s?.count ?? 0,
-        myStars: m?.stars ?? null,
-        myReview: m?.review ?? '',
-      }
-    })
-    .sort(
-      (a, b) =>
-        positionGroup(a.position).order - positionGroup(b.position).order ||
-        (a.number ?? 999) - (b.number ?? 999),
-    )
+  return squadWithRatings(players ?? [], stats ?? [], mine.data ?? [])
+}
+
+/**
+ * The rating totals of the club's players (player_rating_stats), or null when the read failed. Under RLS every fan of
+ * the club reads exactly these rows (player_rating_stats_read: the player is in the fan's club; there are no per-fan
+ * rows), so they are read once per club with the service role and cached for 30 s (tag `rating-stats:<club>`,
+ * refreshed at once by ratePlayerAction). `teamId` must be the signed-in fan's own club (from the caller's session
+ * profile). Where this environment has no service key, the fan's own session reads them (RLS), as before.
+ */
+export async function getClubRatingStats(teamId: string): Promise<RatingStat[] | null> {
+  try {
+    const cached = await clubRatingStatsCached(teamId)
+    if (cached) return cached
+  } catch {
+    return null
+  }
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data, error } = await supabase.from('player_rating_stats').select('player_id,sum,count')
+  return error || !data ? null : data
+}
+
+async function clubRatingStatsCached(teamId: string): Promise<RatingStat[] | null> {
+  'use cache'
+  cacheLife({ stale: 30, revalidate: 30, expire: 120 })
+  cacheTag(RATING_STATS_TAG, ratingStatsTag(teamId))
+  const db = createAdminClient()
+  // No service key in this environment (fixed per deployment): the caller reads through the fan's session instead.
+  if (!db) return null
+  const { data, error } = await db
+    .from('player_rating_stats')
+    .select('player_id,sum,count,players!inner(team_id)')
+    .eq('players.team_id', teamId)
+  // Permission denied: this project lacks the service-role grant (migration 20261017120000 not applied yet). Like no
+  // service key: the caller reads through the fan's session, never a failure shown to the fan.
+  if (error?.code === '42501') return null
+  if (error) console.error('club rating stats read failed', error.code)
+  // Thrown, not returned: a failure is never kept in the cache.
+  if (error || !data) throw new Error('club rating stats read failed')
+  return data.map((s) => ({ player_id: s.player_id, sum: s.sum, count: s.count }))
 }
 
 /** The newest reviews of a player with their ♥ count, my own ♥ and whether I wrote it. One round of two queries. */

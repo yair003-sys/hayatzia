@@ -76,6 +76,10 @@ jobs:
       - name: Build
         run: ./scripts/ci-step.sh build npm run build
 
+      # Client JS sizes and contents as a notice (perf round 2); never fails the run.
+      - name: Bundle report
+        run: ./scripts/bundle-report.sh
+
       - name: E2E smoke (local build only)
         run: |
           npx playwright install --with-deps chromium

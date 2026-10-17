@@ -2,7 +2,9 @@ import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
 import type { ChatMessage } from '@/features/chat/schema'
 import { average, type Review } from '@/features/ratings/schema'
+import { getClubRatingStats } from '@/features/ratings/server/queries'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
+import { getClubPlayers } from '@/features/teams/server/queries'
 import type { Clip } from '@/features/square/schema'
 import { CLIP_COLUMNS, decorate } from '@/features/square/server/queries'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -10,7 +12,8 @@ import { createClient } from '@/lib/supabase/server'
 import { groupStories, REVIEWS_PER_PLAYER, type StoryGroup } from '../schema'
 
 // Home sections: one round of queries each (never one per row). Personal or club-private reads use the fan's session
-// (RLS) and are never cached; the two club-wide numbers are cached per club with the service role.
+// (RLS) and are never cached; the two club-wide numbers are cached per club with the service role, and the player
+// cards use the shared per-club squad and averages (features/teams, features/ratings; perf round 2).
 // A read that fails returns null, and the section says "could not load" with a retry instead of its empty state
 // (load test 2026-10-17, finding 6). A cached read throws instead, so a failure is never kept in the cache.
 
@@ -94,16 +97,19 @@ export type HomePlayer = {
 
 /**
  * Player cards on the home: the club's squad, most-rated first then by shirt number (always shown, rated or not), with
- * their most-liked reviews. Two queries in parallel.
+ * their most-liked reviews. The squad and the club's averages come from the shared per-club caches (the same for every
+ * fan of the club); the reviews are per fan (my ♥, blocked fans, my own hidden review: RLS) and read per request.
  */
 export async function getHomePlayers(teamId: string, me: string, max = 8): Promise<HomePlayer[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
-  const [players, reviews] = await Promise.all([
-    supabase.from('players').select('id,number,name_short,position,player_rating_stats(sum,count)').eq('team_id', teamId),
+  const [players, stats, reviews] = await Promise.all([
+    getClubPlayers(teamId),
+    getClubRatingStats(teamId),
     supabase.rpc('home_player_reviews', { p_per_player: REVIEWS_PER_PLAYER }),
   ])
-  if (players.error || reviews.error || !players.data || !reviews.data) return null
+  if (!players || !stats || reviews.error || !reviews.data) return null
+  const statBy = new Map(stats.map((s) => [s.player_id, s]))
   const byPlayer = new Map<string, Review[]>()
   for (const r of reviews.data) {
     const list = byPlayer.get(r.player_id) ?? []
@@ -119,9 +125,9 @@ export async function getHomePlayers(teamId: string, me: string, max = 8): Promi
     })
     byPlayer.set(r.player_id, list)
   }
-  return players.data
+  return players
     .map((p) => {
-      const s = p.player_rating_stats
+      const s = statBy.get(p.id)
       return {
         id: p.id,
         number: p.number,

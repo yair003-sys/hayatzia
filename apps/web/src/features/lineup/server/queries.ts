@@ -1,4 +1,8 @@
 import 'server-only'
+import { cacheLife, cacheTag } from 'next/cache'
+import { getMatchRatingStats } from '@/features/stage4/server/queries'
+import { getClubPlayers } from '@/features/teams/server/queries'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { fansXI, isFormation, parseFormations, roleOf, topFormation, xiFromSaved, type FansXI, type Role, type SavedLineup, type SquadPlayer } from '../schema'
 
@@ -17,55 +21,44 @@ function logErrors(errors: Record<string, { code?: string } | null>) {
 
 const ROLE_ORDER: Record<Role, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 }
 
+type Tally = { formation: string; slot: number; player_id: string; picks: number }
+/** The club's fan-lineup totals for a match (null: nobody saved yet) and the tallies of the winning formation. */
+export type LineupAggregates = { counts: { fans: number; formations: Record<string, number> } | null; tallies: Tally[] }
+
+const NOTHING_YET: LineupAggregates = { counts: null, tallies: [] }
+
 /**
- * Everything the "הרכב" tab needs for the fan's club, no N+1. Round one, in parallel: the squad (index
- * players_team_idx), the fan's own lineup (pk), the club's totals (pk), and after the match the fans' ratings
- * (match_rating_stats pk prefix). Round two, only when someone saved: the tallies of the winning formation alone
- * (pk prefix fixture, team, formation; at most 11 slots × squad ≈ 275 rows, well under the 1000-row API cap), in a
- * fixed order. Reads the session (RLS): never cached. Read errors are logged by code and read as "nothing yet".
+ * Everything the "הרכב" tab needs for the fan's club, no N+1. The club-wide parts are shared by every fan of the club:
+ * the squad (features/teams), the fans' totals and the winning formation's tallies, and after the match the fans'
+ * ratings (cached per match and club). Only the fan's own lineup (pk) is read per request (RLS). Read errors are logged
+ * by code and read as "nothing yet".
  */
 export async function getFanLineup(fixtureId: number, teamId: string, userId: string, withRatings: boolean): Promise<FanLineupData> {
   const supabase = await createClient()
   if (!supabase) return { squad: [], mine: null, fans: null, ratings: null }
-  const [players, mine, totals, stats] = await Promise.all([
-    supabase.from('players').select('id,number,name_he,name_short,position,injured').eq('team_id', teamId),
+  const [players, mine, aggregates, stats] = await Promise.all([
+    getClubPlayers(teamId),
     supabase.from('fan_lineups').select('formation,slots').eq('fixture_id', fixtureId).eq('user_id', userId).maybeSingle(),
-    supabase.from('fan_lineup_totals').select('fans,formations').eq('fixture_id', fixtureId).eq('team_id', teamId).maybeSingle(),
-    withRatings
-      ? supabase.from('match_rating_stats').select('player_id,sum,count').eq('fixture_id', fixtureId)
-      : Promise.resolve({ data: [] as { player_id: string; sum: number; count: number }[], error: null }),
+    getLineupAggregates(fixtureId, teamId),
+    withRatings ? getMatchRatingStats(fixtureId, teamId) : Promise.resolve([]),
   ])
-  logErrors({ players: players.error, mine: mine.error, totals: totals.error, ratings: stats.error })
-
-  const t = totals.data
-  const counts = t && t.fans > 0 ? { fans: t.fans, formations: parseFormations(t.formations) } : null
-  const top = counts ? topFormation(counts.formations) : null
-  const tallies = top
-    ? await supabase
-        .from('fan_lineup_tallies')
-        .select('formation,slot,player_id,picks')
-        .eq('fixture_id', fixtureId)
-        .eq('team_id', teamId)
-        .eq('formation', top.formation)
-        .order('slot')
-        .order('player_id')
-    : { data: [], error: null }
-  logErrors({ tallies: tallies.error })
+  logErrors({ mine: mine.error })
 
   const squad: SquadPlayer[] = []
-  for (const p of players.data ?? []) {
+  for (const p of players ?? []) {
     const role = roleOf(p.position)
     if (role) squad.push({ id: p.id, number: p.number, name: p.name_he, short: p.name_short, pos: p.position, role, injured: p.injured })
   }
   squad.sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || (a.number ?? 999) - (b.number ?? 999))
   const known = new Set(squad.map((p) => p.id))
 
-  const fans = counts ? fansXI(tallies.data ?? [], counts, known) : null
+  const { counts, tallies } = aggregates
+  const fans = counts ? fansXI(tallies, counts, known) : null
 
   let ratings: Record<string, number> | null = null
   if (withRatings) {
     ratings = {}
-    for (const s of stats.data ?? []) if (s.count > 0 && known.has(s.player_id)) ratings[s.player_id] = Math.round((s.sum / s.count) * 10) / 10
+    for (const s of stats ?? []) if (s.count > 0 && known.has(s.player_id)) ratings[s.player_id] = Math.round((s.sum / s.count) * 10) / 10
   }
 
   const m = mine.data
@@ -75,4 +68,70 @@ export async function getFanLineup(fixtureId: number, teamId: string, userId: st
     fans,
     ratings,
   }
+}
+
+/**
+ * The club's fan-lineup totals and the winning formation's tallies (pk prefix fixture, team, formation; at most
+ * 11 slots × squad ≈ 275 rows, in a fixed order). Both tables are readable by every signed-in fan
+ * (fan_lineup_totals_read / fan_lineup_tallies_read: `using (true)`), so they are read with the service role and cached
+ * per match and club for 30 s (tags `fan-lineup:<match>`, `fan-lineup:<match>:<club>`; saveFanLineupAction refreshes
+ * them at once). `teamId` is the signed-in fan's own club. Without a service key, the fan's session reads them.
+ */
+export async function getLineupAggregates(fixtureId: number, teamId: string): Promise<LineupAggregates> {
+  try {
+    const cached = await lineupAggregatesCached(fixtureId, teamId)
+    if (cached) return cached
+  } catch {
+    return NOTHING_YET
+  }
+  const supabase = await createClient()
+  if (!supabase) return NOTHING_YET
+  const totals = await supabase.from('fan_lineup_totals').select('fans,formations').eq('fixture_id', fixtureId).eq('team_id', teamId).maybeSingle()
+  logErrors({ totals: totals.error })
+  const counts = countsOf(totals.data)
+  const top = counts ? topFormation(counts.formations) : null
+  if (!top) return { counts, tallies: [] }
+  const tallies = await supabase
+    .from('fan_lineup_tallies')
+    .select('formation,slot,player_id,picks')
+    .eq('fixture_id', fixtureId)
+    .eq('team_id', teamId)
+    .eq('formation', top.formation)
+    .order('slot')
+    .order('player_id')
+  logErrors({ tallies: tallies.error })
+  return { counts, tallies: tallies.data ?? [] }
+}
+
+function countsOf(t: { fans: number; formations: unknown } | null): LineupAggregates['counts'] {
+  return t && t.fans > 0 ? { fans: t.fans, formations: parseFormations(t.formations) } : null
+}
+
+async function lineupAggregatesCached(fixtureId: number, teamId: string): Promise<LineupAggregates | null> {
+  'use cache'
+  cacheLife({ stale: 30, revalidate: 30, expire: 120 })
+  cacheTag(`fan-lineup:${fixtureId}`, `fan-lineup:${fixtureId}:${teamId}`)
+  const db = createAdminClient()
+  // No service key in this environment (fixed per deployment): the caller reads through the fan's session instead.
+  if (!db) return null
+  const totals = await db.from('fan_lineup_totals').select('fans,formations').eq('fixture_id', fixtureId).eq('team_id', teamId).maybeSingle()
+  // Permission denied (no service-role grant in this project): like no service key, the fan's session reads them.
+  if (totals.error?.code === '42501') return null
+  logErrors({ totals: totals.error })
+  // Thrown, not returned: a failure is never kept in the cache.
+  if (totals.error) throw new Error('fan lineup totals read failed')
+  const counts = countsOf(totals.data)
+  const top = counts ? topFormation(counts.formations) : null
+  if (!top) return { counts, tallies: [] }
+  const tallies = await db
+    .from('fan_lineup_tallies')
+    .select('formation,slot,player_id,picks')
+    .eq('fixture_id', fixtureId)
+    .eq('team_id', teamId)
+    .eq('formation', top.formation)
+    .order('slot')
+    .order('player_id')
+  logErrors({ tallies: tallies.error })
+  if (tallies.error || !tallies.data) throw new Error('fan lineup tallies read failed')
+  return { counts, tallies: tallies.data }
 }
