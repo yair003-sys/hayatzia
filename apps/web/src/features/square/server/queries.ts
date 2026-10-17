@@ -61,7 +61,7 @@ export async function decorate(supabase: Db, rows: ClipRow[], me: string): Promi
     supabase.from('clip_respects').select('clip_id').in('clip_id', ids),
     signable.length
       ? supabase.storage.from('clips').createSignedUrls(signable, URL_TTL)
-      : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+      : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[], error: null }),
   ])
   if (likes.error || respects.error || signed.error) return null
   const liked = new Set(likes.data?.map((l) => l.clip_id))
