@@ -7,7 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const h = vi.hoisted(() => ({ created: 0 }))
 vi.mock('next/link', () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
 }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/me', useRouter: () => ({ push: () => {}, refresh: () => {} }) }))
 vi.mock('@/lib/supabase/client', () => ({
