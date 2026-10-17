@@ -2,6 +2,9 @@
 -- apps/web/load/proposed-fixes.sql). Same answers as before, proven in tests/database/perf_fixes.test.sql by comparing
 -- what every kind of fan sees with the old and the new definitions.
 --
+-- IMPORTANT: the `private` schema must never be in the API's exposed schemas. Its definer helpers below are granted to
+-- `authenticated` only so that row rules and triggers can call them (see 20261017093000_perf_review.sql).
+--
 -- Engineering calls:
 -- - trips row rules: the active ride suspensions are read once per query (an InitPlan), not one function call per
 --   row; while the verification switch is off the verification check stops in one step. Once the switch is turned on,

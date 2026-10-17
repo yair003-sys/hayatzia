@@ -16,9 +16,13 @@
 \endif
 \timing on
 
--- Guard: a database that already has fans (not ours) is never touched.
+-- Guards: only a database server on this machine's loopback or a local socket (the workflow runs this file inside the
+-- local database container), and never one that already has fans (not ours).
 do $$
 begin
+  if inet_server_addr() is not null and not (inet_server_addr() <<= '127.0.0.0/8'::inet or inet_server_addr() = '::1'::inet) then
+    raise exception 'refusing to seed: the database server is at %, not on loopback or a local socket', inet_server_addr();
+  end if;
   if exists (select 1 from auth.users where email not like '%@load.onefan.test') then
     raise exception 'refusing to seed: auth.users has accounts that are not load-test accounts';
   end if;

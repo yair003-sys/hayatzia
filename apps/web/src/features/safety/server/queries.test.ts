@@ -26,10 +26,10 @@ describe('blocked fans', () => {
     const q = await load()
     expect(await q.getBlockedIdsOrNull()).toEqual(['a', 'b'])
   })
-  it('null when the read fails; the old helper still answers a list', async () => {
+  it('null (never an empty list) when the read fails', async () => {
     state.config = { tables: { blocks: failed } }
     const q = await load()
     expect(await q.getBlockedIdsOrNull()).toBeNull()
-    expect(await q.getBlockedIds()).toEqual([])
+    expect(Object.keys(q)).not.toContain('getBlockedIds') // the helper that answered [] on failure is gone
   })
 })

@@ -1,8 +1,8 @@
 name: web-load-local (load test on a throwaway local stack)
 
 # Manual from main: gh workflow run web-load-local.yml -f users=50000 -f vus=2000 -f ws=2000 -f page_vus=60 -f goal_rate=300
-# -f hold=300 (dispatch needs this file on the default branch). Before that, or for a branch: a push that changes
-# apps/web/load/run.env on one of the branches below runs it with the parameters in that file.
+# -f hold=300 (dispatch needs this file on the default branch; `--ref <branch>` runs a branch's code). The load-test
+# branch also runs it on a push that changes apps/web/load/run.env (parameters from that file).
 # Seeds a LOCAL Supabase inside this runner with fake fans ("נתוני עומס"), builds and starts the real
 # Next.js app on it, then runs k6 (PostgREST / RPC / Storage / Realtime + the real pages as signed-in fans) and the
 # Playwright UI consistency checks at 375 px during and after the load. Never touches the staging or production
@@ -32,11 +32,8 @@ on:
       sample:
         description: 'fans that get a session (tokens)'
         default: '5000'
-      fixes:
-        description: '1 = also apply load/proposed-fixes.sql (the 2026-10-17 experiment; since migration 20261017090000 the fixes are in the migrations)'
-        default: '0'
   push:
-    branches: [load-test, perf-fixes]
+    branches: [load-test]
     paths: ['apps/web/load/run.env']
 
 permissions:
@@ -80,12 +77,11 @@ jobs:
           I_GOAL: ${{ inputs.goal_rate }}
           I_HOLD: ${{ inputs.hold }}
           I_SAMPLE: ${{ inputs.sample }}
-          I_FIXES: ${{ inputs.fixes }}
         run: |
           if [ "$EVENT" != workflow_dispatch ]; then
             # only KEY=number lines are taken from the file
             while IFS='=' read -r k v; do
-              if [[ "$k" =~ ^(USERS|VUS|WS|PAGE|GOAL|HOLD|SAMPLE|FIXES)$ && "$v" =~ ^[0-9]+$ ]]; then printf -v "I_$k" '%s' "$v"; fi
+              if [[ "$k" =~ ^(USERS|VUS|WS|PAGE|GOAL|HOLD|SAMPLE)$ && "$v" =~ ^[0-9]+$ ]]; then printf -v "I_$k" '%s' "$v"; fi
             done < load/run.env
           fi
           for v in "$I_USERS" "$I_VUS" "$I_WS" "$I_PAGE" "$I_GOAL" "$I_HOLD" "$I_SAMPLE"; do
@@ -94,7 +90,7 @@ jobs:
           [ "$I_USERS" -ge 1000 ] && [ "$I_USERS" -le 200000 ] || { echo "::error::users must be 1000..200000"; exit 1; }
           {
             echo "USERS=$I_USERS"; echo "PEAK_VUS=$I_VUS"; echo "WS_VUS=$I_WS"; echo "PAGE_VUS=$I_PAGE"
-            echo "GOAL_RATE=$I_GOAL"; echo "HOLD_S=$I_HOLD"; echo "SAMPLE=$I_SAMPLE"; echo "FIXES=${I_FIXES:-0}"
+            echo "GOAL_RATE=$I_GOAL"; echo "HOLD_S=$I_HOLD"; echo "SAMPLE=$I_SAMPLE"
           } | tee -a "$GITHUB_ENV"
           mkdir -p "$OUT"
 
@@ -162,8 +158,12 @@ jobs:
       - name: Seed fake fans and their history (load/seed.sql)
         run: |
           url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
+          # Run inside the local database container over its loopback (seed.sql refuses any other server address).
+          DBC=$(docker ps --format '{{.Names}}' | grep -m1 '^supabase_db_')
+          u=supabase_admin
+          docker exec -e PGPASSWORD=postgres "$DBC" psql -h 127.0.0.1 -U "$u" -d postgres -Xqc 'select 1' >/dev/null 2>&1 || u=postgres
           start=$(date +%s)
-          ./scripts/ci-step.sh "seed" psql "$url" -X -v users="$USERS" -f load/seed.sql > "$OUT/seed.log"
+          ./scripts/ci-step.sh "seed" docker exec -i -e PGPASSWORD=postgres "$DBC" psql -h 127.0.0.1 -U "$u" -d postgres -X -v users="$USERS" -f - < load/seed.sql > "$OUT/seed.log"
           code=$?
           echo $(( $(date +%s) - start )) > "$OUT/seed-seconds.txt"
           tail -5 "$OUT/seed.log"
@@ -211,13 +211,6 @@ jobs:
 
       - name: EXPLAIN the hot queries on the seeded data (before the load)
         run: psql "$DB_URL" -X -f load/explain.sql > "$OUT/explain.txt" 2>&1 || true
-
-      - name: Experiment - apply the proposed fixes to the local database (FIXES=1 only)
-        if: env.FIXES == '1'
-        run: |
-          url="$ADMIN_URL"; psql "$url" -Xc 'select 1' >/dev/null 2>&1 || url="$DB_URL"
-          psql "$url" -X -f load/proposed-fixes.sql
-          echo "**This run: the proposed fixes (load/proposed-fixes.sql) were APPLIED to the throwaway local database.**" > "$OUT/fixes.txt"
 
       - name: Run the load (k6) with the UI checks during it, then after it
         env:

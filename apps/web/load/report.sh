@@ -12,7 +12,7 @@ q() { psql "$DB_URL" -XAt "$@" 2>/dev/null; }
   echo
   echo "Everything ran on one GitHub runner: $(nproc) vCPU, $(free -g | awk '/^Mem:/ {print $2}') GB RAM, local Supabase (Docker) + Next.js production build + k6 + Chromium."
   echo "No hosted Supabase project or Vercel was touched. Data: \"נתוני עומס\" seed (load/seed.sql)."
-  if [ -f "$OUT/fixes.txt" ]; then echo; cat "$OUT/fixes.txt"; else echo; echo "This run: the database exactly as the migrations make it (no fixes applied)."; fi
+  echo; echo "This run: the database exactly as the migrations make it."
   echo
   echo "### Seed"
   echo

@@ -208,6 +208,14 @@ describe('Bell', () => {
     expect(h.rpc.mock.calls.length).toBe(calls)
   })
 
+  it('a refresh whose server read failed (null) keeps the last known number', () => {
+    const { rerender } = render(<Bell meId={ME} count={4} />)
+    rerender(<Bell meId={ME} count={null} />)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 4 חדשות')
+    rerender(<Bell meId={ME} count={6} />)
+    expect(screen.getByRole('link')).toHaveAccessibleName('התראות, 6 חדשות')
+  })
+
   it('the browser Supabase client is created in the effect, not while rendering (load test finding 7)', () => {
     h.created = 0
     const { unmount } = render(<Bell meId={ME} count={1} />)

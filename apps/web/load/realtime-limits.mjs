@@ -6,7 +6,9 @@ import { createHmac } from 'node:crypto'
 
 const [base, secret] = process.argv.slice(2)
 if (!base || !secret) throw new Error('usage: realtime-limits.mjs <base> <secret>')
-if (!/^http:\/\/(\d+\.\d+\.\d+\.\d+|localhost):4000$/.test(base)) throw new Error(`refusing: not a local Realtime container: ${base}`)
+// Loopback or a private (Docker network) address only, as in fans.js.
+const PRIVATE = /^http:\/\/(127\.0\.0\.1|localhost|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+):4000$/
+if (!PRIVATE.test(base)) throw new Error(`refusing: not a local Realtime container: ${base}`)
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
 const now = Math.floor(Date.now() / 1000)

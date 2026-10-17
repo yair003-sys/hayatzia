@@ -6,11 +6,15 @@
 --      between two other fans, likes);
 --   3. the player_ratings (user_id) index exists;
 --   4. the crowd verdict still counts every keyword message and opens exactly one poll, also when the match's lock is
---      busy (simulated: the lock helper answers "taken").
+--      busy (simulated: the lock helper answers "taken");
+--   review (migration 20261017093000_perf_review): a fan's crowd_tick is rate-limited and never takes the lock without
+--   work; trip_requests_not_ride_suspended gives the same answers in its once-per-query form; anon has no usage on the
+--   `private` schema. NOTE: `private` must never be in the API's exposed schemas (see the migration header); this
+--   file cannot see the API settings, it checks the grants that are the second line of defence.
 -- Method for 1 and 2: snapshot what each fan sees with the new definitions, put the old definitions back inside this
 -- transaction (rolled back at the end), snapshot again and compare.
 begin;
-select plan(38);
+select plan(50);
 
 -- d01 unverified driver, d02 suspended from rides, d03 suspension lifted, d04 verified driver, d05 unverified seeker,
 -- d06 identity-verified seeker, d07 admin, d08 plain fan, d09 rider accepted on d01's offer, d10 rival club fan,
@@ -49,7 +53,8 @@ insert into public.api_teams (api_id, name) values (604, 'Maccabi Tel Aviv'), (4
   on conflict (api_id) do nothing;
 insert into public.fixtures (id, league_id, season, round, kickoff_at, status, home_api_id, away_api_id) values
   (97, 383, 2026, 'R1', now() + interval '3 days', 'NS', 604, 4486),
-  (98, 383, 2026, 'R1', now() - interval '50 minutes', '2H', 604, 4486);
+  (98, 383, 2026, 'R1', now() - interval '50 minutes', '2H', 604, 4486),
+  (99, 383, 2026, 'R2', now() - interval '50 minutes', '2H', 604, 4486);
 
 -- Written as the database owner (no signed-in fan), so the ride gates do not apply: every kind of poster exists.
 insert into public.trips (user_id, fixture_id, kind, from_city, pickup, seats) values
@@ -69,6 +74,12 @@ insert into public.trip_requests (trip_id, user_id, status)
 select pg_temp.as_fan('d01');  -- only the driver accepts (trip_requests_guard)
 update public.trip_requests set status = 'accepted' where user_id = pg_temp.uid('d09');
 select pg_temp.as_owner();
+-- Pending requests for the trip_requests rule: d04 asks d01, d02 and d05 ask d04.
+insert into public.trip_requests (trip_id, user_id)
+  select id, pg_temp.uid('d04') from public.trips where user_id = pg_temp.uid('d01') and kind = 'offer';
+insert into public.trip_requests (trip_id, user_id)
+  select t.id, u from public.trips t cross join unnest(array[pg_temp.uid('d02'), pg_temp.uid('d05')]) u
+  where t.user_id = pg_temp.uid('d04') and t.kind = 'offer';
 
 -- What one fan sees: 'poster/kind' of every visible trip, in a fixed order.
 create function pg_temp.seen() returns text language sql as $$
@@ -173,12 +184,43 @@ select is(pg_temp.seen(), 'd01/meet d01/offer d02/meet d02/offer d03/offer d05/s
 reset role;
 select pg_temp.as_owner();
 
+-- ---------- trip_requests rule (review): same answers once per query ----------
+-- Now d04 is suspended and d02's suspension is lifted (above).
+create function pg_temp.requests_seen() returns text language sql as $$
+  select coalesce(string_agg(right(q.user_id::text, 3), ' ' order by q.user_id, q.trip_id), '-') from public.trip_requests q
+$$;
+create function pg_temp.request_snapshot(p_tag text) returns void language plpgsql as $$
+declare
+  f text;
+begin
+  foreach f in array array['d01','d02','d03','d04','d05','d06','d07','d08','d09','d10','d11'] loop
+    perform pg_temp.as_fan(f);
+    execute 'set local role authenticated';
+    insert into snap values (p_tag, f, pg_temp.requests_seen());
+    execute 'reset role';
+  end loop;
+  perform pg_temp.as_owner();
+end $$;
+select pg_temp.request_snapshot('req_new');
+select is(pg_temp.seen_by('req_new', 'd01'), 'd09', 'the driver does not see the request of a fan suspended from rides');
+select is(pg_temp.seen_by('req_new', 'd04'), 'd02 d04 d05', 'the suspended fan still sees their own request and the ones on their ride');
+select is(pg_temp.seen_by('req_new', 'd05'), 'd05', 'a rider sees their own request');
+alter policy trip_requests_not_ride_suspended on public.trip_requests
+  using (user_id = (select auth.uid()) or (select public.is_app_admin()) or not private.ride_suspended(user_id));
+select pg_temp.request_snapshot('req_old');
+select is(pg_temp.snap_of('req_new'), pg_temp.snap_of('req_old'), 'trip_requests: every fan sees exactly the same requests as before');
+alter policy trip_requests_not_ride_suspended on public.trip_requests
+  using (user_id = (select auth.uid()) or (select public.is_app_admin())
+         or user_id <> all (coalesce((select private.active_ride_suspensions()), '{}')));
+
 -- ---------- helpers: privileges and search_path ----------
 select ok(not has_function_privilege('anon', 'private.active_ride_suspensions()', 'execute'), 'anon cannot read the suspension list');
 select ok(not has_function_privilege('anon', 'private.ride_verification_on()', 'execute'), 'anon cannot run the switch helper');
 select ok(not has_function_privilege('anon', 'private.my_blocked_ids()', 'execute'), 'anon cannot run the blocked-fans helper');
 select ok(not has_function_privilege('authenticated', 'private.crowd_try_lock(bigint)', 'execute'), 'fans cannot take the crowd lock');
 select ok(not has_function_privilege('anon', 'private.crowd_try_lock(bigint)', 'execute'), 'anon cannot take the crowd lock');
+select ok(not has_schema_privilege('anon', 'private', 'usage'), 'anon has no usage on the private schema (second line behind not exposing it)');
+select ok(not has_function_privilege('authenticated', 'private.crowd_tick_work(bigint)', 'execute'), 'fans cannot run the tick work directly');
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'private' and p.proname in ('active_ride_suspensions', 'ride_verification_on', 'my_blocked_ids', 'crowd_try_lock')
               and p.prosecdef and p.proconfig @> array['search_path=""']), 4,
@@ -293,11 +335,42 @@ select is(pg_temp.polls('offside'), 0, 'lock busy: the poll is not opened by a m
 create or replace function private.crowd_try_lock(p_fixture bigint) returns boolean
 language sql volatile security definer set search_path = '' as $$ select pg_try_advisory_xact_lock(hashtext('crowd:' || p_fixture)) $$;
 update public.match_polls set opens_at = now() - interval '2 minutes', closes_at = now() - interval '1 second' where fixture_id = 98;
+-- Written in the fan's session (claims set): the trigger's tick is not rate-limited like a fan's own RPC call.
+select pg_temp.as_fan('232');
 insert into public.match_messages (fixture_id, user_id, body) values (98, pg_temp.fan(32), 'נבדל');
+select pg_temp.as_owner();
 select is(pg_temp.polls('offside'), 1, 'the next keyword message (lock free) opens the poll, counting all 16 fans');
 select is(pg_temp.burst('offside'), 0, 'opening the poll clears the burst');
 insert into public.match_messages (fixture_id, user_id, body) values (98, pg_temp.fan(33), 'נבדל');
 select is(pg_temp.polls('offside'), 1, 'and a later message does not open a second one');
+
+-- ---------- a fan's crowd_tick (review) ----------
+-- The match's crowd lock held by this session?
+create function pg_temp.crowd_lock_held(p_fixture bigint) returns boolean language sql as $$
+  select exists (select 1 from pg_locks l where l.locktype = 'advisory' and l.pid = pg_backend_pid()
+                  and l.objid::bigint = (hashtext('crowd:' || p_fixture)::bigint & 4294967295))
+$$;
+create function pg_temp.fan_tick(p_fixture bigint) returns void language plpgsql as $$
+begin
+  perform pg_temp.as_fan('d08');
+  execute 'set local role authenticated';
+  perform public.crowd_tick(p_fixture);
+  execute 'reset role';
+  perform pg_temp.as_owner();
+end $$;
+select lives_ok($$ select pg_temp.fan_tick(99) $$, 'a fan may tick a match with nothing to do');
+select ok(not pg_temp.crowd_lock_held(99), 'with nothing to do, a fan''s tick does not take the match''s lock (a looping fan cannot hold it)');
+select is((select count(*)::int from private.crowd_tick_calls where user_id = pg_temp.uid('d08') and fixture_id = 99), 1,
+  'the fan''s call is recorded for the rate limit');
+insert into public.match_polls (fixture_id, kind, question, options, source, opens_at, closes_at)
+  values (99, 'card', 'הכרטיס מוצדק?', '[{"id":"ok","emoji":"✅","label":"מוצדק"}]', 'event', now() - interval '2 minutes', now() - interval '1 second');
+select pg_temp.fan_tick(99);
+select is((select summary from public.match_polls where fixture_id = 99), null,
+  'a second call within 2 seconds does nothing (rate limit per fan and match)');
+update private.crowd_tick_calls set at = now() - interval '3 seconds' where user_id = pg_temp.uid('d08') and fixture_id = 99;
+select pg_temp.fan_tick(99);
+select is((select summary from public.match_polls where fixture_id = 99), 'אף אחד לא הצביע', 'after 2 seconds the fan''s tick closes the expired poll');
+select ok(pg_temp.crowd_lock_held(99), 'with work to do it took the lock (and did the work once)');
 
 select * from finish();
 rollback;

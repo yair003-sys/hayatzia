@@ -7,6 +7,7 @@ import { MARKET_CAT } from '@/features/team-life/schema'
 import { getMarket } from '@/features/team-life/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { cn } from '@/lib/utils'
+import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'שוק אוהדים' }
 
@@ -43,7 +44,7 @@ async function Market({ cat }: { cat?: string }) {
           </Link>
         ))}
       </nav>
-      <MarketBoard items={items} meId={s.userId} teamShort={s.team.short} />
+      {items ? <MarketBoard items={items} meId={s.userId} teamShort={s.team.short} /> : <LoadError />}
     </>
   )
 }

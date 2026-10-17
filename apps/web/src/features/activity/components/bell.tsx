@@ -56,11 +56,12 @@ export const RETRY_UNKNOWN_MS = 10_000
 export function Bell({ meId, count: serverCount, inline = false }: { meId: string; count: number | null; inline?: boolean }) {
   const pathname = usePathname()
   const [count, setCount] = useState(serverCount)
-  // A new server count (a refresh) wins; in between, the live updates.
+  // A new server count (a refresh) wins; in between, the live updates. A refresh whose read failed (null) keeps the
+  // last known number.
   const [seenServer, setSeenServer] = useState(serverCount)
   if (seenServer !== serverCount) {
     setSeenServer(serverCount)
-    setCount(serverCount)
+    if (serverCount !== null) setCount(serverCount)
   }
   // Bumped when the list is opened, so a count request that started before it cannot bring the old number back.
   const generation = useRef(0)
