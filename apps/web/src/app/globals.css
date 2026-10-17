@@ -1487,7 +1487,7 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   /* Re-point the shared tokens inside the app shell and the sign-up screens. */
   body:has(.std-app-active) .app-main,
   body:has(.std-app-active) .su-page {
-    /* club-accent plumbing, so any reused .sh-*/.std-* element picks up the club colour */
+    /* club-accent plumbing, so any reused .sh- / .std- element picks up the club colour */
     --acc: var(--t-acc, var(--color-accent));
     --acc2: var(--t-acc2, var(--color-accent-2));
     --acc-text: var(--t-text, var(--color-accent-text));
