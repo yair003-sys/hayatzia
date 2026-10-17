@@ -8,6 +8,14 @@ import { average, positionGroup, type PlayerRow } from './schema'
 
 /** Trigger-kept totals of one player (player_rating_stats; the same shape as match_rating_stats). */
 export type { RatingStat }
+/** Every club's shared averages carry this tag; one club's also `rating-stats:<club>`. */
+export const RATING_STATS_TAG = 'rating-stats'
+
+/** The tag to refresh after a rating: the player's club (from the database), or every club when it is unknown. */
+export function ratingStatsTag(teamId: string | null | undefined): string {
+  return teamId ? `${RATING_STATS_TAG}:${teamId}` : RATING_STATS_TAG
+}
+
 /** The fan's own rating of a player. */
 export type MyRating = { player_id: string; stars: number; review: string }
 

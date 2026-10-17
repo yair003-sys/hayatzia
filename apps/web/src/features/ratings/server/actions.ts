@@ -1,10 +1,10 @@
 'use server'
 
 import { updateTag } from 'next/cache'
-import { getSessionProfile } from '@/features/profile/server/queries'
 import { moderationHe } from '@/lib/moderation'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import { ratingStatsTag } from '../club'
 import { likeReviewSchema, playerIdSchema, rateSchema } from '../schema'
 import { getRecentReviews } from './queries'
 
@@ -22,15 +22,15 @@ export const ratePlayerAction = actionClient.inputSchema(rateSchema).action(asyn
     .eq('player_id', playerId)
     .eq('user_id', userId)
     .maybeSingle()
-  const { error } = existing.data
-    ? await supabase.from('player_ratings').update({ stars, review }).eq('player_id', playerId).eq('user_id', userId)
-    : await supabase.from('player_ratings').insert({ player_id: playerId, stars, review })
+  // The written row comes back with its player's club (players.team_id, from the database, never from the form).
+  const { data: written, error } = existing.data
+    ? await supabase.from('player_ratings').update({ stars, review }).eq('player_id', playerId).eq('user_id', userId).select('players(team_id)')
+    : await supabase.from('player_ratings').insert({ player_id: playerId, stars, review }).select('players(team_id)')
   if (error)
     return { error: moderationHe(error.message) ?? (error.message.includes('not_your_player') ? 'מדרגים רק שחקנים של הקבוצה שלך' : 'השמירה נכשלה') }
-  // The club's shared averages (getClubRatingStats): the fan sees their own rating counted on the next render. The
-  // database only accepts a player of the fan's own club, so that club's entry is the one that changed.
-  const s = await getSessionProfile()
-  if (s.status === 'ready') updateTag(`rating-stats:${s.team.id}`)
+  // The club's shared averages (getClubRatingStats): the fan sees their own rating counted on the next render. Should the
+  // club not come back, every club's averages are refreshed instead (tag `rating-stats`), never left stale.
+  updateTag(ratingStatsTag(written?.[0]?.players?.team_id))
   return { ok: true as const, previous: existing.data?.stars ?? null }
 })
 

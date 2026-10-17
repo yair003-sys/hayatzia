@@ -29,17 +29,24 @@ export const rateMatchAction = actionClient
     const had = new Map((existing ?? []).map((r) => [r.player_id, r.score]))
     const fresh = ratings.filter((r) => !had.has(r.playerId))
     const changed = ratings.filter((r) => had.has(r.playerId) && had.get(r.playerId) !== r.score)
+    // The club's shared player-of-the-match totals (getMatchRatingStats) are refreshed whenever at least one write went
+    // through, also when a later one fails: the totals already changed in the database.
+    let wrote = false
+    const done = <T>(result: T): T => {
+      if (wrote) updateTag(`match-ratings:${fixtureId}`)
+      return result
+    }
     if (fresh.length) {
       const { error } = await supabase.from('match_ratings').insert(fresh.map((r) => ({ fixture_id: fixtureId, player_id: r.playerId, score: r.score })))
-      if (error) return { error: error.message.includes('not_finished') ? 'הדירוג נפתח רק אחרי השריקה, עד שהחדר נסגר' : 'הדירוג לא נשמר' }
+      if (error) return done({ error: error.message.includes('not_finished') ? 'הדירוג נפתח רק אחרי השריקה, עד שהחדר נסגר' : 'הדירוג לא נשמר' })
+      wrote = true
     }
     for (const r of changed) {
       const { error } = await supabase.from('match_ratings').update({ score: r.score }).eq('fixture_id', fixtureId).eq('player_id', r.playerId)
-      if (error) return { error: 'הדירוג לא נשמר' }
+      if (error) return done({ error: 'הדירוג לא נשמר' })
+      wrote = true
     }
-    // The club's shared player-of-the-match totals (getMatchRatingStats): the fan sees their scores counted.
-    if (fresh.length || changed.length) updateTag(`match-ratings:${fixtureId}`)
-    return { ok: true }
+    return done({ ok: true as const })
   })
 
 export const toggleFireAction = actionClient

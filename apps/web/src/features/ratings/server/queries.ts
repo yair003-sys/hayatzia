@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { getClubPlayers } from '@/features/teams/server/queries'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { squadWithRatings, type RatingStat } from '../club'
+import { RATING_STATS_TAG, ratingStatsTag, squadWithRatings, type RatingStat } from '../club'
 import type { PlayerRow, Review } from '../schema'
 
 /**
@@ -45,7 +45,7 @@ export async function getClubRatingStats(teamId: string): Promise<RatingStat[] |
 async function clubRatingStatsCached(teamId: string): Promise<RatingStat[] | null> {
   'use cache'
   cacheLife({ stale: 30, revalidate: 30, expire: 120 })
-  cacheTag(`rating-stats:${teamId}`)
+  cacheTag(RATING_STATS_TAG, ratingStatsTag(teamId))
   const db = createAdminClient()
   // No service key in this environment (fixed per deployment): the caller reads through the fan's session instead.
   if (!db) return null

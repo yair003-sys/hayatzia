@@ -11,9 +11,16 @@ load" behaviour.
 | Data | Function | Client | Life (`cacheLife`) | Tags | Refreshed by | Used by |
 |---|---|---|---|---|---|---|
 | Club squad (`players`, RLS `using (true)`, reference data) | `getClubPlayers` (`features/teams/server/queries.ts`) | public (anon) | `'hours'` | `players`, `players:<club>` | time only (written by migrations / seed) | home cards, home pitch, `/stand/players`, fan lineup, player of the match |
-| Club rating totals (`player_rating_stats`, RLS: own club's players) | `getClubRatingStats` (`features/ratings/server/queries.ts`) | service role, filtered to the club | stale/revalidate 30 s, expire 120 s | `rating-stats:<club>` | `ratePlayerAction` (`updateTag`) | home cards, home pitch, `/stand/players` |
+| Club rating totals (`player_rating_stats`, RLS: own club's players) | `getClubRatingStats` (`features/ratings/server/queries.ts`) | service role, filtered to the club | stale/revalidate 30 s, expire 120 s | `rating-stats`, `rating-stats:<club>` | `ratePlayerAction` (`updateTag` of the rated player's club as the write returns it; `rating-stats` when it does not come back) | home cards, home pitch, `/stand/players` |
 | Fans' lineup totals + winning formation's tallies (`fan_lineup_totals` / `_tallies`, RLS `using (true)`) | `getLineupAggregates` (`features/lineup/server/queries.ts`) | service role | 30 s / 120 s | `fan-lineup:<match>`, `fan-lineup:<match>:<club>` | `saveFanLineupAction` | match page, הרכב |
 | Match rating totals (`match_rating_stats`, RLS: own club's players) | `getMatchRatingStats` (`features/stage4/server/queries.ts`) | service role, filtered to the club | 30 s / 120 s | `match-ratings:<match>`, `match-ratings:<match>:<club>` | `rateMatchAction` | match page (player of the match, fans' ratings) |
+
+The actions refresh their tag whenever at least one write went through, also when a later write of the same save
+failed (`rateMatchAction`).
+
+**Verify on preview:** rate, reload several times, the number must be new each time; if not, switch to
+`'use cache: remote'`. (On Vercel, `updateTag` may not clear plain `'use cache'` entries kept in memory by other
+server instances; not changed in this round.)
 
 The club id is always the signed-in fan's own club from `getSessionProfile()` (the caller has proven membership).
 Without a service key (CI, local) and on a permission error (`42501`, until migration `20261017120000_perf_round2`
