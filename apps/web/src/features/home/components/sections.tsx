@@ -17,14 +17,13 @@ import { homeCircles, nextClubFixture } from '../schema'
 import { StandingsTable, type StandRow } from './standings-table'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
 import { getSquadWithRatings } from '@/features/ratings/server/queries'
-import { FanPitch } from '@/features/stand-home/components/fan-pitch'
+import { PlayersPanel } from './players-panel'
 import { ChatPreview } from './chat-preview'
 import { FansOfWeek } from './fans-of-week'
 import { SectionHead } from './section-head'
 import { Countdown } from './countdown'
 import { HotClips } from './hot-clips'
 import { OnlineTile } from './online-tile'
-import { PlayerReviews } from './player-reviews'
 import { StoriesRow } from './stories-row'
 
 // The home's sections (redesign 2026-10-14). Each is its own Server Component, rendered by the page inside its own
@@ -218,29 +217,18 @@ export async function MatchNightHero({ team }: { team: Team }) {
 
 // ── 5. players in the fans' eyes ──────────────────────────────────────────────────────────
 /** Always shown while the club has a squad (it always has): the cards say "not rated yet" / invite the first review. */
+/**
+ * One players area (owner 2026-10-18, "make it cleaner"): the tap-to-rate pitch and the fans' moving reviews under a
+ * single heading, switched by a "מגרש / רשימה" toggle instead of two stacked sections. Both datasets load here on the
+ * server and the toggle flips between them on the client.
+ */
 export async function PlayersSection({ team, userId }: Fan) {
-  const players = await getHomePlayers(team.id, userId)
-  if (players?.length === 0) return null
+  const [players, squad] = await Promise.all([getHomePlayers(team.id, userId), getSquadWithRatings(team.id, userId)])
+  if (squad.length === 0 && (players === null || players.length === 0)) return null
   return (
     <section aria-labelledby="hm-players-h" className="hm-sec">
-      <SectionHead id="hm-players-h" title="השחקנים בעיני האוהדים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
-      {players ? <PlayerReviews players={players} /> : <LoadError compact />}
-    </section>
-  )
-}
-
-/**
- * The sample XI on the pitch, placed right under the player reviews so the two live together (owner 2026-10-18:
- * "there's the lineup on the pitch and the moving reviews — better they're in the same place"). Same squad-with-ratings
- * data as the reviews; FanPitch is the client view with the tap-to-rate cards.
- */
-export async function PitchSection({ team, userId }: Fan) {
-  const squad = await getSquadWithRatings(team.id, userId)
-  if (squad.length === 0) return null
-  return (
-    <section aria-labelledby="hm-pitch-h" className="hm-sec">
-      <SectionHead id="hm-pitch-h" title="דרג את השחקנים" more={{ href: '/stand/players', label: 'כל הדירוגים' }} />
-      <FanPitch team={team} initial={squad} />
+      <SectionHead id="hm-players-h" title="דרג את השחקנים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
+      <PlayersPanel team={team} players={players} squad={squad} />
     </section>
   )
 }

@@ -12,7 +12,6 @@ import {
   MatchExtras,
   MatchNightHero,
   MiniTableSection,
-  PitchSection,
   PlayersSection,
   Skel,
   StoriesSection,
@@ -81,11 +80,8 @@ async function Home() {
       <Suspense fallback={<Skel h="h-[120px]" />}>
         <MatchExtras team={team} />
       </Suspense>
-      <Suspense fallback={<Skel h="h-[230px]" />}>
-        <PlayersSection team={team} userId={userId} />
-      </Suspense>
       <Suspense fallback={<Skel h="h-[300px]" />}>
-        <PitchSection team={team} userId={userId} />
+        <PlayersSection team={team} userId={userId} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[210px]" />}>
         <HotSection team={team} userId={userId} nick={s.nick} />
