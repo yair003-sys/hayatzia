@@ -2,11 +2,11 @@
 
 /* Design tokens: legacy layout scale, onefan brand colours (owner's brand guide, 2026-10-12). */
 @theme {
-  --color-canvas: #0a0e1a;
-  --color-elev: #0d1220;
-  --color-surface: #111829;
-  --color-surface-2: #161e31;
-  --color-surface-3: #1d263b;
+  --color-canvas: #141a2b;
+  --color-elev: #171e30;
+  --color-surface: #1c2438;
+  --color-surface-2: #232d44;
+  --color-surface-3: #2b3650;
   --color-fg: #f3f5f8;
   --color-muted: #a0aab8;
   --color-dim: #8590a3;
