@@ -203,20 +203,15 @@ export async function MatchNightHero({ team }: { team: Team }) {
           יחד איתך עכשיו <b>{fans.toLocaleString('he-IL')}</b> אוהדים
         </p>
       )}
-      <div className="mnh-actions">
-        {canBuild(next, now) ? (
-          <Link href={`/matches/${next.id}?tab=lineup`} className="mnh-cta">
-            בנה את ההרכב שלך
-          </Link>
-        ) : (
-          <Link href="/stand/chat" className="mnh-cta">
-            לצ׳אט היציע
-          </Link>
-        )}
-        <Link href="/stand/players" className="mnh-cta mnh-cta-ghost">
-          דרג שחקנים
+      {canBuild(next, now) ? (
+        <Link href={`/matches/${next.id}?tab=lineup`} className="mnh-cta">
+          בנה את ההרכב שלך
         </Link>
-      </div>
+      ) : (
+        <Link href="/stand/chat" className="mnh-cta">
+          לצ׳אט היציע
+        </Link>
+      )}
     </section>
   )
 }
@@ -244,7 +239,7 @@ export async function PitchSection({ team, userId }: Fan) {
   if (squad.length === 0) return null
   return (
     <section aria-labelledby="hm-pitch-h" className="hm-sec">
-      <SectionHead id="hm-pitch-h" title="ההרכב על המגרש" more={{ href: '/stand/players', label: 'כל הדירוגים' }} />
+      <SectionHead id="hm-pitch-h" title="דרג את השחקנים" more={{ href: '/stand/players', label: 'כל הדירוגים' }} />
       <FanPitch team={team} initial={squad} />
     </section>
   )
