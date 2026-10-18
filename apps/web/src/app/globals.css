@@ -1153,6 +1153,16 @@
   .hm-seg-btn { min-height: 34px; padding: 0 16px; border: none; border-radius: 9px; background: transparent; color: var(--color-muted); font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.15s, color 0.15s; }
   .hm-seg-btn[data-on='true'] { background: var(--color-surface); color: var(--acc-text); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
   .hm-seg-empty { padding: 16px; font-size: 13px; color: var(--color-muted); }
+  /* אהובי הקהל: most / least loved players from the fans' ratings (owner 2026-10-18) */
+  .hm-fav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hm-fav-col { min-width: 0; padding: 12px; border: 1px solid var(--color-line-soft); border-radius: 16px; background: var(--color-surface); }
+  .hm-fav-h2 { margin: 0 0 10px; font-size: 13px; font-weight: 800; }
+  .hm-fav-col ol { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: fav; }
+  .hm-fav-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; font-size: 13px; }
+  .hm-fav-row::before { counter-increment: fav; content: counter(fav); flex: none; width: 1.1em; color: var(--color-muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .hm-fav-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .hm-fav-score { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--acc-text); }
+  .hm-fav-score small { font-size: 11px; font-weight: 600; color: var(--color-muted); }
 
   /* players in the fans' eyes */
   .hm-pcards { display: flex; gap: 10px; margin-inline: -16px; padding-inline: 16px; position: relative; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }

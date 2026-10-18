@@ -233,6 +233,52 @@ export async function PlayersSection({ team, userId }: Fan) {
   )
 }
 
+/**
+ * אהובי הקהל (owner 2026-10-18): the squad's most- and least-loved players, straight from the fans' ratings — two
+ * short columns ranked by average stars. Only players with at least one rating count; shown only once someone has
+ * rated. The "least" column drops anyone already in "most" so a tiny squad never lists the same player twice.
+ */
+export async function FanFavoritesSection({ team, userId }: Fan) {
+  const squad = await getSquadWithRatings(team.id, userId)
+  const rated = squad.filter((p) => p.count > 0 && p.avg !== null)
+  if (rated.length === 0) return null
+  const loved = [...rated].sort((a, b) => b.avg! - a.avg! || b.count - a.count).slice(0, 3)
+  const lovedIds = new Set(loved.map((p) => p.id))
+  const least = [...rated]
+    .sort((a, b) => a.avg! - b.avg! || b.count - a.count)
+    .filter((p) => !lovedIds.has(p.id))
+    .slice(0, 3)
+  const list = (players: typeof rated) => (
+    <ol>
+      {players.map((p) => (
+        <li key={p.id} className="hm-fav-row">
+          <span className="hm-fav-name">{p.name_short}</span>
+          <span className="hm-fav-score">
+            ★ {p.avg!.toFixed(1)} <small>({p.count})</small>
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+  return (
+    <section aria-labelledby="hm-fav-h" className="hm-sec">
+      <SectionHead id="hm-fav-h" title="אהובי הקהל" />
+      <div className="hm-fav">
+        <div className="hm-fav-col">
+          <p className="hm-fav-h2">❤️ הכי אהובים</p>
+          {list(loved)}
+        </div>
+        {least.length > 0 && (
+          <div className="hm-fav-col">
+            <p className="hm-fav-h2">💔 הכי פחות</p>
+            {list(least)}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ── 6. hot in the Square ──────────────────────────────────────────────────────────────────
 /** Always shown; with no posts yet, an empty card the size of the row invites the first upload. */
 export async function HotSection({ team, userId, nick }: Fan & { nick: string }) {

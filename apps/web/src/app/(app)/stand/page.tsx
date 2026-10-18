@@ -6,6 +6,7 @@ import { CalendarDays, Car, ChevronLeft, Music, Shirt, Trophy } from 'lucide-rea
 import {
   ActivityTiles,
   ChatSection,
+  FanFavoritesSection,
   FansOfWeekSection,
   HomeHeader,
   HotSection,
@@ -82,6 +83,9 @@ async function Home() {
       </Suspense>
       <Suspense fallback={<Skel h="h-[300px]" />}>
         <PlayersSection team={team} userId={userId} />
+      </Suspense>
+      <Suspense fallback={<Skel h="h-[150px]" />}>
+        <FanFavoritesSection team={team} userId={userId} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[210px]" />}>
         <HotSection team={team} userId={userId} nick={s.nick} />
