@@ -1347,6 +1347,13 @@
   .chat-msg-other .chat-actions { inset-inline-start: -3.1rem; }
   /* The writer's avatar (a button to a private message, 2026-10-16) beside the nickname: a 44px target. */
   .chat-author-row { display: flex; align-items: center; gap: 0.25rem; }
+  /* אהבתי / לא אהבתי on a club-chat message (owner 2026-10-18) */
+  .chat-react { display: flex; gap: 6px; margin-top: 4px; }
+  .chat-react-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 10px; border-radius: 999px;
+    border: 1px solid var(--color-line-soft); background: var(--color-surface); color: var(--color-muted); font-size: 12px; font-weight: 700;
+    font-variant-numeric: tabular-nums; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
+  .chat-react-btn.on { border-color: var(--color-accent); color: var(--color-accent-text); background: var(--color-accent-soft); }
+  .chat-react-btn.down.on { border-color: var(--color-live); color: var(--color-live); background: rgb(239 68 68 / 0.12); }
   .chat-author { display: grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; margin-block: -0.25rem; border-radius: 999px; }
   .chat-author .ib-avatar-sm { width: 1.75rem; height: 1.75rem; font-size: 0.8rem; }
   .chat-msg[data-active] .chat-actions, .chat-msg:focus-within .chat-actions { opacity: 1; pointer-events: auto; }

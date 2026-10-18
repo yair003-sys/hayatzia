@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Flag, SendHorizontal, X } from 'lucide-react'
+import { Flag, SendHorizontal, ThumbsDown, ThumbsUp, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ import {
   mergeMessages,
   messageFromBroadcast,
   PAGE_SIZE,
+  reactionFromBroadcast,
   type ChatMessage,
   type Cursor,
   type SendResult,
@@ -46,6 +47,8 @@ export type ChatRoomProps = {
   inserts?: { key: string; at: string; node: ReactNode }[]
   /** Other broadcast events on the same channel (e.g. 'poll', 'tally', 'poll_closed'). */
   onChannelEvent?: (event: string, payload: unknown) => void
+  /** Team chat: when set, each message shows אהבתי / לא אהבתי; a tap fires this (kind 0 removes my reaction). */
+  onReact?: (messageId: string, kind: 1 | -1 | 0) => void
   /** Shown just above the composer (e.g. the open poll's jump button). */
   pinned?: ReactNode
   /**
@@ -84,6 +87,7 @@ export function ChatRoom({
   hiddenUsers,
   inserts,
   onChannelEvent,
+  onReact,
   pinned,
   openAtEnd = true,
   presenceTopic,
@@ -139,6 +143,35 @@ export function ChatRoom({
     onExtra.current = onChannelEvent
   }, [onChannelEvent])
 
+  // אהבתי / לא אהבתי: update this message's counts at once (the server's broadcast later reconciles the totals), then
+  // fire the toggle. Reads the latest messages from a ref so the handler stays stable and the memoised rows don't all
+  // re-render. Tapping the reaction already on = remove it (kind 0).
+  const messagesRef = useRef(messages)
+  useEffect(() => {
+    messagesRef.current = messages
+  })
+  const react = useCallback(
+    (id: string, want: 1 | -1) => {
+      if (!onReact) return
+      const prev = messagesRef.current.find((m) => m.id === id)?.myReaction ?? 0
+      const next: 1 | -1 | 0 = prev === want ? 0 : want
+      setMessages((list) =>
+        list.map((m) => {
+          if (m.id !== id) return m
+          let likes = m.likes ?? 0
+          let dislikes = m.dislikes ?? 0
+          if (prev === 1) likes--
+          if (prev === -1) dislikes--
+          if (next === 1) likes++
+          if (next === -1) dislikes++
+          return { ...m, myReaction: next, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) }
+        }),
+      )
+      onReact(id, next)
+    },
+    [onReact],
+  )
+
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
@@ -162,6 +195,12 @@ export function ChatRoom({
       for (const ev of EXTRA_EVENTS) {
         ch.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
       }
+      // Live like / dislike totals for the club (team chat). The server sends the authoritative counts, so this also
+      // corrects any optimistic over/undercount from a tap.
+      ch.on('broadcast', { event: 'REACTION' }, ({ payload }) => {
+        const r = reactionFromBroadcast(payload)
+        if (r) setMessages((cur) => cur.map((m) => (m.id === r.id ? { ...m, likes: r.likes, dislikes: r.dislikes } : m)))
+      })
       await supabase.realtime.setAuth()
       if (!cancelled) ch.subscribe((status) => setLive(status === 'SUBSCRIBED'))
     })()
@@ -288,6 +327,7 @@ export function ChatRoom({
         onActive={setActive}
         onReply={readOnly || m.id.startsWith(LOCAL_ID) ? undefined : startReply}
         onReport={canReport(m, meId, Boolean(reportKind)) ? startReport : undefined}
+        onReact={onReact ? react : undefined}
         onFan={clubOf ? openFan : undefined}
         quoteLoaded={!!m.reply_to && loadedIds.has(m.reply_to)}
         quoteHidden={!!m.reply_to && (hiddenIds.has(m.reply_to) || (!!m.reply_user && !!hiddenUsers?.includes(m.reply_user)))}
@@ -471,6 +511,7 @@ const MessageItem = memo(function MessageItem({
   onActive,
   onReply,
   onReport,
+  onReact,
   onFan,
   quoteLoaded,
   quoteHidden,
@@ -485,6 +526,7 @@ const MessageItem = memo(function MessageItem({
   onActive: (id: string | null) => void
   onReply?: (m: ChatMessage) => void
   onReport?: (m: ChatMessage) => void
+  onReact?: (id: string, kind: 1 | -1) => void
   onFan?: (m: ChatMessage) => void
   quoteLoaded: boolean
   quoteHidden: boolean
@@ -525,6 +567,30 @@ const MessageItem = memo(function MessageItem({
         )}
         {m.body}
       </div>
+      {onReact && !m.id.startsWith(LOCAL_ID) && (
+        <div className="chat-react">
+          <button
+            type="button"
+            aria-pressed={m.myReaction === 1}
+            aria-label="אהבתי"
+            className={cn('chat-react-btn', m.myReaction === 1 && 'on')}
+            onClick={() => onReact(m.id, 1)}
+          >
+            <ThumbsUp className="size-3.5" aria-hidden="true" />
+            {m.likes ? m.likes : ''}
+          </button>
+          <button
+            type="button"
+            aria-pressed={m.myReaction === -1}
+            aria-label="לא אהבתי"
+            className={cn('chat-react-btn', 'down', m.myReaction === -1 && 'on')}
+            onClick={() => onReact(m.id, -1)}
+          >
+            <ThumbsDown className="size-3.5" aria-hidden="true" />
+            {m.dislikes ? m.dislikes : ''}
+          </button>
+        </div>
+      )}
       <MessageMeta
         at={m.created_at}
         state={state}

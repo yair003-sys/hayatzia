@@ -12,7 +12,7 @@ export async function getTeamMessages(before?: { createdAt: string; id: string }
   if (!supabase) return []
   let q = supabase
     .from('team_messages')
-    .select(MESSAGE_COLUMNS)
+    .select(`${MESSAGE_COLUMNS},likes,dislikes`)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(PAGE_SIZE)
@@ -21,5 +21,15 @@ export async function getTeamMessages(before?: { createdAt: string; id: string }
   }
   const { data, error } = await q
   if (error || !data) return null
-  return data.reverse()
+  const rows = data.reverse()
+  // My own like / dislike for the messages on this page (one small keyed read; RLS already limits to my club).
+  const ids = rows.map((r) => r.id)
+  const { data: claims } = await supabase.auth.getClaims()
+  const me = claims?.claims.sub
+  const mine =
+    ids.length > 0 && me
+      ? (await supabase.from('message_reactions').select('message_id,kind').eq('user_id', me).in('message_id', ids)).data
+      : []
+  const myKind = new Map((mine ?? []).map((r) => [r.message_id, r.kind]))
+  return rows.map((r) => ({ ...r, myReaction: (myKind.get(r.id) ?? 0) as 1 | -1 | 0 }))
 }

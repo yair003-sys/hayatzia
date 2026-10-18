@@ -1273,16 +1273,36 @@ isOneToOne: false
       referencedColumns: ["api_id"]
     }
                   ]
-                },"team_messages": {
+                },"message_reactions": {
                   Row: {
-                    "body": string,"created_at": string,"hidden_at": string | null,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
+                    "created_at": string,"kind": number,"message_id": string,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "created_at"?: string,"kind": number,"message_id": string,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "created_at"?: string,"kind"?: number,"message_id"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "message_reactions_message_id_fkey"
+      columns: ["message_id"]
+isOneToOne: false
+      referencedRelation: "team_messages"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"team_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"dislikes": number,"hidden_at": string | null,"id": string,"likes": number,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"dislikes"?: number,"hidden_at"?: string | null,"id"?: string,"likes"?: number,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"dislikes"?: number,"hidden_at"?: string | null,"id"?: string,"likes"?: number,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {

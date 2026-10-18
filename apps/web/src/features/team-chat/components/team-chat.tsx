@@ -2,7 +2,7 @@
 
 import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
-import { loadOlderTeamMessagesAction, sendTeamMessageAction } from '../server/actions'
+import { loadOlderTeamMessagesAction, reactTeamMessageAction, sendTeamMessageAction } from '../server/actions'
 
 export function TeamChat({
   teamId,
@@ -39,6 +39,7 @@ export function TeamChat({
         return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
       }}
       loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? null}
+      onReact={(messageId, kind) => void reactTeamMessageAction({ messageId, kind })}
     />
   )
 }
