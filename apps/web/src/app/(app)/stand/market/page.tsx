@@ -8,10 +8,13 @@ import { getMarket } from '@/features/team-life/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { cn } from '@/lib/utils'
 import { LoadError } from '@/components/load-error'
+import { notFound } from 'next/navigation'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'שוק אוהדים' }
 
 export default function Page({ searchParams }: PageProps<'/stand/market'>) {
+  if (!features.market) notFound()
   return (
     <section className="space-y-4">
       <BackToStand />

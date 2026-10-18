@@ -5,10 +5,13 @@ import { EventsBoard } from '@/features/team-life/components/boards'
 import { getUpcomingEvents } from '@/features/team-life/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { LoadError } from '@/components/load-error'
+import { notFound } from 'next/navigation'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'אירועים' }
 
 export default function Page() {
+  if (!features.events) notFound()
   return (
     <section className="space-y-4">
       <BackToStand />
