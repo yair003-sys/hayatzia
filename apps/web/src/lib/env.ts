@@ -16,6 +16,14 @@ export const env = createEnv({
     VAPID_PRIVATE_KEY: z.string().min(20).optional(),
     /** Shared secret the ingest workflow sends to POST /api/alerts/dispatch. Server only. Unset → dispatch refuses. */
     ALERTS_SECRET: z.string().min(20).optional(),
+    /** API-Football key for the every-minute live tick. Server only. Unset → /api/live/tick no-ops (safe dormant). */
+    API_FOOTBALL_KEY: z.string().min(1).optional(),
+    /** Secret Vercel Cron auto-sends as `Authorization: Bearer <CRON_SECRET>`. Server only. Unset → only ALERTS_SECRET admits the tick. */
+    CRON_SECRET: z.string().min(16).optional(),
+    /** API-Football season (the year a season starts). Server only. Unset → computed from the date (live.ts currentSeason). */
+    SEASON: z.coerce.number().int().positive().optional(),
+    /** API-Football league id. Server only. Unset → 383 (Ligat Ha'Al), the same default as the legacy updater. */
+    LEAGUE: z.coerce.number().int().positive().optional(),
     /**
      * Identity verification provider for rides. Unset: the mock (demo) provider outside production, none in
      * production. 'mock' is refused in production (features/verification/server/select-provider.ts).
@@ -46,6 +54,10 @@ export const env = createEnv({
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     ALERTS_SECRET: process.env.ALERTS_SECRET,
+    API_FOOTBALL_KEY: process.env.API_FOOTBALL_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
+    SEASON: process.env.SEASON,
+    LEAGUE: process.env.LEAGUE,
     VERIFICATION_PROVIDER: process.env.VERIFICATION_PROVIDER,
     VERIFICATION_WEBHOOK_SECRET: process.env.VERIFICATION_WEBHOOK_SECRET,
     VERIFICATION_FINGERPRINT_SECRET: process.env.VERIFICATION_FINGERPRINT_SECRET,
