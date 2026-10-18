@@ -39,7 +39,7 @@ describe('home sections always show (owner, 2026-10-14)', () => {
 
   it('the chat without messages invites the first one, with "הצטרף לשיחה"', () => {
     render(<ChatPreview teamId="mta" initial={[]} hidden={[]} />)
-    expect(screen.getByRole('heading', { name: 'עכשיו בצ׳אט של האוהדים' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'צ׳אט היציע' })).toBeInTheDocument()
     expect(screen.getByText('הצ׳אט שקט כרגע — כתוב את ההודעה הראשונה')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'הצטרף לשיחה' })).toHaveAttribute('href', '/stand/chat')
   })

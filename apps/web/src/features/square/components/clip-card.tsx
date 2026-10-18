@@ -104,7 +104,17 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       threshold: [0, 0.7, 1],
     })
     io.observe(el)
-    return () => io.disconnect()
+    // Pause when the tab/app is backgrounded, and — importantly — on unmount (leaving the Square), so the video never
+    // keeps playing sound in the background after the fan swipes or navigates away.
+    const onHidden = () => {
+      if (document.hidden) v.pause()
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', onHidden)
+      v.pause()
+    }
   }, [url])
   const canRespect = rival && clip.audience === 'all'
 

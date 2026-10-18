@@ -47,19 +47,25 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
 
   return (
     <section aria-labelledby="hm-chat-h" className="hm-chat">
-      <h2 id="hm-chat-h" className="hm-h2">
-        עכשיו בצ׳אט של האוהדים
-      </h2>
+      <div className="hm-chat-top">
+        <h2 id="hm-chat-h" className="hm-h2">
+          צ׳אט היציע
+        </h2>
+        <span className="hm-chat-live">
+          <i aria-hidden="true" />
+          חי עכשיו
+        </span>
+      </div>
       {msgs.length === 0 ? (
         <p className="hm-empty">הצ׳אט שקט כרגע — כתוב את ההודעה הראשונה</p>
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="hm-chat-list">
           {msgs.map((m) => (
-            <li key={m.id} className="hm-msg">
+            <li key={m.id} className="hm-bubble-row">
               <span className="hm-av" aria-hidden="true">
                 {initialOf(m.nick)}
               </span>
-              <span className="flex min-w-0 flex-col">
+              <span className="hm-bubble">
                 <span className="hm-msg-by">{m.nick}</span>
                 <span className="hm-msg-body">{m.body}</span>
               </span>
@@ -67,8 +73,14 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
           ))}
         </ul>
       )}
-      <Link href="/stand/chat" className="hm-join">
-        הצטרף לשיחה
+      <Link href="/stand/chat" className="hm-chat-bar" aria-label="הצטרף לשיחה">
+        <span className="hm-chat-bar-txt">הצטרף לשיחה…</span>
+        <span className="hm-chat-send" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2 11 13" />
+            <path d="M22 2 15 22l-4-9-9-4 20-7z" />
+          </svg>
+        </span>
       </Link>
     </section>
   )
