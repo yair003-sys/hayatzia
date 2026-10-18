@@ -17,6 +17,11 @@ export type Clip = {
   caption: string
   /** Styled text overlays on the clip, shown on top during playback. */
   captions: ClipCaption[]
+  /** On-device edits applied during playback (no re-encode): colour filter, speed, and a trim window in seconds. */
+  filter: ClipFilter
+  speed: number
+  trim_start: number
+  trim_end: number | null
   tags: string
   once: boolean
   likes_count: number
@@ -56,11 +61,21 @@ export const captionSchema = z.object({
   size: z.number().min(0.6).max(4),
 })
 
+/** On-device editing (owner 2026-10-18): a colour filter, playback speed, and a trim window. */
+export const CLIP_FILTERS = ['none', 'vivid', 'bw', 'warm', 'cold', 'vintage'] as const
+export type ClipFilter = (typeof CLIP_FILTERS)[number]
+export const FILTER_LABEL: Record<ClipFilter, string> = { none: 'ללא', vivid: 'חי', bw: 'שחור-לבן', warm: 'חם', cold: 'קר', vintage: 'וינטג׳' }
+export const CLIP_SPEEDS = [0.5, 1, 1.5, 2] as const
+
 export const createClipSchema = z.object({
   path: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|mov|webm)$/, 'קובץ לא תקין'),
   kind: z.enum(['image', 'video']),
   caption: z.string().trim().max(120, 'עד 120 תווים').default(''),
   captions: z.array(captionSchema).max(MAX_CAPTIONS).default([]),
+  filter: z.enum(CLIP_FILTERS).default('none'),
+  speed: z.union([z.literal(0.5), z.literal(1), z.literal(1.5), z.literal(2)]).default(1),
+  trimStart: z.number().min(0).default(0),
+  trimEnd: z.number().positive().nullable().default(null),
   tags: z.string().trim().max(60, 'עד 60 תווים').default(''),
   once: z.boolean().default(false),
   audience: audience.default('all'),

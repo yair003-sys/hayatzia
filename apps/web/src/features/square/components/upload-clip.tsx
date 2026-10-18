@@ -1,18 +1,33 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Camera, ImagePlus, Plus, Trash2, Type, Video, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { shrinkPhoto } from '../compress'
-import { ACCEPT, CAPTION_STYLES, MAX_CAPTIONS, MAX_UPLOAD_MB, mediaOf, type Audience, type CaptionStyle, type Clip, type ClipCaption } from '../schema'
+import {
+  ACCEPT,
+  CAPTION_STYLES,
+  CLIP_FILTERS,
+  CLIP_SPEEDS,
+  FILTER_LABEL,
+  MAX_CAPTIONS,
+  MAX_UPLOAD_MB,
+  mediaOf,
+  type Audience,
+  type CaptionStyle,
+  type Clip,
+  type ClipCaption,
+  type ClipFilter,
+} from '../schema'
 import { CaptionLayer } from './caption-layer'
 import { createClipAction } from '../server/actions'
 
 const STYLE_LABEL: Record<CaptionStyle, string> = { classic: 'קלאסי', bar: 'רצועה', outline: 'קו מתאר', neon: 'ניאון', meme: 'ממים' }
 const CAPTION_COLORS = ['#ffffff', '#111111', '#ffe11a', '#ff2d55', '#00e5ff', '#34c759']
+const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
 type Props = {
   meId: string
@@ -42,8 +57,37 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const [caption, setCaption] = useState('')
   const [captions, setCaptions] = useState<ClipCaption[]>([])
   const [sel, setSel] = useState<number | null>(null)
+  const [filter, setFilter] = useState<ClipFilter>('none')
+  const [speed, setSpeed] = useState(1)
+  const [trimStart, setTrimStart] = useState(0)
+  const [trimEnd, setTrimEnd] = useState<number | null>(null)
+  const [dur, setDur] = useState(0)
+  const previewVideo = useRef<HTMLVideoElement>(null)
+  const isVideo = file?.type.startsWith('video/') ?? false
   const [tags, setTags] = useState('')
   const [once, setOnce] = useState(false)
+
+  // Preview the edits live: speed, and a trim window that loops.
+  useEffect(() => {
+    const v = previewVideo.current
+    if (!v) return
+    v.playbackRate = speed
+  }, [speed, preview])
+  useEffect(() => {
+    const v = previewVideo.current
+    if (!v) return
+    const onMeta = () => setDur(v.duration || 0)
+    const onTime = () => {
+      const end = trimEnd ?? v.duration || 0
+      if (end && (v.currentTime < trimStart || v.currentTime >= end)) v.currentTime = trimStart
+    }
+    v.addEventListener('loadedmetadata', onMeta)
+    v.addEventListener('timeupdate', onTime)
+    return () => {
+      v.removeEventListener('loadedmetadata', onMeta)
+      v.removeEventListener('timeupdate', onTime)
+    }
+  }, [trimStart, trimEnd, preview])
 
   const addCaption = () => {
     if (captions.length >= MAX_CAPTIONS) return
@@ -79,6 +123,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     setCaption('')
     setCaptions([])
     setSel(null)
+    setFilter('none')
+    setSpeed(1)
+    setTrimStart(0)
+    setTrimEnd(null)
+    setDur(0)
     setTags('')
     setOnce(false)
   }
@@ -97,6 +146,10 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
       kind,
       caption: caption.trim(),
       captions: caps,
+      filter,
+      speed,
+      trim_start: trimStart,
+      trim_end: trimEnd,
       tags: tags.trim(),
       once,
       likes_count: 0,
@@ -111,7 +164,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
       respected: false,
       uploading: true,
     })
-    const input = { caption, captions: caps, tags, once, audience: to }
+    const input = { caption, captions: caps, filter, speed: speed as 0.5 | 1 | 1.5 | 2, trimStart, trimEnd, tags, once, audience: to }
     const elsewhere = to !== audience ? `הפוסט עלה ${label(to)} ✓` : null
     const original = file
     close()
@@ -190,11 +243,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         <div className="sq-compose" role="dialog" aria-label={`פוסט חדש ${target}`}>
           <div className="sq-compose-media">
             {file.type.startsWith('video/') ? (
-              <video src={preview} autoPlay muted loop playsInline />
+              <video ref={previewVideo} src={preview} autoPlay muted loop playsInline className={`filt-${filter}`} />
             ) : (
               // Local preview (blob: URL).
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="תצוגה מקדימה" />
+              <img src={preview} alt="תצוגה מקדימה" className={`filt-${filter}`} />
             )}
             <CaptionLayer captions={captions} selected={sel} onSelect={setSel} onMove={(i, x, y) => patchCaption(i, { x, y })} />
           </div>
@@ -205,6 +258,48 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             <span className="text-sm text-white/80">{target} · 24 שעות</span>
           </div>
           <div className="sq-compose-bottom">
+            <div className="sq-edit">
+              <div className="sq-edit-row" role="group" aria-label="פילטר">
+                {CLIP_FILTERS.map((f) => (
+                  <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn('sq-chip', filter === f && 'on')}>
+                    {FILTER_LABEL[f]}
+                  </button>
+                ))}
+              </div>
+              {isVideo && (
+                <div className="sq-edit-row" role="group" aria-label="מהירות">
+                  <span className="sq-edit-lbl">מהירות</span>
+                  {CLIP_SPEEDS.map((s) => (
+                    <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)} className={cn('sq-chip', speed === s && 'on')}>
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isVideo && dur > 0 && (
+                <div className="sq-trim">
+                  <span className="sq-edit-lbl">
+                    חיתוך · {fmtSec(trimStart)}–{fmtSec(trimEnd ?? dur)}
+                  </span>
+                  <label className="sq-trim-row">
+                    <span>התחלה</span>
+                    <input type="range" min={0} max={Math.max(0.1, (trimEnd ?? dur) - 0.3)} step={0.1} value={trimStart} onChange={(e) => setTrimStart(Number(e.target.value))} aria-label="נקודת התחלה" />
+                  </label>
+                  <label className="sq-trim-row">
+                    <span>סוף</span>
+                    <input
+                      type="range"
+                      min={trimStart + 0.3}
+                      max={dur}
+                      step={0.1}
+                      value={trimEnd ?? dur}
+                      onChange={(e) => setTrimEnd(Number(e.target.value) >= dur ? null : Number(e.target.value))}
+                      aria-label="נקודת סוף"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
             <div className="sq-caps">
               <button type="button" className="sq-caps-add" onClick={addCaption} disabled={captions.length >= MAX_CAPTIONS}>
                 <Type className="size-4" aria-hidden="true" />

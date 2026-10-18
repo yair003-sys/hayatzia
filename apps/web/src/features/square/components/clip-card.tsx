@@ -94,13 +94,28 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     const el = card.current
     const v = media.current
     if (!el || !v) return
-    const play = () =>
-      v.play().catch(() => {
+    // On-device edits (owner 2026-10-18): playback speed, and a trim window that loops in the feed.
+    const start = clip.trim_start || 0
+    v.playbackRate = clip.speed || 1
+    const onMeta = () => {
+      v.playbackRate = clip.speed || 1
+      if (start) v.currentTime = start
+    }
+    const onTime = () => {
+      const end = clip.trim_end ?? v.duration
+      if (!story && end && (v.currentTime < start - 0.05 || v.currentTime >= end)) v.currentTime = start
+    }
+    v.addEventListener('loadedmetadata', onMeta)
+    v.addEventListener('timeupdate', onTime)
+    const play = () => {
+      v.playbackRate = clip.speed || 1
+      return v.play().catch(() => {
         if (v.muted) return
         v.muted = true
         setBlocked(true)
         void v.play().catch(() => {})
       })
+    }
     const io = new IntersectionObserver(([e]) => (e && e.intersectionRatio > 0.7 ? void play() : v.pause()), {
       threshold: [0, 0.7, 1],
     })
@@ -114,9 +129,11 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     return () => {
       io.disconnect()
       document.removeEventListener('visibilitychange', onHidden)
+      v.removeEventListener('loadedmetadata', onMeta)
+      v.removeEventListener('timeupdate', onTime)
       v.pause()
     }
-  }, [url])
+  }, [url, clip.speed, clip.trim_start, clip.trim_end, story])
   const canRespect = rival && clip.audience === 'all'
 
   return (
@@ -131,7 +148,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               loop={!story}
               playsInline
               preload="metadata"
-              className="size-full object-contain"
+              className={cn('size-full object-contain', `filt-${clip.filter}`)}
               onEnded={story?.onEnded}
               onTimeUpdate={story ? (e) => story.onProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1)) : undefined}
             />
@@ -143,7 +160,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" loading="lazy" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className="absolute inset-0 size-full object-contain" loading="lazy" />
+            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className={cn('absolute inset-0 size-full object-contain', `filt-${clip.filter}`)} loading="lazy" />
           </>
         )
       ) : (

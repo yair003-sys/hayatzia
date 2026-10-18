@@ -577,6 +577,19 @@
   .sq-swatch.on { border-color: #fff; box-shadow: 0 0 0 2px #111, 0 0 0 4px #fff; }
   .sq-caps-size { flex: 1; min-width: 0; accent-color: #fff; }
   .sq-caps-del { flex: none; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: rgb(255 45 85 / 0.2); color: #ff5a78; }
+  /* on-device clip edits: colour filters (applied to the media on preview and playback) + editor controls */
+  .filt-vivid { filter: saturate(1.5) contrast(1.08); }
+  .filt-bw { filter: grayscale(1) contrast(1.05); }
+  .filt-warm { filter: sepia(0.3) saturate(1.3) hue-rotate(-10deg); }
+  .filt-cold { filter: saturate(1.2) hue-rotate(15deg) brightness(1.05); }
+  .filt-vintage { filter: sepia(0.4) contrast(0.92) brightness(1.05) saturate(1.2); }
+  .sq-edit { display: flex; flex-direction: column; gap: 0.5rem; }
+  .sq-edit-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
+  .sq-edit-lbl { font-size: 0.78rem; font-weight: 700; color: rgb(255 255 255 / 0.75); margin-inline-end: 0.2rem; }
+  .sq-trim { display: flex; flex-direction: column; gap: 0.35rem; }
+  .sq-trim-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: rgb(255 255 255 / 0.8); }
+  .sq-trim-row > span { flex: none; width: 3rem; }
+  .sq-trim-row input { flex: 1; min-width: 0; accent-color: #fff; }
   .sq-toast { position: fixed; inset-inline: 1rem; bottom: calc(var(--tabbar-space) + 0.75rem); z-index: 80; padding: 0.7rem 1rem; border-radius: 0.9rem; background: rgb(255 61 87 / 0.95); color: #fff; font-size: 0.875rem; text-align: center; }
 
   @keyframes sq-fade { from { opacity: 0; } }

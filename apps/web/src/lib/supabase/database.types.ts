@@ -287,14 +287,14 @@ isOneToOne: false
                   ]
                 },"clips": {
                   Row: {
-                    "audience": string,"caption": string,"captions": Json,"comments_count": number,"created_at": string,"expires_at": string,"hidden_at": string | null,"id": string,"kind": string,"likes_count": number,"media_path": string,"nick": string,"once": boolean,"respects_count": number,"tags": string,"team_id": string,"user_id": string,"views_count": number
+                    "audience": string,"caption": string,"captions": Json,"comments_count": number,"created_at": string,"expires_at": string,"filter": string,"hidden_at": string | null,"id": string,"kind": string,"likes_count": number,"media_path": string,"nick": string,"once": boolean,"respects_count": number,"speed": number,"tags": string,"team_id": string,"trim_end": number | null,"trim_start": number,"user_id": string,"views_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"hidden_at"?: string | null,"id"?: string,"kind": string,"likes_count"?: number,"media_path": string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"filter"?: string,"hidden_at"?: string | null,"id"?: string,"kind": string,"likes_count"?: number,"media_path": string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"speed"?: number,"tags"?: string,"team_id"?: string,"trim_end"?: number | null,"trim_start"?: number,"user_id"?: string,"views_count"?: number
                   }
                   Update: {
-                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"filter"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"speed"?: number,"tags"?: string,"team_id"?: string,"trim_end"?: number | null,"trim_start"?: number,"user_id"?: string,"views_count"?: number
                   }
                   Relationships: [
                     {
