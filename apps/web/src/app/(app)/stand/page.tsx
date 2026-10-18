@@ -9,9 +9,9 @@ import {
   FansOfWeekSection,
   HomeHeader,
   HotSection,
+  MatchExtras,
   MatchNightHero,
   MiniTableSection,
-  NextMatchSection,
   PlayersSection,
   Skel,
   StoriesSection,
@@ -74,13 +74,13 @@ async function Home() {
       <Suspense fallback={<Skel h="h-[280px]" />}>
         <MatchNightHero team={team} />
       </Suspense>
+      <Suspense fallback={<Skel h="h-[120px]" />}>
+        <MatchExtras team={team} />
+      </Suspense>
       <Suspense fallback={<StoriesSkeleton />}>
         <StoriesSection team={team} userId={userId} nick={s.nick} />
       </Suspense>
       <ActivityTiles team={team} />
-      <Suspense fallback={<Skel h="h-[150px]" />}>
-        <NextMatchSection team={team} />
-      </Suspense>
       <Suspense fallback={<Skel h="h-[230px]" />}>
         <PlayersSection team={team} userId={userId} />
       </Suspense>

@@ -119,8 +119,13 @@ async function ActiveFansTile({ teamId }: { teamId: string }) {
   )
 }
 
-// ── 4. next match ─────────────────────────────────────────────────────────────────────────
-export async function NextMatchSection({ team }: { team: Team }) {
+// ── 4. match extras (crowd war + build lineup) ──────────────────────────────────────────────
+/**
+ * The match-day actions under the lit hero: the crowd-war poll and "build your lineup". The teams, countdown and
+ * kick-off time now live once, in MatchNightHero at the top, so this section no longer repeats them (owner 2026-10-18:
+ * "the order isn't good, there are duplicates"). Same data, same place in the flow — just without the duplicate card.
+ */
+export async function MatchExtras({ team }: { team: Team }) {
   await connection()
   const league = await getLeague()
   if (!league) return null
@@ -131,24 +136,8 @@ export async function NextMatchSection({ team }: { team: Team }) {
   const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
   const home = nameOf(next.h)
   const away = nameOf(next.a)
-  const atHome = ids.includes(next.h)
   return (
-    <section className="hm-next" aria-label="המשחק הבא">
-      <p className="hm-next-when">
-        המשחק הבא · {kickoffDay(next.t)} {kickoffTime(next.t)}
-        {next.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
-      </p>
-      {/* No aria-label here: the link reads its content, so the live countdown (role=timer) is heard too. */}
-      <Link href={`/matches/${next.id}`} className="hm-next-row">
-        <span className="hm-next-team" data-mine={atHome}>
-          {home.short}
-          <span className="sr-only"> נגד {away.short},</span>
-        </span>
-        <Countdown at={next.t * 1000} />
-        <span className="hm-next-team" data-mine={!atHome} aria-hidden="true">
-          {away.short}
-        </span>
-      </Link>
+    <section className="hm-next" aria-label="מלחמת הקהלים והרכב">
       <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
         <HomeCrowdWar fixture={next} home={home} away={away} />
       </Suspense>
