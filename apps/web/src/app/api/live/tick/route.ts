@@ -25,8 +25,9 @@ async function apiGet<T>(path: string, key: string): Promise<{ data: T[] | null;
     }
     const j: unknown = await r.json()
     const body = (j ?? {}) as { response?: unknown; errors?: unknown }
-    const errs = body.errors && (Array.isArray(body.errors) ? body.errors : Object.values(body.errors as object))
-    if (errs && errs.length) {
+    const raw = body.errors
+    const errs: unknown[] = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? Object.values(raw) : []
+    if (errs.length) {
       console.warn(`live tick: api error payload (${r.status})`)
       return { data: null, status: r.status }
     }
@@ -109,7 +110,7 @@ async function handle(request: Request): Promise<Response> {
     // Skip any fixture whose events call failed (no [] overwrite of existing events).
     const eventRows: TablesInsert<'fixture_details'>[] = detailRows
       .filter((d) => fetchedEvents.has(d.fixture_id))
-      .map((d) => ({ fixture_id: d.fixture_id, events: d.events as unknown as Json, updated_at: stamp }))
+      .map((d) => ({ fixture_id: d.fixture_id, events: d.events as unknown as NonNullable<Json>, updated_at: stamp }))
     if (eventRows.length) {
       const r3 = await admin.from('fixture_details').upsert(eventRows, { onConflict: 'fixture_id' })
       if (r3.error) fail('fixture_details', r3.error.code)
