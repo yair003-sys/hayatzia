@@ -4,7 +4,7 @@ import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { FEED_SIZE, type Audience, type Clip, type ClipComment } from '../schema'
 
 export const CLIP_COLUMNS =
-  'id,user_id,team_id,nick,media_path,kind,caption,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
+  'id,user_id,team_id,nick,media_path,kind,caption,captions,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
 const COLUMNS = CLIP_COLUMNS
 const URL_TTL = 60 * 60 // seconds; feed pages are short-lived anyway
 
@@ -44,9 +44,9 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
 }
 
 export type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>
-export type ClipRow = { id: string; user_id: string; media_path: string; once: boolean; kind: string; audience: string } & Omit<
+export type ClipRow = { id: string; user_id: string; media_path: string; once: boolean; kind: string; audience: string; captions: unknown } & Omit<
   Clip,
-  'kind' | 'audience' | 'url' | 'liked' | 'respected' | 'uploading'
+  'kind' | 'audience' | 'url' | 'liked' | 'respected' | 'uploading' | 'captions'
 >
 
 /**
@@ -72,6 +72,7 @@ export async function decorate(supabase: Db, rows: ClipRow[], me: string): Promi
     ...r,
     kind: r.kind === 'video' ? 'video' : 'image',
     audience: r.audience === 'team' ? 'team' : 'all',
+    captions: Array.isArray(r.captions) ? (r.captions as Clip['captions']) : [],
     url: urls.get(media_path) ?? null,
     liked: liked.has(r.id),
     respected: respected.has(r.id),

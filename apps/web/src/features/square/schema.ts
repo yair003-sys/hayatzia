@@ -15,6 +15,8 @@ export type Clip = {
   nick: string
   kind: ClipKind
   caption: string
+  /** Styled text overlays on the clip, shown on top during playback. */
+  captions: ClipCaption[]
   tags: string
   once: boolean
   likes_count: number
@@ -40,10 +42,25 @@ export const toggleSchema = clipIdSchema.extend({ on: z.boolean() })
 export const commentSchema = clipIdSchema.extend({
   body: z.string().trim().min(1, 'התגובה ריקה').max(150, 'עד 150 תווים'),
 })
+/** Styled caption overlays (owner 2026-10-18). Positions are percentages of the clip, so they hold on any screen. */
+export const CAPTION_STYLES = ['classic', 'bar', 'outline', 'neon', 'meme'] as const
+export type CaptionStyle = (typeof CAPTION_STYLES)[number]
+export type ClipCaption = { text: string; style: CaptionStyle; color: string; x: number; y: number; size: number }
+export const MAX_CAPTIONS = 6
+export const captionSchema = z.object({
+  text: z.string().trim().min(1).max(80),
+  style: z.enum(CAPTION_STYLES),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+  size: z.number().min(0.6).max(4),
+})
+
 export const createClipSchema = z.object({
   path: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|mov|webm)$/, 'קובץ לא תקין'),
   kind: z.enum(['image', 'video']),
   caption: z.string().trim().max(120, 'עד 120 תווים').default(''),
+  captions: z.array(captionSchema).max(MAX_CAPTIONS).default([]),
   tags: z.string().trim().max(60, 'עד 60 תווים').default(''),
   once: z.boolean().default(false),
   audience: audience.default('all'),

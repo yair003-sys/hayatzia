@@ -552,6 +552,31 @@
     padding: 3rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem); background: linear-gradient(transparent, rgb(0 0 0 / 0.85) 35%); }
   .sq-input { width: 100%; min-height: 2.9rem; padding-inline: 0.9rem; border: 1px solid rgb(255 255 255 / 0.18); border-radius: 0.9rem; background: rgb(255 255 255 / 0.08); color: #fff; backdrop-filter: blur(8px); }
   .sq-input::placeholder { color: rgb(255 255 255 / 0.55); }
+  /* clip caption overlays + editor (owner 2026-10-18). Font size scales with the clip width (container units), so a
+     caption looks the same on the small preview and the full feed. */
+  .cap-layer { position: absolute; inset: 0; container-type: size; pointer-events: none; overflow: hidden; }
+  .cap { position: absolute; transform: translate(-50%, -50%); max-width: 90%; text-align: center; line-height: 1.15;
+    font-weight: 800; font-size: calc(var(--s, 1.4) * 5cqw); color: var(--c, #fff); overflow-wrap: anywhere; }
+  .cap--edit { pointer-events: auto; cursor: grab; touch-action: none; }
+  .cap--sel { outline: 2px dashed rgb(255 255 255 / 0.9); outline-offset: 4px; border-radius: 4px; }
+  .cap--classic { text-shadow: 0 2px 6px rgb(0 0 0 / 0.7), 0 0 2px rgb(0 0 0 / 0.85); }
+  .cap--bar { padding: 0.1em 0.45em; border-radius: 0.3em; background: rgb(0 0 0 / 0.62); }
+  .cap--outline { -webkit-text-stroke: calc(var(--s, 1.4) * 0.6cqw) #000; paint-order: stroke fill; text-shadow: 0 2px 4px rgb(0 0 0 / 0.5); }
+  .cap--neon { text-shadow: 0 0 4px var(--c), 0 0 10px var(--c), 0 0 20px var(--c), 0 1px 2px rgb(0 0 0 / 0.6); }
+  .cap--meme { color: #fff; text-transform: uppercase; -webkit-text-stroke: calc(var(--s, 1.4) * 0.9cqw) #000; paint-order: stroke fill; }
+  .sq-caps { display: flex; flex-direction: column; gap: 0.5rem; }
+  .sq-caps-add { display: inline-flex; align-items: center; gap: 0.4rem; align-self: flex-start; min-height: 2.4rem; padding-inline: 0.9rem; border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.25); background: rgb(255 255 255 / 0.1); color: #fff; font-weight: 700; font-size: 0.85rem; }
+  .sq-caps-add:disabled { opacity: 0.4; }
+  .sq-caps-edit { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; border-radius: 0.9rem; background: rgb(0 0 0 / 0.38); border: 1px solid rgb(255 255 255 / 0.15); }
+  .sq-caps-styles { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .sq-chip { min-height: 2rem; padding-inline: 0.7rem; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.25); background: transparent; color: rgb(255 255 255 / 0.85); font-size: 0.8rem; font-weight: 700; }
+  .sq-chip.on { background: #fff; color: #111; border-color: #fff; }
+  .sq-caps-row { display: flex; align-items: center; gap: 0.5rem; }
+  .sq-swatch { flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 2px solid rgb(255 255 255 / 0.4); }
+  .sq-swatch.on { border-color: #fff; box-shadow: 0 0 0 2px #111, 0 0 0 4px #fff; }
+  .sq-caps-size { flex: 1; min-width: 0; accent-color: #fff; }
+  .sq-caps-del { flex: none; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: rgb(255 45 85 / 0.2); color: #ff5a78; }
   .sq-toast { position: fixed; inset-inline: 1rem; bottom: calc(var(--tabbar-space) + 0.75rem); z-index: 80; padding: 0.7rem 1rem; border-radius: 0.9rem; background: rgb(255 61 87 / 0.95); color: #fff; font-size: 0.875rem; text-align: center; }
 
   @keyframes sq-fade { from { opacity: 0; } }

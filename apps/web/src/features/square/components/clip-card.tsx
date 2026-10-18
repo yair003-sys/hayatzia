@@ -7,6 +7,7 @@ import { ReportBlock, ReportForm } from '@/features/safety/components/report-blo
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { cn } from '@/lib/utils'
 import { shortCount, timeLeftHe, type Clip, type ClipComment } from '../schema'
+import { CaptionLayer } from './caption-layer'
 import { setSoundOn, useSoundOn } from '../sound'
 import {
   addCommentAction,
@@ -165,6 +166,8 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           </button>
         </div>
       )}
+
+      {url && clip.captions && clip.captions.length > 0 && <CaptionLayer captions={clip.captions} />}
 
       {clip.uploading && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-black/35" role="status">

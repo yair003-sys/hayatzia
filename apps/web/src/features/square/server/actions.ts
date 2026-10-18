@@ -25,6 +25,7 @@ export const createClipAction = actionClient.inputSchema(createClipSchema).actio
     media_path: parsedInput.path,
     kind: parsedInput.kind,
     caption: parsedInput.caption,
+    captions: parsedInput.captions,
     tags: parsedInput.tags,
     once: parsedInput.once,
     audience: parsedInput.audience,
