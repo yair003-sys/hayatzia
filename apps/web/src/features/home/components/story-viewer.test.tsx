@@ -15,6 +15,7 @@ const clip = (id: string): Clip => ({
   nick: 'יציע_דרומי',
   kind: 'image',
   caption: '',
+  captions: [],
   tags: '',
   once: false,
   likes_count: 0,
