@@ -9,6 +9,7 @@ import {
   FansOfWeekSection,
   HomeHeader,
   HotSection,
+  MatchNightHero,
   MiniTableSection,
   NextMatchSection,
   PlayersSection,
@@ -70,6 +71,9 @@ async function Home() {
   return (
     <div className="sh hm space-y-4" style={theme}>
       <HomeHeader team={team} userId={userId} />
+      <Suspense fallback={<Skel h="h-[280px]" />}>
+        <MatchNightHero team={team} />
+      </Suspense>
       <Suspense fallback={<StoriesSkeleton />}>
         <StoriesSection team={team} userId={userId} nick={s.nick} />
       </Suspense>

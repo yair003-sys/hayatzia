@@ -161,6 +161,69 @@ export async function NextMatchSection({ team }: { team: Team }) {
   )
 }
 
+// ── match-night hero (owner 2026-10-18) ────────────────────────────────────────────────────
+/**
+ * The lit "next match" moment at the very top of the home: a single dark stadium card with floodlight beams, a crowd
+ * shimmer and a live countdown, all in the fan's club colour. Added above the otherwise-unchanged home, and shown only
+ * when there is an upcoming match — on other days it renders nothing, so the rest of the screen stays exactly as it was.
+ * Reuses the same data and the same <Countdown> as the plain next-match strip below. Decorative layers are clipped
+ * inside the card, so it cannot widen the page (the 375px rule).
+ */
+export async function MatchNightHero({ team }: { team: Team }) {
+  await connection()
+  const league = await getLeague()
+  if (!league) return null
+  const ids = clubApiIds(league, team.id)
+  const now = clock()
+  const next = nextClubFixture(league.fixtures, ids, now)
+  if (!next) return null
+  const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
+  const home = nameOf(next.h)
+  const away = nameOf(next.a)
+  const atHome = ids.includes(next.h)
+  const fans = await getActiveFans(team.id)
+  return (
+    <section className="mnh" aria-label="המשחק הבא">
+      <span className="mnh-beam mnh-beam-1" aria-hidden="true" />
+      <span className="mnh-beam mnh-beam-2" aria-hidden="true" />
+      <span className="mnh-beam mnh-beam-3" aria-hidden="true" />
+      <span className="mnh-mosaic" aria-hidden="true" />
+      <p className="mnh-label">
+        <i className="mnh-dot" aria-hidden="true" />
+        המשחק הבא
+        {next.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
+      </p>
+      <Link href={`/matches/${next.id}`} className="mnh-teams" aria-label={`${home.short} נגד ${away.short}`}>
+        <span className="mnh-team" data-mine={atHome}>
+          {home.short}
+          <small>{atHome ? 'בבית' : 'בחוץ'}</small>
+        </span>
+        <span className="mnh-vs" aria-hidden="true">נגד</span>
+        <span className="mnh-team" data-mine={!atHome}>
+          {away.short}
+          <small>{atHome ? 'בחוץ' : 'בבית'}</small>
+        </span>
+      </Link>
+      <div className="mnh-cd">
+        <Countdown at={next.t * 1000} />
+      </div>
+      <p className="mnh-when">
+        {kickoffDay(next.t)} · {kickoffTime(next.t)}
+        {next.v ? ` · ${next.v}` : ''}
+      </p>
+      {fans !== null && fans > 0 && (
+        <p className="mnh-fans">
+          <i className="mnh-pulse" aria-hidden="true" />
+          יחד איתך עכשיו <b>{fans.toLocaleString('he-IL')}</b> אוהדים
+        </p>
+      )}
+      <Link href="/stand/chat" className="mnh-cta">
+        לצ׳אט היציע
+      </Link>
+    </section>
+  )
+}
+
 // ── 5. players in the fans' eyes ──────────────────────────────────────────────────────────
 /** Always shown while the club has a squad (it always has): the cards say "not rated yet" / invite the first review. */
 export async function PlayersSection({ team, userId }: Fan) {
