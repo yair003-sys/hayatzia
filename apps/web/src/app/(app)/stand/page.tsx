@@ -32,6 +32,7 @@ import { LoadError } from '@/components/load-error'
 import { getCheckedIn } from '@/features/stage4/server/queries'
 import { DONE_STATUSES } from '@/features/matches/schema'
 import { roomState } from '@/features/match-room/schema'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: { absolute: 'onefan' } }
 
@@ -174,42 +175,53 @@ async function StandHome() {
         </>
       )}
 
-      <Link href="/stand/trips" className="sh-card">
-        <span className="sh-card-h">
-          <Car className="size-5" aria-hidden="true" />
-          <b>נוסעים למשחק</b>
-          <span className="sh-chip open">{shownCount(data.trips)} נסיעות</span>
-          <ChevronLeft className="size-4 text-dim" aria-hidden="true" />
-        </span>
-        {next ? (
-          <span className="sh-pv">
-            <b>המשחק הבא:</b> {ids.includes(next.h) ? 'בבית' : 'בחוץ'} מול {nameOf(ids.includes(next.h) ? next.a : next.h).short} ·{' '}
-            {kickoffDay(next.t)} {kickoffTime(next.t)}
+      {features.rides && (
+        <Link href="/stand/trips" className="sh-card">
+          <span className="sh-card-h">
+            <Car className="size-5" aria-hidden="true" />
+            <b>נוסעים למשחק</b>
+            <span className="sh-chip open">{shownCount(data.trips)} נסיעות</span>
+            <ChevronLeft className="size-4 text-dim" aria-hidden="true" />
           </span>
-        ) : (
-          <span className="sh-pv">אין משחק קרוב</span>
-        )}
-        <span className="sh-pv">מוצאים פרטנרים לנסיעה, ומתאמים בשיחה פרטית</span>
-      </Link>
+          {next ? (
+            <span className="sh-pv">
+              <b>המשחק הבא:</b> {ids.includes(next.h) ? 'בבית' : 'בחוץ'} מול {nameOf(ids.includes(next.h) ? next.a : next.h).short} ·{' '}
+              {kickoffDay(next.t)} {kickoffTime(next.t)}
+            </span>
+          ) : (
+            <span className="sh-pv">אין משחק קרוב</span>
+          )}
+          <span className="sh-pv">מוצאים פרטנרים לנסיעה, ומתאמים בשיחה פרטית</span>
+        </Link>
+      )}
 
       <nav className="sh-tiles" aria-label="עוד">
-        <Link href="/stand/events" className="sh-tile">
-          <i aria-hidden="true"><CalendarDays className="size-5" strokeWidth={1.75} /></i>
-          <b>אירועים</b>
-          <span>{shownCount(data.events)} קרובים</span>
-        </Link>
-        <Link href="/stand/market" className="sh-tile">
-          <i aria-hidden="true"><Shirt className="size-5" strokeWidth={1.75} /></i>
-          <b>שוק אוהדים</b>
-          <span>{shownCount(data.market)} מודעות</span>
-        </Link>
+        {features.events && (
+          <Link href="/stand/events" className="sh-tile">
+            <i aria-hidden="true"><CalendarDays className="size-5" strokeWidth={1.75} /></i>
+            <b>אירועים</b>
+            <span>{shownCount(data.events)} קרובים</span>
+          </Link>
+        )}
+        {features.market && (
+          <Link href="/stand/market" className="sh-tile">
+            <i aria-hidden="true"><Shirt className="size-5" strokeWidth={1.75} /></i>
+            <b>שוק אוהדים</b>
+            <span>{shownCount(data.market)} מודעות</span>
+          </Link>
+        )}
         <Link href="/stand/chants" className="sh-tile">
           <i aria-hidden="true"><Music className="size-5" strokeWidth={1.75} /></i>
           <b>שירי הקהל</b>
           <span>{shownCount(data.chants)} שירים</span>
         </Link>
       </nav>
-      {[data.trips, data.events, data.market, data.chants].includes(null) && <LoadError compact />}
+      {[
+        ...(features.rides ? [data.trips] : []),
+        ...(features.events ? [data.events] : []),
+        ...(features.market ? [data.market] : []),
+        data.chants,
+      ].includes(null) && <LoadError compact />}
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="sh-sec flex-1">הרכב לדוגמה</h2>

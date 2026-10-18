@@ -4,11 +4,13 @@ import { Suspense } from 'react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { DemoSession } from '@/features/verification/components/demo-session'
 import { getVerificationProvider } from '@/features/verification/server/select-provider'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'אימות לדוגמה', robots: { index: false, follow: false } }
 
 // The mock provider's session screen. Exists only where the mock runs (never production): anywhere else, not found.
 export default function Page({ searchParams }: PageProps<'/me/verify/demo'>) {
+  if (!features.rides) notFound()
   return (
     <section className="space-y-4">
       <h1 className="t-page">אימות לדוגמה (דמו)</h1>

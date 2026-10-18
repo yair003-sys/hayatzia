@@ -5,10 +5,13 @@ import { ChevronRight } from 'lucide-react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { VerifyPanel } from '@/features/verification/components/verify-panel'
 import { getMyVerification } from '@/features/verification/server/queries'
+import { notFound } from 'next/navigation'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'אימות לנסיעות', robots: { index: false, follow: false } }
 
 export default function Page() {
+  if (!features.rides) notFound()
   return (
     <section className="space-y-4">
       <Link href="/me" className="inline-flex min-h-11 items-center gap-1 text-sm text-muted">

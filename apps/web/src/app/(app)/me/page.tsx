@@ -25,6 +25,7 @@ import { LegalLinks } from '@/features/legal/components/legal-links'
 import { NOT_AFFILIATED } from '@/lib/legal'
 import { GenderPicker } from '@/features/team-life/components/ride-safety'
 import { getMyRideProfile } from '@/features/team-life/server/queries'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
@@ -120,11 +121,15 @@ async function ProfileCard() {
           <InstallApp />
           {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
           <NotificationSettings initial={prefs} />
-          <GenderPicker initial={ride?.gender ?? null} />
-          <Link href="/me/verify" className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-line px-4 py-3 font-medium">
-            <IdCard className="size-4" aria-hidden="true" />
-            אימות לנסיעות
-          </Link>
+          {features.rides && (
+            <>
+              <GenderPicker initial={ride?.gender ?? null} />
+              <Link href="/me/verify" className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-line px-4 py-3 font-medium">
+                <IdCard className="size-4" aria-hidden="true" />
+                אימות לנסיעות
+              </Link>
+            </>
+          )}
           {priv && <DmRequestsSetting initial={priv.dmRequests} />}
           <SignOutButton />
           <ContactForm />

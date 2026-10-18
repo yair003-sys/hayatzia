@@ -8,10 +8,13 @@ import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getMyVerification } from '@/features/verification/server/queries'
 import { LoadError } from '@/components/load-error'
+import { notFound } from 'next/navigation'
+import { features } from '@/lib/flags'
 
 export const metadata: Metadata = { title: 'נוסעים למשחק' }
 
 export default function Page({ searchParams }: PageProps<'/stand/trips'>) {
+  if (!features.rides) notFound()
   return (
     <section className="space-y-4">
       <BackToStand />
