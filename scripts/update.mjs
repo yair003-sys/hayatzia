@@ -9,7 +9,14 @@ import { existsSync } from 'node:fs';
 
 const KEY = process.env.API_FOOTBALL_KEY;
 const LEAGUE = Number(process.env.LEAGUE || 383);
-const SEASON = Number(process.env.SEASON || 2024);
+// The football season label (API-Football uses the starting year). It flips in the summer, so from July
+// on it is the current calendar year, before that the previous one. Auto-detected so no yearly edit is needed;
+// an explicit SEASON env (repo variable) still overrides, e.g. to backfill a past season.
+function currentSeason() {
+  const now = new Date();
+  return now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+}
+const SEASON = Number(process.env.SEASON) || currentSeason();
 const DAILY_CAP = Number(process.env.DAILY_CAP || 90);
 const BASE = process.env.API_BASE || 'https://v3.football.api-sports.io';
 const DIR = 'data';

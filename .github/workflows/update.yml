@@ -34,7 +34,7 @@ jobs:
         name: Pull from API-Football
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-          SEASON: ${{ vars.SEASON || '2024' }}
+          SEASON: ${{ vars.SEASON }}
         run: node scripts/update.mjs
       - name: Save data if it changed
         if: steps.run.outputs.changed == 'true'
