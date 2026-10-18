@@ -78,7 +78,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     if (!v) return
     const onMeta = () => setDur(v.duration || 0)
     const onTime = () => {
-      const end = trimEnd ?? v.duration || 0
+      const end = trimEnd ?? (v.duration || 0)
       if (end && (v.currentTime < trimStart || v.currentTime >= end)) v.currentTime = trimStart
     }
     v.addEventListener('loadedmetadata', onMeta)
