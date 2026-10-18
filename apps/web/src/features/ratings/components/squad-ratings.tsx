@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '../schema'
-import { ratePlayerAction, reviewsAction } from '../server/actions'
+import { allReviewsAction, ratePlayerAction, reviewsAction } from '../server/actions'
 import { ReviewLike, useReviewLikes } from './review-like'
 
 export function SquadRatings({ initial, openId: firstOpen = null }: { initial: PlayerRow[]; openId?: string | null }) {
@@ -60,6 +60,9 @@ function PlayerItem(props: {
   const [stars, setStars] = useState(p.myStars ?? 0)
   const [review, setReview] = useState(p.myReview)
   const [reviews, setReviews] = useState<Review[] | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [allLoaded, setAllLoaded] = useState<Review[] | null>(null)
+  const [loadingAll, setLoadingAll] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const likes = useReviewLikes()
@@ -141,6 +144,8 @@ function PlayerItem(props: {
                 props.onRated({ ...p, myStars: stars, myReview: review.trim(), count, avg: average(sum, count) })
                 setMsg('נשמר ✓')
                 setReviews((await reviewsAction({ playerId: p.id })).data?.reviews ?? [])
+                setAllLoaded(null)
+                setShowAll(false)
               })
             }
             className="w-full rounded-lg bg-accent py-2.5 font-semibold text-white disabled:opacity-40"
@@ -153,16 +158,43 @@ function PlayerItem(props: {
             </p>
           )}
           {reviews && reviews.length > 0 && (
-            <ul className="space-y-1" aria-label="ביקורות אחרונות">
-              {reviews.map((r) => (
-                <li key={r.user_id} className="flex items-start gap-2 text-sm">
-                  <span className="min-w-0 flex-1 py-2.5">
-                    <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
-                  </span>
-                  <ReviewLike nick={r.nick} mine={r.mine} state={likes.view(p.id, r)} onToggle={() => void likes.toggle(p.id, r)} />
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted">תגובות הקהל</p>
+              <ul className="space-y-1" aria-label="תגובות הקהל">
+                {(showAll ? (allLoaded ?? reviews) : reviews.slice(0, 3)).map((r) => (
+                  <li key={r.user_id} className="flex items-start gap-2 text-sm">
+                    <span className="min-w-0 flex-1 py-2.5">
+                      <b className="text-accent-text">{r.nick}</b> <span className="text-warn">{'★'.repeat(r.stars)}</span> {r.review}
+                    </span>
+                    <ReviewLike nick={r.nick} mine={r.mine} state={likes.view(p.id, r)} onToggle={() => void likes.toggle(p.id, r)} />
+                  </li>
+                ))}
+              </ul>
+              {(reviews.length > 3 || showAll) && (
+                <button
+                  type="button"
+                  aria-expanded={showAll}
+                  disabled={loadingAll}
+                  onClick={() => {
+                    if (showAll) {
+                      setShowAll(false)
+                    } else if (allLoaded === null) {
+                      setLoadingAll(true)
+                      void allReviewsAction({ playerId: p.id }).then((r) => {
+                        setAllLoaded(r.data?.reviews ?? [])
+                        setShowAll(true)
+                        setLoadingAll(false)
+                      })
+                    } else {
+                      setShowAll(true)
+                    }
+                  }}
+                  className="text-sm font-semibold text-accent-text disabled:opacity-40"
+                >
+                  {showAll ? 'הצג פחות' : loadingAll ? 'טוען…' : 'ראה את כל התגובות'}
+                </button>
+              )}
+            </div>
           )}
           {likes.error && (
             <p role="alert" className="text-xs text-live">

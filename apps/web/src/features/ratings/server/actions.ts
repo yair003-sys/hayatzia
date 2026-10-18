@@ -38,6 +38,11 @@ export const reviewsAction = actionClient
   .inputSchema(playerIdSchema)
   .action(async ({ parsedInput }) => ({ reviews: await getRecentReviews(parsedInput.playerId) }))
 
+/** All of a player's reviews (capped at 100) — behind "ראה את כל התגובות" on the squad page. */
+export const allReviewsAction = actionClient
+  .inputSchema(playerIdSchema)
+  .action(async ({ parsedInput }) => ({ reviews: await getRecentReviews(parsedInput.playerId, 100) }))
+
 /**
  * ♥ on another fan's review, or take it back. The database keeps the count exact and refuses your own review, a
  * player of another club, a review without words and blocked fans (RLS).

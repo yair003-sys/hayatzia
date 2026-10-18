@@ -62,8 +62,12 @@ async function clubRatingStatsCached(teamId: string): Promise<RatingStat[] | nul
   return data.map((s) => ({ player_id: s.player_id, sum: s.sum, count: s.count }))
 }
 
-/** The newest reviews of a player with their ♥ count, my own ♥ and whether I wrote it. One round of two queries. */
-export async function getRecentReviews(playerId: string): Promise<Review[]> {
+/**
+ * A player's reviews with their ♥ count, my own ♥ and whether I wrote it. One round of two queries. `limit` is how
+ * many to bring back: the home shows a few recent ones (10), and "ראה את כל התגובות" on the squad page raises the cap
+ * (100). Kept bounded on purpose — beyond that the list would need keyset paging (newest first, on player_id+updated_at).
+ */
+export async function getRecentReviews(playerId: string, limit = 10): Promise<Review[]> {
   const supabase = await createClient()
   if (!supabase) return []
   const [{ data: claims }, reviews, mine] = await Promise.all([
@@ -74,7 +78,7 @@ export async function getRecentReviews(playerId: string): Promise<Review[]> {
       .eq('player_id', playerId)
       .neq('review', '')
       .order('updated_at', { ascending: false })
-      .limit(10),
+      .limit(limit),
     // RLS: only my own likes come back.
     supabase.from('player_rating_likes').select('author_id').eq('player_id', playerId),
   ])
