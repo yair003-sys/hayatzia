@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -14,8 +13,11 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { clubApiIds } from '@/features/stand-home/server/queries'
 import type { Team } from '@/features/teams/data'
-import { homeCircles, nextClubFixture, tableWindow } from '../schema'
+import { homeCircles, nextClubFixture } from '../schema'
+import { StandingsTable, type StandRow } from './standings-table'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
+import { getSquadWithRatings } from '@/features/ratings/server/queries'
+import { FanPitch } from '@/features/stand-home/components/fan-pitch'
 import { ChatPreview } from './chat-preview'
 import { FansOfWeek } from './fans-of-week'
 import { SectionHead } from './section-head'
@@ -137,15 +139,10 @@ export async function MatchExtras({ team }: { team: Team }) {
   const home = nameOf(next.h)
   const away = nameOf(next.a)
   return (
-    <section className="hm-next" aria-label="מלחמת הקהלים והרכב">
+    <section className="hm-next" aria-label="מלחמת הקהלים">
       <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
         <HomeCrowdWar fixture={next} home={home} away={away} />
       </Suspense>
-      {canBuild(next, now) && (
-        <Link href={`/matches/${next.id}?tab=lineup`} className="hm-next-cta">
-          בנה את ההרכב שלך
-        </Link>
-      )}
     </section>
   )
 }
@@ -206,9 +203,20 @@ export async function MatchNightHero({ team }: { team: Team }) {
           יחד איתך עכשיו <b>{fans.toLocaleString('he-IL')}</b> אוהדים
         </p>
       )}
-      <Link href="/stand/chat" className="mnh-cta">
-        לצ׳אט היציע
-      </Link>
+      <div className="mnh-actions">
+        {canBuild(next, now) ? (
+          <Link href={`/matches/${next.id}?tab=lineup`} className="mnh-cta">
+            בנה את ההרכב שלך
+          </Link>
+        ) : (
+          <Link href="/stand/chat" className="mnh-cta">
+            לצ׳אט היציע
+          </Link>
+        )}
+        <Link href="/stand/players" className="mnh-cta mnh-cta-ghost">
+          דרג שחקנים
+        </Link>
+      </div>
     </section>
   )
 }
@@ -222,6 +230,22 @@ export async function PlayersSection({ team, userId }: Fan) {
     <section aria-labelledby="hm-players-h" className="hm-sec">
       <SectionHead id="hm-players-h" title="השחקנים בעיני האוהדים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
       {players ? <PlayerReviews players={players} /> : <LoadError compact />}
+    </section>
+  )
+}
+
+/**
+ * The sample XI on the pitch, placed right under the player reviews so the two live together (owner 2026-10-18:
+ * "there's the lineup on the pitch and the moving reviews — better they're in the same place"). Same squad-with-ratings
+ * data as the reviews; FanPitch is the client view with the tap-to-rate cards.
+ */
+export async function PitchSection({ team, userId }: Fan) {
+  const squad = await getSquadWithRatings(team.id, userId)
+  if (squad.length === 0) return null
+  return (
+    <section aria-labelledby="hm-pitch-h" className="hm-sec">
+      <SectionHead id="hm-pitch-h" title="ההרכב על המגרש" more={{ href: '/stand/players', label: 'כל הדירוגים' }} />
+      <FanPitch team={team} initial={squad} />
     </section>
   )
 }
@@ -264,46 +288,17 @@ export async function MiniTableSection({ team }: { team: Team }) {
   if (!league) return null
   const ids = clubApiIds(league, team.id)
   const group = league.standings.find((g) => g.some((r) => ids.includes(r.team)))
-  const rows = group ? tableWindow(group, ids) : []
-  if (rows.length === 0) return null
+  if (!group || group.length === 0) return null
+  const rows: StandRow[] = group.map((r) => {
+    const t = displayTeam(r.team, league.teams[String(r.team)]?.name)
+    return { team: r.team, rank: r.rank, short: t.short, bg: t.bg, ring: t.ring, p: r.p, pts: r.pts, mine: ids.includes(r.team) }
+  })
+  if (!rows.some((r) => r.mine)) return null
   return (
     <section aria-labelledby="hm-table-h" className="hm-sec">
-      <SectionHead id="hm-table-h" title="הטבלה" more={{ href: '/matches', label: 'לטבלה המלאה' }} />
-      <table className="hm-table">
-        <colgroup>
-          <col style={{ width: 40 }} />
-          <col />
-          <col style={{ width: 48 }} />
-          <col style={{ width: 52 }} />
-        </colgroup>
-        <thead className="sr-only">
-          <tr>
-            <th scope="col">מקום</th>
-            <th scope="col">קבוצה</th>
-            <th scope="col">משחקים</th>
-            <th scope="col">נקודות</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const t = displayTeam(r.team, league.teams[String(r.team)]?.name)
-            const mine = ids.includes(r.team)
-            return (
-              <tr key={r.team} data-mine={mine} aria-current={mine ? 'true' : undefined}>
-                <td className="t-num">{r.rank}</td>
-                <td>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="hm-tdot" style={{ '--a': t.bg, '--b': t.ring } as CSSProperties} aria-hidden="true" />
-                    <span className="truncate">{t.short}</span>
-                  </span>
-                </td>
-                <td className="t-num text-muted">{r.p}</td>
-                <td className="t-num font-bold">{r.pts}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <SectionHead id="hm-table-h" title="הטבלה" />
+      {/* The full table opens here on the same page (owner 2026-10-18), instead of a link to /matches. */}
+      <StandingsTable rows={rows} />
     </section>
   )
 }

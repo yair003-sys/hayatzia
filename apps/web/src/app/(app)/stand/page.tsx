@@ -12,6 +12,7 @@ import {
   MatchExtras,
   MatchNightHero,
   MiniTableSection,
+  PitchSection,
   PlayersSection,
   Skel,
   StoriesSection,
@@ -24,7 +25,6 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { liveNow } from '@/features/matches/live'
 import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
-import { FanPitch } from '@/features/stand-home/components/fan-pitch'
 import { MatchTicket } from '@/features/stand-home/components/match-ticket'
 import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
 import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
@@ -71,18 +71,21 @@ async function Home() {
   return (
     <div className="sh hm space-y-4" style={theme}>
       <HomeHeader team={team} userId={userId} />
+      <Suspense fallback={<StoriesSkeleton />}>
+        <StoriesSection team={team} userId={userId} nick={s.nick} />
+      </Suspense>
+      <ActivityTiles team={team} />
       <Suspense fallback={<Skel h="h-[280px]" />}>
         <MatchNightHero team={team} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[120px]" />}>
         <MatchExtras team={team} />
       </Suspense>
-      <Suspense fallback={<StoriesSkeleton />}>
-        <StoriesSection team={team} userId={userId} nick={s.nick} />
-      </Suspense>
-      <ActivityTiles team={team} />
       <Suspense fallback={<Skel h="h-[230px]" />}>
         <PlayersSection team={team} userId={userId} />
+      </Suspense>
+      <Suspense fallback={<Skel h="h-[300px]" />}>
+        <PitchSection team={team} userId={userId} />
       </Suspense>
       <Suspense fallback={<Skel h="h-[210px]" />}>
         <HotSection team={team} userId={userId} nick={s.nick} />
@@ -226,14 +229,6 @@ async function StandHome() {
         ...(features.market ? [data.market] : []),
         data.chants,
       ].includes(null) && <LoadError compact />}
-
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="sh-sec flex-1">הרכב לדוגמה</h2>
-        <Link href="/stand/players" className="mt-2 shrink-0 rounded-full border border-line bg-white/4 px-3.5 py-1.5 text-[13px] font-bold">
-          כל הדירוגים
-        </Link>
-      </div>
-      <FanPitch team={team} initial={data.squad} />
     </div>
   )
 }
