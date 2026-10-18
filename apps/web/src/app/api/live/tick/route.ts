@@ -5,8 +5,8 @@ import { LIVE_STATUSES } from '@/features/matches/schema'
 import { type ApiEvent, type ApiFixture, currentSeason, mapLive } from '@/features/matches/ingest/live'
 import type { Json, TablesInsert } from '@/lib/supabase/database.types'
 
-// Vercel Cron issues a GET every minute; the tick must run per-request (never cached) and may take up to a minute.
-export const dynamic = 'force-dynamic'
+// Vercel Cron issues a GET every minute; the tick may take up to a minute. It reads the request authorization header
+// and writes to the DB, so it is always dynamic — no `dynamic` export (Cache Components forbids it, as /api/alerts).
 export const maxDuration = 60
 
 const BASE = 'https://v3.football.api-sports.io'
