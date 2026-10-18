@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -14,15 +13,17 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { clubApiIds } from '@/features/stand-home/server/queries'
 import type { Team } from '@/features/teams/data'
-import { homeCircles, nextClubFixture, tableWindow } from '../schema'
+import { homeCircles, nextClubFixture } from '../schema'
+import { StandingsTable, type StandRow } from './standings-table'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
+import { getSquadWithRatings } from '@/features/ratings/server/queries'
+import { PlayersPanel } from './players-panel'
 import { ChatPreview } from './chat-preview'
 import { FansOfWeek } from './fans-of-week'
 import { SectionHead } from './section-head'
 import { Countdown } from './countdown'
 import { HotClips } from './hot-clips'
 import { OnlineTile } from './online-tile'
-import { PlayerReviews } from './player-reviews'
 import { StoriesRow } from './stories-row'
 
 // The home's sections (redesign 2026-10-14). Each is its own Server Component, rendered by the page inside its own
@@ -119,8 +120,41 @@ async function ActiveFansTile({ teamId }: { teamId: string }) {
   )
 }
 
-// ── 4. next match ─────────────────────────────────────────────────────────────────────────
-export async function NextMatchSection({ team }: { team: Team }) {
+// ── 4. match extras (crowd war + build lineup) ──────────────────────────────────────────────
+/**
+ * The match-day actions under the lit hero: the crowd-war poll and "build your lineup". The teams, countdown and
+ * kick-off time now live once, in MatchNightHero at the top, so this section no longer repeats them (owner 2026-10-18:
+ * "the order isn't good, there are duplicates"). Same data, same place in the flow — just without the duplicate card.
+ */
+export async function MatchExtras({ team }: { team: Team }) {
+  await connection()
+  const league = await getLeague()
+  if (!league) return null
+  const ids = clubApiIds(league, team.id)
+  const now = clock()
+  const next = nextClubFixture(league.fixtures, ids, now)
+  if (!next) return null
+  const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
+  const home = nameOf(next.h)
+  const away = nameOf(next.a)
+  return (
+    <section className="hm-next" aria-label="מלחמת הקהלים">
+      <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
+        <HomeCrowdWar fixture={next} home={home} away={away} />
+      </Suspense>
+    </section>
+  )
+}
+
+// ── match-night hero (owner 2026-10-18) ────────────────────────────────────────────────────
+/**
+ * The lit "next match" moment at the very top of the home: a single dark stadium card with floodlight beams, a crowd
+ * shimmer and a live countdown, all in the fan's club colour. Added above the otherwise-unchanged home, and shown only
+ * when there is an upcoming match — on other days it renders nothing, so the rest of the screen stays exactly as it was.
+ * Reuses the same data and the same <Countdown> as the plain next-match strip below. Decorative layers are clipped
+ * inside the card, so it cannot widen the page (the 375px rule).
+ */
+export async function MatchNightHero({ team }: { team: Team }) {
   await connection()
   const league = await getLeague()
   if (!league) return null
@@ -132,29 +166,49 @@ export async function NextMatchSection({ team }: { team: Team }) {
   const home = nameOf(next.h)
   const away = nameOf(next.a)
   const atHome = ids.includes(next.h)
+  const fans = await getActiveFans(team.id)
   return (
-    <section className="hm-next" aria-label="המשחק הבא">
-      <p className="hm-next-when">
-        המשחק הבא · {kickoffDay(next.t)} {kickoffTime(next.t)}
+    <section className="mnh" aria-label="המשחק הבא">
+      <span className="mnh-beam mnh-beam-1" aria-hidden="true" />
+      <span className="mnh-beam mnh-beam-2" aria-hidden="true" />
+      <span className="mnh-beam mnh-beam-3" aria-hidden="true" />
+      <span className="mnh-mosaic" aria-hidden="true" />
+      <p className="mnh-label">
+        <i className="mnh-dot" aria-hidden="true" />
+        המשחק הבא
         {next.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
       </p>
-      {/* No aria-label here: the link reads its content, so the live countdown (role=timer) is heard too. */}
-      <Link href={`/matches/${next.id}`} className="hm-next-row">
-        <span className="hm-next-team" data-mine={atHome}>
+      <Link href={`/matches/${next.id}`} className="mnh-teams" aria-label={`${home.short} נגד ${away.short}`}>
+        <span className="mnh-team" data-mine={atHome}>
           {home.short}
-          <span className="sr-only"> נגד {away.short},</span>
+          <small>{atHome ? 'בבית' : 'בחוץ'}</small>
         </span>
-        <Countdown at={next.t * 1000} />
-        <span className="hm-next-team" data-mine={!atHome} aria-hidden="true">
+        <span className="mnh-vs" aria-hidden="true">נגד</span>
+        <span className="mnh-team" data-mine={!atHome}>
           {away.short}
+          <small>{atHome ? 'בחוץ' : 'בבית'}</small>
         </span>
       </Link>
-      <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
-        <HomeCrowdWar fixture={next} home={home} away={away} />
-      </Suspense>
-      {canBuild(next, now) && (
-        <Link href={`/matches/${next.id}?tab=lineup`} className="hm-next-cta">
+      <div className="mnh-cd">
+        <Countdown at={next.t * 1000} />
+      </div>
+      <p className="mnh-when">
+        {kickoffDay(next.t)} · {kickoffTime(next.t)}
+        {next.v ? ` · ${next.v}` : ''}
+      </p>
+      {fans !== null && fans > 0 && (
+        <p className="mnh-fans">
+          <i className="mnh-pulse" aria-hidden="true" />
+          יחד איתך עכשיו <b>{fans.toLocaleString('he-IL')}</b> אוהדים
+        </p>
+      )}
+      {canBuild(next, now) ? (
+        <Link href={`/matches/${next.id}?tab=lineup`} className="mnh-cta">
           בנה את ההרכב שלך
+        </Link>
+      ) : (
+        <Link href="/stand/chat" className="mnh-cta">
+          לצ׳אט היציע
         </Link>
       )}
     </section>
@@ -163,13 +217,64 @@ export async function NextMatchSection({ team }: { team: Team }) {
 
 // ── 5. players in the fans' eyes ──────────────────────────────────────────────────────────
 /** Always shown while the club has a squad (it always has): the cards say "not rated yet" / invite the first review. */
+/**
+ * One players area (owner 2026-10-18, "make it cleaner"): the tap-to-rate pitch and the fans' moving reviews under a
+ * single heading, switched by a "מגרש / רשימה" toggle instead of two stacked sections. Both datasets load here on the
+ * server and the toggle flips between them on the client.
+ */
 export async function PlayersSection({ team, userId }: Fan) {
-  const players = await getHomePlayers(team.id, userId)
-  if (players?.length === 0) return null
+  const [players, squad] = await Promise.all([getHomePlayers(team.id, userId), getSquadWithRatings(team.id, userId)])
+  if (squad.length === 0 && (players === null || players.length === 0)) return null
   return (
     <section aria-labelledby="hm-players-h" className="hm-sec">
-      <SectionHead id="hm-players-h" title="השחקנים בעיני האוהדים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
-      {players ? <PlayerReviews players={players} /> : <LoadError compact />}
+      <SectionHead id="hm-players-h" title="דרג את השחקנים" more={{ href: '/stand/players', label: 'לכל הסגל' }} />
+      <PlayersPanel team={team} players={players} squad={squad} />
+    </section>
+  )
+}
+
+/**
+ * אהובי הקהל (owner 2026-10-18): the squad's most- and least-loved players, straight from the fans' ratings — two
+ * short columns ranked by average stars. Only players with at least one rating count; shown only once someone has
+ * rated. The "least" column drops anyone already in "most" so a tiny squad never lists the same player twice.
+ */
+export async function FanFavoritesSection({ team, userId }: Fan) {
+  const squad = await getSquadWithRatings(team.id, userId)
+  const rated = squad.filter((p) => p.count > 0 && p.avg !== null)
+  if (rated.length === 0) return null
+  const loved = [...rated].sort((a, b) => b.avg! - a.avg! || b.count - a.count).slice(0, 3)
+  const lovedIds = new Set(loved.map((p) => p.id))
+  const least = [...rated]
+    .sort((a, b) => a.avg! - b.avg! || b.count - a.count)
+    .filter((p) => !lovedIds.has(p.id))
+    .slice(0, 3)
+  const list = (players: typeof rated) => (
+    <ol>
+      {players.map((p) => (
+        <li key={p.id} className="hm-fav-row">
+          <span className="hm-fav-name">{p.name_short}</span>
+          <span className="hm-fav-score">
+            ★ {p.avg!.toFixed(1)} <small>({p.count})</small>
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+  return (
+    <section aria-labelledby="hm-fav-h" className="hm-sec">
+      <SectionHead id="hm-fav-h" title="אהובי הקהל" />
+      <div className="hm-fav">
+        <div className="hm-fav-col">
+          <p className="hm-fav-h2">❤️ הכי אהובים</p>
+          {list(loved)}
+        </div>
+        {least.length > 0 && (
+          <div className="hm-fav-col">
+            <p className="hm-fav-h2">💔 הכי פחות</p>
+            {list(least)}
+          </div>
+        )}
+      </div>
     </section>
   )
 }
@@ -212,46 +317,17 @@ export async function MiniTableSection({ team }: { team: Team }) {
   if (!league) return null
   const ids = clubApiIds(league, team.id)
   const group = league.standings.find((g) => g.some((r) => ids.includes(r.team)))
-  const rows = group ? tableWindow(group, ids) : []
-  if (rows.length === 0) return null
+  if (!group || group.length === 0) return null
+  const rows: StandRow[] = group.map((r) => {
+    const t = displayTeam(r.team, league.teams[String(r.team)]?.name)
+    return { team: r.team, rank: r.rank, short: t.short, bg: t.bg, ring: t.ring, p: r.p, pts: r.pts, mine: ids.includes(r.team) }
+  })
+  if (!rows.some((r) => r.mine)) return null
   return (
     <section aria-labelledby="hm-table-h" className="hm-sec">
-      <SectionHead id="hm-table-h" title="הטבלה" more={{ href: '/matches', label: 'לטבלה המלאה' }} />
-      <table className="hm-table">
-        <colgroup>
-          <col style={{ width: 40 }} />
-          <col />
-          <col style={{ width: 48 }} />
-          <col style={{ width: 52 }} />
-        </colgroup>
-        <thead className="sr-only">
-          <tr>
-            <th scope="col">מקום</th>
-            <th scope="col">קבוצה</th>
-            <th scope="col">משחקים</th>
-            <th scope="col">נקודות</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const t = displayTeam(r.team, league.teams[String(r.team)]?.name)
-            const mine = ids.includes(r.team)
-            return (
-              <tr key={r.team} data-mine={mine} aria-current={mine ? 'true' : undefined}>
-                <td className="t-num">{r.rank}</td>
-                <td>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="hm-tdot" style={{ '--a': t.bg, '--b': t.ring } as CSSProperties} aria-hidden="true" />
-                    <span className="truncate">{t.short}</span>
-                  </span>
-                </td>
-                <td className="t-num text-muted">{r.p}</td>
-                <td className="t-num font-bold">{r.pts}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <SectionHead id="hm-table-h" title="הטבלה" />
+      {/* The full table opens here on the same page (owner 2026-10-18), instead of a link to /matches. */}
+      <StandingsTable rows={rows} />
     </section>
   )
 }

@@ -27,8 +27,19 @@ export type ChatMessage = {
   reply_user?: string | null
   reply_nick?: string | null
   reply_body?: string | null
+  /** Team chat only: אהבתי / לא אהבתי counts and my own reaction (1 like, -1 dislike, 0 none). */
+  likes?: number
+  dislikes?: number
+  myReaction?: 1 | -1 | 0
   /** This device only: a message that could not be sent (its id is a local one). */
   failed?: boolean
+}
+
+/** A live reaction-count update from the "REACTION" broadcast, or null when the shape is unexpected. */
+export function reactionFromBroadcast(payload: unknown): { id: string; likes: number; dislikes: number } | null {
+  const p = payload as { message_id?: unknown; likes?: unknown; dislikes?: unknown } | null
+  if (!p || typeof p.message_id !== 'string' || typeof p.likes !== 'number' || typeof p.dislikes !== 'number') return null
+  return { id: p.message_id, likes: p.likes, dislikes: p.dislikes }
 }
 
 /** Columns every chat read and write returns. */

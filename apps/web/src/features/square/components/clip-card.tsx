@@ -7,6 +7,7 @@ import { ReportBlock, ReportForm } from '@/features/safety/components/report-blo
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { cn } from '@/lib/utils'
 import { shortCount, timeLeftHe, type Clip, type ClipComment } from '../schema'
+import { CaptionLayer } from './caption-layer'
 import { setSoundOn, useSoundOn } from '../sound'
 import {
   addCommentAction,
@@ -93,19 +94,46 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     const el = card.current
     const v = media.current
     if (!el || !v) return
-    const play = () =>
-      v.play().catch(() => {
+    // On-device edits (owner 2026-10-18): playback speed, and a trim window that loops in the feed.
+    const start = clip.trim_start || 0
+    v.playbackRate = clip.speed || 1
+    const onMeta = () => {
+      v.playbackRate = clip.speed || 1
+      if (start) v.currentTime = start
+    }
+    const onTime = () => {
+      const end = clip.trim_end ?? v.duration
+      if (!story && end && (v.currentTime < start - 0.05 || v.currentTime >= end)) v.currentTime = start
+    }
+    v.addEventListener('loadedmetadata', onMeta)
+    v.addEventListener('timeupdate', onTime)
+    const play = () => {
+      v.playbackRate = clip.speed || 1
+      return v.play().catch(() => {
         if (v.muted) return
         v.muted = true
         setBlocked(true)
         void v.play().catch(() => {})
       })
+    }
     const io = new IntersectionObserver(([e]) => (e && e.intersectionRatio > 0.7 ? void play() : v.pause()), {
       threshold: [0, 0.7, 1],
     })
     io.observe(el)
-    return () => io.disconnect()
-  }, [url])
+    // Pause when the tab/app is backgrounded, and — importantly — on unmount (leaving the Square), so the video never
+    // keeps playing sound in the background after the fan swipes or navigates away.
+    const onHidden = () => {
+      if (document.hidden) v.pause()
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', onHidden)
+      v.removeEventListener('loadedmetadata', onMeta)
+      v.removeEventListener('timeupdate', onTime)
+      v.pause()
+    }
+  }, [url, clip.speed, clip.trim_start, clip.trim_end, story])
   const canRespect = rival && clip.audience === 'all'
 
   return (
@@ -120,7 +148,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               loop={!story}
               playsInline
               preload="metadata"
-              className="size-full object-contain"
+              className={cn('size-full object-contain', `filt-${clip.filter}`)}
               onEnded={story?.onEnded}
               onTimeUpdate={story ? (e) => story.onProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1)) : undefined}
             />
@@ -132,7 +160,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" loading="lazy" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className="absolute inset-0 size-full object-contain" loading="lazy" />
+            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className={cn('absolute inset-0 size-full object-contain', `filt-${clip.filter}`)} loading="lazy" />
           </>
         )
       ) : (
@@ -155,6 +183,8 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           </button>
         </div>
       )}
+
+      {url && clip.captions && clip.captions.length > 0 && <CaptionLayer captions={clip.captions} />}
 
       {clip.uploading && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-black/35" role="status">

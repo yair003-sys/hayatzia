@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { PlayerRow } from '../schema'
 import { SquadRatings } from './squad-ratings'
 
-const h = vi.hoisted(() => ({ reviews: vi.fn(), rate: vi.fn(), like: vi.fn() }))
-vi.mock('../server/actions', () => ({ reviewsAction: h.reviews, ratePlayerAction: h.rate, likeReviewAction: h.like }))
+const h = vi.hoisted(() => ({ reviews: vi.fn(), allReviews: vi.fn(), rate: vi.fn(), like: vi.fn() }))
+vi.mock('../server/actions', () => ({ reviewsAction: h.reviews, allReviewsAction: h.allReviews, ratePlayerAction: h.rate, likeReviewAction: h.like }))
 
 const row = (id: string, number: number): PlayerRow => ({
   id,
@@ -43,7 +43,7 @@ describe('SquadRatings opened from the home (?p=<id>)', () => {
     })
     expect(h.reviews).toHaveBeenCalledWith({ playerId: 'mta_10' })
     expect(screen.getByRole('button', { name: /שחקן 10/ })).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('list', { name: 'ביקורות אחרונות' })).toHaveTextContent('קשר מעולה')
+    expect(screen.getByRole('list', { name: 'תגובות הקהל' })).toHaveTextContent('קשר מעולה')
     expect(scroll).toHaveBeenCalledTimes(1)
     expect(scroll.mock.contexts[0]).toHaveAttribute('id', 'p-mta_10')
   })

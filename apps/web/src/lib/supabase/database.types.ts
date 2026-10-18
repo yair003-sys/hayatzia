@@ -287,14 +287,14 @@ isOneToOne: false
                   ]
                 },"clips": {
                   Row: {
-                    "audience": string,"caption": string,"comments_count": number,"created_at": string,"expires_at": string,"hidden_at": string | null,"id": string,"kind": string,"likes_count": number,"media_path": string,"nick": string,"once": boolean,"respects_count": number,"tags": string,"team_id": string,"user_id": string,"views_count": number
+                    "audience": string,"caption": string,"captions": Json,"comments_count": number,"created_at": string,"expires_at": string,"filter": string,"hidden_at": string | null,"id": string,"kind": string,"likes_count": number,"media_path": string,"nick": string,"once": boolean,"respects_count": number,"speed": number,"tags": string,"team_id": string,"trim_end": number | null,"trim_start": number,"user_id": string,"views_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"caption"?: string,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"hidden_at"?: string | null,"id"?: string,"kind": string,"likes_count"?: number,"media_path": string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"filter"?: string,"hidden_at"?: string | null,"id"?: string,"kind": string,"likes_count"?: number,"media_path": string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"speed"?: number,"tags"?: string,"team_id"?: string,"trim_end"?: number | null,"trim_start"?: number,"user_id"?: string,"views_count"?: number
                   }
                   Update: {
-                    "audience"?: string,"caption"?: string,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"tags"?: string,"team_id"?: string,"user_id"?: string,"views_count"?: number
+                    "audience"?: string,"caption"?: string,"captions"?: Json,"comments_count"?: number,"created_at"?: string,"expires_at"?: string,"filter"?: string,"hidden_at"?: string | null,"id"?: string,"kind"?: string,"likes_count"?: number,"media_path"?: string,"nick"?: string,"once"?: boolean,"respects_count"?: number,"speed"?: number,"tags"?: string,"team_id"?: string,"trim_end"?: number | null,"trim_start"?: number,"user_id"?: string,"views_count"?: number
                   }
                   Relationships: [
                     {
@@ -1273,16 +1273,36 @@ isOneToOne: false
       referencedColumns: ["api_id"]
     }
                   ]
-                },"team_messages": {
+                },"message_reactions": {
                   Row: {
-                    "body": string,"created_at": string,"hidden_at": string | null,"id": string,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
+                    "created_at": string,"kind": number,"message_id": string,"team_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "created_at"?: string,"kind": number,"message_id": string,"team_id"?: string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "created_at"?: string,"kind"?: number,"message_id"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "message_reactions_message_id_fkey"
+      columns: ["message_id"]
+isOneToOne: false
+      referencedRelation: "team_messages"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"team_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"dislikes": number,"hidden_at": string | null,"id": string,"likes": number,"nick": string,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"dislikes"?: number,"hidden_at"?: string | null,"id"?: string,"likes"?: number,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"dislikes"?: number,"hidden_at"?: string | null,"id"?: string,"likes"?: number,"nick"?: string,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
