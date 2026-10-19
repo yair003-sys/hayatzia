@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs/config'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
@@ -26,4 +27,14 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// Sentry build wrapper. Source maps are uploaded only when the build-time secrets (SENTRY_AUTH_TOKEN + org/project) are
+// present; without them this is a no-op, so dormant builds are unaffected. These are read here (the build entry), the
+// one place outside env.ts that reads process.env, because next.config runs before the validated `env` is available.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  telemetry: false,
+})

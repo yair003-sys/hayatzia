@@ -42,6 +42,9 @@ export const env = createEnv({
     NEXT_PUBLIC_PHONE_AUTH: z.enum(['on', 'off']).default('off'),
     /** Web Push (VAPID) public key. Safe to expose. */
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(20).optional(),
+    /** Sentry error-monitoring DSN (safe to expose). Unset → dormant: the server loads no Sentry/OTel code at all, and
+     *  the client ships the SDK inert (never initialised, no events). */
+    NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
     // Launch scope (owner 2026-10-18): these areas are built and tested but hidden at launch, turned on
     // one by one once a community is live. Each defaults 'off'; set to 'on' in Vercel to reveal it.
     /** Rides/trips, with the identity verification and gender settings that exist only for them. */
@@ -59,6 +62,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_PHONE_AUTH: process.env.NEXT_PUBLIC_PHONE_AUTH,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_FEATURE_RIDES: process.env.NEXT_PUBLIC_FEATURE_RIDES,
     NEXT_PUBLIC_FEATURE_MARKET: process.env.NEXT_PUBLIC_FEATURE_MARKET,
     NEXT_PUBLIC_FEATURE_EVENTS: process.env.NEXT_PUBLIC_FEATURE_EVENTS,
