@@ -81,7 +81,7 @@ async function Content({ id }: { id: number }) {
       score={sideScore(f)}
       minute={minuteLabel(f, now)}
       live={isTicketLive(f, now)}
-      backHref={`/matches/${id}`}
+      backHref={`/matches/${String(id)}`}
       panels={[
         { key: 'battle', label: 'מלחמת אוהדים וצ׳אט', node: battle },
         { key: 'lineup', label: 'הרכב', node: lineup },
