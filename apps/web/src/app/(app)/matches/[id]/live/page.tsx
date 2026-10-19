@@ -15,7 +15,7 @@ import { getSessionProfile } from '@/features/profile/server/queries'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { LoadError } from '@/components/load-error'
 import { FanLineupSection } from '@/features/lineup/components/fan-lineup-section'
-import { MatchCrowdWar } from '@/features/crowd-war/components/crowd-war'
+import { LineupScreen } from '@/features/match-room/components/lineup-screen'
 import { LiveMatchCenter } from '@/features/match-room/components/live-match-center'
 
 const clock = () => Date.now()
@@ -38,6 +38,9 @@ async function Content({ id }: { id: number }) {
   const home = displayTeam(f.h, league.teams[String(f.h)]?.name)
   const away = displayTeam(f.a, league.teams[String(f.a)]?.name)
   const detail = league.have.includes(id) ? await getFixtureDetail(id) : null
+  const session = await getSessionProfile()
+  // The fan line-up tab shows only for a fan of one of the two clubs (otherwise there's nothing to build).
+  const showFan = session.status === 'ready' && (session.team.id === home.id || session.team.id === away.id)
   await connection()
   const now = clock()
   const lineupOf = (apiId: number) => detail?.lu.find((l) => l.team === apiId) ?? null
@@ -51,27 +54,29 @@ async function Content({ id }: { id: number }) {
     />
   )
   const lineup = (
-    <div className="space-y-6">
-      <Suspense fallback={null}>
-        <FanLineupSection fixture={f} home={home} away={away} />
-      </Suspense>
-      <LineupPitch
-        sides={[
-          { key: 'home', team: home, lu: lineupOf(f.h) },
-          { key: 'away', team: away, lu: lineupOf(f.a) },
-        ]}
-      />
-    </div>
+    <LineupScreen
+      hasFan={showFan}
+      match={
+        <LineupPitch
+          events={detail?.ev}
+          sides={[
+            { key: 'home', team: home, lu: lineupOf(f.h) },
+            { key: 'away', team: away, lu: lineupOf(f.a) },
+          ]}
+        />
+      }
+      fan={
+        <Suspense fallback={null}>
+          <FanLineupSection fixture={f} home={home} away={away} />
+        </Suspense>
+      }
+    />
   )
-  const battle = (
-    <div className="space-y-5">
-      <Suspense fallback={null}>
-        <MatchCrowdWar fixture={f} home={home} away={away} />
-      </Suspense>
-      <Suspense fallback={<div className="skeleton h-48 rounded-lg" aria-hidden="true" />}>
-        <RoomSection fixtureId={id} kickoff={f.t} home={home} away={away} />
-      </Suspense>
-    </div>
+  // The live battle bar (over the chat) is the match-time momentum meter; the pre-match tug-of-war stays on the match page.
+  const battlePanel = (
+    <Suspense fallback={<div className="skeleton h-48 rounded-lg" aria-hidden="true" />}>
+      <RoomSection fixtureId={id} kickoff={f.t} home={home} away={away} />
+    </Suspense>
   )
 
   return (
@@ -83,7 +88,7 @@ async function Content({ id }: { id: number }) {
       live={isTicketLive(f, now)}
       backHref={`/matches/${id}`}
       panels={[
-        { key: 'battle', label: 'מלחמת אוהדים וצ׳אט', node: battle },
+        { key: 'battle', label: 'מלחמת אוהדים וצ׳אט', node: battlePanel },
         { key: 'lineup', label: 'הרכב', node: lineup },
         { key: 'events', label: 'אירועים', node: events },
       ]}
@@ -108,6 +113,7 @@ async function RoomSection(props: { fixtureId: number; kickoff: number; home: Di
       initial={initial}
       hidden={hidden}
       crowd={crowd}
+      battle
     />
   )
 }

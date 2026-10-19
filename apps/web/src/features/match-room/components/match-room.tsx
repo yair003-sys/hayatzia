@@ -11,6 +11,8 @@ import { useCrowd } from '@/features/crowd-verdict/components/use-crowd'
 import { canVote, pollState } from '@/features/crowd-verdict/schema'
 import type { CrowdState } from '@/features/crowd-verdict/server/queries'
 import { usePresence } from '@/features/stand-home/components/presence'
+import { BattleBar } from './battle-bar'
+import { useBattle } from './use-battle'
 
 type Side = { id: string; short: string; bar: string }
 
@@ -24,6 +26,8 @@ type Props = {
   initial: ChatMessage[]
   hidden: string[]
   crowd: CrowdState
+  /** Match centre only: show the live battle bar over the chat (opens its own realtime channel). */
+  battle?: boolean
 }
 
 const STATE_LABEL: Record<RoomState, string> = {
@@ -33,8 +37,10 @@ const STATE_LABEL: Record<RoomState, string> = {
   closed: 'החדר נסגר',
 }
 
-export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd }: Props) {
+export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd, battle = false }: Props) {
   const myGroup = myTeamId === home.id ? 'h' : myTeamId === away.id ? 'a' : 'n'
+  const mySide = myGroup === 'h' ? 'h' : myGroup === 'a' ? 'a' : null
+  const battleStore = useBattle(fixtureId, mySide, battle)
   const c = useCrowd(crowd, fixtureId, myGroup)
   const inRoom = usePresence(`room:${fixtureId}`, meId)
   const openPolls = [...c.polls].reverse().filter((p) => pollState(p, c.now) === 'open')
@@ -93,8 +99,16 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
           {inRoom !== null && inRoom > 0 && ` · ${inRoom.toLocaleString('he-IL')} בחדר`}
         </span>
       </div>
+      {battle && <BattleBar home={home} away={away} mySide={mySide} store={battleStore} />}
       <ChatRoom
         topic={`match:${fixtureId}`}
+        onLiveMessage={
+          battle
+            ? (side) => {
+                if (side) battleStore.add(side)
+              }
+            : undefined
+        }
         // "N כותבים…" rides on the room's presence, tracked just above for the "N בחדר" count.
         presenceTopic={`room:${fixtureId}`}
         openAtEnd={false}

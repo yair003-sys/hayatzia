@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from 'react'
 import type { DisplayTeam } from '../api-teams'
+import { type FixtureEvent, type PlayerMark, playerMarks } from '../events'
 import { pitchSpots } from '../live'
 import type { FixtureDetail } from '../schema'
 import { Crest } from './crest'
@@ -24,7 +25,7 @@ export function defaultSideKey(sides: PitchSide[]): PitchSide['key'] {
 }
 
 /** The "הרכב" tab: each club's starting XI on a half-pitch (goalkeeper at the bottom), a club switch, the bench below. */
-export function LineupPitch({ sides }: { sides: PitchSide[] }) {
+export function LineupPitch({ sides, events }: { sides: PitchSide[]; events?: FixtureEvent[] }) {
   // null until the fan picks: the default follows the data, so a line-up that arrives later is still opened.
   const [picked, setKey] = useState<PitchSide['key'] | null>(null)
   if (sides.every((s) => !s.lu)) return <p className="lc-end">{NOT_YET}</p>
@@ -40,14 +41,15 @@ export function LineupPitch({ sides }: { sides: PitchSide[] }) {
           </button>
         ))}
       </div>
-      <SideLineup side={side} />
+      <SideLineup side={side} events={events} />
     </div>
   )
 }
 
-function SideLineup({ side: { team, lu } }: { side: PitchSide }) {
+function SideLineup({ side: { team, lu }, events }: { side: PitchSide; events?: FixtureEvent[] }) {
   if (!lu || (lu.xi.length === 0 && lu.sub.length === 0)) return <p className="lc-end">{NOT_YET}</p>
   const spots = pitchSpots(lu.xi)
+  const marks = events ? playerMarks(events, lu.team) : null
   const colours = { '--a': team.bg, '--b': team.ring, '--t': team.ring } as CSSProperties
   return (
     <div className="space-y-3">
@@ -75,12 +77,16 @@ function SideLineup({ side: { team, lu } }: { side: PitchSide }) {
             <i className="lc-pitch-arc" />
             <i className="lc-pitch-box" />
             <i className="lc-pitch-six" />
-            {spots.map((s, i) => (
-              <span key={i} className="lc-p" style={{ left: `${s.x}%`, bottom: `${s.y}%` }} title={s.name}>
-                <i>{s.n ?? ''}</i>
-                <small>{pitchName(s.name)}</small>
-              </span>
-            ))}
+            {spots.map((s, i) => {
+              const mk = marks?.get(s.name)
+              return (
+                <span key={i} className="lc-p" style={{ left: `${s.x}%`, bottom: `${s.y}%` }} title={s.name}>
+                  <i>{s.n ?? ''}</i>
+                  <small>{pitchName(s.name)}</small>
+                  {mk && <Marks mk={mk} />}
+                </span>
+              )
+            })}
           </div>
           {/* The pitch is one picture for screen readers; this list reads the XI out to them. */}
           <ul className="sr-only" aria-label={`שחקני ההרכב הפותח של ${team.name}`}>
@@ -94,6 +100,22 @@ function SideLineup({ side: { team, lu } }: { side: PitchSide }) {
       )}
       {lu.sub.length > 0 && <PlayerList title="ספסל" players={lu.sub} />}
     </div>
+  )
+}
+
+/** The little cluster on a player's disc: goals (⚽, with a count past one), a yellow/red card, a "came off" arrow. */
+function Marks({ mk }: { mk: PlayerMark }) {
+  if (mk.goals === 0 && !mk.yellow && !mk.red && !mk.off) return null
+  return (
+    <em className="lc-p-marks" aria-hidden="true">
+      {mk.goals > 0 && (
+        <span className="lc-mk-goal">
+          ⚽{mk.goals > 1 ? <b className="t-num">{mk.goals}</b> : ''}
+        </span>
+      )}
+      {mk.red ? <span className="lc-mk-card" data-k="r" /> : mk.yellow ? <span className="lc-mk-card" data-k="y" /> : null}
+      {mk.off && <span className="lc-mk-off">↓</span>}
+    </em>
   )
 }
 

@@ -897,6 +897,14 @@
   .lc-p > i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font: 700 11.5px / 1 var(--font-brand); font-style: normal;
     color: var(--t); background: var(--a); box-shadow: 0 0 0 2px var(--b), 0 6px 12px -4px rgb(0 0 0 / 0.7); }
   .lc-p > small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: rgb(255 255 255 / 0.88); text-shadow: 0 1px 3px #000; }
+  /* Goals / cards / "came off" on a player's disc: a small cluster pinned to the top-left of the disc. */
+  .lc-p-marks { position: absolute; top: -6px; inset-inline-start: -6px; display: flex; align-items: center; gap: 2px; font-style: normal; line-height: 1; }
+  .lc-p-marks .lc-mk-goal { display: inline-flex; align-items: center; gap: 1px; font-size: 12px; filter: drop-shadow(0 1px 2px #000); }
+  .lc-p-marks .lc-mk-goal > b { font-size: 10px; color: #fff; text-shadow: 0 1px 2px #000; }
+  .lc-p-marks .lc-mk-card { width: 8px; height: 11px; border-radius: 1.5px; transform: rotate(8deg); box-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
+  .lc-p-marks .lc-mk-card[data-k='y'] { background: var(--color-warn); }
+  .lc-p-marks .lc-mk-card[data-k='r'] { background: var(--color-live); }
+  .lc-p-marks .lc-mk-off { font-size: 11px; font-weight: 700; color: var(--color-live); text-shadow: 0 1px 2px #000; }
 
   .lc-list-h { font-size: 13px; font-weight: 600; color: var(--color-muted); }
   .lc-list { overflow: hidden; border-radius: 18px; border: 1px solid var(--color-line-soft); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); }
