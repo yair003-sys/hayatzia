@@ -49,21 +49,32 @@ export function CameraCapture({
         setErr('הדפדפן הזה לא תומך במצלמה — אי אפשר להעלות מהמכשיר הזה.')
         return
       }
+      // Prefer camera+mic (so videos have sound); if mic is denied or missing, fall back to a silent camera so photos
+      // and silent clips still work. Only a full camera denial blocks uploading.
+      let s: MediaStream | null = null
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: true })
-        if (cancelled) {
-          s.getTracks().forEach((t) => t.stop())
-          return
-        }
-        stream.current?.getTracks().forEach((t) => t.stop())
-        stream.current = s
-        setErr(null)
-        if (video.current) {
-          video.current.srcObject = s
-          void video.current.play().catch(() => {})
-        }
+        s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: true })
       } catch {
+        try {
+          s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })
+        } catch {
+          s = null
+        }
+      }
+      if (!s) {
         setErr('כדי להעלות צריך לאשר גישה למצלמה. אם כבר דחית — אשר/י ידנית בהגדרות האתר בדפדפן, ואז נסה/י שוב.')
+        return
+      }
+      if (cancelled) {
+        s.getTracks().forEach((t) => t.stop())
+        return
+      }
+      stream.current?.getTracks().forEach((t) => t.stop())
+      stream.current = s
+      setErr(null)
+      if (video.current) {
+        video.current.srcObject = s
+        void video.current.play().catch(() => {})
       }
     }
     void start()
@@ -72,9 +83,10 @@ export function CameraCapture({
     }
   }, [facing, attempt])
 
-  // Make sure the camera is released when the screen closes.
+  // Make sure the camera is released and nothing fires after the screen closes.
   useEffect(
     () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current)
       stream.current?.getTracks().forEach((t) => t.stop())
       if (rec.current && rec.current.state !== 'inactive') rec.current.stop()
     },
@@ -126,9 +138,11 @@ export function CameraCapture({
       if (e.data.size) chunks.current.push(e.data)
     }
     r.onstop = () => {
-      const type = r.mimeType || 'video/webm'
-      const ext = type.includes('mp4') ? 'mp4' : 'webm'
-      onCapture(new File([new Blob(chunks.current, { type })], `video-${Date.now()}.${ext}`, { type }))
+      // Use the BASE mime (no ;codecs=…): the upload's allow-list and mediaOf only know 'video/webm' / 'video/mp4'.
+      const isMp4 = (r.mimeType || '').includes('mp4')
+      const base = isMp4 ? 'video/mp4' : 'video/webm'
+      const ext = isMp4 ? 'mp4' : 'webm'
+      onCapture(new File([new Blob(chunks.current, { type: base })], `video-${Date.now()}.${ext}`, { type: base }))
     }
     r.start()
     rec.current = r
@@ -141,9 +155,15 @@ export function CameraCapture({
     setRecording(false)
   }
 
-  // Shutter: hold past 280ms starts recording; a quicker release is a photo.
+  // Shutter: hold past 280ms starts recording; a quicker release is a photo. Capture the pointer so the finger can
+  // drift off the button mid-recording without stopping it.
   const shutterDown = (e: ReactPointerEvent) => {
     e.preventDefault()
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
     held.current = false
     holdTimer.current = setTimeout(() => {
       held.current = true
@@ -209,7 +229,7 @@ export function CameraCapture({
           className={cn('cam-shutter', recording && 'cam-shutter--rec')}
           onPointerDown={shutterDown}
           onPointerUp={shutterUp}
-          onPointerLeave={shutterUp}
+          onPointerCancel={shutterUp}
           disabled={!!err}
         >
           <span className="cam-shutter-core" />
