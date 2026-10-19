@@ -28,7 +28,7 @@ describe('battleSplit', () => {
     const burst = [beat('h', t0), beat('h', t0 + 10), beat('h', t0 + 20)]
     expect(battleSplit(burst, t0 + 1000)).toBeGreaterThan(50) // one-sided → pinned home
     expect(battleSplit(burst, t0 + BATTLE_WINDOW_MS - 1000)).toBeGreaterThan(50) // still, while beats live
-    expect(battleSplit(burst, t0 + BATTLE_WINDOW_MS + 1)).toBe(50) // all aged out → centre
+    expect(battleSplit(burst, t0 + 20 + BATTLE_WINDOW_MS + 1)).toBe(50) // last beat aged out → centre
   })
 
   it('recent beats weigh more than older ones when both sides are active', () => {
