@@ -24,4 +24,6 @@ export type FanCard = {
   exact: number
   rank: number | null
   rated: number
+  /** The fan's earned identity label (die-hard / tactician / creator), or null until they've earned one. */
+  label: import('./fan-identity').FanLabel | null
 }

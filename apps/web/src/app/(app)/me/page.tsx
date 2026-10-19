@@ -74,6 +74,12 @@ async function ProfileCard() {
         <div>
           <p className="me-nick">{s.nick}</p>
           <p className="me-club">אוהד {s.team.name}</p>
+          {card?.label && (
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
+              <span aria-hidden="true">{card.label.emoji}</span>
+              {card.label.label}
+            </p>
+          )}
         </div>
         <dl className="me-card-meta">
           <div>
