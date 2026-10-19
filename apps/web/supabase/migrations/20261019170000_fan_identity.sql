@@ -12,6 +12,7 @@ begin
   return new;
 end $$;
 
--- Trigger-only function: no one calls it directly, so keep it off the public/anon surface.
-revoke all on function public.clips_bump_poster() from public;
+-- Trigger-only function: no one calls it directly (the trigger fires it regardless of EXECUTE grants), so close it to
+-- every caller. Supabase's default privileges grant EXECUTE on new functions to anon/authenticated too, so revoke all.
+revoke all on function public.clips_bump_poster() from public, anon, authenticated;
 create trigger clips_bump_poster after insert on public.clips for each row execute function public.clips_bump_poster();
