@@ -16,13 +16,16 @@ export function MatchNightLiveHero({
   fixture: f,
   home,
   away,
-  atHome,
+  homeMine,
+  awayMine,
   fans,
 }: {
   fixture: Fixture
   home: DisplayTeam
   away: DisplayTeam
-  atHome: boolean
+  /** Highlight the home team as the viewer's club. Both false for a neutral viewer (another clubs' game). */
+  homeMine: boolean
+  awayMine: boolean
   fans: number | null
 }) {
   const now = useNow()
@@ -42,16 +45,16 @@ export function MatchNightLiveHero({
         {f.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
       </p>
       <Link href={`/matches/${f.id}?tab=room`} className="mnh-teams mnh-live-teams" aria-label={`${home.name} ${f.gh ?? 0}, ${away.name} ${f.ga ?? 0}`}>
-        <span className="mnh-team" data-mine={atHome}>
+        <span className="mnh-team" data-mine={homeMine}>
           {home.short}
-          <small>{atHome ? 'בבית' : 'בחוץ'}</small>
+          <small>בבית</small>
         </span>
         <span className="mnh-live-score" aria-hidden="true">
           {sideScore(f)}
         </span>
-        <span className="mnh-team" data-mine={!atHome}>
+        <span className="mnh-team" data-mine={awayMine}>
           {away.short}
-          <small>{atHome ? 'בחוץ' : 'בבית'}</small>
+          <small>בחוץ</small>
         </span>
       </Link>
       <p className="mnh-live-min">{ended ? 'תוצאת סיום' : minute || ' '}</p>

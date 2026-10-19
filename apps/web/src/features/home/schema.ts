@@ -164,6 +164,12 @@ export function liveClubFixture(fixtures: Fixture[], clubIds: readonly number[],
   )
 }
 
+/** Any league match being played right now (earliest kick-off first). So a live game leads the home for every fan —
+ *  even one whose club isn't playing — and pulls them into the match chat (good for the room, good for the data). */
+export function anyLiveFixture(fixtures: Fixture[], nowMs: number): Fixture | null {
+  return fixtures.filter((f) => isTicketLive(f, nowMs)).sort((a, b) => a.t - b.t)[0] ?? null
+}
+
 /** The first letter of a nickname, for an avatar circle. */
 export function initialOf(nick: string): string {
   const ch = [...nick.trim()][0]

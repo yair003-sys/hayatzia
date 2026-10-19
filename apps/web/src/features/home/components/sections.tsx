@@ -13,7 +13,7 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { clubApiIds } from '@/features/stand-home/server/queries'
 import type { Team } from '@/features/teams/data'
-import { homeCircles, liveClubFixture, nextClubFixture } from '../schema'
+import { anyLiveFixture, homeCircles, liveClubFixture, nextClubFixture } from '../schema'
 import { MatchNightLiveHero } from './match-night-live'
 import { StandingsTable, type StandRow } from './standings-table'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
@@ -162,12 +162,7 @@ export async function MatchNightHero({ team }: { team: Team }) {
   const ids = clubApiIds(league, team.id)
   const now = clock()
   const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
-  // While the club is playing, the hero leads with the live match and its chat — not the next fixture.
-  const live = liveClubFixture(league.fixtures, ids, now)
-  if (live) {
-    const fans = await getActiveFans(team.id)
-    return <MatchNightLiveHero fixture={live} home={nameOf(live.h)} away={nameOf(live.a)} atHome={ids.includes(live.h)} fans={fans} />
-  }
+  // The live match leads the home from its own section at the very top (LiveNow); this hero is the next fixture.
   const next = nextClubFixture(league.fixtures, ids, now)
   if (!next) return null
   const home = nameOf(next.h)
@@ -219,6 +214,37 @@ export async function MatchNightHero({ team }: { team: Team }) {
         </Link>
       )}
     </section>
+  )
+}
+
+// ── live now (top of the home, every fan) ───────────────────────────────────────────────────
+/**
+ * The home's very first card while any league match is being played: the viewer's club if it's playing, otherwise any
+ * live game — so every fan, not only the two clubs', lands on the live match and its chat (owner 2026-10-19: "a live
+ * game appears first, always, for everyone — good for the data"). The same match is removed from the sections below,
+ * so it shows once. Renders nothing when nothing is live.
+ */
+export async function LiveNow({ team }: { team: Team }) {
+  await connection()
+  const league = await getLeague()
+  if (!league) return null
+  const ids = clubApiIds(league, team.id)
+  const now = clock()
+  const mine = liveClubFixture(league.fixtures, ids, now)
+  const live = mine ?? anyLiveFixture(league.fixtures, now)
+  if (!live) return null
+  const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
+  // The club-fans count belongs to the viewer's own club; for a neutral game we don't claim a number.
+  const fans = mine ? await getActiveFans(team.id) : null
+  return (
+    <MatchNightLiveHero
+      fixture={live}
+      home={nameOf(live.h)}
+      away={nameOf(live.a)}
+      homeMine={ids.includes(live.h)}
+      awayMine={ids.includes(live.a)}
+      fans={fans}
+    />
   )
 }
 

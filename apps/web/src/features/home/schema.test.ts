@@ -10,6 +10,7 @@ import {
   initialOf,
   nextClubFixture,
   liveClubFixture,
+  anyLiveFixture,
   reviewIndex,
   shouldRotate,
   storyStart,
@@ -174,6 +175,15 @@ describe('liveClubFixture', () => {
   })
   it('null when the club has no live match (only upcoming or finished)', () => {
     expect(liveClubFixture([f(1, 5000), f(4, -10000, 'FT')], [1], now)).toBeNull()
+  })
+})
+
+describe('anyLiveFixture', () => {
+  const now = 1_800_000_000_000
+  const f = (id: number, dt: number, st = 'NS', h = 1, a = 2): Fixture => ({ id, t: now / 1000 + dt, st, r: 'R', h, a, gh: null, ga: null, v: '' })
+  it('the earliest live match in the league, whatever the clubs, else null', () => {
+    expect(anyLiveFixture([f(1, 5000), f(2, -600, '1H', 7, 8), f(3, -1800, '2H', 5, 6)], now)?.id).toBe(3)
+    expect(anyLiveFixture([f(1, 5000), f(4, -10000, 'FT')], now)).toBeNull()
   })
 })
 
