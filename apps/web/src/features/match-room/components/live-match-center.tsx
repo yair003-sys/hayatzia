@@ -29,7 +29,7 @@ export function LiveMatchCenter({
   score: string
   minute: string
   live: boolean
-  backHref: Route
+  backHref: string
   panels: Panel[]
 }) {
   const router = useRouter()
@@ -57,7 +57,7 @@ export function LiveMatchCenter({
   }, [panels.length])
 
   const goTo = (i: number) => refs.current[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  const close = () => router.push(backHref)
+  const close = () => router.push(backHref as Route)
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="מרכז המשחק החי">
