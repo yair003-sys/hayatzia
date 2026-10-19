@@ -51,7 +51,8 @@ function isLive(f: Fixture, nowMs: number): boolean {
   return e < MATCH_MIN || (LIVE_STATUSES.has(f.st) && e < ROOM_CLOSE_MIN)
 }
 
-/** Minute shown on the ticket: estimated from kick-off like the legacy app; the data wins for HT and full time. */
+/** Minute shown on the ticket. The official minute from the feed (API-Football `elapsed`) wins, so it matches the
+ *  broadcast; a wall-clock estimate from kick-off is only the fallback when the feed hasn't sent a minute yet. */
 export function minuteLabel(f: Fixture, nowMs: number): string {
   if (DONE_STATUSES.has(f.st)) return 'הסתיים'
   if (NOT_PLAYED_STATUSES.has(f.st)) return ''
@@ -60,6 +61,8 @@ export function minuteLabel(f: Fixture, nowMs: number): string {
   if (f.st === 'ET') return 'הארכה'
   if (f.st === 'BT') return 'הפסקה בהארכה'
   if (f.st === 'P') return 'פנדלים'
+  // In play: trust the data's own minute when it has one, so onefan reads the same minute as the TV.
+  if (typeof f.el === 'number' && f.el > 0) return `${f.el}'`
   const e = elapsedMin(f, nowMs)
   if (e < 0) return ''
   if (e >= MATCH_MIN) return 'הסתיים'

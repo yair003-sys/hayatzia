@@ -50,6 +50,12 @@ describe('minuteLabel', () => {
     expect(minuteLabel(fx(1, KICK, '2H'), KICK + 80 * MIN)).toBe("65'")
     expect(minuteLabel(fx(1, KICK, '2H'), KICK + 109 * MIN)).toBe('90+')
   })
+  it("the feed's own minute wins over the wall-clock estimate, so it matches the TV", () => {
+    // Wall clock would read ~64', but the feed says 49' — show 49' (the broadcast minute).
+    expect(minuteLabel({ ...fx(1, KICK, '2H'), el: 49 }, KICK + 79 * MIN)).toBe("49'")
+    // No feed minute yet (el null): fall back to the estimate.
+    expect(minuteLabel({ ...fx(1, KICK, '1H'), el: null }, KICK + 12.2 * MIN)).toBe("13'")
+  })
   it('lets the data win for half time and full time', () => {
     expect(minuteLabel(fx(1, KICK, 'HT'), KICK + 40 * MIN)).toBe('מחצית')
     expect(minuteLabel(fx(1, KICK, 'FT'), KICK + 100 * MIN)).toBe('הסתיים')
