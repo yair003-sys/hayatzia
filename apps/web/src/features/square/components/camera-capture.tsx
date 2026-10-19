@@ -207,9 +207,6 @@ export function CameraCapture({
         <button type="button" aria-label="סגירה" onClick={onClose} className="sq-round">
           <X className="size-5" aria-hidden="true" />
         </button>
-        <button type="button" aria-label="היפוך מצלמה" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} className="sq-round">
-          <SwitchCamera className="size-5" aria-hidden="true" />
-        </button>
       </div>
 
       {err ? (
@@ -220,34 +217,35 @@ export function CameraCapture({
           </button>
         </div>
       ) : (
-        <p className="cam-hint">לחיצה = תמונה · לחיצה ארוכה = סרטון · החלקה מטה = גלריה</p>
-      )}
-
-      <div className="cam-bar">
-        <button type="button" aria-label="גלריה" onClick={onGallery} className="cam-gallery" disabled={!!err}>
-          <Images className="size-6" aria-hidden="true" />
-        </button>
-
-        <button
-          type="button"
-          aria-label={recording ? 'עצור הקלטה' : 'צילום (לחיצה ארוכה לסרטון)'}
-          className={cn('cam-shutter', recording && 'cam-shutter--rec')}
-          onPointerDown={shutterDown}
-          onPointerUp={shutterUp}
-          onPointerCancel={shutterUp}
-          disabled={!!err}
-        >
-          <span className="cam-shutter-core" />
-        </button>
-
-        <div className="cam-aud" role="group" aria-label="למי לפרסם">
-          {OPTS.map((o) => (
-            <button key={o.id} type="button" aria-pressed={to === o.id} onClick={() => setTo(o.id)} className={cn('cam-aud-chip', to === o.id && 'on')}>
-              {o.label}
+        <div className="cam-controls">
+          <p className="cam-hint">החזק לסרטון · החלק מטה לגלריה</p>
+          <div className="cam-aud" role="group" aria-label="למי לפרסם">
+            {OPTS.map((o) => (
+              <button key={o.id} type="button" aria-pressed={to === o.id} onClick={() => setTo(o.id)} className={cn('cam-aud-chip', to === o.id && 'on')}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <div className="cam-bar">
+            <button type="button" aria-label="גלריה" onClick={onGallery} className="cam-gallery">
+              <Images className="size-6" aria-hidden="true" />
             </button>
-          ))}
+            <button
+              type="button"
+              aria-label={recording ? 'עצור הקלטה' : 'צילום (לחיצה ארוכה לסרטון)'}
+              className={cn('cam-shutter', recording && 'cam-shutter--rec')}
+              onPointerDown={shutterDown}
+              onPointerUp={shutterUp}
+              onPointerCancel={shutterUp}
+            >
+              <span className="cam-shutter-core" />
+            </button>
+            <button type="button" aria-label="היפוך מצלמה" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} className="sq-round cam-flip">
+              <SwitchCamera className="size-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>,
     document.body,
   )

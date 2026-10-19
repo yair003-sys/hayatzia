@@ -33,8 +33,9 @@ describe('home sections always show (owner, 2026-10-14)', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'העלה את הראשון' }))
     })
+    // jsdom has no camera, so the screen shows its permission state with a "try again" action.
     expect(screen.getByRole('dialog', { name: 'מצלמה' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'שניהם' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'נסה שוב' })).toBeInTheDocument()
   })
 
   it('the chat without messages invites the first one, with "הצטרף לשיחה"', () => {
