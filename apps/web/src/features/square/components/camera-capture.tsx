@@ -37,13 +37,16 @@ export function CameraCapture({
   const [facing, setFacing] = useState<'environment' | 'user'>('environment')
   const [recording, setRecording] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Bumped by "נסה שוב" to re-request camera permission.
+  const [attempt, setAttempt] = useState(0)
 
-  // Open (and re-open on flip) the camera; always stop the old stream first so the light goes off.
+  // Open (and re-open on flip / retry) the camera; always stop the old stream first so the light goes off.
+  // Camera permission gates uploading: without it there is no upload path (owner, 2026-10-19).
   useEffect(() => {
     let cancelled = false
     const start = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setErr('המצלמה לא נתמכת בדפדפן הזה. אפשר להעלות מהגלריה.')
+        setErr('הדפדפן הזה לא תומך במצלמה — אי אפשר להעלות מהמכשיר הזה.')
         return
       }
       try {
@@ -60,14 +63,14 @@ export function CameraCapture({
           void video.current.play().catch(() => {})
         }
       } catch {
-        setErr('אין גישה למצלמה. אשר/י הרשאה בדפדפן, או העלה/י מהגלריה.')
+        setErr('כדי להעלות צריך לאשר גישה למצלמה. אם כבר דחית — אשר/י ידנית בהגדרות האתר בדפדפן, ואז נסה/י שוב.')
       }
     }
     void start()
     return () => {
       cancelled = true
     }
-  }, [facing])
+  }, [facing, attempt])
 
   // Make sure the camera is released when the screen closes.
   useEffect(
@@ -160,7 +163,8 @@ export function CameraCapture({
     swipeY.current = e.clientY
   }
   const bgUp = (e: ReactPointerEvent) => {
-    if (swipeY.current !== null && e.clientY - swipeY.current > 80) onGallery()
+    // No camera permission → no upload path, so the swipe-to-gallery is off too.
+    if (!err && swipeY.current !== null && e.clientY - swipeY.current > 80) onGallery()
     swipeY.current = null
   }
 
@@ -186,8 +190,8 @@ export function CameraCapture({
       {err ? (
         <div className="cam-err">
           <p>{err}</p>
-          <button type="button" className="sq-cap-done" onClick={onGallery}>
-            פתח גלריה
+          <button type="button" className="sq-cap-done" onClick={() => setAttempt((a) => a + 1)}>
+            נסה שוב
           </button>
         </div>
       ) : (
@@ -195,7 +199,7 @@ export function CameraCapture({
       )}
 
       <div className="cam-bar">
-        <button type="button" aria-label="גלריה" onClick={onGallery} className="cam-gallery">
+        <button type="button" aria-label="גלריה" onClick={onGallery} className="cam-gallery" disabled={!!err}>
           <Images className="size-6" aria-hidden="true" />
         </button>
 

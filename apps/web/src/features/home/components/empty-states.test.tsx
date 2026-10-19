@@ -34,7 +34,7 @@ describe('home sections always show (owner, 2026-10-14)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'העלה את הראשון' }))
     })
     expect(screen.getByRole('dialog', { name: 'מצלמה' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'גלריה' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'שניהם' })).toBeInTheDocument()
   })
 
   it('the chat without messages invites the first one, with "הצטרף לשיחה"', () => {
