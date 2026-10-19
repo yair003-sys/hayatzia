@@ -41,14 +41,14 @@ function openCompose(audience: 'all' | 'team') {
 describe('posting asks who sees the post (owner, 2026-10-15)', () => {
   it('starts on the open tab and lets the fan switch before publishing', () => {
     const onStart = openCompose('team')
-    expect(screen.getByText('למי לפרסם?')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'רק לאוהדי מכבי ת״א' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('group', { name: 'למי לפרסם' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'מכבי ת״א' })).toHaveAttribute('aria-pressed', 'true')
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'לכל הליגה' }))
+      fireEvent.click(screen.getByRole('button', { name: 'הליגה' }))
     })
-    expect(screen.getByRole('button', { name: 'לכל הליגה' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'הליגה' })).toHaveAttribute('aria-pressed', 'true')
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'פרסום לכל הליגה' }))
+      fireEvent.click(screen.getByRole('button', { name: 'פרסום' }))
     })
     expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ audience: 'all' }))
   })
