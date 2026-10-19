@@ -5,7 +5,7 @@ import type { PushPayload } from './schema'
 export type MatchAlert = {
   id: number
   fixture_id: number
-  kind: string // 'goal' | 'ft'
+  kind: string // 'goal' | 'ft' | 'lineup'
   home_goals: number
   away_goals: number
   scoring_api_id: number | null
@@ -65,11 +65,13 @@ export function goalsSince(
   return { scorers, minute }
 }
 
-/** The phone notification for a goal or full time (Hebrew copy as in the spec). One tag per match. */
+/** The phone notification for a goal, full time or published line-ups (Hebrew copy as in the spec). One tag per match. */
 export function alertText(alert: MatchAlert, home: string, away: string, scorers: readonly string[], minute: string | null): PushPayload {
   const score = `${home} ${alert.home_goals}:${alert.away_goals} ${away}`
   const url = `/matches/${alert.fixture_id}`
   const tag = `match:${alert.fixture_id}`
+  // Line-ups published: no score yet, so name the two clubs and invite the fan into the match chat.
+  if (alert.kind === 'lineup') return { title: '📋 ההרכבים פורסמו', body: `${home} נגד ${away} · כנס לצ'אט`, url, tag }
   if (alert.kind === 'ft') return { title: `סיום: ${score}`, body: '', url, tag }
   const body = [minute ? `${minute}′` : '', scorers.join(', ')].filter(Boolean).join(' · ')
   return { title: `⚽ שער! ${score}`, body, url, tag }
