@@ -6,6 +6,8 @@ import { ContributeBox } from '@/features/campaigns/components/contribute-box'
 import { CATEGORY_HE, type Category, STATUS_HE, type Status, daysLeft, progressPct, shekelLabel } from '@/features/campaigns/schema'
 import { getCampaign } from '@/features/campaigns/server/queries'
 
+const clock = () => Date.now()
+
 export default function CampaignPage({ params }: PageProps<'/campaigns/[id]'>) {
   if (!features.campaigns) notFound()
   return (
@@ -26,7 +28,7 @@ async function Detail({ id }: { id: string }) {
   const c = await getCampaign(id)
   if (!c) notFound()
   const pct = progressPct(c.raised_agorot, c.goal_agorot)
-  const left = daysLeft(new Date(c.deadline).getTime(), Date.now())
+  const left = daysLeft(new Date(c.deadline).getTime(), clock())
   const live = c.status === 'live'
   return (
     <div className="space-y-5">

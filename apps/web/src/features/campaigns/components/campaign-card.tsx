@@ -2,10 +2,12 @@ import Link from 'next/link'
 import { CATEGORY_HE, type Category, daysLeft, progressPct, shekelLabel } from '../schema'
 import type { Campaign } from '../server/queries'
 
+const clock = () => Date.now()
+
 /** A campaign in the discovery list: cause, progress toward the goal, and time left. Links to the full page. */
 export function CampaignCard({ campaign: c }: { campaign: Campaign }) {
   const pct = progressPct(c.raised_agorot, c.goal_agorot)
-  const left = daysLeft(new Date(c.deadline).getTime(), Date.now())
+  const left = daysLeft(new Date(c.deadline).getTime(), clock())
   return (
     <Link
       href={`/campaigns/${c.id}`}
