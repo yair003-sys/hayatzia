@@ -13,9 +13,9 @@ insert into public.profiles (user_id, nick, team_id) values
 
 -- Two clips by the author: one video, one image, plus a second video for the decay check.
 insert into public.clips (id, user_id, team_id, media_path, kind) values
-  ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-0000000000a1', 'mta', 'a1/v1.mp4', 'video'),
-  ('00000000-0000-0000-0000-00000000c002', '00000000-0000-0000-0000-0000000000a1', 'mta', 'a1/i1.jpg', 'image'),
-  ('00000000-0000-0000-0000-00000000c003', '00000000-0000-0000-0000-0000000000a1', 'mta', 'a1/v2.mp4', 'video');
+  ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-0000000000a1', 'mta', '00000000-0000-0000-0000-0000000000a1/v1.mp4', 'video'),
+  ('00000000-0000-0000-0000-00000000c002', '00000000-0000-0000-0000-0000000000a1', 'mta', '00000000-0000-0000-0000-0000000000a1/i1.jpg', 'image'),
+  ('00000000-0000-0000-0000-00000000c003', '00000000-0000-0000-0000-0000000000a1', 'mta', '00000000-0000-0000-0000-0000000000a1/v2.mp4', 'video');
 
 -- The author engaging with their own clip must NOT create a taste signal.
 insert into public.clip_likes (clip_id, user_id) values ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-0000000000a1');
