@@ -30,7 +30,6 @@ export function MatchNightLiveHero({
   if (now !== null && !isTicketLive(f, now)) return null
   const minute = now === null ? '' : minuteLabel(f, now)
   const ended = minute === 'הסתיים'
-  const room = `/matches/${f.id}?tab=room`
   return (
     <section className="mnh mnh-live" aria-label={ended ? 'המשחק הסתיים' : 'משחק חי עכשיו'}>
       <span className="mnh-beam mnh-beam-1" aria-hidden="true" />
@@ -42,7 +41,7 @@ export function MatchNightLiveHero({
         {ended ? 'המשחק הסתיים' : 'משחק חי עכשיו'}
         {f.dm && <span className="sh-tag ms-2">משחק לדוגמה</span>}
       </p>
-      <Link href={room} className="mnh-teams mnh-live-teams" aria-label={`${home.name} ${f.gh ?? 0}, ${away.name} ${f.ga ?? 0}`}>
+      <Link href={`/matches/${f.id}?tab=room`} className="mnh-teams mnh-live-teams" aria-label={`${home.name} ${f.gh ?? 0}, ${away.name} ${f.ga ?? 0}`}>
         <span className="mnh-team" data-mine={atHome}>
           {home.short}
           <small>{atHome ? 'בבית' : 'בחוץ'}</small>
@@ -62,7 +61,7 @@ export function MatchNightLiveHero({
           יחד איתך עכשיו <b>{fans.toLocaleString('he-IL')}</b> אוהדים
         </p>
       )}
-      <Link href={room} className="mnh-cta mnh-cta-live">
+      <Link href={`/matches/${f.id}?tab=room`} className="mnh-cta mnh-cta-live">
         כנס לצ׳אט החי ←
       </Link>
     </section>
