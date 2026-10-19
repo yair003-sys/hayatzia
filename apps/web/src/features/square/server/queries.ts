@@ -55,6 +55,7 @@ export async function getTeamMood(supabase: DB, myTeam: string | null): Promise<
       .in('status', [...DONE_STATUSES])
       .gte('kickoff_at', since)
       .order('kickoff_at', { ascending: false })
+      .limit(40)
     const m = (fx ?? []).find((f) => ids.has(f.home_api_id) || ids.has(f.away_api_id))
     if (!m || m.home_goals == null || m.away_goals == null) return null
     const weAreHome = ids.has(m.home_api_id)
