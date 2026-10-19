@@ -171,7 +171,7 @@ export function CameraCapture({
   ]
 
   return createPortal(
-    <div className="cam" onPointerDown={bgDown} onPointerUp={bgUp}>
+    <div className="cam" role="dialog" aria-modal="true" aria-label="מצלמה" onPointerDown={bgDown} onPointerUp={bgUp}>
       <video ref={video} className={cn('cam-view', facing === 'user' && 'cam-view--mirror')} muted playsInline autoPlay />
 
       <div className="cam-top">

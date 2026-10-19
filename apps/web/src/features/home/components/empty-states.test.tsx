@@ -27,14 +27,14 @@ afterEach(() => {
 })
 
 describe('home sections always show (owner, 2026-10-14)', () => {
-  it('"החם בכיכר היום" without posts: an empty card whose button opens the Square upload sheet', () => {
+  it('"החם בכיכר היום" without posts: an empty card whose button opens the Square camera', () => {
     render(<HotClips clips={[]} meId="me" myTeamId="mta" myNick="אני" teamShort="מכבי ת״א" />)
     expect(screen.getByText('עוד אין פוסטים היום')).toBeInTheDocument()
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'העלה את הראשון' }))
     })
-    expect(screen.getByRole('dialog', { name: 'פוסט חדש' })).toHaveTextContent('נעלם אחרי 24 שעות')
-    expect(screen.getByRole('button', { name: 'בחירה מהגלריה' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'מצלמה' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'גלריה' })).toBeInTheDocument()
   })
 
   it('the chat without messages invites the first one, with "הצטרף לשיחה"', () => {
