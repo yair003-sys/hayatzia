@@ -34,6 +34,8 @@ export function CameraCapture({
   const chunks = useRef<Blob[]>([])
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
+  // True once the screen is closing, so a recording aborted by unmount doesn't still create a post.
+  const aborted = useRef(false)
   const [facing, setFacing] = useState<'environment' | 'user'>('environment')
   const [recording, setRecording] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -86,6 +88,7 @@ export function CameraCapture({
   // Make sure the camera is released and nothing fires after the screen closes.
   useEffect(
     () => () => {
+      aborted.current = true
       if (holdTimer.current) clearTimeout(holdTimer.current)
       stream.current?.getTracks().forEach((t) => t.stop())
       if (rec.current && rec.current.state !== 'inactive') rec.current.stop()
@@ -138,6 +141,8 @@ export function CameraCapture({
       if (e.data.size) chunks.current.push(e.data)
     }
     r.onstop = () => {
+      // If the screen is closing (unmount aborted the recording), don't turn the partial clip into a post.
+      if (aborted.current || chunks.current.length === 0) return
       // Use the BASE mime (no ;codecs=…): the upload's allow-list and mediaOf only know 'video/webm' / 'video/mp4'.
       const isMp4 = (r.mimeType || '').includes('mp4')
       const base = isMp4 ? 'video/mp4' : 'video/webm'

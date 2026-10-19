@@ -50,7 +50,7 @@ type Props = {
 export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing, trigger }: Props) {
   // The fan chooses who sees the post; the open tab is only the starting choice.
   const [to, setTo] = useState<Audience>(audience)
-  const label = (a: Audience) => (a === 'team' ? `לאוהדי ${teamShort}` : 'לכל הליגה')
+  const label = (a: Audience) => (a === 'team' ? `לאוהדי ${teamShort}` : a === 'both' ? 'שני הפידים' : 'לכל הליגה')
   const target = label(to)
   const [sent, setSent] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -123,7 +123,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     if (!mediaOf(f.type)) return setError('אפשר להעלות רק תמונה או סרטון')
     if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(`הקובץ גדול מ־${MAX_UPLOAD_MB}MB`)
     setChoosing(false)
-    setTo(audience)
+    // Keep the audience the fan chose in the camera (incl. "both"); it only resets when the whole flow closes.
     setFile(f)
     setPreview(URL.createObjectURL(f))
   }
@@ -131,6 +131,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const close = () => {
     setFile(null)
     setPreview(null)
+    setTo(audience)
     setCaption('')
     setCaptions([])
     setSel(null)
