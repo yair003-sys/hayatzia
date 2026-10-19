@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { FanCard } from '../schema'
+import { fanLabel } from '../fan-identity'
 
 /**
  * The fan's own numbers for "הכרטיס שלי": join date and order in the club, matches attended this season,
@@ -9,7 +10,7 @@ import type { FanCard } from '../schema'
 export async function getFanCard(userId: string, teamId: string, season: number | null): Promise<FanCard | null> {
   const supabase = await createClient()
   if (!supabase) return null
-  const { data: me } = await supabase.from('profiles').select('created_at').eq('user_id', userId).maybeSingle()
+  const { data: me } = await supabase.from('profiles').select('created_at,clips_posted').eq('user_id', userId).maybeSingle()
   if (!me) return null
   const [order, seen, totals, rated] = await Promise.all([
     supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('team_id', teamId).lte('created_at', me.created_at),
@@ -30,14 +31,18 @@ export async function getFanCard(userId: string, teamId: string, season: number 
     rank = (count ?? 0) + 1
   }
   const checkins = seen.data ?? []
+  const ratedCount = new Set((rated.data ?? []).map((r) => r.fixture_id)).size
+  const exact = totals.data?.exact ?? 0
   return {
     joinedAt: me.created_at,
     number: order.count ?? 1,
     games: checkins.length,
     away: checkins.filter((r) => r.away).length,
     points: totals.data?.points ?? 0,
-    exact: totals.data?.exact ?? 0,
+    exact,
     rank,
-    rated: new Set((rated.data ?? []).map((r) => r.fixture_id)).size,
+    rated: ratedCount,
+    // Identity label from what the fan actually does: stadium (die-hard), ratings+predictions (tactician), posts (creator).
+    label: fanLabel({ games: checkins.length, tactical: ratedCount + exact, uploads: me.clips_posted }),
   }
 }

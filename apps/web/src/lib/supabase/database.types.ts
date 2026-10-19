@@ -1109,14 +1109,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "adult_confirmed_at": string | null,"birth_date": string | null,"created_at": string,"dm_requests": string | null,"gender": string | null,"nick": string,"qr_code": string,"ride_safety_seen_at": string | null,"team_id": string,"terms_version": string,"user_id": string
+                    "adult_confirmed_at": string | null,"birth_date": string | null,"clips_posted": number,"created_at": string,"dm_requests": string | null,"gender": string | null,"nick": string,"qr_code": string,"ride_safety_seen_at": string | null,"team_id": string,"terms_version": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick": string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id": string,"terms_version"?: string,"user_id": string
+                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"clips_posted"?: number,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick": string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id": string,"terms_version"?: string,"user_id": string
                   }
                   Update: {
-                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick"?: string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id"?: string,"terms_version"?: string,"user_id"?: string
+                    "adult_confirmed_at"?: string | null,"birth_date"?: string | null,"clips_posted"?: number,"created_at"?: string,"dm_requests"?: string | null,"gender"?: string | null,"nick"?: string,"qr_code"?: string,"ride_safety_seen_at"?: string | null,"team_id"?: string,"terms_version"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
