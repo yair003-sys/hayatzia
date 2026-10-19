@@ -577,12 +577,20 @@
   .sq-swatch.on { border-color: #fff; box-shadow: 0 0 0 2px #111, 0 0 0 4px #fff; }
   .sq-caps-size { flex: 1; min-width: 0; accent-color: #fff; }
   .sq-caps-del { flex: none; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: rgb(255 45 85 / 0.2); color: #ff5a78; }
-  /* Floating caption editor: sits near the top of the clip so it never covers the caption the fan is placing. */
-  .sq-cap-float { position: absolute; z-index: 6; inset: calc(env(safe-area-inset-top, 0px) + 3.6rem) 0 auto; max-width: 26rem; margin-inline: auto; display: flex; flex-direction: column; gap: 0.5rem;
-    padding: 0.7rem 0.8rem; border-radius: 1rem; background: rgb(0 0 0 / 0.55); border: 1px solid rgb(255 255 255 / 0.15); backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.4); animation: sq-fade 0.15s both; }
-  .sq-cap-float-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-  .sq-cap-hint { font-size: 0.72rem; color: rgb(255 255 255 / 0.7); }
   .sq-cap-done { flex: none; min-height: 2.2rem; padding-inline: 1rem; border-radius: 999px; background: #fff; color: #111; font-weight: 700; font-size: 0.85rem; }
+  /* Instagram-style caption editor: full-screen, big centered editable text, style/colour rows up top (clear of the
+     keyboard) and a vertical size slider on the side. Dims the clip behind so the text reads while you type. */
+  .cap-edit { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; background: rgb(0 0 0 / 0.5); animation: sq-fade 0.15s both; }
+  .cap-edit-top { display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.25rem; }
+  .cap-edit-del { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 999px; background: rgb(255 45 85 / 0.22); color: #ff5a78; }
+  .cap-edit-styles { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 1rem; scrollbar-width: none; }
+  .cap-edit-styles::-webkit-scrollbar { display: none; }
+  .cap-edit-colors { display: flex; align-items: center; gap: 0.7rem; padding: 0.3rem 1rem 0.5rem; }
+  .cap-edit-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; padding: 0.5rem 3.25rem; container-type: size; }
+  .cap-edit-text { width: 100%; max-height: 100%; overflow: auto; background: transparent; border: 0; outline: 0; resize: none; text-align: center;
+    font-weight: 800; line-height: 1.18; color: var(--c, #fff); caret-color: #fff; font-size: calc(var(--s, 1.4) * 7cqw); field-sizing: content; }
+  .cap-edit-text::placeholder { color: rgb(255 255 255 / 0.55); -webkit-text-fill-color: rgb(255 255 255 / 0.55); }
+  .cap-edit-slider { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); height: 48%; writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical; appearance: slider-vertical; accent-color: #fff; }
   /* Live camera (Instagram-style): full-screen preview, tap/long-press shutter, gallery and a small audience toggle. */
   .cam { position: fixed; inset: 0; z-index: 75; background: #000; animation: sq-fade 0.2s both; touch-action: none; overscroll-behavior: contain; }
   .cam-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }

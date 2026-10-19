@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Type, X } from 'lucide-react'
@@ -58,13 +58,16 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const [caption, setCaption] = useState('')
   const [captions, setCaptions] = useState<ClipCaption[]>([])
   const [sel, setSel] = useState<number | null>(null)
+  // Instagram-style text editor is open (keyboard up, big centered text). Separate from `sel` so a placed caption can
+  // be dragged without the editor covering the screen; tapping it re-opens the editor.
+  const [editing, setEditing] = useState(false)
   const [filter, setFilter] = useState<ClipFilter>('none')
   const [speed, setSpeed] = useState(1)
   const [trimStart, setTrimStart] = useState(0)
   const [trimEnd, setTrimEnd] = useState<number | null>(null)
   const [dur, setDur] = useState(0)
   const previewVideo = useRef<HTMLVideoElement>(null)
-  const capInput = useRef<HTMLInputElement>(null)
+  const capInput = useRef<HTMLTextAreaElement>(null)
   const focusCap = () => requestAnimationFrame(() => capInput.current?.focus())
   const isVideo = file?.type.startsWith('video/') ?? false
   const [tags, setTags] = useState('')
@@ -95,8 +98,9 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const addCaption = () => {
     if (captions.length >= MAX_CAPTIONS) return
     // Start in the visible middle of the clip (not behind the bottom controls); the fan drags it where they want.
-    setCaptions((cur) => [...cur, { text: 'טקסט', style: 'classic', color: '#ffffff', x: 50, y: 42, size: 1.4 }])
+    setCaptions((cur) => [...cur, { text: '', style: 'classic', color: '#ffffff', x: 50, y: 42, size: 1.4 }])
     setSel(captions.length)
+    setEditing(true)
     focusCap()
   }
   const patchCaption = (i: number, patch: Partial<ClipCaption>) => setCaptions((cur) => cur.map((c, j) => (j === i ? { ...c, ...patch } : c)))
@@ -125,6 +129,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     setCaption('')
     setCaptions([])
     setSel(null)
+    setEditing(false)
     setFilter('none')
     setSpeed(1)
     setTrimStart(0)
@@ -237,6 +242,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
               onMove={(i, x, y) => patchCaption(i, { x, y })}
               onEdit={(i) => {
                 setSel(i)
+                setEditing(true)
                 focusCap()
               }}
             />
@@ -248,39 +254,62 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             <span className="text-sm text-white/80">{target} · 24 שעות</span>
           </div>
 
-          {/* Caption editor floats near the top so it never hides the caption on the clip; the fan drags the caption and taps it to edit. */}
-          {sel !== null && captions[sel] && (
-            <div className="sq-cap-float" role="group" aria-label="עריכת כתובית">
-              <input
-                ref={capInput}
-                value={captions[sel]?.text ?? ''}
-                onChange={(e) => patchCaption(sel, { text: e.target.value })}
-                maxLength={80}
-                placeholder="טקסט הכתובית"
-                aria-label="טקסט הכתובית"
-                className="sq-input"
-              />
-              <div className="sq-caps-styles">
+          {/* Instagram-style text editor: full-screen, big centered text, a vertical size slider on the side, and
+              style/colour rows up top (clear of the keyboard). "סיום" places the caption; tapping it on the clip reopens this. */}
+          {editing && sel !== null && captions[sel] && (
+            <div className="cap-edit" role="group" aria-label="עריכת כתובית">
+              <div className="cap-edit-top">
+                <button
+                  type="button"
+                  className="cap-edit-done"
+                  onClick={() => {
+                    setEditing(false)
+                    if (sel !== null && !captions[sel]?.text.trim()) removeCaption(sel)
+                    else setSel(null)
+                  }}
+                >
+                  סיום
+                </button>
+                <button type="button" aria-label="מחק כתובית" onClick={() => { removeCaption(sel); setEditing(false) }} className="cap-edit-del">
+                  <Trash2 className="size-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="cap-edit-styles" role="group" aria-label="סגנון">
                 {CAPTION_STYLES.map((s) => (
                   <button key={s} type="button" aria-pressed={captions[sel]?.style === s} onClick={() => patchCaption(sel, { style: s })} className={cn('sq-chip', captions[sel]?.style === s && 'on')}>
                     {STYLE_LABEL[s]}
                   </button>
                 ))}
               </div>
-              <div className="sq-caps-row">
+              <div className="cap-edit-colors" role="group" aria-label="צבע">
                 {CAPTION_COLORS.map((col) => (
                   <button key={col} type="button" aria-label={`צבע ${col}`} onClick={() => patchCaption(sel, { color: col })} className={cn('sq-swatch', captions[sel]?.color === col && 'on')} style={{ background: col }} />
                 ))}
-                <input type="range" min={0.8} max={3} step={0.1} value={captions[sel]?.size ?? 1.4} onChange={(e) => patchCaption(sel, { size: Number(e.target.value) })} aria-label="גודל הכתובית" className="sq-caps-size" />
-                <button type="button" aria-label="מחק כתובית" onClick={() => removeCaption(sel)} className="sq-caps-del">
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </button>
               </div>
-              <div className="sq-cap-float-foot">
-                <span className="sq-cap-hint">גוררים את הכתובית למקום, לוחצים עליה לעריכה</span>
-                <button type="button" className="sq-cap-done" onClick={() => setSel(null)}>
-                  סיום
-                </button>
+
+              <div className="cap-edit-stage">
+                <textarea
+                  ref={capInput}
+                  value={captions[sel]?.text ?? ''}
+                  onChange={(e) => patchCaption(sel, { text: e.target.value })}
+                  maxLength={80}
+                  rows={1}
+                  placeholder="כתוב/י טקסט"
+                  aria-label="טקסט הכתובית"
+                  className={cn('cap-edit-text', `cap--${captions[sel]?.style}`)}
+                  style={{ '--c': captions[sel]?.color, '--s': captions[sel]?.size } as CSSProperties}
+                />
+                <input
+                  type="range"
+                  min={0.8}
+                  max={3}
+                  step={0.1}
+                  value={captions[sel]?.size ?? 1.4}
+                  onChange={(e) => patchCaption(sel, { size: Number(e.target.value) })}
+                  aria-label="גודל הכתובית"
+                  className="cap-edit-slider"
+                />
               </div>
             </div>
           )}
