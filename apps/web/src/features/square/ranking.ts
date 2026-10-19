@@ -11,6 +11,10 @@ export const RANK = {
   halfLifeHours: 8,
   /** The viewer's own club is multiplied by this so the feed leans ~60–70% toward their team. */
   teamBoost: 1.6,
+  /** A fresh post from a club playing *right now* jumps the feed (matchday mode). */
+  matchdayBoost: 3,
+  /** Only posts this fresh get the matchday jump (the drama is live). */
+  matchdayFreshHours: 3,
 } as const
 
 /** The fields the score needs — a loose shape so any clip row (raw or decorated) fits. */
@@ -23,13 +27,14 @@ export type Rankable = {
   team_id: string
 }
 
-/** Higher = hotter. engagement × time-decay × team-affinity. */
-export function hotScore(c: Rankable, myTeam: string | null, now: number = Date.now()): number {
+/** Higher = hotter. engagement × time-decay × team-affinity × matchday boost. `liveTeams` = club ids playing now. */
+export function hotScore(c: Rankable, myTeam: string | null, liveTeams: ReadonlySet<string> | null = null, now: number = Date.now()): number {
   const engagement = c.likes_count * RANK.like + c.respects_count * RANK.respect + c.comments_count * RANK.comment + c.views_count * RANK.view + 1
   const t = new Date(c.created_at).getTime()
   // A bad/unparseable timestamp must not poison the sort with NaN — treat it as very old (score ≈ 0).
   const ageHours = Number.isFinite(t) ? Math.max(0, (now - t) / 3_600_000) : 1e9
   const recency = Math.pow(0.5, ageHours / RANK.halfLifeHours)
   const affinity = myTeam && c.team_id === myTeam ? RANK.teamBoost : 1
-  return engagement * recency * affinity
+  const matchday = liveTeams && liveTeams.has(c.team_id) && ageHours < RANK.matchdayFreshHours ? RANK.matchdayBoost : 1
+  return engagement * recency * affinity * matchday
 }

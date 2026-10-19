@@ -3,11 +3,38 @@ import { createClient } from '@/lib/supabase/server'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { CLIP_FILTERS, FEED_SIZE, type Audience, type Clip, type ClipComment, type ClipFilter } from '../schema'
 import { hotScore } from '../ranking'
+import { LIVE_STATUSES } from '@/features/matches/schema'
 
 export const CLIP_COLUMNS =
   'id,user_id,team_id,nick,media_path,kind,caption,captions,filter,speed,trim_start,trim_end,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
 const COLUMNS = CLIP_COLUMNS
 const URL_TTL = 60 * 60 // seconds; feed pages are short-lived anyway
+
+type DB = NonNullable<Awaited<ReturnType<typeof createClient>>>
+
+/**
+ * Club ids whose team is in a live fixture right now — used for the matchday boost. Almost always empty, which costs a
+ * single indexed query; only during a live match does it do the small name→club mapping.
+ */
+export async function getLiveTeamIds(supabase: DB): Promise<Set<string>> {
+  try {
+    // Kicked off within the last 4h as well as a live status — guards against a stale fixture stuck "live".
+    const since = new Date(Date.now() - 4 * 3_600_000).toISOString()
+    const { data: live } = await supabase.from('fixtures').select('home_api_id,away_api_id').in('status', [...LIVE_STATUSES]).gte('kickoff_at', since)
+    if (!live || live.length === 0) return new Set()
+    const apiIds = [...new Set(live.flatMap((f) => [f.home_api_id, f.away_api_id]))]
+    const [{ data: apiTeams }, { data: teams }] = await Promise.all([
+      supabase.from('api_teams').select('name').in('api_id', apiIds),
+      supabase.from('teams').select('id,api_names'),
+    ])
+    if (!apiTeams || !teams) return new Set()
+    const liveNames = new Set(apiTeams.map((t) => t.name))
+    return new Set(teams.filter((t) => t.api_names.some((n) => liveNames.has(n))).map((t) => t.id))
+  } catch {
+    // The matchday boost is a bonus; never let it break the feed.
+    return new Set()
+  }
+}
 
 /**
  * One page of a Square tab, newest first (keyset): 'all' = league posts, 'team' = the fan's club only.
@@ -41,15 +68,16 @@ export async function getSquareFeed(opts: { audience?: Audience; offset?: number
     return base.in('audience', ['all', 'both'])
   }
   // Candidates: the most recent and the most engaged, so a fresh post and a viral older one both compete.
-  const [recent, engaged, blocked] = await Promise.all([
+  const [recent, engaged, blocked, liveTeams] = await Promise.all([
     build().order('created_at', { ascending: false }).limit(FEED_CANDIDATES),
     build().order('likes_count', { ascending: false }).limit(FEED_ENGAGED),
     getBlockedIdsOrNull(),
+    getLiveTeamIds(supabase),
   ])
   if (recent.error || engaged.error || !recent.data || !engaged.data || !blocked) return null
   const byId = new Map<string, (typeof recent.data)[number]>()
   for (const r of [...recent.data, ...engaged.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
-  const ranked = [...byId.values()].sort((a, b) => hotScore(b, myTeam ?? null) - hotScore(a, myTeam ?? null))
+  const ranked = [...byId.values()].sort((a, b) => hotScore(b, myTeam ?? null, liveTeams) - hotScore(a, myTeam ?? null, liveTeams))
   const page = ranked.slice(offset, offset + FEED_SIZE)
   if (!page.length) return []
   return decorate(supabase, page, me)

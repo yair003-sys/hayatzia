@@ -6,7 +6,7 @@ import { getClubRatingStats } from '@/features/ratings/server/queries'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { getClubPlayers } from '@/features/teams/server/queries'
 import type { Clip } from '@/features/square/schema'
-import { CLIP_COLUMNS, decorate } from '@/features/square/server/queries'
+import { CLIP_COLUMNS, decorate, getLiveTeamIds } from '@/features/square/server/queries'
 import { hotScore } from '@/features/square/ranking'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -70,15 +70,16 @@ export async function getStories(teamId: string, me: string): Promise<StoryGroup
 export async function getHotClips(me: string, teamId: string | null = null, limit = 4): Promise<Clip[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
-  const [engaged, recent, blocked] = await Promise.all([
+  const [engaged, recent, blocked, liveTeams] = await Promise.all([
     supabase.from('clips').select(CLIP_COLUMNS).eq('once', false).order('likes_count', { ascending: false }).limit(40),
     supabase.from('clips').select(CLIP_COLUMNS).eq('once', false).order('created_at', { ascending: false }).limit(40),
     getBlockedIdsOrNull(),
+    getLiveTeamIds(supabase),
   ])
   if (engaged.error || recent.error || !engaged.data || !recent.data || !blocked) return null
   const byId = new Map<string, (typeof engaged.data)[number]>()
   for (const r of [...engaged.data, ...recent.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
-  const rows = [...byId.values()].sort((a, b) => hotScore(b, teamId) - hotScore(a, teamId)).slice(0, limit)
+  const rows = [...byId.values()].sort((a, b) => hotScore(b, teamId, liveTeams) - hotScore(a, teamId, liveTeams)).slice(0, limit)
   if (rows.length === 0) return []
   return decorate(supabase, rows, me)
 }
