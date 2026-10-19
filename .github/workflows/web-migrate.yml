@@ -1,0 +1,72 @@
+name: web-migrate (apply migrations to staging then production)
+
+# Applies the repo's migrations to the real Supabase projects so no SQL has to be run by hand:
+# on every merge to main that touches a migration, first to STAGING, and only if that succeeds, to PRODUCTION.
+# `supabase db push` is idempotent — it applies only migrations not yet recorded in the project — so a re-run is safe.
+#
+# DORMANT UNTIL CONFIGURED: each job no-ops (succeeds, does nothing) unless its database URL secret is set, so merging
+# this workflow changes nothing until the one-time secrets exist:
+#   - STAGING_DB_URL  — the staging project's Postgres connection string (Supabase → Project Settings → Database →
+#                       "Connection string" → URI; the session pooler URI works from CI). Project ref yblzcgetkfbdwsfogkqp.
+#   - PROD_DB_URL     — the production project's connection string. Project ref loaqhisfhafjbrmtygrp.
+# Production runs in the `production` GitHub Environment: leave it with no reviewer for fully automatic apply, or add a
+# required reviewer there later if a manual gate before production is ever wanted.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/supabase/migrations/**', '.github/workflows/web-migrate.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-migrate
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: 2.120.0
+      - name: Apply migrations to staging
+        env:
+          DB_URL: ${{ secrets.STAGING_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "STAGING_DB_URL not set — skipping (dormant until configured)."
+            exit 0
+          fi
+          ./scripts/ci-step.sh "db push staging" supabase db push --db-url "$DB_URL"
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: 2.120.0
+      - name: Apply migrations to production
+        env:
+          DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "PROD_DB_URL not set — skipping (dormant until configured)."
+            exit 0
+          fi
+          ./scripts/ci-step.sh "db push production" supabase db push --db-url "$DB_URL"
