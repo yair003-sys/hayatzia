@@ -583,7 +583,7 @@
   .cap-edit { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; background: rgb(0 0 0 / 0.5); animation: sq-fade 0.15s both; }
   .cap-edit-top { display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.25rem; }
   .cap-edit-del { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 999px; background: rgb(255 45 85 / 0.22); color: #ff5a78; }
-  .cap-edit-styles { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 1rem; scrollbar-width: none; }
+  .cap-edit-styles { position: relative; display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 1rem; scrollbar-width: none; }
   .cap-edit-styles::-webkit-scrollbar { display: none; }
   .cap-edit-colors { display: flex; align-items: center; gap: 0.7rem; padding: 0.3rem 1rem 0.5rem; }
   .cap-edit-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; padding: 0.5rem 3.25rem; container-type: size; }
