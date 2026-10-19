@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { X } from 'lucide-react'
 import { Crest } from '@/features/matches/components/crest'
 import type { DisplayTeam } from '@/features/matches/api-teams'
@@ -28,7 +29,7 @@ export function LiveMatchCenter({
   score: string
   minute: string
   live: boolean
-  backHref: string
+  backHref: Route
   panels: Panel[]
 }) {
   const router = useRouter()
@@ -56,7 +57,7 @@ export function LiveMatchCenter({
   }, [panels.length])
 
   const goTo = (i: number) => refs.current[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  const close = () => (backHref ? router.push(backHref) : router.back())
+  const close = () => router.push(backHref)
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="מרכז המשחק החי">
