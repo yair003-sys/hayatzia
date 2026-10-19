@@ -10,6 +10,7 @@ import {
   FansOfWeekSection,
   HomeHeader,
   HotSection,
+  LiveNow,
   MatchExtras,
   MatchNightHero,
   MiniTableSection,
@@ -18,7 +19,7 @@ import {
   StoriesSection,
   StoriesSkeleton,
 } from '@/features/home/components/sections'
-import { nextClubFixture } from '@/features/home/schema'
+import { anyLiveFixture, liveClubFixture, nextClubFixture } from '@/features/home/schema'
 import { displayTeam } from '@/features/matches/api-teams'
 import { LiveCard } from '@/features/matches/components/live-card'
 import { kickoffDay, kickoffTime } from '@/features/matches/format'
@@ -71,6 +72,9 @@ async function Home() {
   return (
     <div className="sh hm space-y-4" style={theme}>
       <HomeHeader team={team} userId={userId} />
+      <Suspense fallback={null}>
+        <LiveNow team={team} />
+      </Suspense>
       <Suspense fallback={<StoriesSkeleton />}>
         <StoriesSection team={team} userId={userId} nick={s.nick} />
       </Suspense>
@@ -136,9 +140,12 @@ async function StandHome() {
     ),
     plan.then((p) => (p.ticket && p.active ? getCheckedIn(p.ticket.id) : false)),
   ])
-  const showTicket = !ticket || ticket.id !== next?.id || active
+  // The live match featured at the very top of the home (LiveNow) is shown there only — leave it out here, so it never
+  // appears two or three times on the same screen (owner 2026-10-19).
+  const featuredLive = league ? (liveClubFixture(league.fixtures, ids, now) ?? anyLiveFixture(league.fixtures, now)) : null
+  const showTicket = (!ticket || ticket.id !== next?.id || active) && ticket?.id !== featuredLive?.id
   const nameOf = (apiId: number) => displayTeam(apiId, league?.teams[String(apiId)]?.name)
-  const live = league ? liveNow(league.fixtures, now) : []
+  const live = (league ? liveNow(league.fixtures, now) : []).filter((f) => f.id !== featuredLive?.id)
 
   return (
     <div className="space-y-4">
