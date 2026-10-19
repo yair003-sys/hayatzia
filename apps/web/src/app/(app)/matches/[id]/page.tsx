@@ -63,6 +63,9 @@ async function MatchContent({ id, tab: tabParam }: { id: number; tab: string | s
   return (
     <>
       <MatchHero fixture={f} home={home} away={away} round={roundLabelHe(f.r)} day={kickoffDay(f.t)} time={kickoffTime(f.t)} />
+      <Link href={`/matches/${id}/live`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-bold">
+        ⚡ פתח במסך מלא — מרכז המשחק
+      </Link>
       {/* Fans of the two clubs only; nothing before the 48-hour window or when neither crowd scored. */}
       <Suspense fallback={null}>
         <MatchCrowdWar fixture={f} home={home} away={away} />
