@@ -10,4 +10,6 @@ begin
   return new;
 end $$;
 
+-- Trigger-only function: no one calls it directly, so keep it off the public/anon surface.
+revoke all on function public.clips_bump_poster() from public;
 create trigger clips_bump_poster after insert on public.clips for each row execute function public.clips_bump_poster();
