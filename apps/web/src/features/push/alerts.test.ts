@@ -3,6 +3,7 @@ import { alertText, freshInOrder, goalMinute, goalsSince, groupByMatch, isStale 
 
 const goal = { id: 1, fixture_id: 77, kind: 'goal', home_goals: 2, away_goals: 1, scoring_api_id: 604 }
 const ft = { ...goal, kind: 'ft', scoring_api_id: null }
+const lineup = { id: 1, fixture_id: 77, kind: 'lineup', home_goals: 0, away_goals: 0, scoring_api_id: null }
 
 describe('alertText', () => {
   it('goal: title with score, body minute · scorer, opens the match, one tag per fixture', () => {
@@ -27,6 +28,15 @@ describe('alertText', () => {
     expect(alertText(ft, 'מכבי תל אביב', 'הפועל חיפה', [], null)).toEqual({
       title: 'סיום: מכבי תל אביב 2:1 הפועל חיפה',
       body: '',
+      url: '/matches/77',
+      tag: 'match:77',
+    })
+  })
+
+  it('line-ups published: names both clubs and invites into the chat, no score', () => {
+    expect(alertText(lineup, 'מכבי תל אביב', 'הפועל חיפה', [], null)).toEqual({
+      title: '📋 ההרכבים פורסמו',
+      body: "מכבי תל אביב נגד הפועל חיפה · כנס לצ'אט",
       url: '/matches/77',
       tag: 'match:77',
     })
