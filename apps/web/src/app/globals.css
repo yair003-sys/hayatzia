@@ -577,6 +577,12 @@
   .sq-swatch.on { border-color: #fff; box-shadow: 0 0 0 2px #111, 0 0 0 4px #fff; }
   .sq-caps-size { flex: 1; min-width: 0; accent-color: #fff; }
   .sq-caps-del { flex: none; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: rgb(255 45 85 / 0.2); color: #ff5a78; }
+  /* Floating caption editor: sits near the top of the clip so it never covers the caption the fan is placing. */
+  .sq-cap-float { position: absolute; z-index: 6; inset: calc(env(safe-area-inset-top, 0px) + 3.6rem) 0 auto; max-width: 26rem; margin-inline: auto; display: flex; flex-direction: column; gap: 0.5rem;
+    padding: 0.7rem 0.8rem; border-radius: 1rem; background: rgb(0 0 0 / 0.55); border: 1px solid rgb(255 255 255 / 0.15); backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.4); animation: sq-fade 0.15s both; }
+  .sq-cap-float-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+  .sq-cap-hint { font-size: 0.72rem; color: rgb(255 255 255 / 0.7); }
+  .sq-cap-done { flex: none; min-height: 2.2rem; padding-inline: 1rem; border-radius: 999px; background: #fff; color: #111; font-weight: 700; font-size: 0.85rem; }
   /* on-device clip edits: colour filters (applied to the media on preview and playback) + editor controls */
   .filt-vivid { filter: saturate(1.5) contrast(1.08); }
   .filt-bw { filter: grayscale(1) contrast(1.05); }
