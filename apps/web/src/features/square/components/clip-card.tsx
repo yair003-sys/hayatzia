@@ -32,6 +32,8 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const mine = clip.user_id === meId
   const rival = clip.team_id !== myTeamId
   const [url, setUrl] = useState(clip.url)
+  // Fill the screen (cover) for the usual upright clip; only a landscape one (phone turned sideways) is letterboxed.
+  const [landscape, setLandscape] = useState(false)
   const [liked, setLiked] = useState(clip.liked)
   const [likes, setLikes] = useState(clip.likes_count)
   const [respected, setRespected] = useState(clip.respected)
@@ -148,19 +150,27 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               loop={!story}
               playsInline
               preload="metadata"
-              className={cn('size-full object-contain', `filt-${clip.filter}`)}
+              className={cn('size-full', landscape ? 'object-contain' : 'object-cover', `filt-${clip.filter}`)}
+              onLoadedMetadata={(e) => setLandscape(e.currentTarget.videoWidth > e.currentTarget.videoHeight)}
               onEnded={story?.onEnded}
               onTimeUpdate={story ? (e) => story.onProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1)) : undefined}
             />
           </button>
         ) : (
-          // Signed, short-lived Storage URL: next/image optimisation would cache it past its lifetime.
-          // The whole photo is shown (no cropping); a blurred copy fills the bars around it, like Instagram.
+          // Upright photos fill the screen (cover); a landscape one keeps its shape over a blurred copy of itself.
           <>
+            {landscape && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={url} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" loading="lazy" />
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" loading="lazy" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={clip.caption || 'פוסט בכיכר'} className={cn('absolute inset-0 size-full object-contain', `filt-${clip.filter}`)} loading="lazy" />
+            <img
+              src={url}
+              alt={clip.caption || 'פוסט בכיכר'}
+              className={cn('absolute inset-0 size-full', landscape ? 'object-contain' : 'object-cover', `filt-${clip.filter}`)}
+              loading="lazy"
+              onLoad={(e) => setLandscape(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight)}
+            />
           </>
         )
       ) : (
