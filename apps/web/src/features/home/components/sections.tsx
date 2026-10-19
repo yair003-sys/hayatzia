@@ -282,7 +282,7 @@ export async function FanFavoritesSection({ team, userId }: Fan) {
 // ── 6. hot in the Square ──────────────────────────────────────────────────────────────────
 /** Always shown; with no posts yet, an empty card the size of the row invites the first upload. */
 export async function HotSection({ team, userId, nick }: Fan & { nick: string }) {
-  const clips = await getHotClips(userId)
+  const clips = await getHotClips(userId, team.id)
   return (
     <section aria-labelledby="hm-hot-h" className="hm-sec">
       <SectionHead id="hm-hot-h" emoji="🔥" title="החם בכיכר היום" more={{ href: '/square', label: 'לכיכר' }} />

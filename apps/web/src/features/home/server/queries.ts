@@ -7,6 +7,7 @@ import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { getClubPlayers } from '@/features/teams/server/queries'
 import type { Clip } from '@/features/square/schema'
 import { CLIP_COLUMNS, decorate } from '@/features/square/server/queries'
+import { hotScore } from '@/features/square/ranking'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { groupStories, REVIEWS_PER_PLAYER, type StoryGroup } from '../schema'
@@ -61,25 +62,23 @@ export async function getStories(teamId: string, me: string): Promise<StoryGroup
 }
 
 /**
- * "🔥 החם בכיכר היום": the most-liked live posts the fan may see in the Square (league posts, and team posts of their
- * own club only: RLS), never view-once, never a blocked fan. Over clips_hot_idx; decorated in one batch.
+ * "🔥 החם בכיכר היום": the hottest live posts the fan may see in the Square (league posts, and team posts of their own
+ * club only: RLS), never view-once, never a blocked fan. Ranked by the algorithm-v1 score (engagement × time-decay ×
+ * own-club boost), so it is genuinely "hot", not just newest. Candidates come from two cheap indexed reads — the most
+ * engaged and the most recent — merged, then scored in JS (a tiny set, no need for a ranking query here).
  */
-export async function getHotClips(me: string, limit = 4): Promise<Clip[] | null> {
+export async function getHotClips(me: string, teamId: string | null = null, limit = 4): Promise<Clip[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
-  const [{ data, error }, blocked] = await Promise.all([
-    supabase
-      .from('clips')
-      .select(CLIP_COLUMNS)
-      .eq('once', false)
-      // Most-liked first, then the newest: a fresh post shows here at once even before its first like (owner, 2026-10-15).
-      .order('likes_count', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(limit * 2),
+  const [engaged, recent, blocked] = await Promise.all([
+    supabase.from('clips').select(CLIP_COLUMNS).eq('once', false).order('likes_count', { ascending: false }).limit(40),
+    supabase.from('clips').select(CLIP_COLUMNS).eq('once', false).order('created_at', { ascending: false }).limit(40),
     getBlockedIdsOrNull(),
   ])
-  if (error || !data || !blocked) return null
-  const rows = data.filter((r) => !blocked.includes(r.user_id)).slice(0, limit)
+  if (engaged.error || recent.error || !engaged.data || !recent.data || !blocked) return null
+  const byId = new Map<string, (typeof engaged.data)[number]>()
+  for (const r of [...engaged.data, ...recent.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
+  const rows = [...byId.values()].sort((a, b) => hotScore(b, teamId) - hotScore(a, teamId)).slice(0, limit)
   if (rows.length === 0) return []
   return decorate(supabase, rows, me)
 }
