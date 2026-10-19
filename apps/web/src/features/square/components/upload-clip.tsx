@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Type, X } from 'lucide-react'
+import { Plus, SlidersHorizontal, Trash2, Type, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { shrinkPhoto } from '../compress'
@@ -61,6 +61,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   // Instagram-style text editor is open (keyboard up, big centered text). Separate from `sel` so a placed caption can
   // be dragged without the editor covering the screen; tapping it re-opens the editor.
   const [editing, setEditing] = useState(false)
+  // Effects sheet (filters, speed, trim, tags) slides up only when asked, so the editor stays a clean full-screen clip.
+  const [showFx, setShowFx] = useState(false)
   const [filter, setFilter] = useState<ClipFilter>('none')
   const [speed, setSpeed] = useState(1)
   const [trimStart, setTrimStart] = useState(0)
@@ -69,6 +71,9 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const previewVideo = useRef<HTMLVideoElement>(null)
   const capInput = useRef<HTMLTextAreaElement>(null)
   const focusCap = () => requestAnimationFrame(() => capInput.current?.focus())
+  // A tap (no drag) on the empty clip opens the text editor — like Instagram. Captions stop their own events, so a tap
+  // that reaches the media is always on empty space.
+  const tapStart = useRef<{ x: number; y: number } | null>(null)
   const isVideo = file?.type.startsWith('video/') ?? false
   const [tags, setTags] = useState('')
   const [once, setOnce] = useState(false)
@@ -227,7 +232,18 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         preview &&
         createPortal(
         <div className="sq-compose" role="dialog" aria-label={`פוסט חדש ${target}`}>
-          <div className="sq-compose-media">
+          <div
+            className="sq-compose-media"
+            onPointerDown={(e) => {
+              tapStart.current = { x: e.clientX, y: e.clientY }
+            }}
+            onPointerUp={(e) => {
+              const s = tapStart.current
+              tapStart.current = null
+              if (!s || editing || showFx) return
+              if (Math.hypot(e.clientX - s.x, e.clientY - s.y) < 8 && captions.length < MAX_CAPTIONS) addCaption()
+            }}
+          >
             {file.type.startsWith('video/') ? (
               <video ref={previewVideo} src={preview} autoPlay muted loop playsInline className={`filt-${filter}`} />
             ) : (
@@ -251,7 +267,14 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             <button type="button" aria-label="ביטול" onClick={close} className="sq-round">
               <X className="size-5" aria-hidden="true" />
             </button>
-            <span className="text-sm text-white/80">{target} · 24 שעות</span>
+            <div className="sq-tools">
+              <button type="button" aria-label="הוספת טקסט" onClick={addCaption} className="sq-round" disabled={captions.length >= MAX_CAPTIONS}>
+                <Type className="size-5" aria-hidden="true" />
+              </button>
+              <button type="button" aria-label="אפקטים" onClick={() => setShowFx(true)} className={cn('sq-round', showFx && 'on')}>
+                <SlidersHorizontal className="size-5" aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
           {/* Instagram-style text editor: full-screen, big centered text, a vertical size slider on the side, and
@@ -313,84 +336,78 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
               </div>
             </div>
           )}
-          <div className="sq-compose-bottom">
-            <div className="sq-edit">
-              <div className="sq-edit-row" role="group" aria-label="פילטר">
-                {CLIP_FILTERS.map((f) => (
-                  <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn('sq-chip', filter === f && 'on')}>
-                    {FILTER_LABEL[f]}
-                  </button>
-                ))}
-              </div>
-              {isVideo && (
-                <div className="sq-edit-row" role="group" aria-label="מהירות">
-                  <span className="sq-edit-lbl">מהירות</span>
-                  {CLIP_SPEEDS.map((s) => (
-                    <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)} className={cn('sq-chip', speed === s && 'on')}>
-                      {s}x
+          {/* Effects slide up only on demand (the sliders icon), so the editor stays a clean clip by default. */}
+          {showFx && (
+            <div className="sq-fx-wrap" onPointerDown={() => setShowFx(false)}>
+              <div className="sq-fx" role="dialog" aria-label="אפקטים" onPointerDown={(e) => e.stopPropagation()}>
+                <span className="sq-grip" aria-hidden="true" />
+                <div className="sq-edit-row" role="group" aria-label="פילטר">
+                  {CLIP_FILTERS.map((f) => (
+                    <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn('sq-chip', filter === f && 'on')}>
+                      {FILTER_LABEL[f]}
                     </button>
                   ))}
                 </div>
-              )}
-              {isVideo && dur > 0 && (
-                <div className="sq-trim">
-                  <span className="sq-edit-lbl">
-                    חיתוך · {fmtSec(trimStart)}–{fmtSec(trimEnd ?? dur)}
-                  </span>
-                  <label className="sq-trim-row">
-                    <span>התחלה</span>
-                    <input type="range" min={0} max={Math.max(0.1, (trimEnd ?? dur) - 0.3)} step={0.1} value={trimStart} onChange={(e) => setTrimStart(Number(e.target.value))} aria-label="נקודת התחלה" />
-                  </label>
-                  <label className="sq-trim-row">
-                    <span>סוף</span>
-                    <input
-                      type="range"
-                      min={trimStart + 0.3}
-                      max={dur}
-                      step={0.1}
-                      value={trimEnd ?? dur}
-                      onChange={(e) => setTrimEnd(Number(e.target.value) >= dur ? null : Number(e.target.value))}
-                      aria-label="נקודת סוף"
-                    />
-                  </label>
-                </div>
-              )}
+                {isVideo && (
+                  <div className="sq-edit-row" role="group" aria-label="מהירות">
+                    <span className="sq-edit-lbl">מהירות</span>
+                    {CLIP_SPEEDS.map((s) => (
+                      <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)} className={cn('sq-chip', speed === s && 'on')}>
+                        {s}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {isVideo && dur > 0 && (
+                  <div className="sq-trim">
+                    <span className="sq-edit-lbl">
+                      חיתוך · {fmtSec(trimStart)}–{fmtSec(trimEnd ?? dur)}
+                    </span>
+                    <label className="sq-trim-row">
+                      <span>התחלה</span>
+                      <input type="range" min={0} max={Math.max(0.1, (trimEnd ?? dur) - 0.3)} step={0.1} value={trimStart} onChange={(e) => setTrimStart(Number(e.target.value))} aria-label="נקודת התחלה" />
+                    </label>
+                    <label className="sq-trim-row">
+                      <span>סוף</span>
+                      <input
+                        type="range"
+                        min={trimStart + 0.3}
+                        max={dur}
+                        step={0.1}
+                        value={trimEnd ?? dur}
+                        onChange={(e) => setTrimEnd(Number(e.target.value) >= dur ? null : Number(e.target.value))}
+                        aria-label="נקודת סוף"
+                      />
+                    </label>
+                  </div>
+                )}
+                <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
+                <label className="flex items-center gap-2 text-sm text-white/85">
+                  <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
+                  חד פעמי: כל אוהד יוכל לצפות פעם אחת
+                </label>
+                <button type="button" className="sq-cap-done self-start" onClick={() => setShowFx(false)}>
+                  סיום
+                </button>
+              </div>
             </div>
-            <div className="sq-caps">
-              <button type="button" className="sq-caps-add" onClick={addCaption} disabled={captions.length >= MAX_CAPTIONS}>
-                <Type className="size-4" aria-hidden="true" />
-                כתובית
-              </button>
-            </div>
-            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="כיתוב (לא חובה)" aria-label="כיתוב" className="sq-input" />
-            <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
-            <fieldset className="flex flex-col gap-1.5">
-              <legend className="mb-1.5 text-sm font-semibold text-white">למי לפרסם?</legend>
-              <div className="grid grid-cols-3 gap-2">
+          )}
+
+          {/* Minimal bottom bar: add a caption, pick who sees it, publish. Everything else lives behind the tool icons. */}
+          <div className="sq-foot">
+            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="הוספת כיתוב..." aria-label="כיתוב" className="sq-foot-cap" />
+            <div className="sq-foot-row">
+              <div className="sq-aud-mini" role="group" aria-label="למי לפרסם">
                 {(['team', 'all', 'both'] as const).map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    aria-pressed={to === a}
-                    onClick={() => setTo(a)}
-                    className={
-                      to === a
-                        ? 'min-h-11 rounded-xl bg-accent px-2 text-sm font-bold text-white'
-                        : 'min-h-11 rounded-xl border border-white/25 bg-black/40 px-2 text-sm text-white/85'
-                    }
-                  >
-                    {a === 'team' ? `רק לאוהדי ${teamShort}` : a === 'all' ? 'לכל הליגה' : 'בשני הפידים'}
+                  <button key={a} type="button" aria-pressed={to === a} onClick={() => setTo(a)} className={cn('sq-chip', to === a && 'on')}>
+                    {a === 'team' ? teamShort : a === 'all' ? 'הליגה' : 'שניהם'}
                   </button>
                 ))}
               </div>
-            </fieldset>
-            <label className="flex items-center gap-2 text-sm text-white/85">
-              <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
-              חד פעמי: כל אוהד יוכל לצפות פעם אחת
-            </label>
-            <button type="button" onClick={publish} className="su-btn su-btn-blue">
-              פרסום {target}
-            </button>
+              <button type="button" onClick={publish} className="sq-foot-post">
+                פרסום
+              </button>
+            </div>
           </div>
         </div>,
           document.body,
