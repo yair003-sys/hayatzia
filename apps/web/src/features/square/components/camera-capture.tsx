@@ -60,6 +60,7 @@ export function CameraCapture({
   // real lens can do it. When native, the stream itself is zoomed (so photos and videos get it for free); otherwise the
   // preview is scaled and the photo is cropped to match.
   const [zoom, setZoom] = useState(1)
+  const [nativeZoom, setNativeZoom] = useState(false)
   const zoomRef = useRef(1)
   const zoomCap = useRef<ZoomCap>({ min: 1, max: DIGITAL_MAX, step: 0.1, native: false })
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -114,6 +115,7 @@ export function CameraCapture({
         : { min: 1, max: DIGITAL_MAX, step: 0.1, native: false }
       zoomRef.current = zoomCap.current.min
       setZoom(zoomCap.current.min)
+      setNativeZoom(zoomCap.current.native)
       setErr(null)
       if (video.current) {
         video.current.srcObject = s
@@ -259,7 +261,7 @@ export function CameraCapture({
   ]
 
   // Software zoom scales the preview; native zoom is already in the stream, so leave the element at 1×.
-  const digital = !zoomCap.current.native && zoom > 1 ? zoom : 1
+  const digital = !nativeZoom && zoom > 1 ? zoom : 1
   const viewStyle: CSSProperties = {
     transform: facing === 'user' ? `scaleX(${-digital}) scaleY(${digital})` : `scale(${digital})`,
   }
