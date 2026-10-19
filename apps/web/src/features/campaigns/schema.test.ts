@@ -78,7 +78,7 @@ describe('schemas', () => {
   })
   it('contribute requires a uuid and a valid amount', () => {
     expect(contributeSchema.safeParse({ campaignId: 'x', amountAgorot: 3600 }).success).toBe(false)
-    const ok = contributeSchema.parse({ campaignId: '00000000-0000-0000-0000-0000000000aa', amountAgorot: 3600 })
+    const ok = contributeSchema.parse({ campaignId: '11111111-1111-4111-8111-111111111111', amountAgorot: 3600 })
     expect(ok.anonymous).toBe(false)
   })
 })
