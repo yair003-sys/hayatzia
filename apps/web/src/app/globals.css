@@ -1230,7 +1230,15 @@
   @keyframes mnh-ping { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
   .mnh-cta { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 16px; font-weight: 800; font-size: 15px;
     color: #fff; text-decoration: none; background: linear-gradient(180deg, #2a7bff, var(--color-accent)); box-shadow: 0 10px 24px -8px rgb(10 102 255 / 0.6); }
-  @media (prefers-reduced-motion: reduce) { .mnh::before, .mnh-beam, .mnh-mosaic, .mnh-pulse::after { animation: none; } }
+  /* live variant of the match-night hero */
+  .mnh-dot-live { background: var(--color-live); box-shadow: 0 0 10px rgb(255 61 87 / 0.95); animation: mnh-live-dot 1.3s ease-in-out infinite; }
+  .mnh-live .mnh-label { color: #ffd0d7; }
+  .mnh-live-teams { grid-template-columns: 1fr auto 1fr; margin-bottom: 6px; }
+  .mnh-live-score { font-size: 30px; font-weight: 800; color: #fff; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgb(255 61 87 / 0.4); }
+  .mnh-live-min { margin: 0 0 12px; text-align: center; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #ff8a98; }
+  .mnh-cta-live { background: linear-gradient(180deg, #ff5a6e, var(--color-live)); box-shadow: 0 10px 24px -8px rgb(255 61 87 / 0.65); }
+  @keyframes mnh-live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @media (prefers-reduced-motion: reduce) { .mnh::before, .mnh-beam, .mnh-mosaic, .mnh-pulse::after, .mnh-dot-live { animation: none; } }
 
   /* section heads */
   .hm-sec { display: flex; flex-direction: column; gap: 10px; }

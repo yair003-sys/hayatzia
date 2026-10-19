@@ -13,7 +13,8 @@ import { kickoffDay, kickoffTime } from '@/features/matches/format'
 import { getLeague } from '@/features/matches/server/queries'
 import { clubApiIds } from '@/features/stand-home/server/queries'
 import type { Team } from '@/features/teams/data'
-import { homeCircles, nextClubFixture } from '../schema'
+import { homeCircles, liveClubFixture, nextClubFixture } from '../schema'
+import { MatchNightLiveHero } from './match-night-live'
 import { StandingsTable, type StandRow } from './standings-table'
 import { getActiveFans, getChatPreview, getFansOfWeek, getHomePlayers, getHotClips, getStories } from '../server/queries'
 import { getSquadWithRatings } from '@/features/ratings/server/queries'
@@ -160,9 +161,15 @@ export async function MatchNightHero({ team }: { team: Team }) {
   if (!league) return null
   const ids = clubApiIds(league, team.id)
   const now = clock()
+  const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
+  // While the club is playing, the hero leads with the live match and its chat — not the next fixture.
+  const live = liveClubFixture(league.fixtures, ids, now)
+  if (live) {
+    const fans = await getActiveFans(team.id)
+    return <MatchNightLiveHero fixture={live} home={nameOf(live.h)} away={nameOf(live.a)} atHome={ids.includes(live.h)} fans={fans} />
+  }
   const next = nextClubFixture(league.fixtures, ids, now)
   if (!next) return null
-  const nameOf = (apiId: number) => displayTeam(apiId, league.teams[String(apiId)]?.name)
   const home = nameOf(next.h)
   const away = nameOf(next.a)
   const atHome = ids.includes(next.h)
