@@ -2,6 +2,8 @@
 -- the 24h clip expiry (live clips alone would undercount a prolific creator). Counter-by-trigger, per project standard.
 
 alter table public.profiles add column clips_posted integer not null default 0;
+-- profiles SELECT is column-scoped (ride_safety migration); the fan reads their own post count on their card.
+grant select (clips_posted) on public.profiles to authenticated;
 
 create function public.clips_bump_poster() returns trigger
 language plpgsql security definer set search_path = '' as $$
