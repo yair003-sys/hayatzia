@@ -53,6 +53,8 @@ export const env = createEnv({
     NEXT_PUBLIC_FEATURE_MARKET: z.enum(['on', 'off']).default('off'),
     /** Fan events board. */
     NEXT_PUBLIC_FEATURE_EVENTS: z.enum(['on', 'off']).default('off'),
+    /** Fan campaigns (donations / goal funding). Off until a payment provider and legal sign-off are in place. */
+    NEXT_PUBLIC_FEATURE_CAMPAIGNS: z.enum(['on', 'off']).default('off'),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
@@ -66,6 +68,7 @@ export const env = createEnv({
     NEXT_PUBLIC_FEATURE_RIDES: process.env.NEXT_PUBLIC_FEATURE_RIDES,
     NEXT_PUBLIC_FEATURE_MARKET: process.env.NEXT_PUBLIC_FEATURE_MARKET,
     NEXT_PUBLIC_FEATURE_EVENTS: process.env.NEXT_PUBLIC_FEATURE_EVENTS,
+    NEXT_PUBLIC_FEATURE_CAMPAIGNS: process.env.NEXT_PUBLIC_FEATURE_CAMPAIGNS,
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     ALERTS_SECRET: process.env.ALERTS_SECRET,
