@@ -107,14 +107,25 @@ export function LiveMatchCenter({
       {/* current label */}
       <div className="flex-none px-3.5 pt-2 text-center text-[13px] font-extrabold text-muted">{panels[idx]?.label}</div>
 
-      {/* swipe deck: a track that slides; one full-screen panel at a time scrolls on its own */}
-      <div className="relative min-h-0 flex-1 overflow-hidden" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+      {/* swipe deck: a track that slides; one full-screen panel at a time scrolls on its own.
+          touch-action pan-y keeps vertical scroll inside the panel but hands us the sideways drag,
+          so the browser never steals the swipe. The track is LTR so the page-turn maths stay simple;
+          each panel keeps its own RTL inside. */}
+      <div
+        className="relative min-h-0 flex-1 overflow-hidden"
+        style={{ touchAction: 'pan-y' }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+      >
         <div
+          dir="ltr"
           className="flex h-full transition-transform duration-300 ease-out"
-          style={{ width: `${N * 100}%`, transform: `translateX(${idx * (100 / N)}%)` }}
+          style={{ width: `${N * 100}%`, transform: `translateX(-${idx * (100 / N)}%)` }}
         >
           {panels.map((p) => (
-            <section key={p.key} className="h-full overflow-y-auto overflow-x-hidden px-3.5 pb-16 pt-2" style={{ width: `${100 / N}%` }} aria-label={p.label}>
+            <section key={p.key} dir="rtl" className="h-full overflow-y-auto overflow-x-hidden px-3.5 pb-16 pt-2" style={{ width: `${100 / N}%` }} aria-label={p.label}>
               {p.node}
             </section>
           ))}
