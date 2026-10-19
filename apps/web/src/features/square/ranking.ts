@@ -26,7 +26,9 @@ export type Rankable = {
 /** Higher = hotter. engagement × time-decay × team-affinity. */
 export function hotScore(c: Rankable, myTeam: string | null, now: number = Date.now()): number {
   const engagement = c.likes_count * RANK.like + c.respects_count * RANK.respect + c.comments_count * RANK.comment + c.views_count * RANK.view + 1
-  const ageHours = Math.max(0, (now - new Date(c.created_at).getTime()) / 3_600_000)
+  const t = new Date(c.created_at).getTime()
+  // A bad/unparseable timestamp must not poison the sort with NaN — treat it as very old (score ≈ 0).
+  const ageHours = Number.isFinite(t) ? Math.max(0, (now - t) / 3_600_000) : 1e9
   const recency = Math.pow(0.5, ageHours / RANK.halfLifeHours)
   const affinity = myTeam && c.team_id === myTeam ? RANK.teamBoost : 1
   return engagement * recency * affinity
