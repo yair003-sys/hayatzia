@@ -17,16 +17,23 @@ type DB = NonNullable<Awaited<ReturnType<typeof createClient>>>
  * single indexed query; only during a live match does it do the small name→club mapping.
  */
 export async function getLiveTeamIds(supabase: DB): Promise<Set<string>> {
-  const { data: live } = await supabase.from('fixtures').select('home_api_id,away_api_id').in('status', [...LIVE_STATUSES])
-  if (!live || live.length === 0) return new Set()
-  const apiIds = [...new Set(live.flatMap((f) => [f.home_api_id, f.away_api_id]))]
-  const [{ data: apiTeams }, { data: teams }] = await Promise.all([
-    supabase.from('api_teams').select('name').in('api_id', apiIds),
-    supabase.from('teams').select('id,api_names'),
-  ])
-  if (!apiTeams || !teams) return new Set()
-  const liveNames = new Set(apiTeams.map((t) => t.name))
-  return new Set(teams.filter((t) => t.api_names.some((n) => liveNames.has(n))).map((t) => t.id))
+  try {
+    // Kicked off within the last 4h as well as a live status — guards against a stale fixture stuck "live".
+    const since = new Date(Date.now() - 4 * 3_600_000).toISOString()
+    const { data: live } = await supabase.from('fixtures').select('home_api_id,away_api_id').in('status', [...LIVE_STATUSES]).gte('kickoff_at', since)
+    if (!live || live.length === 0) return new Set()
+    const apiIds = [...new Set(live.flatMap((f) => [f.home_api_id, f.away_api_id]))]
+    const [{ data: apiTeams }, { data: teams }] = await Promise.all([
+      supabase.from('api_teams').select('name').in('api_id', apiIds),
+      supabase.from('teams').select('id,api_names'),
+    ])
+    if (!apiTeams || !teams) return new Set()
+    const liveNames = new Set(apiTeams.map((t) => t.name))
+    return new Set(teams.filter((t) => t.api_names.some((n) => liveNames.has(n))).map((t) => t.id))
+  } catch {
+    // The matchday boost is a bonus; never let it break the feed.
+    return new Set()
+  }
 }
 
 /**
