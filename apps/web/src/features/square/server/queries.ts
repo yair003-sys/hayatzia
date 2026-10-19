@@ -2,7 +2,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { CLIP_FILTERS, FEED_SIZE, type Audience, type Clip, type ClipComment, type ClipFilter } from '../schema'
-import { hotScore } from '../ranking'
+import { hotScore, type KindAffinity } from '../ranking'
 import { DONE_STATUSES, LIVE_STATUSES } from '@/features/matches/schema'
 
 export const CLIP_COLUMNS =
@@ -68,6 +68,27 @@ export async function getTeamMood(supabase: DB, myTeam: string | null): Promise<
 }
 
 /**
+ * The viewer's learned content-type affinity (phase 3): how much they engage with image vs video, read from their own
+ * fan_affinity rows (RLS). Used to tilt the feed mix a little toward the kind they like. Fails safe to null (neutral),
+ * a bonus signal that must never block the feed. One tiny indexed read (two rows at most per fan).
+ */
+export async function getKindAffinity(supabase: DB, me: string): Promise<KindAffinity | null> {
+  try {
+    const { data, error } = await supabase.from('fan_affinity').select('key,score').eq('user_id', me).eq('dim', 'kind')
+    if (error || !data) return null
+    let image = 0
+    let video = 0
+    for (const r of data) {
+      if (r.key === 'image') image = r.score
+      else if (r.key === 'video') video = r.score
+    }
+    return image > 0 || video > 0 ? { image, video } : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * One page of a Square tab, newest first (keyset): 'all' = league posts, 'team' = the fan's club only.
  * RLS hides expired posts, other clubs' team posts and view-once posts already seen.
  * Private per fan (likes, view-once state): reads the session, never cached.
@@ -99,17 +120,18 @@ export async function getSquareFeed(opts: { audience?: Audience; offset?: number
     return base.in('audience', ['all', 'both'])
   }
   // Candidates: the most recent and the most engaged, so a fresh post and a viral older one both compete.
-  const [recent, engaged, blocked, liveTeams, mood] = await Promise.all([
+  const [recent, engaged, blocked, liveTeams, mood, kindAffinity] = await Promise.all([
     build().order('created_at', { ascending: false }).limit(FEED_CANDIDATES),
     build().order('likes_count', { ascending: false }).limit(FEED_ENGAGED),
     getBlockedIdsOrNull(),
     getLiveTeamIds(supabase),
     getTeamMood(supabase, myTeam ?? null),
+    getKindAffinity(supabase, me),
   ])
   if (recent.error || engaged.error || !recent.data || !engaged.data || !blocked) return null
   const byId = new Map<string, (typeof recent.data)[number]>()
   for (const r of [...recent.data, ...engaged.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
-  const ctx = { myTeam: myTeam ?? null, liveTeams, mood }
+  const ctx = { myTeam: myTeam ?? null, liveTeams, mood, kindAffinity }
   const ranked = [...byId.values()].sort((a, b) => hotScore(b, ctx) - hotScore(a, ctx))
   const page = ranked.slice(offset, offset + FEED_SIZE)
   if (!page.length) return []
