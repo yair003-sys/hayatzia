@@ -42,7 +42,8 @@ export const env = createEnv({
     NEXT_PUBLIC_PHONE_AUTH: z.enum(['on', 'off']).default('off'),
     /** Web Push (VAPID) public key. Safe to expose. */
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(20).optional(),
-    /** Sentry error-monitoring DSN (safe to expose). Unset → monitoring is dormant (no Sentry code loads at all). */
+    /** Sentry error-monitoring DSN (safe to expose). Unset → dormant: the server loads no Sentry/OTel code at all, and
+     *  the client ships the SDK inert (never initialised, no events). */
     NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
     // Launch scope (owner 2026-10-18): these areas are built and tested but hidden at launch, turned on
     // one by one once a community is live. Each defaults 'off'; set to 'on' in Vercel to reveal it.

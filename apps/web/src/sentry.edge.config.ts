@@ -5,5 +5,7 @@ import { env } from '@/lib/env'
 Sentry.init({
   dsn: env.NEXT_PUBLIC_SENTRY_DSN,
   environment: env.NEXT_PUBLIC_APP_ENV,
-  tracesSampleRate: 0.1,
+  // Errors only at launch: performance tracing is off, so no Supabase query-string values (user ids, phone) ever
+  // reach Sentry via trace spans. Turn this up only after adding beforeSend URL scrubbing.
+  tracesSampleRate: 0,
 })
