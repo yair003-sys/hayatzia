@@ -17,6 +17,8 @@ export const features = {
   market: env.NEXT_PUBLIC_FEATURE_MARKET === 'on',
   /** Fan events board. */
   events: env.NEXT_PUBLIC_FEATURE_EVENTS === 'on',
+  /** Fan campaigns (donations / goal funding). Off until a payment provider and legal sign-off are in place. */
+  campaigns: env.NEXT_PUBLIC_FEATURE_CAMPAIGNS === 'on',
 } as const
 
 export type FeatureName = keyof typeof features
