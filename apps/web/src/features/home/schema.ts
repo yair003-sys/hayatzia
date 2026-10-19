@@ -1,6 +1,7 @@
 // Home ("onefan" tab, redesign 2026-10-14): pure helpers, no React, no clock of their own.
 import { canBuild } from '@/features/lineup/schema'
 import { DONE_STATUSES, type Fixture } from '@/features/matches/schema'
+import { isTicketLive } from '@/features/stand-home/schema'
 
 /** A review stays on a player card this long, then fades to the next most-liked one. */
 export const ROTATE_MS = 4000
@@ -149,6 +150,16 @@ export function nextClubFixture(fixtures: Fixture[], clubIds: readonly number[],
   return (
     fixtures
       .filter((f) => (clubIds.includes(f.h) || clubIds.includes(f.a)) && f.t * 1000 > nowMs && !DONE_STATUSES.has(f.st))
+      .sort((a, b) => a.t - b.t)[0] ?? null
+  )
+}
+
+/** The club's match being played right now, if any — so the top hero can lead with the live game and its chat, instead
+ *  of skipping ahead to the next fixture. Earliest kick-off wins on the rare day with two live club games. */
+export function liveClubFixture(fixtures: Fixture[], clubIds: readonly number[], nowMs: number): Fixture | null {
+  return (
+    fixtures
+      .filter((f) => (clubIds.includes(f.h) || clubIds.includes(f.a)) && isTicketLive(f, nowMs))
       .sort((a, b) => a.t - b.t)[0] ?? null
   )
 }

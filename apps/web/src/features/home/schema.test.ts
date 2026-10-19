@@ -9,6 +9,7 @@ import {
   homeCircles,
   initialOf,
   nextClubFixture,
+  liveClubFixture,
   reviewIndex,
   shouldRotate,
   storyStart,
@@ -156,6 +157,23 @@ describe('nextClubFixture', () => {
   it("the club's earliest match still ahead, not another club's, not one already played", () => {
     expect(nextClubFixture([f(1, 9000), f(2, 3600, 'NS', 7, 8), f(3, 7200, 'FT'), f(4, 5000), f(5, -60)], [1], now)?.id).toBe(4)
     expect(nextClubFixture([f(5, -60)], [1], now)).toBeNull()
+  })
+})
+
+describe('liveClubFixture', () => {
+  const now = 1_800_000_000_000
+  const f = (id: number, dt: number, st = 'NS', h = 1, a = 2): Fixture => ({ id, t: now / 1000 + dt, st, r: 'R', h, a, gh: null, ga: null, v: '' })
+  it("the club's match being played now wins over the upcoming one, and over another club's live game", () => {
+    const fixtures = [
+      f(1, 5000), // our next match, still ahead
+      f(2, -1800, '1H'), // our match live now (kicked off 30 min ago)
+      f(3, -900, '1H', 7, 8), // another club live now
+      f(4, -10000, 'FT'), // our match, already finished
+    ]
+    expect(liveClubFixture(fixtures, [1], now)?.id).toBe(2)
+  })
+  it('null when the club has no live match (only upcoming or finished)', () => {
+    expect(liveClubFixture([f(1, 5000), f(4, -10000, 'FT')], [1], now)).toBeNull()
   })
 })
 
