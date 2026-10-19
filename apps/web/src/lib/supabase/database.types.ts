@@ -107,6 +107,46 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"campaign_contributions": {
+                  Row: {
+                    "amount_agorot": number,"anonymous": boolean,"campaign_id": string,"created_at": string,"id": string,"provider": string,"provider_ref": string | null,"status": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount_agorot": number,"anonymous"?: boolean,"campaign_id": string,"created_at"?: string,"id"?: string,"provider"?: string,"provider_ref"?: string | null,"status"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "amount_agorot"?: number,"anonymous"?: boolean,"campaign_id"?: string,"created_at"?: string,"id"?: string,"provider"?: string,"provider_ref"?: string | null,"status"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_contributions_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaigns": {
+                  Row: {
+                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified": boolean,"category": string,"created_at": string,"currency": string,"deadline": string,"description": string,"fixture_id": number | null,"funding_model": string,"goal_agorot": number,"id": string,"image_path": string | null,"organizer_id": string,"raised_agorot": number,"status": string,"supporters_count": number,"team_id": string | null,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified"?: boolean,"category": string,"created_at"?: string,"currency"?: string,"deadline": string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot": number,"id"?: string,"image_path"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "beneficiary_kind"?: string,"beneficiary_name"?: string,"beneficiary_verified"?: boolean,"category"?: string,"created_at"?: string,"currency"?: string,"deadline"?: string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot"?: number,"id"?: string,"image_path"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaigns_team_id_fkey"
+      columns: ["team_id"]
+isOneToOne: false
+      referencedRelation: "teams"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"chant_fires": {
                   Row: {
                     "chant_id": string,"user_id": string
