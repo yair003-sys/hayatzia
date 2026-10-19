@@ -82,8 +82,8 @@ export const createClipSchema = z.object({
   audience: audience.default('all'),
 })
 export const feedCursorSchema = z.object({
-  createdAt: z.iso.datetime({ offset: true }),
-  id: z.uuid(),
+  // Ranked feed → offset pagination over the ranked candidate window (not a keyset cursor).
+  offset: z.number().int().min(0).max(5000),
   audience: audience.default('all'),
 })
 
