@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { CLIP_FILTERS, FEED_SIZE, type Audience, type Clip, type ClipComment, type ClipFilter } from '../schema'
 import { hotScore } from '../ranking'
-import { LIVE_STATUSES } from '@/features/matches/schema'
+import { DONE_STATUSES, LIVE_STATUSES } from '@/features/matches/schema'
 
 export const CLIP_COLUMNS =
   'id,user_id,team_id,nick,media_path,kind,caption,captions,filter,speed,trim_start,trim_end,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
@@ -33,6 +33,37 @@ export async function getLiveTeamIds(supabase: DB): Promise<Set<string>> {
   } catch {
     // The matchday boost is a bonus; never let it break the feed.
     return new Set()
+  }
+}
+
+/**
+ * The viewer's club's recent result (last ~18h), which tilts the feed's mood: 'win' lifts own-club celebration,
+ * 'loss' damps everyone else. A draw (or nothing recent) is neutral. Fails safe to null — a bonus, never a blocker.
+ */
+export async function getTeamMood(supabase: DB, myTeam: string | null): Promise<'win' | 'loss' | null> {
+  if (!myTeam) return null
+  try {
+    const { data: team } = await supabase.from('teams').select('api_names').eq('id', myTeam).maybeSingle()
+    if (!team || team.api_names.length === 0) return null
+    const { data: apis } = await supabase.from('api_teams').select('api_id').in('name', team.api_names)
+    const ids = new Set((apis ?? []).map((a) => a.api_id))
+    if (ids.size === 0) return null
+    const since = new Date(Date.now() - 18 * 3_600_000).toISOString()
+    const { data: fx } = await supabase
+      .from('fixtures')
+      .select('home_api_id,away_api_id,home_goals,away_goals,kickoff_at')
+      .in('status', [...DONE_STATUSES])
+      .gte('kickoff_at', since)
+      .order('kickoff_at', { ascending: false })
+      .limit(40)
+    const m = (fx ?? []).find((f) => ids.has(f.home_api_id) || ids.has(f.away_api_id))
+    if (!m || m.home_goals == null || m.away_goals == null) return null
+    const weAreHome = ids.has(m.home_api_id)
+    const us = weAreHome ? m.home_goals : m.away_goals
+    const them = weAreHome ? m.away_goals : m.home_goals
+    return us > them ? 'win' : us < them ? 'loss' : null
+  } catch {
+    return null
   }
 }
 
@@ -68,16 +99,18 @@ export async function getSquareFeed(opts: { audience?: Audience; offset?: number
     return base.in('audience', ['all', 'both'])
   }
   // Candidates: the most recent and the most engaged, so a fresh post and a viral older one both compete.
-  const [recent, engaged, blocked, liveTeams] = await Promise.all([
+  const [recent, engaged, blocked, liveTeams, mood] = await Promise.all([
     build().order('created_at', { ascending: false }).limit(FEED_CANDIDATES),
     build().order('likes_count', { ascending: false }).limit(FEED_ENGAGED),
     getBlockedIdsOrNull(),
     getLiveTeamIds(supabase),
+    getTeamMood(supabase, myTeam ?? null),
   ])
   if (recent.error || engaged.error || !recent.data || !engaged.data || !blocked) return null
   const byId = new Map<string, (typeof recent.data)[number]>()
   for (const r of [...recent.data, ...engaged.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
-  const ranked = [...byId.values()].sort((a, b) => hotScore(b, myTeam ?? null, liveTeams) - hotScore(a, myTeam ?? null, liveTeams))
+  const ctx = { myTeam: myTeam ?? null, liveTeams, mood }
+  const ranked = [...byId.values()].sort((a, b) => hotScore(b, ctx) - hotScore(a, ctx))
   const page = ranked.slice(offset, offset + FEED_SIZE)
   if (!page.length) return []
   return decorate(supabase, page, me)
