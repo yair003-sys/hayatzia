@@ -609,9 +609,10 @@
   .cap-edit-text::placeholder { color: rgb(255 255 255 / 0.55); -webkit-text-fill-color: rgb(255 255 255 / 0.55); }
   .cap-edit-slider { position: absolute; inset-inline-end: 0.5rem; top: 50%; transform: translateY(-50%); block-size: 46%; inline-size: 1.8rem; writing-mode: vertical-lr; direction: rtl; accent-color: #fff; }
   /* Live camera (Instagram-style): full-screen preview, tap/long-press shutter, gallery and a small audience toggle. */
-  .cam { position: fixed; inset: 0; z-index: 75; background: #000; animation: sq-fade 0.2s both; touch-action: none; overscroll-behavior: contain; }
-  .cam-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; pointer-events: none; }
+  .cam { position: fixed; inset: 0; z-index: 75; overflow: hidden; background: #000; animation: sq-fade 0.2s both; touch-action: none; overscroll-behavior: contain; }
+  .cam-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; pointer-events: none; transform-origin: center; will-change: transform; }
   .cam-view--mirror { transform: scaleX(-1); }
+  .cam-zoom { align-self: center; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgb(0 0 0 / 0.5); color: #fff; font-size: 0.82rem; font-weight: 800; backdrop-filter: blur(6px); font-variant-numeric: tabular-nums; }
   .cam-top { position: absolute; inset: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem auto; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between; }
   .cam-err { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem; text-align: center; color: #fff; }
   /* Bottom controls stack: hint, audience segmented control, then a balanced gallery · shutter · flip row. */
