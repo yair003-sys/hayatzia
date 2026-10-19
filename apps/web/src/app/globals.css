@@ -1394,6 +1394,11 @@
   .chat-msg-mine { align-self: flex-start; }
   .chat-msg-other { align-self: flex-end; }
   .chat-bubble { border-radius: 0.5rem; padding: 0.5rem 0.75rem; overflow-wrap: break-word; white-space: pre-wrap; }
+  /* "Hot" message (phase 6): the room is reacting to it — a warm ring and a small label lift it above the stream. */
+  .chat-bubble--hot { box-shadow: inset 0 0 0 1px rgb(245 183 0 / 0.55), 0 0 14px -4px rgb(245 183 0 / 0.5); }
+  /* Solid amber pill on its own line, so it reads on both the blue (mine) and navy (theirs) bubbles. */
+  .chat-hot { display: flex; width: fit-content; align-items: center; gap: 0.25rem; margin-bottom: 0.3rem; padding: 0.08rem 0.45rem; border-radius: 999px;
+    background: var(--color-warn); color: #1a1205; font-size: 0.68rem; font-weight: 800; }
   .chat-msg[data-active] .chat-bubble { box-shadow: 0 0 0 2px var(--color-accent-soft); }
 
   .chat-meta { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.125rem; padding-inline: 0.25rem;

@@ -13,6 +13,7 @@ import { FanSheet, type SheetFan } from './fan-sheet'
 import { useFollowEnd, useReadPosition } from './use-read-position'
 import { ReportForm } from '@/features/safety/components/report-block'
 import { canReport, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
+import { isHotMessage } from '../highlight'
 import {
   MESSAGE_MAX,
   mergeMessages,
@@ -535,6 +536,7 @@ const MessageItem = memo(function MessageItem({
   onDiscard: (id: string) => void
 }) {
   const state = mine ? sendState(m) : undefined
+  const hot = isHotMessage(m)
   return (
     <MessageRow
       id={m.id}
@@ -554,9 +556,10 @@ const MessageItem = memo(function MessageItem({
         </span>
       )}
       <div
-        className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2')}
+        className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2', hot && 'chat-bubble--hot')}
         style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
       >
+        {hot && <span className="chat-hot">🔥 מדובר</span>}
         {m.reply_to && (
           <Quote
             mine={mine}
