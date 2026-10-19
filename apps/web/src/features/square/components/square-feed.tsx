@@ -109,7 +109,7 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
           ))}
           {hasMore && (
             <div ref={end} className="grid h-24 snap-start place-items-center text-sm text-muted">
-              {moreFailed && last ? <LoadError compact onRetry={() => loadMore(last)} /> : pending ? 'טוען עוד…' : ''}
+              {moreFailed && last ? <LoadError compact onRetry={() => loadMore()} /> : pending ? 'טוען עוד…' : ''}
             </div>
           )}
         </div>
