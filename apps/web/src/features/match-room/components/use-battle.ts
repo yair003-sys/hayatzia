@@ -50,8 +50,8 @@ export function useBattle(fixtureId: number, mySide: Side | null, enabled: boole
         return () => listeners.current.delete(cb)
       },
     }
-    // A fresh store per fixture; mySide only gates push(), read live via closure is fine but keep it in deps.
-  }, [fixtureId, mySide])
+    // mySide only gates push(); beats reset naturally because the match centre unmounts between fixtures.
+  }, [mySide])
 
   useEffect(() => {
     if (!enabled) return

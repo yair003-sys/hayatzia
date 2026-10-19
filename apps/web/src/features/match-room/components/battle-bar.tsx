@@ -23,9 +23,12 @@ export function BattleBar({
   mySide: Side | null
   store: BattleStore
 }) {
-  const [, tick] = useState(0)
+  // The clock lives in state, bumped on each beat and once a second, so the lead fades as beats age — reading
+  // Date.now() during render would be an impure call. Starts at 0 (→ a centred 50/50 bar) so server and client match.
+  const [now, setNow] = useState(0)
   useEffect(() => {
-    const bump = () => tick((n) => n + 1)
+    const bump = () => setNow(Date.now())
+    bump()
     const off = store.subscribe(bump)
     const t = setInterval(bump, 1000)
     return () => {
@@ -34,7 +37,6 @@ export function BattleBar({
     }
   }, [store])
 
-  const now = Date.now()
   const beats = store.beats()
   const homePct = battleSplit(beats, now) // home's share, 8–92
   const lead = leader(beats, now)
