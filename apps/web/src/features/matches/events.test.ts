@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventView, minuteText, timeline, type FixtureEvent } from './events'
+import { eventView, minuteText, playerMarks, timeline, type FixtureEvent } from './events'
 
 const ev = (over: Partial<FixtureEvent>): FixtureEvent => ({
   m: 10, x: 0, team: 1, p: 'A. Player', as: '', type: 'Goal', det: 'Normal Goal', ...over,
@@ -65,5 +65,37 @@ describe('timeline', () => {
 
   it('handles an empty list', () => {
     expect(timeline([])).toEqual([])
+  })
+})
+
+describe('playerMarks', () => {
+  it('counts goals per player but not own goals or missed penalties', () => {
+    const marks = playerMarks(
+      [
+        ev({ p: 'Zahavi', type: 'Goal', det: 'Normal Goal' }),
+        ev({ p: 'Zahavi', type: 'Goal', det: 'Penalty' }),
+        ev({ p: 'Zahavi', type: 'Goal', det: 'Missed Penalty' }),
+        ev({ p: 'Own', type: 'Goal', det: 'Own Goal' }),
+      ],
+      1,
+    )
+    expect(marks.get('Zahavi')?.goals).toBe(2)
+    expect(marks.has('Own')).toBe(false)
+  })
+
+  it('marks yellow, red and subbed-off, and ignores the other team', () => {
+    const marks = playerMarks(
+      [
+        ev({ p: 'Booked', type: 'Card', det: 'Yellow Card' }),
+        ev({ p: 'Sent', type: 'Card', det: 'Red Card' }),
+        ev({ p: 'OffGuy', type: 'subst', as: 'OnGuy' }),
+        ev({ p: 'Other', team: 2, type: 'Card', det: 'Yellow Card' }),
+      ],
+      1,
+    )
+    expect(marks.get('Booked')).toMatchObject({ yellow: true, red: false })
+    expect(marks.get('Sent')).toMatchObject({ red: true })
+    expect(marks.get('OffGuy')?.off).toBe(true)
+    expect(marks.has('Other')).toBe(false)
   })
 })

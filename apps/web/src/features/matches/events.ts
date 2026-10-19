@@ -47,6 +47,38 @@ export function eventView(e: FixtureEvent): EventView {
   }
 }
 
+/** What happened to one player, for a badge on the pitch: goals scored, booked, sent off, taken off. */
+export type PlayerMark = { goals: number; yellow: boolean; red: boolean; off: boolean }
+
+/**
+ * Per-player marks for one team, keyed by the provider's player name (same string the line-up uses, so it matches a
+ * pitch spot by `name`). Own goals and missed penalties are not credited as goals; a non-yellow card reads as a red,
+ * matching the timeline. A substitution marks the player going off (`e.p`).
+ */
+export function playerMarks(ev: FixtureEvent[], teamApiId: number): Map<string, PlayerMark> {
+  const marks = new Map<string, PlayerMark>()
+  const of = (name: string): PlayerMark => {
+    let m = marks.get(name)
+    if (!m) {
+      m = { goals: 0, yellow: false, red: false, off: false }
+      marks.set(name, m)
+    }
+    return m
+  }
+  for (const e of ev) {
+    if (e.team !== teamApiId || !e.p) continue
+    if (e.type === 'Goal') {
+      if (e.det !== 'Missed Penalty' && e.det !== 'Own Goal') of(e.p).goals += 1
+    } else if (e.type === 'Card') {
+      if (e.det === 'Yellow Card') of(e.p).yellow = true
+      else of(e.p).red = true
+    } else if (e.type === 'subst') {
+      of(e.p).off = true
+    }
+  }
+  return marks
+}
+
 /** Timeline rows, newest first (stoppage time after its regular minute; same-minute events in reverse provider order). */
 export function timeline(ev: FixtureEvent[]): (EventView & { key: string })[] {
   return ev

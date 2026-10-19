@@ -48,6 +48,8 @@ export type ChatRoomProps = {
   inserts?: { key: string; at: string; node: ReactNode }[]
   /** Other broadcast events on the same channel (e.g. 'poll', 'tally', 'poll_closed'). */
   onChannelEvent?: (event: string, payload: unknown) => void
+  /** Match centre's battle bar: fired for every message that arrives live, with the writer's side. */
+  onLiveMessage?: (side: 'h' | 'a' | undefined) => void
   /** Team chat: when set, each message shows אהבתי / לא אהבתי; a tap fires this (kind 0 removes my reaction). */
   onReact?: (messageId: string, kind: 1 | -1 | 0) => void
   /** Shown just above the composer (e.g. the open poll's jump button). */
@@ -88,6 +90,7 @@ export function ChatRoom({
   hiddenUsers,
   inserts,
   onChannelEvent,
+  onLiveMessage,
   onReact,
   pinned,
   openAtEnd = true,
@@ -139,10 +142,12 @@ export function ChatRoom({
   })
   const follow = useFollowEnd(all, bottom, { enabled: entered, initialAtBottom: openAtEnd, extraCount: inserts?.length ?? 0 })
 
+  const onLive = useRef(onLiveMessage)
   const onExtra = useRef(onChannelEvent)
   useEffect(() => {
     onExtra.current = onChannelEvent
-  }, [onChannelEvent])
+    onLive.current = onLiveMessage
+  }, [onChannelEvent, onLiveMessage])
 
   // אהבתי / לא אהבתי: update this message's counts at once (the server's broadcast later reconciles the totals), then
   // fire the toggle. Reads the latest messages from a ref so the handler stays stable and the memoised rows don't all
@@ -184,6 +189,7 @@ export function ChatRoom({
       ch.on('broadcast', { event: 'INSERT' }, ({ payload }) => {
         const m = messageFromBroadcast(payload)
         if (!m) return
+        onLive.current?.(m.side) // every live message is a beat for the battle bar
         // My own message can arrive here before the send returns: it replaces its "sending" copy.
         if (m.user_id === meId) {
           setPending((cur) => {
