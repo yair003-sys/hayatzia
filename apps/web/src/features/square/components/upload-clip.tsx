@@ -256,6 +256,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
               selected={sel}
               onSelect={setSel}
               onMove={(i, x, y) => patchCaption(i, { x, y })}
+              onScale={(i, size) => patchCaption(i, { size })}
               onEdit={(i) => {
                 setSel(i)
                 setEditing(true)
