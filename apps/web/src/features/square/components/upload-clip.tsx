@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Camera, ImagePlus, Plus, Trash2, Type, Video, X } from 'lucide-react'
+import { Plus, Trash2, Type, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { shrinkPhoto } from '../compress'
@@ -23,6 +23,7 @@ import {
   type ClipFilter,
 } from '../schema'
 import { CaptionLayer } from './caption-layer'
+import { CameraCapture } from './camera-capture'
 import { createClipAction } from '../server/actions'
 
 const STYLE_LABEL: Record<CaptionStyle, string> = { classic: 'קלאסי', bar: 'רצועה', outline: 'קו מתאר', neon: 'ניאון', meme: 'ממים' }
@@ -104,11 +105,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
     setSel(null)
   }
   const [error, setError] = useState<string | null>(null)
+  // The live camera (CameraCapture) handles shooting; this hidden input is the "swipe down → gallery" picker.
   const gallery = useRef<HTMLInputElement>(null)
-  // Phones open the camera directly only when the input asks for ONE kind (photo or video) with `capture`;
-  // "image/*,video/*" makes Android fall back to the gallery. So: one input per kind.
-  const camera = useRef<HTMLInputElement>(null)
-  const recorder = useRef<HTMLInputElement>(null)
 
   const pick = (f: File | undefined) => {
     setError(null)
@@ -203,43 +201,22 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           pick(e.target.files?.[0])
           e.target.value = '' // the same photo can be picked again
         }} />
-      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
-          pick(e.target.files?.[0])
-          e.target.value = '' // the same photo can be picked again
-        }} />
-      <input ref={recorder} type="file" accept="video/*" capture="environment" hidden onChange={(e) => {
-          pick(e.target.files?.[0])
-          e.target.value = '' // the same photo can be picked again
-        }} />
       {trigger ?? (
         <button type="button" className="sq-plus" aria-label="פוסט חדש" onClick={() => setChoosing(true)}>
           <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
         </button>
       )}
 
-      {choosing &&
-        !file &&
-        createPortal(
-        <div className="sq-sheet-wrap" onClick={() => setChoosing(false)}>
-          <div className="sq-sheet" role="dialog" aria-label="פוסט חדש" onClick={(e) => e.stopPropagation()}>
-            <span className="sq-grip" aria-hidden="true" />
-            <p className="text-sm text-muted">פוסט חדש · נעלם אחרי 24 שעות</p>
-            <button type="button" className="sq-choice" onClick={() => gallery.current?.click()}>
-              <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden="true" />
-              בחירה מהגלריה
-            </button>
-            <button type="button" className="sq-choice" onClick={() => camera.current?.click()}>
-              <Camera className="size-5" strokeWidth={1.75} aria-hidden="true" />
-              צילום תמונה
-            </button>
-            <button type="button" className="sq-choice" onClick={() => recorder.current?.click()}>
-              <Video className="size-5" strokeWidth={1.75} aria-hidden="true" />
-              צילום סרטון
-            </button>
-          </div>
-        </div>,
-          document.body,
-        )}
+      {choosing && !file && (
+        <CameraCapture
+          onCapture={pick}
+          onGallery={() => gallery.current?.click()}
+          onClose={() => setChoosing(false)}
+          to={to}
+          setTo={setTo}
+          teamShort={teamShort}
+        />
+      )}
 
       {file &&
         preview &&
@@ -360,8 +337,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
             <fieldset className="flex flex-col gap-1.5">
               <legend className="mb-1.5 text-sm font-semibold text-white">למי לפרסם?</legend>
-              <div className="grid grid-cols-2 gap-2">
-                {(['team', 'all'] as const).map((a) => (
+              <div className="grid grid-cols-3 gap-2">
+                {(['team', 'all', 'both'] as const).map((a) => (
                   <button
                     key={a}
                     type="button"
@@ -369,11 +346,11 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                     onClick={() => setTo(a)}
                     className={
                       to === a
-                        ? 'min-h-11 rounded-xl bg-accent px-3 text-sm font-bold text-white'
-                        : 'min-h-11 rounded-xl border border-white/25 bg-black/40 px-3 text-sm text-white/85'
+                        ? 'min-h-11 rounded-xl bg-accent px-2 text-sm font-bold text-white'
+                        : 'min-h-11 rounded-xl border border-white/25 bg-black/40 px-2 text-sm text-white/85'
                     }
                   >
-                    {a === 'team' ? `רק לאוהדי ${teamShort}` : 'לכל הליגה'}
+                    {a === 'team' ? `רק לאוהדי ${teamShort}` : a === 'all' ? 'לכל הליגה' : 'בשני הפידים'}
                   </button>
                 ))}
               </div>

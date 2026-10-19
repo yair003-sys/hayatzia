@@ -24,13 +24,18 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
   const me = claims?.claims.sub
   if (!me) return []
 
-  let q = supabase
-    .from('clips')
-    .select(COLUMNS)
-    .eq('audience', opts.audience ?? 'all')
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(FEED_SIZE)
+  // The two feeds: the league tab ('all') and the club tab ('team'). A 'both' post shows in both; the club tab is
+  // scoped to the viewer's own club so other clubs' 'both' posts don't leak in.
+  const tab = opts.audience ?? 'all'
+  let q = supabase.from('clips').select(COLUMNS)
+  if (tab === 'team') {
+    const { data: team } = await supabase.rpc('my_team')
+    q = q.in('audience', ['team', 'both'])
+    if (team) q = q.eq('team_id', team)
+  } else {
+    q = q.in('audience', ['all', 'both'])
+  }
+  q = q.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(FEED_SIZE)
   if (opts.before) {
     const b = opts.before
     q = q.or(`created_at.lt."${b.createdAt}",and(created_at.eq."${b.createdAt}",id.lt.${b.id})`)
@@ -71,7 +76,7 @@ export async function decorate(supabase: Db, rows: ClipRow[], me: string): Promi
   return rows.map(({ media_path, ...r }) => ({
     ...r,
     kind: r.kind === 'video' ? 'video' : 'image',
-    audience: r.audience === 'team' ? 'team' : 'all',
+    audience: r.audience === 'team' ? 'team' : r.audience === 'both' ? 'both' : 'all',
     captions: Array.isArray(r.captions) ? (r.captions as Clip['captions']) : [],
     filter: (CLIP_FILTERS as readonly string[]).includes(r.filter) ? (r.filter as ClipFilter) : 'none',
     url: urls.get(media_path) ?? null,
