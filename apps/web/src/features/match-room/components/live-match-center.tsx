@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { X } from 'lucide-react'
@@ -10,10 +10,9 @@ import type { DisplayTeam } from '@/features/matches/api-teams'
 type Panel = { key: string; label: string; node: ReactNode }
 
 /**
- * Full-screen, TikTok-style live match centre (stage 1 of the live-centre spec): a fixed scoreboard over three screens
- * the fan swipes between — crowd/chat, line-up, events. Horizontal scroll-snap handles the swipe natively (and RTL
- * correctly); each screen scrolls on its own. The battle bar, the live uploads and the drag-substitutions come in the
- * next stages; this is the shell with the real content wired in.
+ * Full-screen, TikTok-style live match centre (stage 1): a fixed scoreboard over screens the fan swipes between —
+ * crowd/chat, line-up, events. Swipe with a direction lock: a mostly-sideways drag turns the page, a mostly-vertical
+ * one scrolls the screen you're on. Covers the whole app (nothing else shows), and locks the page behind it.
  */
 export function LiveMatchCenter({
   home,
@@ -33,34 +32,45 @@ export function LiveMatchCenter({
   panels: Panel[]
 }) {
   const router = useRouter()
-  const scroller = useRef<HTMLDivElement>(null)
-  const refs = useRef<(HTMLElement | null)[]>([])
-  const [active, setActive] = useState(0)
+  const N = panels.length
+  const [idx, setIdx] = useState(0)
+  const drag = useRef<{ x: number; y: number; axis: 'x' | 'y' | null } | null>(null)
 
-  // Which screen is in view — IntersectionObserver is robust where RTL scrollLeft signs are not.
+  // Lock the page behind the full-screen centre so nothing scrolls under it.
   useEffect(() => {
-    const root = scroller.current
-    if (!root) return
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            const i = refs.current.indexOf(e.target as HTMLElement)
-            if (i >= 0) setActive(i)
-          }
-        }
-      },
-      { root, threshold: 0.6 },
-    )
-    refs.current.forEach((el) => el && io.observe(el))
-    return () => io.disconnect()
-  }, [panels.length])
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
 
-  const goTo = (i: number) => refs.current[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  const go = (i: number) => setIdx(Math.max(0, Math.min(N - 1, i)))
   const close = () => router.push(backHref as Route)
 
+  const onDown = (e: ReactPointerEvent) => {
+    drag.current = { x: e.clientX, y: e.clientY, axis: null }
+  }
+  const onMove = (e: ReactPointerEvent) => {
+    const d = drag.current
+    if (!d) return
+    if (d.axis === null) {
+      const dx = Math.abs(e.clientX - d.x)
+      const dy = Math.abs(e.clientY - d.y)
+      if (dx < 8 && dy < 8) return
+      d.axis = dx > dy ? 'x' : 'y' // sideways → turn the page; up/down → let the screen scroll
+    }
+  }
+  const onUp = (e: ReactPointerEvent) => {
+    const d = drag.current
+    drag.current = null
+    if (!d || d.axis !== 'x') return
+    const dx = e.clientX - d.x
+    if (Math.abs(dx) > 45) go(idx + (dx < 0 ? 1 : -1)) // RTL: swipe left → next screen
+  }
+
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="מרכז המשחק החי">
+    <div className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-black" role="dialog" aria-modal="true" aria-label="מרכז המשחק החי">
       {/* scoreboard — always on top */}
       <header
         className="relative z-10 flex-none px-3.5 pb-2.5"
@@ -79,7 +89,7 @@ export function LiveMatchCenter({
           <span className="w-9" aria-hidden="true" />
         </div>
         <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
-          <div className="flex items-center gap-2 font-extrabold">
+          <div className="flex min-w-0 items-center gap-2 font-extrabold">
             <Crest team={home} />
             <span className="truncate">{home.short}</span>
           </div>
@@ -87,42 +97,40 @@ export function LiveMatchCenter({
             <div className="text-2xl font-extrabold tabular-nums tracking-wide">{score}</div>
             <div className="text-[11px] font-extrabold text-live">{minute}</div>
           </div>
-          <div className="flex flex-row-reverse items-center gap-2 text-left font-extrabold">
+          <div className="flex min-w-0 flex-row-reverse items-center gap-2 text-left font-extrabold">
             <Crest team={away} />
             <span className="truncate">{away.short}</span>
           </div>
         </div>
       </header>
 
-      {/* swipe deck */}
-      <div
-        ref={scroller}
-        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {panels.map((p, i) => (
-          <section
-            key={p.key}
-            ref={(el) => {
-              refs.current[i] = el
-            }}
-            className="h-full w-full flex-none snap-center overflow-y-auto overflow-x-hidden px-3.5 pb-16 pt-2"
-            aria-label={p.label}
-          >
-            {p.node}
-          </section>
-        ))}
+      {/* current label */}
+      <div className="flex-none px-3.5 pt-2 text-center text-[13px] font-extrabold text-muted">{panels[idx]?.label}</div>
+
+      {/* swipe deck: a track that slides; one full-screen panel at a time scrolls on its own */}
+      <div className="relative min-h-0 flex-1 overflow-hidden" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+        <div
+          className="flex h-full transition-transform duration-300 ease-out"
+          style={{ width: `${N * 100}%`, transform: `translateX(${idx * (100 / N)}%)` }}
+        >
+          {panels.map((p) => (
+            <section key={p.key} className="h-full overflow-y-auto overflow-x-hidden px-3.5 pb-16 pt-2" style={{ width: `${100 / N}%` }} aria-label={p.label}>
+              {p.node}
+            </section>
+          ))}
+        </div>
       </div>
 
       {/* dots */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center gap-2 pb-[max(0.8rem,env(safe-area-inset-bottom))]">
+      <div className="flex-none flex justify-center gap-2 pb-[max(0.8rem,env(safe-area-inset-bottom))] pt-2">
         {panels.map((p, i) => (
           <button
             key={p.key}
             type="button"
-            onClick={() => goTo(i)}
+            onClick={() => go(i)}
             aria-label={p.label}
-            aria-current={active === i}
-            className={`pointer-events-auto h-2 rounded-full transition-all ${active === i ? 'w-6 bg-white' : 'w-2 bg-white/35'}`}
+            aria-current={idx === i}
+            className={`h-2 rounded-full transition-all ${idx === i ? 'w-6 bg-white' : 'w-2 bg-white/35'}`}
           />
         ))}
       </div>
