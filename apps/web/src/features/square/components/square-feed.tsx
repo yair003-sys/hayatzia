@@ -15,6 +15,8 @@ type Props = { initial: Clip[] | null; meId: string; myTeamId: string; myNick: s
 /** Reels: one post per screen, swipe up for the next; the next page loads as the last post comes into view. */
 export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
   const [clips, setClips] = useState(initial ?? [])
+  // Ranked feed → offset pagination: how many posts the server has already returned for this tab.
+  const [loaded, setLoaded] = useState(initial?.length ?? 0)
   const [hasMore, setHasMore] = useState((initial?.length ?? 0) >= FEED_SIZE)
   // A page that failed to load: the feed says so and offers a retry (the observer does not fire again by itself).
   const [moreFailed, setMoreFailed] = useState(false)
@@ -52,15 +54,16 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
     />
   )
 
-  const loadMore = (after: Clip) =>
+  const loadMore = () =>
     start(async () => {
-      const r = await loadMoreSquareAction({ createdAt: after.created_at, id: after.id, audience }).catch(() => null)
+      const r = await loadMoreSquareAction({ offset: loaded, audience }).catch(() => null)
       const more = r?.data?.clips
       if (!more) {
         setMoreFailed(true)
         return
       }
       setMoreFailed(false)
+      setLoaded((n) => n + more.length)
       setClips((cur) => [...cur, ...more.filter((m) => !cur.some((x) => x.id === m.id))])
       setHasMore(more.length >= FEED_SIZE)
     })
@@ -70,7 +73,7 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
     if (!el || !hasMore || !last || moreFailed) return
     const io = new IntersectionObserver(([e]) => {
       if (!e?.isIntersecting || pending) return
-      loadMore(last)
+      loadMore()
     })
     io.observe(el)
     return () => io.disconnect()
@@ -106,7 +109,7 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
           ))}
           {hasMore && (
             <div ref={end} className="grid h-24 snap-start place-items-center text-sm text-muted">
-              {moreFailed && last ? <LoadError compact onRetry={() => loadMore(last)} /> : pending ? 'טוען עוד…' : ''}
+              {moreFailed && last ? <LoadError compact onRetry={() => loadMore()} /> : pending ? 'טוען עוד…' : ''}
             </div>
           )}
         </div>

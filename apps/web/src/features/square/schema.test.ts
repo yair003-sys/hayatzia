@@ -45,8 +45,10 @@ describe('audience', () => {
     expect(createClipSchema.parse({ path: `${uid}/${file}.jpg`, kind: 'image', audience: 'team' }).audience).toBe('team')
     expect(createClipSchema.safeParse({ path: `${uid}/${file}.jpg`, kind: 'image', audience: 'friends' }).success).toBe(false)
   })
-  it('pages the tab that is open', () => {
-    expect(feedCursorSchema.parse({ createdAt: '2026-10-12T10:00:00Z', id: '7d9f2c1e-4b3a-4c8d-9e2f-1a2b3c4d5e6f' }).audience).toBe('all')
+  it('pages the tab that is open (offset pagination)', () => {
+    expect(feedCursorSchema.parse({ offset: 20 }).audience).toBe('all')
+    expect(feedCursorSchema.parse({ offset: 40, audience: 'team' }).audience).toBe('team')
+    expect(feedCursorSchema.safeParse({ offset: -1 }).success).toBe(false)
   })
 })
 

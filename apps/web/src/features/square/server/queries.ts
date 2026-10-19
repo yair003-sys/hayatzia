@@ -2,13 +2,12 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { CLIP_FILTERS, FEED_SIZE, type Audience, type Clip, type ClipComment, type ClipFilter } from '../schema'
+import { hotScore } from '../ranking'
 
 export const CLIP_COLUMNS =
   'id,user_id,team_id,nick,media_path,kind,caption,captions,filter,speed,trim_start,trim_end,tags,once,likes_count,respects_count,comments_count,views_count,created_at,expires_at,audience'
 const COLUMNS = CLIP_COLUMNS
 const URL_TTL = 60 * 60 // seconds; feed pages are short-lived anyway
-
-type Cursor = { createdAt: string; id: string }
 
 /**
  * One page of a Square tab, newest first (keyset): 'all' = league posts, 'team' = the fan's club only.
@@ -17,7 +16,11 @@ type Cursor = { createdAt: string; id: string }
  * null when a read failed: the feed says "could not load" instead of "the Square is empty" (load test 2026-10-17,
  * finding 6).
  */
-export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor } = {}): Promise<Clip[] | null> {
+// Bounded 24h candidate window, ranked in JS (algorithm v1). A full SQL ranking is the scale-time optimisation.
+const FEED_CANDIDATES = 160
+const FEED_ENGAGED = 80
+
+export async function getSquareFeed(opts: { audience?: Audience; offset?: number } = {}): Promise<Clip[] | null> {
   const supabase = await createClient()
   if (!supabase) return []
   const { data: claims } = await supabase.auth.getClaims()
@@ -25,27 +28,31 @@ export async function getSquareFeed(opts: { audience?: Audience; before?: Cursor
   if (!me) return []
 
   // The two feeds: the league tab ('all') and the club tab ('team'). A 'both' post shows in both; the club tab is
-  // scoped to the viewer's own club so other clubs' 'both' posts don't leak in.
+  // scoped to the viewer's own club. Ranked by the algorithm-v1 score (engagement × time-decay × own-club boost).
   const tab = opts.audience ?? 'all'
-  let q = supabase.from('clips').select(COLUMNS)
-  if (tab === 'team') {
-    const { data: team } = await supabase.rpc('my_team')
-    q = q.in('audience', ['team', 'both'])
-    if (team) q = q.eq('team_id', team)
-  } else {
-    q = q.in('audience', ['all', 'both'])
+  const offset = Math.max(0, opts.offset ?? 0)
+  const { data: myTeam } = await supabase.rpc('my_team')
+  const build = () => {
+    const base = supabase.from('clips').select(COLUMNS)
+    if (tab === 'team') {
+      const q = base.in('audience', ['team', 'both'])
+      return myTeam ? q.eq('team_id', myTeam) : q
+    }
+    return base.in('audience', ['all', 'both'])
   }
-  q = q.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(FEED_SIZE)
-  if (opts.before) {
-    const b = opts.before
-    q = q.or(`created_at.lt."${b.createdAt}",and(created_at.eq."${b.createdAt}",id.lt.${b.id})`)
-  }
-  const [{ data: all, error }, blocked] = await Promise.all([q, getBlockedIdsOrNull()])
-  if (error || !all || !blocked) return null
-  const rows = all.filter((r) => !blocked.includes(r.user_id))
-  if (!rows.length) return []
-
-  return decorate(supabase, rows, me)
+  // Candidates: the most recent and the most engaged, so a fresh post and a viral older one both compete.
+  const [recent, engaged, blocked] = await Promise.all([
+    build().order('created_at', { ascending: false }).limit(FEED_CANDIDATES),
+    build().order('likes_count', { ascending: false }).limit(FEED_ENGAGED),
+    getBlockedIdsOrNull(),
+  ])
+  if (recent.error || engaged.error || !recent.data || !engaged.data || !blocked) return null
+  const byId = new Map<string, (typeof recent.data)[number]>()
+  for (const r of [...recent.data, ...engaged.data]) if (!blocked.includes(r.user_id)) byId.set(r.id, r)
+  const ranked = [...byId.values()].sort((a, b) => hotScore(b, myTeam ?? null) - hotScore(a, myTeam ?? null))
+  const page = ranked.slice(offset, offset + FEED_SIZE)
+  if (!page.length) return []
+  return decorate(supabase, page, me)
 }
 
 export type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>

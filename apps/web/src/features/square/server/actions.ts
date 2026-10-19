@@ -108,4 +108,4 @@ export const addCommentAction = actionClient.inputSchema(commentSchema).action(a
 export const loadMoreSquareAction = actionClient
   .inputSchema(feedCursorSchema)
   // clips null = the read failed (the feed shows "could not load" and keeps trying), not "no more posts".
-  .action(async ({ parsedInput: { audience, ...before } }) => ({ clips: await getSquareFeed({ audience, before }) }))
+  .action(async ({ parsedInput: { audience, offset } }) => ({ clips: await getSquareFeed({ audience, offset }) }))
