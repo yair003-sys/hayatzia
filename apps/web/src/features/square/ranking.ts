@@ -19,6 +19,11 @@ export const RANK = {
   lossOthersDamp: 0.4,
   /** After a win, the fan's own club gets an extra lift (ride the celebration). */
   winOwnBoost: 1.3,
+  /** How hard behavioural content-type affinity tilts the mix (phase 3). A gentle tuner, never a takeover. */
+  kindAffinityStrength: 0.25,
+  /** The multiplier from kind affinity is clamped to this range (≈ ±25%). */
+  kindAffinityMin: 0.78,
+  kindAffinityMax: 1.28,
 } as const
 
 /** The fields the score needs — a loose shape so any clip row (raw or decorated) fits. */
@@ -29,7 +34,12 @@ export type Rankable = {
   views_count: number
   created_at: string
   team_id: string
+  /** 'image' | 'video' — used by the behavioural content-type tilt (phase 3). Absent → neutral. */
+  kind?: string
 }
+
+/** A fan's content-type engagement, as learned from their own behaviour (phase 3). Absent/both-zero → neutral. */
+export type KindAffinity = { image: number; video: number }
 
 export type RankContext = {
   /** The viewer's club id (for affinity + mood). */
@@ -38,12 +48,29 @@ export type RankContext = {
   liveTeams?: ReadonlySet<string> | null
   /** The viewer's club's recent result, which tilts the feed's mood. */
   mood?: 'win' | 'loss' | null
+  /** The viewer's learned content-type affinity (phase 3). */
+  kindAffinity?: KindAffinity | null
   now?: number
 }
 
-/** Higher = hotter. engagement × time-decay × team-affinity × matchday × post-match mood. */
+const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
+
+/**
+ * The behavioural content-type tilt: how much to multiply a clip of this kind, given the viewer's learned affinity.
+ * Neutral (1) when there is no affinity yet. A fan who engages mostly with video sees video lifted and image damped,
+ * within ±~25% — a gentle tuner on top of engagement and recency, never a takeover.
+ */
+export function kindMultiplier(kind: string | undefined, aff: KindAffinity | null | undefined): number {
+  if (!aff || !kind) return 1
+  const total = aff.image + aff.video
+  if (!(total > 0)) return 1
+  const share = (kind === 'video' ? aff.video : kind === 'image' ? aff.image : total / 2) / total
+  return clamp(1 + RANK.kindAffinityStrength * (share - 0.5) * 2, RANK.kindAffinityMin, RANK.kindAffinityMax)
+}
+
+/** Higher = hotter. engagement × time-decay × team-affinity × matchday × post-match mood × content-type tilt. */
 export function hotScore(c: Rankable, ctx: RankContext = {}): number {
-  const { myTeam = null, liveTeams = null, mood = null, now = Date.now() } = ctx
+  const { myTeam = null, liveTeams = null, mood = null, kindAffinity = null, now = Date.now() } = ctx
   const engagement = c.likes_count * RANK.like + c.respects_count * RANK.respect + c.comments_count * RANK.comment + c.views_count * RANK.view + 1
   const t = new Date(c.created_at).getTime()
   // A bad/unparseable timestamp must not poison the sort with NaN — treat it as very old (score ≈ 0).
@@ -53,5 +80,5 @@ export function hotScore(c: Rankable, ctx: RankContext = {}): number {
   const affinity = own ? RANK.teamBoost : 1
   const matchday = liveTeams && liveTeams.has(c.team_id) && ageHours < RANK.matchdayFreshHours ? RANK.matchdayBoost : 1
   const moodMul = mood === 'loss' && !own ? RANK.lossOthersDamp : mood === 'win' && own ? RANK.winOwnBoost : 1
-  return engagement * recency * affinity * matchday * moodMul
+  return engagement * recency * affinity * matchday * moodMul * kindMultiplier(c.kind, kindAffinity)
 }

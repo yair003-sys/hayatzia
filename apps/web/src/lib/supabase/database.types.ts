@@ -225,6 +225,18 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"fan_affinity": {
+                  Row: {
+                    "dim": string,"key": string,"score": number,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "dim": string,"key": string,"score"?: number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "dim"?: string,"key"?: string,"score"?: number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: []
                 },"clip_likes": {
                   Row: {
                     "clip_id": string,"user_id": string
