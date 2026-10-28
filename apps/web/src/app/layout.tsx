@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from 'next'
 import { Heebo, Inter } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale } from 'next-intl/server'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { EnvBanner, shouldShowEnvBanner } from '@/components/env-banner'
 import { OverflowGuard } from '@/components/overflow-guard'
 import { env } from '@/lib/env'
+import { dirOf, type Locale } from '@/i18n/config'
 import { RegisterServiceWorker } from '@/features/pwa/register-sw'
 import './globals.css'
 
@@ -34,16 +37,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Locale from the cookie (default he). With no cookie this is he/rtl — identical to before.
+  const locale = (await getLocale()) as Locale
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
+    <html lang={locale} dir={dirOf(locale)} className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
-        <EnvBanner />
-        {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
-        <RegisterServiceWorker />
-        {children}
-        <Analytics />
-        <SpeedInsights />
+        <NextIntlClientProvider>
+          <EnvBanner />
+          {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
+          <RegisterServiceWorker />
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </NextIntlClientProvider>
       </body>
     </html>
   )

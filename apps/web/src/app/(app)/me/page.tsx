@@ -24,6 +24,7 @@ import { ContactForm } from '@/features/safety/components/contact-form'
 import { LegalLinks } from '@/features/legal/components/legal-links'
 import { NOT_AFFILIATED } from '@/lib/legal'
 import { GenderPicker } from '@/features/team-life/components/ride-safety'
+import { LocaleSwitcher } from '@/i18n/components/locale-switcher'
 import { getMyRideProfile } from '@/features/team-life/server/queries'
 import { features } from '@/lib/flags'
 
@@ -137,6 +138,11 @@ async function ProfileCard() {
             </>
           )}
           {priv && <DmRequestsSetting initial={priv.dmRequests} />}
+          {features.i18n && (
+            <div className="rounded-2xl border border-line px-4 py-3">
+              <LocaleSwitcher />
+            </div>
+          )}
           <SignOutButton />
           <ContactForm />
           <DeleteAccount />

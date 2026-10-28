@@ -19,6 +19,8 @@ export const features = {
   events: env.NEXT_PUBLIC_FEATURE_EVENTS === 'on',
   /** Fan campaigns (donations / goal funding). Off until a payment provider and legal sign-off are in place. */
   campaigns: env.NEXT_PUBLIC_FEATURE_CAMPAIGNS === 'on',
+  /** Language switcher (i18n). Off for the Israeli launch (Hebrew only). */
+  i18n: env.NEXT_PUBLIC_FEATURE_I18N === 'on',
 } as const
 
 export type FeatureName = keyof typeof features
