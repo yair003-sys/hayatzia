@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { paymentProvider } from '@/features/payments/select'
-import { approveVendorSchema, campaignOutcome, feeAgorot, releaseToVendorSchema, settleCampaignSchema } from '../schema'
+import { approveVendorSchema, campaignOutcome, feeAgorot, publishCampaignSchema, releaseToVendorSchema, settleCampaignSchema } from '../schema'
 
 async function admin() {
   const supabase = await createClient()
@@ -86,6 +86,17 @@ export const releaseToVendorAction = actionClient.inputSchema(releaseToVendorSch
     released_at: new Date().toISOString(),
   })
   await service.from('campaigns').update({ status: 'paid_out' }).eq('id', c.id)
+  return { ok: true as const }
+})
+
+/** Publish a reviewed campaign (pending_review → live) so fans can back it. Admin-only. */
+export const publishCampaignAction = actionClient.inputSchema(publishCampaignSchema).action(async ({ parsedInput: { campaignId } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data: isAdmin } = await supabase.rpc('is_app_admin')
+  if (!isAdmin) return { error: 'אין הרשאה' }
+  const { error } = await supabase.from('campaigns').update({ status: 'live' }).eq('id', campaignId).eq('status', 'pending_review')
+  if (error) return { error: 'הפרסום נכשל' }
   return { ok: true as const }
 })
 

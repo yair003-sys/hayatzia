@@ -44,6 +44,23 @@ export async function getVendor(id: string): Promise<Vendor | null> {
   return data ?? null
 }
 
+// Admin: vendors waiting for approval (RLS lets an admin read pending ones).
+export async function getPendingVendors(): Promise<Vendor[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.from('campaign_vendors').select('*').eq('status', 'pending').order('created_at', { ascending: true })
+  return data ?? []
+}
+
+// Admin: campaigns in a given state (e.g. 'pending_review' to publish, 'awaiting_invoice' to pay the vendor). An
+// admin may read any campaign (RLS); a non-admin gets only their own and would see nothing here.
+export async function getCampaignsByStatus(status: string): Promise<Campaign[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.from('campaigns').select('*').eq('status', status).order('created_at', { ascending: true })
+  return data ?? []
+}
+
 // The viewer's own active pledge total to a campaign (for "already backed" state). Their own rows only (RLS).
 export async function getMyPledgeAgorot(campaignId: string): Promise<number> {
   const supabase = await createClient()
