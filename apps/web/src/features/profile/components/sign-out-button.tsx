@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { LogOut } from 'lucide-react'
 import { signOutAction } from '../server/actions'
 
@@ -10,6 +11,7 @@ import { signOutAction } from '../server/actions'
  * getting notifications (security review 2026-10-17). If there is no push (or no JS), sign-out still works.
  */
 export function SignOutButton() {
+  const t = useTranslations('account')
   const [pending, start] = useTransition()
   const onClick = () =>
     start(async () => {
@@ -36,7 +38,7 @@ export function SignOutButton() {
       className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium text-muted disabled:opacity-50"
     >
       <LogOut className="size-4" aria-hidden="true" />
-      יציאה מהחשבון
+      {t('signOut')}
     </button>
   )
 }
