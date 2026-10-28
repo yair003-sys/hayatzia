@@ -16,5 +16,9 @@
   },
   "account": {
     "signOut": "Abmelden"
+  },
+  "pwa": {
+    "install": "onefan auf dem Handy installieren",
+    "iosInstall": "Auf dem iPhone installieren: in Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“."
   }
 }

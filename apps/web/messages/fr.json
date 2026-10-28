@@ -16,5 +16,9 @@
   },
   "account": {
     "signOut": "Se déconnecter"
+  },
+  "pwa": {
+    "install": "Installez onefan sur votre téléphone",
+    "iosInstall": "Pour installer sur iPhone : appuyez sur Partager dans Safari, puis « Sur l'écran d'accueil »."
   }
 }

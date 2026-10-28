@@ -16,5 +16,9 @@
   },
   "account": {
     "signOut": "Sign out"
+  },
+  "pwa": {
+    "install": "Install onefan on your phone",
+    "iosInstall": "To install on iPhone: tap the Share button in Safari, then \"Add to Home Screen\"."
   }
 }
