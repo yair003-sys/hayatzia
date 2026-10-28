@@ -2,5 +2,13 @@
   "common": {
     "language": "Langue",
     "chooseLanguage": "Choisir la langue"
+  },
+  "nav": {
+    "main": "Navigation principale",
+    "matches": "Matchs",
+    "chat": "Chat",
+    "square": "La Place",
+    "inbox": "Messages",
+    "me": "Ma carte"
   }
 }

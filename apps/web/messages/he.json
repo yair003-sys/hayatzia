@@ -2,5 +2,13 @@
   "common": {
     "language": "שפה",
     "chooseLanguage": "בחירת שפה"
+  },
+  "nav": {
+    "main": "ניווט ראשי",
+    "matches": "משחקים",
+    "chat": "צ׳אט",
+    "square": "הכיכר",
+    "inbox": "הודעות",
+    "me": "הכרטיס שלי"
   }
 }
