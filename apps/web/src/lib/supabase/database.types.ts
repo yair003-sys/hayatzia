@@ -127,16 +127,56 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"campaigns": {
+                },"campaign_payouts": {
                   Row: {
-                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified": boolean,"category": string,"created_at": string,"currency": string,"deadline": string,"description": string,"fixture_id": number | null,"funding_model": string,"goal_agorot": number,"id": string,"image_path": string | null,"organizer_id": string,"raised_agorot": number,"status": string,"supporters_count": number,"team_id": string | null,"title": string,"updated_at": string
+                    "amount_agorot": number,"campaign_id": string,"created_at": string,"fee_agorot": number,"id": string,"invoice_amount_agorot": number | null,"invoice_date": string | null,"invoice_number": string | null,"invoice_path": string | null,"released_at": string | null,"status": string,"vendor_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified"?: boolean,"category": string,"created_at"?: string,"currency"?: string,"deadline": string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot": number,"id"?: string,"image_path"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title": string,"updated_at"?: string
+                    "amount_agorot": number,"campaign_id": string,"created_at"?: string,"fee_agorot"?: number,"id"?: string,"invoice_amount_agorot"?: number | null,"invoice_date"?: string | null,"invoice_number"?: string | null,"invoice_path"?: string | null,"released_at"?: string | null,"status"?: string,"vendor_id": string
                   }
                   Update: {
-                    "beneficiary_kind"?: string,"beneficiary_name"?: string,"beneficiary_verified"?: boolean,"category"?: string,"created_at"?: string,"currency"?: string,"deadline"?: string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot"?: number,"id"?: string,"image_path"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title"?: string,"updated_at"?: string
+                    "amount_agorot"?: number,"campaign_id"?: string,"created_at"?: string,"fee_agorot"?: number,"id"?: string,"invoice_amount_agorot"?: number | null,"invoice_date"?: string | null,"invoice_number"?: string | null,"invoice_path"?: string | null,"released_at"?: string | null,"status"?: string,"vendor_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_payouts_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_payouts_vendor_id_fkey"
+      columns: ["vendor_id"]
+isOneToOne: false
+      referencedRelation: "campaign_vendors"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaign_vendors": {
+                  Row: {
+                    "business_id": string,"category": string,"contact": string | null,"created_at": string,"id": string,"name": string,"payout_ref": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "business_id": string,"category": string,"contact"?: string | null,"created_at"?: string,"id"?: string,"name": string,"payout_ref"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "business_id"?: string,"category"?: string,"contact"?: string | null,"created_at"?: string,"id"?: string,"name"?: string,"payout_ref"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"campaigns": {
+                  Row: {
+                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified": boolean,"category": string,"created_at": string,"currency": string,"deadline": string,"description": string,"fixture_id": number | null,"funding_model": string,"goal_agorot": number,"id": string,"image_path": string | null,"item_description": string | null,"organizer_id": string,"raised_agorot": number,"status": string,"supporters_count": number,"team_id": string | null,"title": string,"updated_at": string,"vendor_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "beneficiary_kind": string,"beneficiary_name": string,"beneficiary_verified"?: boolean,"category": string,"created_at"?: string,"currency"?: string,"deadline": string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot": number,"id"?: string,"image_path"?: string | null,"item_description"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title": string,"updated_at"?: string,"vendor_id"?: string | null
+                  }
+                  Update: {
+                    "beneficiary_kind"?: string,"beneficiary_name"?: string,"beneficiary_verified"?: boolean,"category"?: string,"created_at"?: string,"currency"?: string,"deadline"?: string,"description"?: string,"fixture_id"?: number | null,"funding_model"?: string,"goal_agorot"?: number,"id"?: string,"image_path"?: string | null,"item_description"?: string | null,"organizer_id"?: string,"raised_agorot"?: number,"status"?: string,"supporters_count"?: number,"team_id"?: string | null,"title"?: string,"updated_at"?: string,"vendor_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -144,6 +184,12 @@ isOneToOne: false
       columns: ["team_id"]
 isOneToOne: false
       referencedRelation: "teams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaigns_vendor_id_fkey"
+      columns: ["vendor_id"]
+isOneToOne: false
+      referencedRelation: "campaign_vendors"
       referencedColumns: ["id"]
     }
                   ]
