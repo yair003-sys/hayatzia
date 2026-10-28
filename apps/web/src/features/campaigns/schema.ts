@@ -76,9 +76,19 @@ export function daysLeft(deadlineMs: number, nowMs: number): number {
   return Math.max(0, Math.ceil((deadlineMs - nowMs) / 86_400_000))
 }
 
-/** "₪12,400" — agorot shown as whole shekels (campaigns deal in round shekels), grouped for he-IL. */
-export function shekelLabel(agorot: number): string {
-  return `₪${Math.round(agorot / 100).toLocaleString('he-IL')}`
+// Money is always in the currency's minor units (agorot for ILS, cents for EUR/USD/GBP), as integers. Campaigns are
+// Europe-ready: a campaign carries its own currency. Extend this list as more markets open.
+export const CURRENCIES = ['ILS', 'EUR', 'USD', 'GBP'] as const
+export type Currency = (typeof CURRENCIES)[number]
+
+/** "₪12,400" / "€12,400" — minor units shown as whole currency units (campaigns deal in round amounts). */
+export function moneyLabel(minor: number, currency: string = 'ILS'): string {
+  const major = Math.round(minor / 100)
+  try {
+    return new Intl.NumberFormat('he-IL', { style: 'currency', currency, maximumFractionDigits: 0 }).format(major)
+  } catch {
+    return `${major.toLocaleString('he-IL')} ${currency}`
+  }
 }
 
 const title = z.string().trim().min(3, 'כותרת קצרה מדי').max(90, 'כותרת ארוכה מדי')
@@ -90,6 +100,7 @@ export const createCampaignSchema = z.object({
   title,
   description,
   category: z.enum(CATEGORIES),
+  currency: z.enum(CURRENCIES).default('ILS'),
   teamId: z.string().min(1).max(40).optional(),
   fixtureId: z.number().int().positive().optional(),
   goalAgorot: amount,

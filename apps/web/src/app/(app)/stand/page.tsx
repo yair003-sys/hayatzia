@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { CalendarDays, Car, ChevronLeft, Music, Shirt, Trophy } from 'lucide-react'
+import { CalendarDays, Car, ChevronLeft, HeartHandshake, Music, Shirt, Trophy } from 'lucide-react'
 import {
   ActivityTiles,
   ChatSection,
@@ -229,6 +229,13 @@ async function StandHome() {
           <b>שירי הקהל</b>
           <span>{shownCount(data.chants)} שירים</span>
         </Link>
+        {features.campaigns && (
+          <Link href="/campaigns" className="sh-tile">
+            <i aria-hidden="true"><HeartHandshake className="size-5" strokeWidth={1.75} /></i>
+            <b>קמפיינים</b>
+            <span>תרומות למטרה</span>
+          </Link>
+        )}
       </nav>
       {[
         ...(features.rides ? [data.trips] : []),
