@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { Car, MessageCircle, X } from 'lucide-react'
 import type { TeamAccent } from '@/features/stand-home/schema'
 
@@ -36,6 +37,7 @@ export function BannerView({
   /** A mouse over the card or focus inside it holds the banner; reported separately so neither can undo the other. */
   onHold?: (kind: 'hover' | 'focus', held: boolean) => void
 }) {
+  const t = useTranslations('alerts')
   const drag = useRef<Drag | null>(null)
   const swiped = useRef(false)
 
@@ -149,7 +151,7 @@ export function BannerView({
               {banner.body && <span className="ab-body">{banner.body}</span>}
             </span>
           </a>
-          <button type="button" className="ab-close" aria-label="סגירת ההתראה" onClick={onDismiss}>
+          <button type="button" className="ab-close" aria-label={t('close')} onClick={onDismiss}>
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>

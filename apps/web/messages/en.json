@@ -30,5 +30,16 @@
   },
   "home": {
     "onlineNow": "Online now"
+  },
+  "push": {
+    "enableFailed": "Couldn't turn on notifications",
+    "iosInstallFirst": "To get notifications on iPhone, first add onefan to your Home Screen.",
+    "blocked": "Notifications are blocked in your browser settings. You can allow them there.",
+    "turnOff": "Turn off notifications on this device",
+    "turnOn": "Turn on notifications",
+    "note": "Goals, final whistles, messages and ride requests. Never the message contents."
+  },
+  "alerts": {
+    "close": "Dismiss notification"
   }
 }

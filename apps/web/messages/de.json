@@ -30,5 +30,16 @@
   },
   "home": {
     "onlineNow": "Jetzt online"
+  },
+  "push": {
+    "enableFailed": "Benachrichtigungen konnten nicht aktiviert werden",
+    "iosInstallFirst": "Für Benachrichtigungen auf dem iPhone füge onefan zuerst zum Home-Bildschirm hinzu.",
+    "blocked": "Benachrichtigungen sind in den Browsereinstellungen blockiert. Du kannst sie dort erlauben.",
+    "turnOff": "Benachrichtigungen auf diesem Gerät ausschalten",
+    "turnOn": "Benachrichtigungen einschalten",
+    "note": "Tore, Schlusspfiff, Nachrichten und Mitfahr-Anfragen. Nie die Nachrichteninhalte."
+  },
+  "alerts": {
+    "close": "Benachrichtigung schließen"
   }
 }
