@@ -1,7 +1,10 @@
 {
   "common": {
     "language": "שפה",
-    "chooseLanguage": "בחירת שפה"
+    "chooseLanguage": "בחירת שפה",
+    "loadFailed": "לא הצלחנו לטעון.",
+    "retry": "נסה שוב",
+    "loading": "טוען…"
   },
   "nav": {
     "main": "ניווט ראשי",
