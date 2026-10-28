@@ -33,4 +33,9 @@ export interface PaymentProvider {
   release(ref: string): Promise<SettleResult>
   /** Reverse a capture (e.g. a cancelled campaign after payout rules allow it). */
   refund(ref: string): Promise<SettleResult>
+  /**
+   * Vendor Direct: release captured funds straight to the vendor's account against a verified tax invoice, keeping
+   * onefan's platform fee. The money goes to the vendor, never through an onefan-held account.
+   */
+  payoutToVendor(input: { vendorRef: string; amountAgorot: Agorot; feeAgorot: Agorot; campaignId: string }): Promise<SettleResult>
 }
