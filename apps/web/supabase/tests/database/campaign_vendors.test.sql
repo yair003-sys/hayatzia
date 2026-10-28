@@ -15,20 +15,20 @@ insert into public.profiles (user_id, nick, team_id) values
 insert into public.app_admins (user_id) values ('00000000-0000-0000-0000-0000000000d1');
 
 insert into public.campaign_vendors (id, name, business_id, category, status) values
-  ('00000000-0000-0000-0000-0000000000va', 'בית דפוס מאושר', '512345678', 'print', 'approved'),
-  ('00000000-0000-0000-0000-0000000000vp', 'ספק ממתין', '598765432', 'pyro', 'pending');
+  ('00000000-0000-0000-0000-0000000000a1', 'בית דפוס מאושר', '512345678', 'print', 'approved'),
+  ('00000000-0000-0000-0000-0000000000b1', 'ספק ממתין', '598765432', 'pyro', 'pending');
 
 insert into public.campaigns (id, organizer_id, team_id, title, category, goal_agorot, beneficiary_kind, beneficiary_name, status, deadline, vendor_id, item_description) values
-  ('00000000-0000-0000-0000-0000000000cv', '00000000-0000-0000-0000-0000000000d2', 'mta', 'תפאורה לדרבי', 'tifo', 2000000, 'business', 'בית דפוס מאושר', 'live', now() + interval '5 days', '00000000-0000-0000-0000-0000000000va', 'באנר ענק 20 מטר');
+  ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000d2', 'mta', 'תפאורה לדרבי', 'tifo', 2000000, 'business', 'בית דפוס מאושר', 'live', now() + interval '5 days', '00000000-0000-0000-0000-0000000000a1', 'באנר ענק 20 מטר');
 
 insert into public.campaign_payouts (campaign_id, vendor_id, amount_agorot, fee_agorot, status) values
-  ('00000000-0000-0000-0000-0000000000cv', '00000000-0000-0000-0000-0000000000va', 1900000, 100000, 'pending');
+  ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000a1', 1900000, 100000, 'pending');
 
 -- Public read: a stranger sees the approved vendor, not the pending one.
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000d3','role','authenticated')::text, true);
-select is((select count(*)::int from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000va'), 1, 'a stranger sees an approved vendor');
-select is((select count(*)::int from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000vp'), 0, 'a stranger does not see a pending vendor');
+select is((select count(*)::int from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000a1'), 1, 'a stranger sees an approved vendor');
+select is((select count(*)::int from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000b1'), 0, 'a stranger does not see a pending vendor');
 
 -- A fan may propose a pending vendor, but not a self-approved one.
 select lives_ok(
@@ -40,18 +40,18 @@ select throws_ok(
 
 -- A non-admin cannot approve a pending vendor (RLS filters the update to zero rows; status stays pending).
 select lives_ok(
-  $$update public.campaign_vendors set status = 'approved' where id = '00000000-0000-0000-0000-0000000000vp'$$,
+  $$update public.campaign_vendors set status = 'approved' where id = '00000000-0000-0000-0000-0000000000b1'$$,
   'a non-admin update runs but matches nothing');
 
 -- Payout trail: the organizer sees their campaign's payout; a stranger sees none.
 select set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000d2','role','authenticated')::text, true);
-select is((select count(*)::int from public.campaign_payouts where campaign_id = '00000000-0000-0000-0000-0000000000cv'), 1, 'the organizer sees the payout trail');
+select is((select count(*)::int from public.campaign_payouts where campaign_id = '00000000-0000-0000-0000-0000000000c1'), 1, 'the organizer sees the payout trail');
 select set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-0000000000d3','role','authenticated')::text, true);
-select is((select count(*)::int from public.campaign_payouts where campaign_id = '00000000-0000-0000-0000-0000000000cv'), 0, 'a stranger sees no payout trail');
+select is((select count(*)::int from public.campaign_payouts where campaign_id = '00000000-0000-0000-0000-0000000000c1'), 0, 'a stranger sees no payout trail');
 reset role;
 
 -- The non-admin update above must not have approved the vendor.
-select is((select status from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000vp'), 'pending', 'the pending vendor was not approved by a non-admin');
+select is((select status from public.campaign_vendors where id = '00000000-0000-0000-0000-0000000000b1'), 'pending', 'the pending vendor was not approved by a non-admin');
 
 select * from finish();
 rollback;
