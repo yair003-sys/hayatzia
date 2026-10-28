@@ -44,7 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang={DEFAULT_LOCALE} dir={dirOf(DEFAULT_LOCALE)} className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
-        <NextIntlClientProvider locale={DEFAULT_LOCALE} messages={heMessages}>
+        <NextIntlClientProvider locale={DEFAULT_LOCALE} messages={heMessages} timeZone="Asia/Jerusalem">
           <EnvBanner />
           {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
           <RegisterServiceWorker />
