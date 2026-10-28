@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import type { Team } from '@/features/teams/data'
 import { CLUB_STEP_PX, clubFrame, settleClub } from '../carousel'
 
@@ -8,6 +9,7 @@ const SETTLE_MS = 420
 
 /** Cover-flow of the league's clubs: swipe, tap a club, or use the arrow keys. `index` is the club in the middle. */
 export function ClubCarousel({ teams, index, onChange }: { teams: readonly Team[]; index: number; onChange: (i: number) => void }) {
+  const tr = useTranslations('clubs')
   const cards = useRef<(HTMLButtonElement | null)[]>([])
   const pos = useRef(index)
   const anim = useRef(0)
@@ -91,7 +93,7 @@ export function ClubCarousel({ teams, index, onChange }: { teams: readonly Team[
     <div
       className="su-carousel"
       role="radiogroup"
-      aria-label="הקבוצות בליגת העל"
+      aria-label={tr('leagueTeams')}
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
@@ -118,7 +120,7 @@ export function ClubCarousel({ teams, index, onChange }: { teams: readonly Team[
           <span className="band" style={{ background: `linear-gradient(160deg, ${t.bg}, ${t.bg}cc 60%, ${t.ring}55)` }} aria-hidden="true" />
           <span className="scarf" style={{ background: `repeating-linear-gradient(180deg, ${t.bg} 0 14px, ${t.ring} 14px 20px)` }} aria-hidden="true" />
           <b>{t.name}</b>
-          <small>ליגת העל</small>
+          <small>{tr('league')}</small>
         </button>
       ))}
     </div>
