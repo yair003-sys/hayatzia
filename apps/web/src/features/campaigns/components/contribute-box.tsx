@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { shekelLabel } from '../schema'
+import { moneyLabel } from '../schema'
 import { contributeAction } from '../server/actions'
 
-const PRESETS = [1800, 3600, 10000] // ₪18 / ₪36 / ₪100, in agorot
+const PRESETS = [1800, 3600, 10000] // minor units (e.g. 18 / 36 / 100 of the campaign's currency)
 
 /** The backing box on a campaign page: pick an amount and place a hold. Shows plainly that the money is only held,
  * released if the goal is missed, and that onefan never sees the card or keeps the money. */
-export function ContributeBox({ campaignId }: { campaignId: string }) {
+export function ContributeBox({ campaignId, currency }: { campaignId: string; currency: string }) {
   const router = useRouter()
   const [amount, setAmount] = useState(3600)
   const [custom, setCustom] = useState('')
@@ -60,7 +60,7 @@ export function ContributeBox({ campaignId }: { campaignId: string }) {
               !custom && amount === a ? 'border-accent bg-accent/15 text-accent-text' : 'border-line bg-surface-2'
             }`}
           >
-            {shekelLabel(a)}
+            {moneyLabel(a, currency)}
           </button>
         ))}
         <input
@@ -68,7 +68,7 @@ export function ContributeBox({ campaignId }: { campaignId: string }) {
           value={custom}
           onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, ''))}
           placeholder="סכום אחר"
-          aria-label="סכום אחר בשקלים"
+          aria-label="סכום אחר"
           className="min-w-[90px] flex-1 rounded-xl border border-line bg-surface-2 px-3 py-3 text-center text-[15px] font-extrabold outline-none focus:border-accent"
         />
       </div>
@@ -79,7 +79,7 @@ export function ContributeBox({ campaignId }: { campaignId: string }) {
         disabled={!valid || busy}
         className="mt-4 flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-accent text-[17px] font-extrabold text-white disabled:opacity-50"
       >
-        {busy ? 'רגע…' : valid ? `תרמו ${shekelLabel(chosen)} ←` : 'בחרו סכום'}
+        {busy ? 'רגע…' : valid ? `תרמו ${moneyLabel(chosen, currency)} ←` : 'בחרו סכום'}
       </button>
       {error && <p className="mt-2 text-center text-[13px] text-live">{error}</p>}
 

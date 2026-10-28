@@ -25,6 +25,7 @@ export const createCampaignAction = actionClient.inputSchema(createCampaignSchem
       title: p.title,
       description: p.description,
       category: p.category,
+      currency: p.currency,
       team_id: p.teamId ?? null,
       fixture_id: p.fixtureId ?? null,
       goal_agorot: p.goalAgorot,

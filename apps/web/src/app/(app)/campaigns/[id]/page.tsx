@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { features } from '@/lib/flags'
 import { ContributeBox } from '@/features/campaigns/components/contribute-box'
-import { CATEGORY_HE, type Category, STATUS_HE, type Status, daysLeft, progressPct, shekelLabel } from '@/features/campaigns/schema'
+import { CATEGORY_HE, type Category, STATUS_HE, type Status, daysLeft, moneyLabel, progressPct } from '@/features/campaigns/schema'
 import { getCampaign } from '@/features/campaigns/server/queries'
 
 const clock = () => Date.now()
@@ -48,7 +48,8 @@ async function Detail({ id }: { id: string }) {
       <div>
         <div className="flex items-baseline justify-between">
           <span className="text-xl font-black">
-            {shekelLabel(c.raised_agorot)} <span className="text-[13px] font-bold text-muted">מתוך {shekelLabel(c.goal_agorot)}</span>
+            {moneyLabel(c.raised_agorot, c.currency)}{' '}
+            <span className="text-[13px] font-bold text-muted">מתוך {moneyLabel(c.goal_agorot, c.currency)}</span>
           </span>
           <span className="text-[13px] font-extrabold text-accent-text">{pct}%</span>
         </div>
@@ -68,7 +69,7 @@ async function Detail({ id }: { id: string }) {
       {c.description && <p className="whitespace-pre-line text-[14px] leading-relaxed text-fg/90">{c.description}</p>}
 
       {live ? (
-        <ContributeBox campaignId={c.id} />
+        <ContributeBox campaignId={c.id} currency={c.currency} />
       ) : (
         <p className="rounded-2xl border border-line bg-surface p-4 text-sm text-muted">
           הקמפיין {STATUS_HE[c.status as Status] ?? c.status}. אפשר לתרום רק כשהוא פעיל.

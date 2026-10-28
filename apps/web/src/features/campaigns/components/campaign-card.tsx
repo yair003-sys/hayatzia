@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CATEGORY_HE, type Category, daysLeft, progressPct, shekelLabel } from '../schema'
+import { CATEGORY_HE, type Category, daysLeft, moneyLabel, progressPct } from '../schema'
 import type { Campaign } from '../server/queries'
 
 const clock = () => Date.now()
@@ -26,7 +26,7 @@ export function CampaignCard({ campaign: c }: { campaign: Campaign }) {
       </div>
       <div className="mt-2 flex items-center justify-between text-[12px] text-muted">
         <span>
-          <b className="t-num text-fg">{shekelLabel(c.raised_agorot)}</b> מתוך {shekelLabel(c.goal_agorot)}
+          <b className="t-num text-fg">{moneyLabel(c.raised_agorot, c.currency)}</b> מתוך {moneyLabel(c.goal_agorot, c.currency)}
         </span>
         <span>{left > 0 ? `נותרו ${left} ימים` : 'הסתיים'}</span>
       </div>
