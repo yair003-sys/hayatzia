@@ -41,5 +41,14 @@
   },
   "alerts": {
     "close": "Cerrar notificación"
+  },
+  "clubs": {
+    "leagueTeams": "Clubes de la Super League",
+    "league": "Super League"
+  },
+  "chat": {
+    "opening": "Abriendo…",
+    "sendPrivate": "Enviar mensaje privado",
+    "firstMsgNote": "El primer mensaje llega como solicitud. {nick} decide si continuar."
   }
 }

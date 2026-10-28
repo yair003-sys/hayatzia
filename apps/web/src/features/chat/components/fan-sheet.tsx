@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { MessageCircle } from 'lucide-react'
 import { Avatar } from '@/features/dm/components/avatar'
@@ -13,6 +14,7 @@ export type SheetFan = { id: string; nick: string; club: { name: string; color: 
  * the rival club too; the first message arrives as a request the fan accepts or blocks.
  */
 export function FanSheet({ fan, onClose }: { fan: SheetFan | null; onClose: () => void }) {
+  const t = useTranslations('chat')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
   if (!fan) return null
@@ -60,9 +62,9 @@ export function FanSheet({ fan, onClose }: { fan: SheetFan | null; onClose: () =
           }
         >
           <MessageCircle className="size-5" aria-hidden="true" />
-          {pending ? 'פותח…' : 'שלח הודעה פרטית'}
+          {pending ? t('opening') : t('sendPrivate')}
         </button>
-        <p className="mt-2 text-center text-xs text-dim">ההודעה הראשונה מגיעה כבקשה. {fan.nick} יחליט אם להמשיך.</p>
+        <p className="mt-2 text-center text-xs text-dim">{t('firstMsgNote', { nick: fan.nick })}</p>
         {error && (
           <p role="alert" className="mt-2 text-center text-sm text-live">
             {error}
