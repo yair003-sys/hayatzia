@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useTranslations } from 'next-intl'
 import { Download, Share } from 'lucide-react'
 
 type BeforeInstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
@@ -12,6 +13,7 @@ const isStandalone = () =>
 
 /** "Install the app": native prompt on Android/Chrome, short instructions on iPhone. Hidden once installed. */
 export function InstallApp() {
+  const t = useTranslations('pwa')
   const installed = useSyncExternalStore(noop, isStandalone, () => true)
   const ios = useSyncExternalStore(noop, isIos, () => false)
   const [prompt, setPrompt] = useState<BeforeInstallPrompt | null>(null)
@@ -34,7 +36,7 @@ export function InstallApp() {
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft py-3 font-semibold"
       >
         <Download className="size-5" aria-hidden="true" />
-        התקן את onefan בטלפון
+        {t('install')}
       </button>
     )
   }
@@ -42,7 +44,7 @@ export function InstallApp() {
     return (
       <p className="flex items-start gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
         <Share className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden="true" />
-        להתקנה באייפון: לחץ על כפתור השיתוף בספארי, ואז &quot;הוסף למסך הבית&quot;.
+        {t('iosInstall')}
       </p>
     )
   }
