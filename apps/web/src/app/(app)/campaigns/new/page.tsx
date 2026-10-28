@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { features } from '@/lib/flags'
 import { CreateForm } from '@/features/campaigns/components/create-form'
+import { getApprovedVendors } from '@/features/campaigns/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
 
 export const metadata: Metadata = { title: 'פתיחת קמפיין' }
@@ -36,5 +37,6 @@ async function Gate() {
       </p>
     )
   }
-  return <CreateForm />
+  const vendors = await getApprovedVendors()
+  return <CreateForm vendors={vendors.map((v) => ({ id: v.id, name: v.name }))} />
 }

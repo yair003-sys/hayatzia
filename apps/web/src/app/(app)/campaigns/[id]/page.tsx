@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { features } from '@/lib/flags'
 import { ContributeBox } from '@/features/campaigns/components/contribute-box'
 import { CATEGORY_HE, type Category, STATUS_HE, type Status, daysLeft, moneyLabel, progressPct } from '@/features/campaigns/schema'
-import { getCampaign } from '@/features/campaigns/server/queries'
+import { getCampaign, getVendor } from '@/features/campaigns/server/queries'
 
 const clock = () => Date.now()
 
@@ -27,6 +27,7 @@ export default function CampaignPage({ params }: PageProps<'/campaigns/[id]'>) {
 async function Detail({ id }: { id: string }) {
   const c = await getCampaign(id)
   if (!c) notFound()
+  const vendor = c.vendor_id ? await getVendor(c.vendor_id) : null
   const pct = progressPct(c.raised_agorot, c.goal_agorot)
   const left = daysLeft(new Date(c.deadline).getTime(), clock())
   const live = c.status === 'live'
@@ -42,8 +43,21 @@ async function Detail({ id }: { id: string }) {
 
       <div>
         <h1 className="text-2xl font-black leading-tight">{c.title}</h1>
-        <p className="mt-2 text-[13px] text-muted">למען: <b className="text-fg">{c.beneficiary_name}</b></p>
+        {c.item_description && <p className="mt-1 text-[13px] text-muted">{c.item_description}</p>}
       </div>
+
+      {/* Vendor Direct: the money goes straight to this verified supplier against a tax invoice — never to a person. */}
+      {vendor ? (
+        <div className="rounded-2xl border border-line bg-surface p-3">
+          <p className="text-[12px] text-muted">הכסף משולם ישירות ל:</p>
+          <p className="mt-0.5 flex items-center gap-2 font-extrabold">
+            {vendor.name}
+            {vendor.status === 'approved' && <span className="text-[11px] font-extrabold text-ok">✔ ספק מאומת</span>}
+          </p>
+        </div>
+      ) : (
+        <p className="text-[13px] text-muted">למען: <b className="text-fg">{c.beneficiary_name}</b></p>
+      )}
 
       <div>
         <div className="flex items-baseline justify-between">

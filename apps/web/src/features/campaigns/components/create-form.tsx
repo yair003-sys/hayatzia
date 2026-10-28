@@ -6,9 +6,12 @@ import { createCampaignAction } from '../server/actions'
 
 const KIND_HE: Record<BeneficiaryKind, string> = { amuta: 'עמותה רשומה', business: 'עסק מורשה', individual: 'אדם פרטי' }
 
-/** Opening a campaign. On submit it is created as "in review" — a human checks the cause and the beneficiary before
- * it goes live — so the form ends with that message, not a live campaign. */
-export function CreateForm() {
+type VendorOption = { id: string; name: string }
+
+/** Opening a campaign. On submit it is created as "in review" — a human checks the cause and the vendor before it
+ * goes live — so the form ends with that message, not a live campaign. Vendor Direct: when an approved vendor is
+ * picked, it is the money's destination; otherwise a free-text beneficiary is the fallback until the roster fills. */
+export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,6 +26,15 @@ export function CreateForm() {
       setError('מלאו יעד ותאריך סיום תקינים')
       return
     }
+    const vendorId = String(f.get('vendorId') ?? '')
+    const vendor = vendors.find((v) => v.id === vendorId)
+    const item = String(f.get('item') ?? '').trim()
+    // A chosen vendor is the money's destination; otherwise fall back to the free-text beneficiary.
+    const beneficiaryName = vendor ? vendor.name : String(f.get('beneficiaryName') ?? '').trim()
+    if (!beneficiaryName) {
+      setError('בחרו ספק מאומת או כתבו מי מקבל את הכסף')
+      return
+    }
     setBusy(true)
     setError(null)
     const r = await createCampaignAction({
@@ -31,8 +43,10 @@ export function CreateForm() {
       category: String(f.get('category') ?? 'other') as Category,
       goalAgorot: Math.round(shekels * 100),
       fundingModel: 'all_or_nothing',
-      beneficiaryKind: String(f.get('beneficiaryKind') ?? 'amuta') as BeneficiaryKind,
-      beneficiaryName: String(f.get('beneficiaryName') ?? ''),
+      beneficiaryKind: vendor ? 'business' : (String(f.get('beneficiaryKind') ?? 'amuta') as BeneficiaryKind),
+      beneficiaryName,
+      vendorId: vendor ? vendor.id : undefined,
+      itemDescription: item || undefined,
       deadline: new Date(`${dateStr}T12:00:00.000Z`).toISOString(),
     })
     setBusy(false)
@@ -76,15 +90,32 @@ export function CreateForm() {
           <input name="deadline" required type="date" className={field} />
         </label>
       </div>
+      {vendors.length > 0 && (
+        <label className="block space-y-1.5">
+          <span className="text-[13px] font-bold text-muted">ספק מאומת (מי מבצע ומקבל את הכסף)</span>
+          <select name="vendorId" className={field} defaultValue="">
+            <option value="">— בחר ספק —</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">מי מקבל את הכסף (המוטב)</span>
-        <input name="beneficiaryName" required maxLength={120} className={field} placeholder="שם העמותה / העסק" />
+        <span className="text-[13px] font-bold text-muted">מה קונים מהספק (לא חובה)</span>
+        <input name="item" maxLength={200} className={field} placeholder="למשל: באנר ענק 20 מטר" />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-bold text-muted">או — מי מקבל את הכסף (אם לא נבחר ספק)</span>
+        <input name="beneficiaryName" maxLength={120} className={field} placeholder="שם העסק / העמותה" />
       </label>
       <label className="block space-y-1.5">
         <span className="text-[13px] font-bold text-muted">סוג המוטב</span>
-        <select name="beneficiaryKind" className={field} defaultValue="amuta">
-          <option value="amuta">{KIND_HE.amuta}</option>
+        <select name="beneficiaryKind" className={field} defaultValue="business">
           <option value="business">{KIND_HE.business}</option>
+          <option value="amuta">{KIND_HE.amuta}</option>
           <option value="individual">{KIND_HE.individual}</option>
         </select>
       </label>
@@ -94,7 +125,7 @@ export function CreateForm() {
       </label>
 
       <p className="rounded-xl border border-line bg-surface-2 p-3 text-[12px] leading-relaxed text-muted">
-        לאחר השליחה הקמפיין עובר בדיקה קצרה (מטרה + מוטב) ואז עולה לאוויר. הכסף עובר ישירות למוטב דרך ספק סליקה — onefan לא מחזיקה אותו.
+        לאחר השליחה הקמפיין עובר בדיקה קצרה (מטרה + ספק). כשמושג היעד, הכסף משולם ישירות לספק כנגד חשבונית מס — onefan לא מחזיקה אותו.
       </p>
       <button
         type="submit"

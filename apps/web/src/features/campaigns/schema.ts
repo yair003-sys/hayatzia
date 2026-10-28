@@ -107,6 +107,9 @@ export const createCampaignSchema = z.object({
   fundingModel: z.enum(FUNDING_MODELS).default('all_or_nothing'),
   beneficiaryKind: z.enum(BENEFICIARY_KINDS),
   beneficiaryName: z.string().trim().min(2, 'שם המוטב קצר מדי').max(120, 'שם המוטב ארוך מדי'),
+  // Vendor Direct: the money's destination is a verified vendor, and what's being bought from them.
+  vendorId: z.uuid().optional(),
+  itemDescription: z.string().trim().max(200, 'התיאור ארוך מדי').optional(),
   imagePath: z.string().min(1).max(300).optional(),
   deadline: z.iso.datetime({ message: 'תאריך סיום לא תקין' }),
 })
@@ -119,3 +122,23 @@ export const contributeSchema = z.object({
   anonymous: z.boolean().default(false),
 })
 export type ContributeInput = z.infer<typeof contributeSchema>
+
+// Vendor roster (Vendor Direct model). Categories mirror the DB check.
+export const VENDOR_CATEGORIES = ['print', 'pyro', 'apparel', 'media', 'other'] as const
+export type VendorCategory = (typeof VENDOR_CATEGORIES)[number]
+export const VENDOR_CATEGORY_HE: Record<VendorCategory, string> = {
+  print: 'דפוס ושילוט',
+  pyro: 'אפקטים ותפאורה',
+  apparel: 'הלבשה ומרצ׳נדייז',
+  media: 'מדיה והפקה',
+  other: 'אחר',
+}
+
+/** A fan proposes a vendor for onefan to verify; it enters the roster as 'pending' until an admin approves. */
+export const proposeVendorSchema = z.object({
+  name: z.string().trim().min(2, 'שם קצר מדי').max(120, 'שם ארוך מדי'),
+  businessId: z.string().trim().min(5, 'מספר עוסק/ח״פ לא תקין').max(20, 'מספר עוסק/ח״פ לא תקין'),
+  category: z.enum(VENDOR_CATEGORIES),
+  contact: z.string().trim().max(200).optional(),
+})
+export type ProposeVendorInput = z.infer<typeof proposeVendorSchema>
