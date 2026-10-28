@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { paymentProvider } from '@/features/payments/select'
-import { contributeSchema, createCampaignSchema } from '../schema'
+import { contributeSchema, createCampaignSchema, proposeVendorSchema } from '../schema'
 
 async function db() {
   const supabase = await createClient()
@@ -32,6 +32,8 @@ export const createCampaignAction = actionClient.inputSchema(createCampaignSchem
       funding_model: p.fundingModel,
       beneficiary_kind: p.beneficiaryKind,
       beneficiary_name: p.beneficiaryName,
+      vendor_id: p.vendorId ?? null,
+      item_description: p.itemDescription ?? null,
       image_path: p.imagePath ?? null,
       deadline: p.deadline,
       status: 'pending_review',
@@ -79,4 +81,25 @@ export const contributeAction = actionClient.inputSchema(contributeSchema).actio
     return { error: 'לא הצלחנו לרשום את התרומה. נסו שוב' }
   }
   return { ok: true }
+})
+
+/**
+ * Propose a vendor for onefan to verify. It enters the roster as 'pending'; an admin approves it before any campaign
+ * can send money its way. Verification of the business and its payout account is done by onefan, not here.
+ */
+export const proposeVendorAction = actionClient.inputSchema(proposeVendorSchema).action(async ({ parsedInput: p }) => {
+  const supabase = await db()
+  const { data, error } = await supabase
+    .from('campaign_vendors')
+    .insert({
+      name: p.name,
+      business_id: p.businessId,
+      category: p.category,
+      contact: p.contact ?? null,
+      status: 'pending',
+    })
+    .select('id')
+    .single()
+  if (error || !data) return { error: 'לא הצלחנו לשלוח את הספק לאישור. נסו שוב' }
+  return { id: data.id }
 })
