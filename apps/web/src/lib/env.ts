@@ -24,6 +24,8 @@ export const env = createEnv({
     SEASON: z.coerce.number().int().positive().optional(),
     /** API-Football league id. Server only. Unset → 383 (Ligat Ha'Al), the same default as the legacy updater. */
     LEAGUE: z.coerce.number().int().positive().optional(),
+    /** onefan's campaign platform fee, in basis points (1% = 100). Server only; set in Vercel. Unset → 0 (no fee). */
+    CAMPAIGN_FEE_BPS: z.coerce.number().int().min(0).max(10000).optional(),
     /**
      * Identity verification provider for rides. Unset: the mock (demo) provider outside production, none in
      * production. 'mock' is refused in production (features/verification/server/select-provider.ts).
@@ -78,6 +80,7 @@ export const env = createEnv({
     API_FOOTBALL_KEY: process.env.API_FOOTBALL_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     SEASON: process.env.SEASON,
+    CAMPAIGN_FEE_BPS: process.env.CAMPAIGN_FEE_BPS,
     LEAGUE: process.env.LEAGUE,
     VERIFICATION_PROVIDER: process.env.VERIFICATION_PROVIDER,
     VERIFICATION_WEBHOOK_SECRET: process.env.VERIFICATION_WEBHOOK_SECRET,
