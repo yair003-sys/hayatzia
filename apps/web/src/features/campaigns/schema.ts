@@ -146,6 +146,7 @@ export type ProposeVendorInput = z.infer<typeof proposeVendorSchema>
 // Admin/ops (all admin-gated): close a campaign at its deadline, approve a vendor, and release funds to the vendor
 // against a tax invoice.
 export const settleCampaignSchema = z.object({ campaignId: z.uuid() })
+export const publishCampaignSchema = z.object({ campaignId: z.uuid() })
 export const approveVendorSchema = z.object({ vendorId: z.uuid() })
 export const releaseToVendorSchema = z.object({
   campaignId: z.uuid(),
