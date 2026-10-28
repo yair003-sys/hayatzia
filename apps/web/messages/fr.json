@@ -15,10 +15,20 @@
     "me": "Ma carte"
   },
   "account": {
-    "signOut": "Se déconnecter"
+    "signOut": "Se déconnecter",
+    "deleted": "Votre compte a été supprimé. Merci d'avoir fait partie de la communauté."
   },
   "pwa": {
     "install": "Installez onefan sur votre téléphone",
     "iosInstall": "Pour installer sur iPhone : appuyez sur Partager dans Safari, puis « Sur l'écran d'accueil »."
+  },
+  "auth": {
+    "signInFailed": "Échec de la connexion. Réessayez",
+    "toGoogle": "Redirection vers Google…",
+    "continueGoogle": "Continuer avec Google",
+    "inAppNote": "Vous avez ouvert ce lien depuis une app (Instagram, Facebook…). Google y bloque la connexion. Appuyez sur ⋯ puis « Ouvrir dans le navigateur », puis revenez ici."
+  },
+  "home": {
+    "onlineNow": "En ligne maintenant"
   }
 }

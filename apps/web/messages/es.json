@@ -15,10 +15,20 @@
     "me": "Mi tarjeta"
   },
   "account": {
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "deleted": "Tu cuenta fue eliminada. Gracias por ser parte de la comunidad."
   },
   "pwa": {
     "install": "Instala onefan en tu teléfono",
     "iosInstall": "Para instalar en iPhone: toca Compartir en Safari y luego «Añadir a pantalla de inicio»."
+  },
+  "auth": {
+    "signInFailed": "Error al iniciar sesión. Inténtalo de nuevo",
+    "toGoogle": "Redirigiendo a Google…",
+    "continueGoogle": "Continuar con Google",
+    "inAppNote": "Parece que abriste esto dentro de una app (Instagram, Facebook…). Google bloquea el inicio de sesión ahí. Toca ⋯ y elige «Abrir en el navegador», luego vuelve aquí."
+  },
+  "home": {
+    "onlineNow": "En línea ahora"
   }
 }

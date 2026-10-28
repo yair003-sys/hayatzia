@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { safeNext } from '../safe-next'
 
@@ -14,6 +15,7 @@ const GoogleMark = () => (
 )
 
 export function GoogleSignIn() {
+  const t = useTranslations('auth')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +29,7 @@ export function GoogleSignIn() {
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     })
     if (e) {
-      setError('ההתחברות נכשלה. נסה שוב')
+      setError(t('signInFailed'))
       setBusy(false)
     }
   }
@@ -36,7 +38,7 @@ export function GoogleSignIn() {
     <div className="space-y-2">
       <button type="button" onClick={signIn} disabled={busy} className="su-btn su-btn-google">
         <GoogleMark />
-        {busy ? 'מעביר ל-Google…' : 'המשך עם Google'}
+        {busy ? t('toGoogle') : t('continueGoogle')}
       </button>
       {error && (
         <p role="alert" className="text-center text-sm text-live">

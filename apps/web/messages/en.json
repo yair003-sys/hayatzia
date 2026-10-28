@@ -15,10 +15,20 @@
     "me": "My Card"
   },
   "account": {
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "deleted": "Your account was deleted. Thanks for being part of the community."
   },
   "pwa": {
     "install": "Install onefan on your phone",
     "iosInstall": "To install on iPhone: tap the Share button in Safari, then \"Add to Home Screen\"."
+  },
+  "auth": {
+    "signInFailed": "Sign-in failed. Try again",
+    "toGoogle": "Redirecting to Google…",
+    "continueGoogle": "Continue with Google",
+    "inAppNote": "It looks like you opened this from inside an app (Instagram, Facebook…). Google blocks sign-in there. Tap ⋯ and choose \"Open in browser\", then come back here."
+  },
+  "home": {
+    "onlineNow": "Online now"
   }
 }

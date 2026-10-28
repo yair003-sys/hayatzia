@@ -15,10 +15,20 @@
     "me": "Meine Karte"
   },
   "account": {
-    "signOut": "Abmelden"
+    "signOut": "Abmelden",
+    "deleted": "Dein Konto wurde gelöscht. Danke, dass du Teil der Community warst."
   },
   "pwa": {
     "install": "onefan auf dem Handy installieren",
     "iosInstall": "Auf dem iPhone installieren: in Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“."
+  },
+  "auth": {
+    "signInFailed": "Anmeldung fehlgeschlagen. Erneut versuchen",
+    "toGoogle": "Weiterleitung zu Google…",
+    "continueGoogle": "Mit Google fortfahren",
+    "inAppNote": "Du hast diesen Link offenbar in einer App geöffnet (Instagram, Facebook…). Google blockiert dort die Anmeldung. Tippe auf ⋯ und wähle „Im Browser öffnen“, dann komm hierher zurück."
+  },
+  "home": {
+    "onlineNow": "Jetzt online"
   }
 }
