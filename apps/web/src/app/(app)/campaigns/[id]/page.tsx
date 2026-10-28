@@ -85,10 +85,22 @@ async function Detail({ id }: { id: string }) {
       {live ? (
         <ContributeBox campaignId={c.id} currency={c.currency} />
       ) : (
-        <p className="rounded-2xl border border-line bg-surface p-4 text-sm text-muted">
-          הקמפיין {STATUS_HE[c.status as Status] ?? c.status}. אפשר לתרום רק כשהוא פעיל.
-        </p>
+        <StatusNote status={c.status} />
       )}
     </div>
   )
+}
+
+/** The transparency note once a campaign is no longer live — closing the loop for backers in the Vendor Direct flow. */
+function StatusNote({ status }: { status: string }) {
+  const notes: Record<string, { tone: 'ok' | 'muted'; text: string }> = {
+    funded: { tone: 'ok', text: '🎉 הקמפיין הגיע ליעד! הכסף בדרך לספק כנגד חשבונית מס.' },
+    awaiting_invoice: { tone: 'ok', text: '🎉 הגיע ליעד! ממתינים לחשבונית מהספק, ואז הכסף משולם לו ישירות.' },
+    paid_out: { tone: 'ok', text: '✔ שולם לספק — הקמפיין הושלם. תודה לכל מי שהשתתף!' },
+    failed: { tone: 'muted', text: 'הקמפיין לא הגיע ליעד. כל ההחזקות שוחררו — לא חויבתם בכלום.' },
+    cancelled: { tone: 'muted', text: 'הקמפיין בוטל. לא בוצע חיוב.' },
+  }
+  const n = notes[status] ?? { tone: 'muted' as const, text: `הקמפיין ${STATUS_HE[status as Status] ?? status}. אפשר לתרום רק כשהוא פעיל.` }
+  const cls = n.tone === 'ok' ? 'border-ok/30 bg-ok/10 text-ok' : 'border-line bg-surface text-muted'
+  return <p className={`rounded-2xl border p-4 text-sm leading-relaxed ${cls}`}>{n.text}</p>
 }
