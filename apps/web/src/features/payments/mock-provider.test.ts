@@ -44,4 +44,10 @@ describe('mockProvider', () => {
   it('fails on an unknown reference', async () => {
     expect((await mockProvider.capture('nope')).ok).toBe(false)
   })
+
+  it('pays out to a vendor only with a reference and a positive amount', async () => {
+    expect((await mockProvider.payoutToVendor({ vendorRef: 'acct_v', amountAgorot: 5000, feeAgorot: 250, campaignId: 'c1' })).ok).toBe(true)
+    expect((await mockProvider.payoutToVendor({ vendorRef: '', amountAgorot: 5000, feeAgorot: 0, campaignId: 'c1' })).ok).toBe(false)
+    expect((await mockProvider.payoutToVendor({ vendorRef: 'acct_v', amountAgorot: 0, feeAgorot: 0, campaignId: 'c1' })).ok).toBe(false)
+  })
 })

@@ -29,6 +29,14 @@ export const mockProvider: PaymentProvider = {
   refund(ref: string): Promise<SettleResult> {
     return Promise.resolve(move(ref, 'captured', 'refunded'))
   },
+  payoutToVendor(input): Promise<SettleResult> {
+    if (!input.vendorRef) return Promise.resolve({ ok: false, error: 'no vendor payout reference' })
+    if (!Number.isInteger(input.amountAgorot) || input.amountAgorot <= 0) {
+      return Promise.resolve({ ok: false, error: 'invalid amount' })
+    }
+    // The mock has no real account to move money to; it just confirms the release so the flow can be tested.
+    return Promise.resolve({ ok: true })
+  },
 }
 
 function move(ref: string, from: Held['status'], to: Held['status']): SettleResult {
