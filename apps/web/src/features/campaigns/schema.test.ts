@@ -5,8 +5,8 @@ import {
   createCampaignSchema,
   daysLeft,
   feeAgorot,
+  moneyLabel,
   progressPct,
-  shekelLabel,
 } from './schema'
 
 const DAY = 86_400_000
@@ -47,14 +47,20 @@ describe('feeAgorot', () => {
   })
 })
 
-describe('daysLeft / shekelLabel', () => {
+describe('daysLeft / moneyLabel', () => {
   it('counts whole days, never negative', () => {
     expect(daysLeft(3 * DAY, 0)).toBe(3)
     expect(daysLeft(0, 5 * DAY)).toBe(0)
   })
-  it('shows agorot as grouped whole shekels', () => {
-    expect(shekelLabel(1_240_000)).toBe('₪12,400')
-    expect(shekelLabel(3600)).toBe('₪36')
+  it('shows minor units as grouped whole currency units, per currency', () => {
+    // Exact symbol placement/spacing is locale/ICU-dependent, so assert the parts, not the whole string.
+    const ils = moneyLabel(1_240_000, 'ILS')
+    expect(ils).toContain('12,400')
+    expect(ils).toMatch(/₪|ILS/)
+    const eur = moneyLabel(1_200_000, 'EUR')
+    expect(eur).toContain('12,000')
+    expect(eur).toMatch(/€|EUR/)
+    expect(moneyLabel(3600, 'ILS')).toContain('36')
   })
 })
 
@@ -70,6 +76,7 @@ describe('schemas', () => {
   it('accepts a valid campaign and defaults funding to all-or-nothing', () => {
     const r = createCampaignSchema.parse(okCreate)
     expect(r.fundingModel).toBe('all_or_nothing')
+    expect(r.currency).toBe('ILS')
     expect(r.description).toBe('')
   })
   it('rejects a goal below the minimum and a bad category', () => {
