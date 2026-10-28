@@ -13,5 +13,8 @@
     "square": "Square",
     "inbox": "Inbox",
     "me": "My Card"
+  },
+  "account": {
+    "signOut": "Sign out"
   }
 }

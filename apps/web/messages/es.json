@@ -13,5 +13,8 @@
     "square": "La Plaza",
     "inbox": "Mensajes",
     "me": "Mi tarjeta"
+  },
+  "account": {
+    "signOut": "Cerrar sesión"
   }
 }
