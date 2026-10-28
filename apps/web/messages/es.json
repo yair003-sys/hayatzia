@@ -1,7 +1,10 @@
 {
   "common": {
     "language": "Idioma",
-    "chooseLanguage": "Elegir idioma"
+    "chooseLanguage": "Elegir idioma",
+    "loadFailed": "No se pudo cargar.",
+    "retry": "Reintentar",
+    "loading": "Cargando…"
   },
   "nav": {
     "main": "Navegación principal",
