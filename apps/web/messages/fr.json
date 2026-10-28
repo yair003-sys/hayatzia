@@ -30,5 +30,16 @@
   },
   "home": {
     "onlineNow": "En ligne maintenant"
+  },
+  "push": {
+    "enableFailed": "Impossible d'activer les notifications",
+    "iosInstallFirst": "Pour recevoir des notifications sur iPhone, ajoutez d'abord onefan à l'écran d'accueil.",
+    "blocked": "Les notifications sont bloquées dans les réglages du navigateur. Vous pouvez les y autoriser.",
+    "turnOff": "Désactiver les notifications sur cet appareil",
+    "turnOn": "Activer les notifications",
+    "note": "Buts, coups de sifflet final, messages et demandes de covoiturage. Jamais le contenu des messages."
+  },
+  "alerts": {
+    "close": "Fermer la notification"
   }
 }

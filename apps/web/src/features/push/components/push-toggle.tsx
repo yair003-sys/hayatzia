@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { Bell, BellOff } from 'lucide-react'
 import { vapidKeyBytes } from '../schema'
 import { removeSubscriptionAction, saveSubscriptionAction } from '../server/actions'
@@ -9,6 +10,7 @@ type State = 'loading' | 'unsupported' | 'blocked' | 'off' | 'on'
 
 /** Turns notifications on/off for this device. */
 export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
+  const t = useTranslations('push')
   const [state, setState] = useState<State>('loading')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
@@ -34,7 +36,7 @@ export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
       const r = await saveSubscriptionAction({ endpoint: json.endpoint, keys: json.keys })
       if (r.data?.ok) setState('on')
-      else setError(r.data?.error ?? 'לא הצלחנו להפעיל התראות')
+      else setError(r.data?.error ?? t('enableFailed'))
     })
 
   const turnOff = () =>
@@ -50,10 +52,10 @@ export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
 
   if (state === 'loading') return null
   if (state === 'unsupported') {
-    return <p className="text-sm text-muted">כדי לקבל התראות באייפון, קודם צריך להתקין את onefan למסך הבית.</p>
+    return <p className="text-sm text-muted">{t('iosInstallFirst')}</p>
   }
   if (state === 'blocked') {
-    return <p className="text-sm text-muted">ההתראות חסומות בהגדרות הדפדפן. אפשר לאפשר אותן שם.</p>
+    return <p className="text-sm text-muted">{t('blocked')}</p>
   }
   return (
     <div className="space-y-1">
@@ -64,9 +66,9 @@ export function PushToggle({ vapidPublicKey }: { vapidPublicKey: string }) {
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-line py-3 font-semibold disabled:opacity-50"
       >
         {state === 'on' ? <BellOff className="size-5" aria-hidden="true" /> : <Bell className="size-5" aria-hidden="true" />}
-        {state === 'on' ? 'כיבוי התראות במכשיר הזה' : 'הפעלת התראות'}
+        {state === 'on' ? t('turnOff') : t('turnOn')}
       </button>
-      <p className="text-xs text-dim">שערים, סיום משחקים, הודעות ובקשות טרמפ. בלי תוכן ההודעות עצמן.</p>
+      <p className="text-xs text-dim">{t('note')}</p>
       {error && <p role="alert" className="text-sm text-live">{error}</p>}
     </div>
   )

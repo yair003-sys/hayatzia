@@ -30,5 +30,16 @@
   },
   "home": {
     "onlineNow": "En línea ahora"
+  },
+  "push": {
+    "enableFailed": "No se pudieron activar las notificaciones",
+    "iosInstallFirst": "Para recibir notificaciones en iPhone, primero añade onefan a la pantalla de inicio.",
+    "blocked": "Las notificaciones están bloqueadas en los ajustes del navegador. Puedes permitirlas ahí.",
+    "turnOff": "Desactivar notificaciones en este dispositivo",
+    "turnOn": "Activar notificaciones",
+    "note": "Goles, pitidos finales, mensajes y solicitudes de viaje. Nunca el contenido de los mensajes."
+  },
+  "alerts": {
+    "close": "Cerrar notificación"
   }
 }
