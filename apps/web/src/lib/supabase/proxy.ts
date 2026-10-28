@@ -2,9 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { supabaseConfig } from './config'
 
-/** Refreshes the auth session cookie on every request. Never makes access decisions (those live in RLS). */
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request })
+/**
+ * Refreshes the auth session cookie on every request. Never makes access decisions (those live in RLS).
+ * Accepts a base response (e.g. the one next-intl's middleware produced for locale routing) and sets the refreshed
+ * auth cookies onto it, so the two middlewares compose; without one it starts a fresh `next()`.
+ */
+export async function updateSession(request: NextRequest, response: NextResponse = NextResponse.next({ request })) {
   const cfg = supabaseConfig()
   if (!cfg) return response
   const supabase = createServerClient(cfg.url, cfg.key, {
@@ -12,7 +15,6 @@ export async function updateSession(request: NextRequest) {
       getAll: () => request.cookies.getAll(),
       setAll: (toSet) => {
         for (const { name, value } of toSet) request.cookies.set(name, value)
-        response = NextResponse.next({ request })
         for (const { name, value, options } of toSet) response.cookies.set(name, value, options)
       },
     },

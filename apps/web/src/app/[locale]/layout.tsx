@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from 'next'
+import { notFound } from 'next/navigation'
 import { Heebo, Inter } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages, setRequestLocale } from 'next-intl/server'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { EnvBanner, shouldShowEnvBanner } from '@/components/env-banner'
 import { OverflowGuard } from '@/components/overflow-guard'
 import { env } from '@/lib/env'
-import { DEFAULT_LOCALE, dirOf } from '@/i18n/config'
-import { IntlProvider } from '@/i18n/components/intl-provider'
+import { dirOf, isLocale, type Locale } from '@/i18n/config'
+import { routing } from '@/i18n/routing'
 import { RegisterServiceWorker } from '@/features/pwa/register-sw'
-import './globals.css'
+import '../globals.css'
 
 const heebo = Heebo({ subsets: ['hebrew', 'latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-heebo', display: 'swap' })
 // The onefan wordmark and numbers (brand guide: Inter). Hebrew text is Heebo.
@@ -36,21 +39,32 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  // Israel-first: the shell renders statically in Hebrew (no per-request cookie read, so the static-shell model and
-  // Cache Components stay intact). The whole i18n pipeline is wired and the catalogues are loaded; turning on dynamic
-  // per-viewer locale switching is its own later stage (it makes the relevant routes dynamic).
+// Each language is its own statically-prerendered variant — the static-shell model is preserved per locale, so
+// performance holds (or improves). Hebrew stays at the un-prefixed path ('as-needed'); other languages get a prefix.
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }))
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>) {
+  const { locale } = await params
+  if (!isLocale(locale)) notFound()
+  // Enables static rendering for this locale (no per-request dynamic read for the language).
+  setRequestLocale(locale)
+  const messages = await getMessages()
   return (
-    <html lang={DEFAULT_LOCALE} dir={dirOf(DEFAULT_LOCALE)} className={`${heebo.variable} ${inter.variable}`}>
+    <html lang={locale} dir={dirOf(locale as Locale)} className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
-        <IntlProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           <EnvBanner />
           {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
           <RegisterServiceWorker />
           {children}
           <Analytics />
           <SpeedInsights />
-        </IntlProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

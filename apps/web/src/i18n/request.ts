@@ -1,10 +1,12 @@
 import { getRequestConfig } from 'next-intl/server'
-import { getUserLocale } from './locale'
+import { isLocale } from './config'
+import { routing } from './routing'
 
-// next-intl without i18n routing: the locale comes from the cookie (getUserLocale), and the matching message catalogue
-// is loaded per request. Adding a language later is just another messages/<locale>.json.
-export default getRequestConfig(async () => {
-  const locale = await getUserLocale()
+// next-intl with i18n routing: the locale comes from the `[locale]` route segment (requestLocale). Invalid/absent →
+// the default. The path is always a validated locale, so the dynamic import can never be steered elsewhere.
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale
+  const locale = isLocale(requested) ? requested : routing.defaultLocale
   return {
     locale,
     messages: (await import(`../../messages/${locale}.json`)).default,
