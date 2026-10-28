@@ -1,5 +1,9 @@
 import { withSentryConfig } from '@sentry/nextjs/config'
+import createNextIntlPlugin from 'next-intl/plugin'
 import type { NextConfig } from 'next'
+
+// next-intl without i18n routing; the request config resolves the locale from the cookie.
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   // Next.js 16 rendering model: static shells from the CDN, dynamic parts streamed behind <Suspense>.
@@ -30,7 +34,7 @@ const nextConfig: NextConfig = {
 // Sentry build wrapper. Source maps are uploaded only when the build-time secrets (SENTRY_AUTH_TOKEN + org/project) are
 // present; without them this is a no-op, so dormant builds are unaffected. These are read here (the build entry), the
 // one place outside env.ts that reads process.env, because next.config runs before the validated `env` is available.
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNextIntl(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,

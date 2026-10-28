@@ -5,6 +5,8 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { EnvBanner, shouldShowEnvBanner } from '@/components/env-banner'
 import { OverflowGuard } from '@/components/overflow-guard'
 import { env } from '@/lib/env'
+import { DEFAULT_LOCALE, dirOf } from '@/i18n/config'
+import { IntlProvider } from '@/i18n/components/intl-provider'
 import { RegisterServiceWorker } from '@/features/pwa/register-sw'
 import './globals.css'
 
@@ -35,15 +37,20 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Israel-first: the shell renders statically in Hebrew (no per-request cookie read, so the static-shell model and
+  // Cache Components stay intact). The whole i18n pipeline is wired and the catalogues are loaded; turning on dynamic
+  // per-viewer locale switching is its own later stage (it makes the relevant routes dynamic).
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${inter.variable}`}>
+    <html lang={DEFAULT_LOCALE} dir={dirOf(DEFAULT_LOCALE)} className={`${heebo.variable} ${inter.variable}`}>
       <body className="min-h-dvh">
-        <EnvBanner />
-        {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
-        <RegisterServiceWorker />
-        {children}
-        <Analytics />
-        <SpeedInsights />
+        <IntlProvider>
+          <EnvBanner />
+          {shouldShowEnvBanner(env.NEXT_PUBLIC_APP_ENV) && <OverflowGuard />}
+          <RegisterServiceWorker />
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </IntlProvider>
       </body>
     </html>
   )
