@@ -26,8 +26,9 @@ const rich = (namespace: string | undefined, key: string, values?: Values): Arra
   let m: RegExpExecArray | null
   while ((m = re.exec(raw))) {
     if (m.index > last) parts.push(interpolate(raw.slice(last, m.index), values))
-    const cb = values?.[m[1]]
-    const inner = interpolate(m[2], values)
+    const tag = m[1] ?? ''
+    const inner = interpolate(m[2] ?? '', values)
+    const cb = values?.[tag]
     parts.push(typeof cb === 'function' ? (cb as (c: unknown) => unknown)(inner) : inner)
     last = m.index + m[0].length
   }
