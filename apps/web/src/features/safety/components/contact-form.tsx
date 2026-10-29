@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
+import { useTranslations } from 'next-intl'
 import { Mail } from 'lucide-react'
 import { CONTACT_ACK_HE, CONTACT_MAX, CONTACT_TOPICS } from '../schema'
 import { contactAction } from '../server/actions'
@@ -10,6 +11,7 @@ type Topic = (typeof CONTACT_TOPICS)[number]
 
 /** "צור קשר" in "הכרטיס שלי": privacy, accessibility or anything else, straight to the operator. */
 export function ContactForm() {
+  const tc = useTranslations('safety')
   const [open, setOpen] = useState(false)
   const [topic, setTopic] = useState<Topic>(CONTACT_TOPICS[0])
   const [text, setText] = useState('')
@@ -35,7 +37,7 @@ export function ContactForm() {
         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-medium"
       >
         <Mail className="size-4" aria-hidden="true" />
-        צור קשר
+        {tc('contactTitle')}
       </button>
     )
 
@@ -49,14 +51,11 @@ export function ContactForm() {
       }}
     >
       <h3 id="contact-title" className="font-semibold">
-        צור קשר
+        {tc('contactTitle')}
       </h3>
-      <p className="text-sm leading-relaxed text-muted">
-        בקשות בנושא פרטיות (עיון, תיקון או מחיקה של מידע), נגישות או כל דבר אחר. הפנייה מגיעה לצוות onefan, ונחזור אליך לפי
-        פרטי החשבון.
-      </p>
+      <p className="text-sm leading-relaxed text-muted">{tc('contactIntro')}</p>
       <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm">נושא</legend>
+        <legend className="mb-2 text-sm">{tc('topicLegend')}</legend>
         <div className="flex flex-wrap gap-2">
           {CONTACT_TOPICS.map((t) => (
             <label key={t} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line px-3 has-checked:border-accent">
@@ -67,7 +66,7 @@ export function ContactForm() {
         </div>
       </fieldset>
       <label className="block">
-        <span className="mb-2 block text-sm">מה הבקשה?</span>
+        <span className="mb-2 block text-sm">{tc('requestLabel')}</span>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -93,10 +92,10 @@ export function ContactForm() {
       )}
       <div className="flex gap-2">
         <button type="submit" disabled={isPending || text.trim().length < 2} className="min-h-11 flex-1 rounded-xl bg-accent py-2.5 font-semibold text-white disabled:opacity-50">
-          {isPending ? 'שולח…' : 'שלח'}
+          {isPending ? tc('sending') : tc('send')}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="min-h-11 rounded-xl border border-line px-4">
-          סגור
+          {tc('close')}
         </button>
       </div>
     </form>

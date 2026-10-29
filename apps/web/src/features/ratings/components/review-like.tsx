@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { applyLike, type LikeState } from '../schema'
 import { likeReviewAction } from '../server/actions'
 
 type Likeable = LikeState & { user_id: string }
-const FAILED = 'הלייק לא נשמר. נסה שוב'
 const keyOf = (playerId: string, authorId: string) => `${playerId}:${authorId}`
 
 /**
@@ -15,6 +15,8 @@ const keyOf = (playerId: string, authorId: string) => `${playerId}:${authorId}`
  * lives here (not in each button) so a review that rotates away and back on the home keeps what I did.
  */
 export function useReviewLikes() {
+  const t = useTranslations('ratings')
+  const FAILED = t('likeFailed')
   const [changed, setChanged] = useState<Record<string, LikeState>>({})
   const [error, setError] = useState<string | null>(null)
   // One request per review at a time: a fast double tap waits for the first answer.
@@ -49,7 +51,7 @@ export function useReviewLikes() {
         setError(failure)
       }
     },
-    [view],
+    [view, FAILED],
   )
 
   return { view, toggle, error }
@@ -57,13 +59,14 @@ export function useReviewLikes() {
 
 /** ♥ and the count on a review. My own review shows the count only (no liking yourself). */
 export function ReviewLike({ nick, mine, state, onToggle, className }: { nick: string; mine: boolean; state: LikeState; onToggle: () => void; className?: string }) {
+  const t = useTranslations('ratings')
   const count = state.likes_count.toLocaleString('he-IL')
   if (mine)
     return (
       <span className={cn('rv-like', className)}>
         <Heart className="size-3.5 text-live" aria-hidden="true" />
         <span className="t-num">{count}</span>
-        <span className="sr-only"> לייקים לביקורת שלך</span>
+        <span className="sr-only">{t('myLikesSuffix')}</span>
       </span>
     )
   return (
@@ -71,7 +74,7 @@ export function ReviewLike({ nick, mine, state, onToggle, className }: { nick: s
       type="button"
       className={cn('rv-like', className)}
       aria-pressed={state.liked}
-      aria-label={`לייק לביקורת של ${nick}, ${count} לייקים`}
+      aria-label={t('likeAria', { nick, count })}
       onClick={onToggle}
     >
       <Heart className={cn('size-3.5 text-live', state.liked && 'fill-live')} aria-hidden="true" />

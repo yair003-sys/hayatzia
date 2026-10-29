@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '../schema'
@@ -56,6 +57,7 @@ function PlayerItem(props: {
   onToggle: () => void
   onRated: (p: PlayerRow) => void
 }) {
+  const t = useTranslations('ratings')
   const { player: p, open } = props
   const [stars, setStars] = useState(p.myStars ?? 0)
   const [review, setReview] = useState(p.myReview)
@@ -95,8 +97,8 @@ function PlayerItem(props: {
         <span className="w-7 text-center t-num text-muted">{p.number ?? ''}</span>
         <span className="flex-1">
           <b>{p.name_he}</b>
-          {p.injured && <span className="ms-2 text-xs text-live">פצוע</span>}
-          {p.in_xi && <span className="ms-2 text-xs text-ok">הרכב</span>}
+          {p.injured && <span className="ms-2 text-xs text-live">{t('injured')}</span>}
+          {p.in_xi && <span className="ms-2 text-xs text-ok">{t('inXi')}</span>}
         </span>
         <span className="flex items-center gap-1 text-sm tabular-nums">
           <Star className="size-4 fill-warn text-warn" aria-hidden="true" />
@@ -107,14 +109,14 @@ function PlayerItem(props: {
 
       {open && (
         <div className="space-y-3 border-t border-line-soft px-3 py-3">
-          <div className="flex items-center gap-1" role="radiogroup" aria-label={`הדירוג שלך ל${p.name_short}`}>
+          <div className="flex items-center gap-1" role="radiogroup" aria-label={t('ratingForAria', { name: p.name_short })}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
                 role="radio"
                 aria-checked={stars === n}
-                aria-label={`${n} כוכבים`}
+                aria-label={t('starsN', { n })}
                 onClick={() => setStars(n)}
                 className="p-1"
               >
@@ -127,8 +129,8 @@ function PlayerItem(props: {
             onChange={(e) => setReview(e.target.value)}
             maxLength={200}
             rows={2}
-            placeholder={coach ? 'מה דעתך על המאמן? (לא חובה)' : 'מה דעתך עליו? (לא חובה)'}
-            aria-label="ביקורת"
+            placeholder={coach ? t('coachReviewPlaceholder') : t('reviewPlaceholder')}
+            aria-label={t('reviewLabel')}
             className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm"
           />
           <button
@@ -137,12 +139,12 @@ function PlayerItem(props: {
             onClick={() =>
               start(async () => {
                 const r = await ratePlayerAction({ playerId: p.id, stars, review })
-                if (!r.data?.ok) return setMsg(r.data?.error ?? r.serverError ?? 'השמירה נכשלה')
+                if (!r.data?.ok) return setMsg(r.data?.error ?? r.serverError ?? t('saveFailed'))
                 const prev = r.data.previous
                 const sum = (p.avg ?? 0) * p.count - (prev ?? 0) + stars
                 const count = p.count + (prev === null ? 1 : 0)
                 props.onRated({ ...p, myStars: stars, myReview: review.trim(), count, avg: average(sum, count) })
-                setMsg('נשמר ✓')
+                setMsg(t('saved'))
                 setReviews((await reviewsAction({ playerId: p.id })).data?.reviews ?? [])
                 setAllLoaded(null)
                 setShowAll(false)
@@ -150,7 +152,7 @@ function PlayerItem(props: {
             }
             className="w-full rounded-lg bg-accent py-2.5 font-semibold text-white disabled:opacity-40"
           >
-            {p.myStars ? 'עדכן דירוג' : 'שמור דירוג'}
+            {p.myStars ? t('updateRating') : t('saveRating')}
           </button>
           {msg && (
             <p role="status" className="text-xs text-muted">
@@ -159,8 +161,8 @@ function PlayerItem(props: {
           )}
           {reviews && reviews.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-bold text-muted">תגובות הקהל</p>
-              <ul className="space-y-1" aria-label="תגובות הקהל">
+              <p className="text-xs font-bold text-muted">{t('crowdReviews')}</p>
+              <ul className="space-y-1" aria-label={t('crowdReviews')}>
                 {(showAll ? (allLoaded ?? reviews) : reviews.slice(0, 3)).map((r) => (
                   <li key={r.user_id} className="flex items-start gap-2 text-sm">
                     <span className="min-w-0 flex-1 py-2.5">
@@ -191,7 +193,7 @@ function PlayerItem(props: {
                   }}
                   className="text-sm font-semibold text-accent-text disabled:opacity-40"
                 >
-                  {showAll ? 'הצג פחות' : loadingAll ? 'טוען…' : 'ראה את כל התגובות'}
+                  {showAll ? t('showLess') : loadingAll ? t('loading') : t('seeAllReviews')}
                 </button>
               )}
             </div>
