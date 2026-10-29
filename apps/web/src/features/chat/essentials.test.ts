@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   canReport,
+  cooldownRemaining,
   dayKey,
   echoMatch,
   failurePlan,
@@ -205,5 +206,16 @@ describe('canReport ("דווח" on a chat message)', () => {
     expect(canReport({ id: 'm1', user_id: 'u1' }, 'u1', true)).toBe(false)
     expect(canReport({ id: 'local-1', user_id: 'u2' }, 'u1', true)).toBe(false)
     expect(canReport(other, 'u1', false)).toBe(false)
+  })
+})
+
+describe('cooldownRemaining', () => {
+  it('counts whole seconds down and never goes below zero', () => {
+    const now = 1_000_000
+    expect(cooldownRemaining(now + 10_000, now)).toBe(10)
+    expect(cooldownRemaining(now + 9_100, now)).toBe(10) // rounds a part-second up
+    expect(cooldownRemaining(now + 1, now)).toBe(1)
+    expect(cooldownRemaining(now, now)).toBe(0)
+    expect(cooldownRemaining(now - 5_000, now)).toBe(0) // already elapsed
   })
 })

@@ -163,7 +163,8 @@
     "reply": "Répondre",
     "reportMsg": "Signaler le message",
     "report": "Signaler",
-    "sendPrivateTo": "Envoyer un message privé à {nick}"
+    "sendPrivateTo": "Envoyer un message privé à {nick}",
+    "waitSeconds": "Attends {n}s"
   },
   "dm": {
     "requestIntro": "{nick} veut t’envoyer un message. Il ne pourra continuer à écrire qu’après ton accord.",

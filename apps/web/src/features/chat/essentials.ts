@@ -194,3 +194,8 @@ export type FailureKind = 'retry' | 'permanent' | 'bad_reply'
 export function failurePlan(kind: FailureKind = 'retry'): { keepBubble: boolean; restoreText: boolean; restoreQuote: boolean } {
   return { keepBubble: kind === 'retry', restoreText: kind !== 'retry', restoreQuote: kind === 'permanent' }
 }
+
+/** Whole seconds left on the send cooldown (team chat + match room): 0 once `untilMs` has passed. */
+export function cooldownRemaining(untilMs: number, nowMs: number): number {
+  return Math.max(0, Math.ceil((untilMs - nowMs) / 1000))
+}

@@ -13,7 +13,7 @@ import { DayDivider, JumpButton, jumpToMessage, MessageAuthor, MessageMeta, Mess
 import { FanSheet, type SheetFan } from './fan-sheet'
 import { useFollowEnd, useReadPosition } from './use-read-position'
 import { ReportForm } from '@/features/safety/components/report-block'
-import { canReport, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
+import { canReport, cooldownRemaining, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
 import { isHotMessage } from '../highlight'
 import {
   MESSAGE_MAX,
@@ -73,6 +73,11 @@ export type ChatRoomProps = {
    * (name and colour) for the sheet; null when unknown.
    */
   clubOf?: (m: ChatMessage) => SheetFan['club']
+  /**
+   * Seconds a fan must wait between messages here (owner, 2026-10-29): after a message is sent the send button shows a
+   * live countdown and blocks the next one until it reaches 0. Unset/0 = no wait (private messages do not use this).
+   */
+  cooldownSeconds?: number
 }
 
 const EXTRA_EVENTS = ['poll', 'tally', 'poll_closed'] as const
@@ -98,6 +103,7 @@ export function ChatRoom({
   presenceTopic,
   reportKind,
   clubOf,
+  cooldownSeconds = 0,
 }: ChatRoomProps) {
   const t = useTranslations('chat')
   const typing = useTyping(presenceTopic, meId, hiddenUsers)
@@ -115,6 +121,9 @@ export function ChatRoom({
   const [reporting, setReporting] = useState<ChatMessage | null>(null)
   const [reportNote, setReportNote] = useState<string | null>(null)
   const [fan, setFan] = useState<SheetFan | null>(null)
+  // Send cooldown (team chat + match room): the epoch ms the next message is allowed, and the whole seconds left.
+  const [cooldownUntil, setCooldownUntil] = useState(0)
+  const [cooldownLeft, setCooldownLeft] = useState(0)
   const root = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -127,6 +136,19 @@ export function ChatRoom({
     draftRef.current = draft
   })
   const now = useNowMinute()
+
+  // Tick the cooldown down to 0 while it is running (half-second so the number never looks stuck), then clear it.
+  useEffect(() => {
+    if (!cooldownUntil) return
+    const tick = () => {
+      const left = cooldownRemaining(cooldownUntil, Date.now())
+      setCooldownLeft(left)
+      if (left <= 0) setCooldownUntil(0)
+    }
+    tick()
+    const id = setInterval(tick, 500)
+    return () => clearInterval(id)
+  }, [cooldownUntil])
 
   const visible = hiddenUsers?.length ? messages.filter((m) => !hiddenUsers.includes(m.user_id)) : messages
   const all = pending.length ? [...visible, ...pending] : visible
@@ -233,6 +255,8 @@ export function ChatRoom({
       setPending((cur) => cur.filter((x) => x.id !== p.id))
       setMessages((cur) => mergeMessages(cur, [saved]))
       setError(null)
+      // Start the wait only once the message is really in (a refused or failed send leaves the fan free to resend).
+      if (cooldownSeconds > 0) setCooldownUntil(Date.now() + cooldownSeconds * 1000)
       return
     }
     setError(res.error)
@@ -253,7 +277,7 @@ export function ChatRoom({
 
   const submit = () => {
     const body = draft.trim()
-    if (!body) return
+    if (!body || cooldownLeft > 0) return
     typing.onStop()
     const p: ChatMessage = {
       id: `${LOCAL_ID}${crypto.randomUUID()}`,
@@ -481,11 +505,17 @@ export function ChatRoom({
               />
               <button
                 type="submit"
-                disabled={!draft.trim()}
-                aria-label={t('send')}
+                disabled={!draft.trim() || cooldownLeft > 0}
+                aria-label={cooldownLeft > 0 ? t('waitSeconds', { n: cooldownLeft }) : t('send')}
                 className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40"
               >
-                <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
+                {cooldownLeft > 0 ? (
+                  <span className="text-base font-bold tabular-nums" aria-hidden="true">
+                    {cooldownLeft}
+                  </span>
+                ) : (
+                  <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
+                )}
               </button>
             </form>
           </div>
