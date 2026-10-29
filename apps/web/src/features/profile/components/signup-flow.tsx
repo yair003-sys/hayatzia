@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { Lock } from 'lucide-react'
@@ -18,6 +19,7 @@ type Step = 'phone' | 'club' | 'confirm'
  * from a carousel (country row first; Israel only for now) and a nickname, then a final "for life" check.
  */
 export function SignupFlow({ next }: { next?: string }) {
+  const t = useTranslations('signup')
   const [step, setStep] = useState<Step>('phone')
   const [club, setClub] = useState(0)
   const [nick, setNick] = useState('')
@@ -34,7 +36,7 @@ export function SignupFlow({ next }: { next?: string }) {
 
   const back = (to: Step) => (
     <button type="button" className="su-back" onClick={() => setStep(to)}>
-      חזרה
+      {t('back')}
     </button>
   )
 
@@ -43,25 +45,25 @@ export function SignupFlow({ next }: { next?: string }) {
       <section className="su-step" key="phone">
         <SignupHeader step={2} />
         <div className="flex-1" />
-        <SignupKicker n="02">אימות טלפון</SignupKicker>
+        <SignupKicker n="02">{t('phoneVerify')}</SignupKicker>
         <h1 className="su-title">
-          מספר אחד לכל אוהד
-          <span>ככה אין כפילויות.</span>
+          {t('onePerFan')}
+          <span>{t('noDuplicates')}</span>
         </h1>
-        <p className="su-lead">נשלח לך קוד ב-SMS. המספר נשמר אצלנו בלבד ולא מוצג לאף אוהד.</p>
+        <p className="su-lead">{t('smsNote')}</p>
         <div className="mt-6 space-y-3">
           <label className="su-field" data-off="true" dir="ltr">
             <span className="cc">
               +972
             </span>
-            <input type="tel" inputMode="tel" placeholder="50-123-4567" disabled aria-label="מספר טלפון נייד" />
-            <span className="su-soon">בקרוב</span>
+            <input type="tel" inputMode="tel" placeholder="50-123-4567" disabled aria-label={t('phoneLabel')} />
+            <span className="su-soon">{t('soon')}</span>
           </label>
           <button type="button" className="su-btn su-btn-blue" disabled>
-            שלח קוד
+            {t('sendCode')}
           </button>
           <button type="button" className="su-btn su-btn-ghost" onClick={() => setStep('club')}>
-            האימות בטלפון ייפתח בקרוב · המשך בינתיים
+            {t('phoneSoonContinue')}
           </button>
         </div>
       </section>
@@ -71,13 +73,13 @@ export function SignupFlow({ next }: { next?: string }) {
     return (
       <section className="su-step" key="club">
         <SignupHeader step={3} back={back('phone')} />
-        <SignupKicker n="03">הקבוצה שלך</SignupKicker>
-        <h1 className="su-title su-title-sm">בחר פעם אחת. לתמיד.</h1>
+        <SignupKicker n="03">{t('yourClub')}</SignupKicker>
+        <h1 className="su-title su-title-sm">{t('pickOnce')}</h1>
 
         <div className="su-row">
-          <span>מדינה</span>
+          <span>{t('country')}</span>
         </div>
-        <div className="su-countries" role="radiogroup" aria-label="מדינה">
+        <div className="su-countries" role="radiogroup" aria-label={t('country')}>
           <button type="button" role="radio" aria-checked="true" className="su-country" data-on="true">
             <svg className="su-flag" width="26" height="18" viewBox="0 0 26 18" aria-hidden="true">
               <rect width="26" height="18" fill="#fff" />
@@ -85,15 +87,15 @@ export function SignupFlow({ next }: { next?: string }) {
               <rect y="13.4" width="26" height="2.6" fill="#0038b8" />
               <path d="M13 5.2l3 5.2h-6zM13 12.8l-3-5.2h6z" fill="none" stroke="#0038b8" strokeWidth="0.9" />
             </svg>
-            ישראל
+            {t('israel')}
           </button>
           <span className="su-country" data-soon="true">
-            מדינות נוספות בהמשך
+            {t('moreCountries')}
           </span>
         </div>
 
         <div className="su-row">
-          <span>ליגת העל</span>
+          <span>{t('premierLeague')}</span>
           <b aria-live="polite">{team.name}</b>
         </div>
         <ClubCarousel teams={TEAMS} index={club} onChange={setClub} />
@@ -104,9 +106,9 @@ export function SignupFlow({ next }: { next?: string }) {
         </div>
 
         <label className="mt-4 block">
-          <span className="mb-2 block text-[13px] text-muted">איך יקראו לך בקהילה?</span>
+          <span className="mb-2 block text-[13px] text-muted">{t('nickPrompt')}</span>
           <span className="su-field">
-            <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={20} placeholder="הכינוי שלך" autoComplete="nickname" />
+            <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={20} placeholder={t('nickPlaceholder')} autoComplete="nickname" />
           </span>
         </label>
         {/* Birth date (owner, 2026-10-16): required, from 16; never shown to other fans. */}
@@ -115,7 +117,7 @@ export function SignupFlow({ next }: { next?: string }) {
         </div>
         <div className="min-h-4 flex-1" />
         <button type="button" className="su-btn su-btn-green" disabled={nick.trim().length < 2 || !birthDate} onClick={() => setStep('confirm')}>
-          נעילת הקבוצה
+          {t('lockClub')}
         </button>
       </section>
     )
@@ -128,10 +130,10 @@ export function SignupFlow({ next }: { next?: string }) {
       </span>
       <h1 className="su-title mt-4">
         {team.name}
-        <span>הקבוצה שלך, לתמיד.</span>
+        <span>{t('yourClubForever')}</span>
       </h1>
       <p className="su-note">
-        אי אפשר להחליף קבוצה, גם לא בהמשך. <b>אוהד אמיתי לא מחליף קבוצה.</b>
+        {t.rich('cannotSwitch', { b: (c) => <b>{c}</b> })}
       </p>
       {error && (
         <p role="alert" className="mt-3 text-sm text-live">
@@ -142,14 +144,18 @@ export function SignupFlow({ next }: { next?: string }) {
       <label className="su-consent">
         <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required aria-required="true" />
         <span>
-          אני מסכים/ה ל
-          <Link href="/terms" target="_blank" rel="noopener">
-            תנאי השימוש
-          </Link>{' '}
-          ול
-          <Link href="/privacy" target="_blank" rel="noopener">
-            מדיניות הפרטיות
-          </Link>
+          {t.rich('agreeTo', {
+            terms: (c) => (
+              <Link href="/terms" target="_blank" rel="noopener">
+                {c}
+              </Link>
+            ),
+            privacy: (c) => (
+              <Link href="/privacy" target="_blank" rel="noopener">
+                {c}
+              </Link>
+            ),
+          })}
         </span>
       </label>
       <button
@@ -160,10 +166,10 @@ export function SignupFlow({ next }: { next?: string }) {
           if (accepted) execute({ teamId: team.id, nick, confirm: true, accept: true, birthDate, next })
         }}
       >
-        {isPending ? 'שומר…' : 'כן, זו הקבוצה שלי'}
+        {isPending ? t('saving') : t('yesMyClub')}
       </button>
       <button type="button" className="su-btn su-btn-ghost" onClick={() => setStep('club')}>
-        רגע, אני רוצה לבדוק שוב
+        {t('checkAgain')}
       </button>
     </section>
   )

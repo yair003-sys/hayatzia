@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useSyncExternalStore, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { birthDateSchema } from '@/features/first-run/schema'
 import { setBirthDateAction } from '../server/actions'
@@ -31,6 +32,7 @@ function setLater() {
  * keep working; new private chats and rides wait for it. Never shown to other fans.
  */
 export function BirthDateSheet() {
+  const t = useTranslations('signup')
   const later = useSyncExternalStore(
     (l) => {
       laterListeners.add(l)
@@ -50,9 +52,9 @@ export function BirthDateSheet() {
       <div className="sq-sheet ib-sheet space-y-3" role="dialog" aria-modal="true" aria-labelledby="birth-date-title">
         <span className="sq-grip" aria-hidden="true" />
         <h2 id="birth-date-title" className="t-sec">
-          עוד פרט אחד: תאריך לידה
+          {t('oneMoreDetail')}
         </h2>
-        <p className="text-sm text-muted">מעכשיו אפשר לכתוב לאוהדים מכל הליגה. כדי להגן על בני נוער, צריך תאריך לידה לפני שיחה חדשה או נסיעה.</p>
+        <p className="text-sm text-muted">{t('sheetNote')}</p>
         <BirthDateFields onChange={setValue} />
         {error && (
           <p role="alert" className="text-sm text-live">
@@ -67,19 +69,19 @@ export function BirthDateSheet() {
             onClick={() =>
               start(async () => {
                 const parsed = birthDateSchema.safeParse(value)
-                if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'התאריך לא תקין')
+                if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? t('dateInvalid'))
                 const r = await setBirthDateAction({ birthDate: parsed.data })
                 if (r?.data && 'ok' in r.data) {
                   setClosed(true)
                   router.refresh()
-                } else setError((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'השמירה נכשלה. נסה שוב')
+                } else setError((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? t('saveFailed'))
               })
             }
           >
-            {pending ? 'שומר…' : 'שמירה'}
+            {pending ? t('saving') : t('save')}
           </button>
           <button type="button" className="min-h-11 rounded-lg border border-line px-4" onClick={setLater}>
-            לא עכשיו
+            {t('notNow')}
           </button>
         </div>
       </div>
