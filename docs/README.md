@@ -3,6 +3,7 @@
 | File | What it is | When to read |
 |---|---|---|
 | `../CLAUDE.md` | Standing rules for every session | Always, first |
+| `ONBOARDING.md` | Developer "start here": setup, run locally, repo tour, workflow, CI, first change | First day for a new engineer |
 | `ARCHITECTURE.md` | How the new app is built: layers, folders, rendering, data flow | Before touching `apps/web` |
 | `CONVENTIONS.md` | Code style, naming, patterns, testing, git | Before writing code |
 | `DATA_MODEL.md` | Database tables, relations, RLS, triggers, indexes | Before touching the DB |
