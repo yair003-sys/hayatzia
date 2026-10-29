@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { teamAccent } from '@/features/stand-home/schema'
@@ -85,6 +86,7 @@ function targetAt(x: number, y: number): Target {
  * every target is a real button, so the keyboard does the same with Tab and Enter.
  */
 export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved, onClose }: Props) {
+  const tl = useTranslations('lineup')
   const [formation, setFormation] = useState<Formation>(initial.formation)
   const [xi, setXI] = useState<XI>(initial.xi)
   const [sel, setSel] = useState<Sel>(null)
@@ -196,7 +198,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
     const next = placeAt(xi, slot, id)
     setXI(next)
     setError(null)
-    setNote(`${nameOf(id)} ב${SLOT_HE[spots[slot]!.role]}`)
+    setNote(tl('placedInSlot', { name: nameOf(id), slot: SLOT_HE[spots[slot]!.role] }))
     return next
   }
 
@@ -204,7 +206,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
     const id = xi[slot]
     if (!id) return
     setXI(clearSlot(xi, slot))
-    setNote(`${nameOf(id)} חזר לספסל`)
+    setNote(tl('benchedPlayer', { name: nameOf(id) }))
   }
 
   // ── taps (and keyboard) ──
@@ -216,13 +218,13 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
     } else if (sel && 'slot' in sel) {
       if (sel.slot !== slot) {
         setXI(swapSlots(xi, sel.slot, slot))
-        setNote('השחקנים הוחלפו')
+        setNote(tl('playersSwapped'))
       }
       setSel(null)
     } else {
       setSel({ slot })
       setTab(spots[slot]!.role) // the squad picker opens on the players for that line
-      setNote(`בחר שחקן לעמדת ${SLOT_HE[spots[slot]!.role]}`)
+      setNote(tl('pickPlayerFor', { slot: SLOT_HE[spots[slot]!.role] }))
     }
   }
 
@@ -240,7 +242,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
       setSel(null)
     } else {
       setSel({ player: id })
-      setNote(`בחר עמדה ל${nameOf(id)}`)
+      setNote(tl('pickSlotFor', { name: nameOf(id) }))
     }
   }
 
@@ -404,17 +406,17 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
       <div ref={panel} className="lu-overlay" role="dialog" aria-modal="true" aria-labelledby="lu-title" style={colours}>
         <div className="lu-head">
           <h2 id="lu-title">
-            ההרכב שלי <span>· {team.short}</span>
+            {tl('myLineup')} <span>· {team.short}</span>
           </h2>
-          <span className="lu-count t-num" aria-label={`${filled} מתוך 11 שחקנים`}>
+          <span className="lu-count t-num" aria-label={tl('playersOf11', { filled })}>
             {filled}/11
           </span>
-          <button ref={closeBtn} type="button" className="lu-x" aria-label="סגור" onClick={() => leave()}>
+          <button ref={closeBtn} type="button" className="lu-x" aria-label={tl('close')} onClick={() => leave()}>
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="lu-forms" role="group" aria-label="מערך">
+        <div className="lu-forms" role="group" aria-label={tl('formationWord')}>
           {FORMATIONS.map((f) => (
             <button
               key={f}
@@ -422,7 +424,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
               aria-pressed={f === formation}
               onClick={() => {
                 setFormation(f)
-                setNote(`מערך ${f}`)
+                setNote(tl('formationSet', { f }))
               }}
             >
               <bdi className="t-num">{f}</bdi>
@@ -446,7 +448,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                 data-filled={p ? '' : undefined}
                 data-over={ghost?.over === s.slot ? '' : undefined}
                 aria-pressed={selSlot === s.slot}
-                aria-label={`עמדת ${SLOT_HE[s.role]}: ${p ? p.name : 'ריקה'}`}
+                aria-label={tl('slotAria', { slot: SLOT_HE[s.role], name: p ? p.name : tl('slotEmpty') })}
                 style={{ left: `${s.x}%`, bottom: `${s.y}%`, maxWidth: `${labelWidth(s)}%` }}
                 onClick={(e) => tapSlot(s.slot, e)}
                 {...(p ? dragHandlers(p.id, s.slot) : {})}
@@ -458,7 +460,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
           })}
         </div>
 
-        <div className="lu-tabs" role="tablist" aria-label="הסגל לפי עמדה" onKeyDown={onTabKey}>
+        <div className="lu-tabs" role="tablist" aria-label={tl('squadByPosition')} onKeyDown={onTabKey}>
           {ROLES.map((r) => (
             <button
               key={r}
@@ -484,7 +486,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
         </div>
 
         <div className="lu-hint">
-          <p role="status">{note || 'גוררים שחקן למגרש, או מקישים על עמדה ואז על שחקן'}</p>
+          <p role="status">{note || tl('dragHint')}</p>
           {selSlot !== null && xi[selSlot] && (
             <button
               type="button"
@@ -494,13 +496,13 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                 setSel(null)
               }}
             >
-              הוצא לספסל
+              {tl('benchBtn')}
             </button>
           )}
         </div>
 
         <div id="lu-squad" className="lu-squad" role="tabpanel" aria-labelledby={`lu-tab-${tab}`}>
-          <ul className="lu-grid" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={`${GROUP_HE[tab]} של ${team.short}`}>
+          <ul className="lu-grid" data-drop="bench" data-over={ghost?.over === 'bench' ? '' : undefined} aria-label={tl('groupOfTeam', { group: GROUP_HE[tab], team: team.short })}>
             {groups[tab].map((p) => {
               const inXI = onPitch.has(p.id)
               return (
@@ -511,7 +513,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                     data-in={inXI ? '' : undefined}
                     data-injured={p.injured ? '' : undefined}
                     aria-pressed={selPlayer === p.id}
-                    aria-label={[p.name, ROLE_HE[p.role], p.injured ? 'פצוע' : null, inXI ? 'בהרכב' : null].filter(Boolean).join(', ')}
+                    aria-label={[p.name, ROLE_HE[p.role], p.injured ? tl('injured') : null, inXI ? tl('inXI') : null].filter(Boolean).join(', ')}
                     onClick={(e) => tapPlayer(p.id, e)}
                     /* from = null: a card is never a pitch drag source, so a swipe that ends over the grid changes
                        nothing. Benching is dragging the pitch player onto the grid, or "הוצא לספסל". */
@@ -532,7 +534,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
                 </li>
               )
             })}
-            {groups[tab].length === 0 && <li className="lu-grid-empty">אין שחקנים בעמדה הזאת</li>}
+            {groups[tab].length === 0 && <li className="lu-grid-empty">{tl('noPlayersPosition')}</li>}
           </ul>
         </div>
 
@@ -543,7 +545,7 @@ export function LineupBuilder({ fixtureId, team, squad, initial, onSave, onSaved
             </p>
           )}
           <button type="button" className="lu-save" data-ready={problem ? undefined : ''} disabled={pending} onClick={save}>
-            {pending ? 'שומר…' : 'שמור את ההרכב שלי'}
+            {pending ? tl('saving') : tl('saveMyLineup')}
           </button>
         </div>
 
