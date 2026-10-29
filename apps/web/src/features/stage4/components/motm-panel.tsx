@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { MotmRow } from '../server/queries'
@@ -11,6 +12,7 @@ type Props = { fixtureId: number; canRate: boolean; squad: SquadRow[]; ranking: 
 
 /** After the final whistle: rate your club's players 1–10, then the fans' player of the match as a gold card. */
 export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort }: Props) {
+  const t = useTranslations('live')
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [scores, setScores] = useState<Record<string, number>>(mine)
@@ -22,20 +24,20 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
   return (
     <section id="motm" aria-labelledby="motm-title" className="space-y-3">
       <h3 id="motm-title" className="sh-sec">
-        שחקן המשחק
+        {t('motm')}
       </h3>
       {top ? (
         <div className="relative overflow-hidden rounded-3xl border border-warn/40 bg-[radial-gradient(120%_80%_at_50%_0%,rgb(245_183_0/.28),transparent_60%),linear-gradient(180deg,var(--color-surface-2),var(--color-surface))] p-5 text-center">
-          <span className="text-[11px] font-bold tracking-widest text-warn">שחקן המשחק של אוהדי {teamShort}</span>
+          <span className="text-[11px] font-bold tracking-widest text-warn">{t('motmOfFans', { team: teamShort })}</span>
           <div className="mx-auto my-3 grid size-28 place-items-center rounded-[28%] bg-[linear-gradient(160deg,#fceba8,#ddb04a_46%,#a0761f)] text-[#2b1d02] shadow-[0_18px_40px_-14px_rgb(245_183_0/.7)]">
             <span className="text-4xl t-num">{top.avg.toFixed(1)}</span>
             <span className="-mt-3 text-xs font-bold">{top.number ?? ''}</span>
           </div>
           <p className="text-2xl font-semibold">{top.name}</p>
-          <p className="text-xs text-muted">{top.count} מדרגים</p>
+          <p className="text-xs text-muted">{t('raters', { count: top.count })}</p>
         </div>
       ) : (
-        <p className="sh-card text-sm text-muted">{canRate ? 'עוד אין דירוגים. תהיה הראשון.' : 'הדירוג נפתח אחרי שריקת הסיום.'}</p>
+        <p className="sh-card text-sm text-muted">{canRate ? t('noRatingsYet') : t('ratingAfterWhistle')}</p>
       )}
 
       {ranking.length > 1 && (
@@ -45,7 +47,7 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
               <span className="w-5 text-center t-num text-muted">{i + 1}</span>
               <span className="flex-1 truncate">
                 <b>{r.name}</b>
-                {r.mine !== null && <small className="ms-2 text-xs text-accent-text">שלך: {r.mine}</small>}
+                {r.mine !== null && <small className="ms-2 text-xs text-accent-text">{t('yours', { score: r.mine })}</small>}
               </span>
               <span className="text-xs text-dim tabular-nums">{r.count}</span>
               <b className="w-9 text-end font-display tabular-nums">{r.avg.toFixed(1)}</b>
@@ -56,20 +58,20 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
 
       {canRate && !open && (
         <button type="button" onClick={() => setOpen(true)} className="w-full rounded-2xl bg-accent py-3 font-bold text-white">
-          {rated ? 'עדכון הדירוגים שלך' : 'דרג את השחקנים (1–10)'}
+          {rated ? t('updateRatings') : t('rateButton')}
         </button>
       )}
 
       {canRate && open && (
         <div className="space-y-2 rounded-2xl border border-line bg-surface-2 p-3">
-          <p className="text-sm text-muted">תן ציון 1–10 למי ששיחק. מספיק לדרג חלק.</p>
+          <p className="text-sm text-muted">{t('rateHint')}</p>
           <ul className="space-y-2">
             {squad.map((p) => (
               <li key={p.playerId} className="space-y-1">
                 <span className="text-sm">
                   <b>{p.name}</b> <small className="text-dim">{p.number}</small>
                 </span>
-                <div className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label={`ציון ל${p.short}`}>
+                <div className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label={t('scoreForPlayer', { player: p.short })}>
                   {Array.from({ length: 10 }, (_, k) => k + 1).map((n) => (
                     <button
                       key={n}
@@ -97,14 +99,14 @@ export function MotmPanel({ fixtureId, canRate, squad, ranking, mine, teamShort 
                 const r = await rateMatchAction({ fixtureId, ratings })
                 if (r.data && 'ok' in r.data) {
                   setOpen(false)
-                  setMsg('הדירוגים נשמרו ✓')
+                  setMsg(t('ratingsSaved'))
                   router.refresh()
-                } else setMsg((r.data && 'error' in r.data && r.data.error) || 'הדירוג לא נשמר')
+                } else setMsg((r.data && 'error' in r.data && r.data.error) || t('ratingFailed'))
               })
             }
             className="w-full rounded-xl bg-accent py-3 font-bold text-white disabled:opacity-40"
           >
-            {pending ? 'שומר…' : `שליחת הדירוגים (${Object.keys(scores).length})`}
+            {pending ? t('saving') : t('submitRatings', { count: Object.keys(scores).length })}
           </button>
         </div>
       )}
