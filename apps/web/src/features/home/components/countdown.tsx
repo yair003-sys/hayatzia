@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { whileVisible } from '@/lib/while-visible'
 import { countdownCells, countdownLabel } from '../schema'
 
@@ -9,6 +10,7 @@ import { countdownCells, countdownLabel } from '../schema'
  * effect), so the server HTML and the first client render match: both show dashes until the first tick.
  */
 export function Countdown({ at }: { at: number }) {
+  const t = useTranslations('home')
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
     const stop = whileVisible(() => {
@@ -27,11 +29,11 @@ export function Countdown({ at }: { at: number }) {
     }
   }, [])
 
-  if (now !== null && at - now <= 0) return <span className="hm-cd-go">המשחק התחיל</span>
+  if (now !== null && at - now <= 0) return <span className="hm-cd-go">{t('matchStarted')}</span>
   // One big line like the sketch ("2 : 03 : 14"): days : hours : minutes, or hours : minutes : seconds under a day.
   const text = now === null ? '– : –– : ––' : countdownCells(at - now).map((c) => c.value).join(' : ')
   return (
-    <span className="hm-cd" dir="ltr" role="timer" aria-label={now === null ? 'הזמן עד שריקת הפתיחה' : `שריקת הפתיחה ${countdownLabel(at - now)}`}>
+    <span className="hm-cd" dir="ltr" role="timer" aria-label={now === null ? t('timeToKickoff') : t('kickoffIn', { label: countdownLabel(at - now) })}>
       <span aria-hidden="true">{text}</span>
     </span>
   )

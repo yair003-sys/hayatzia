@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { roleOf, SLOT_HE } from '@/features/lineup/schema'
 import { ReviewLike, useReviewLikes } from '@/features/ratings/components/review-like'
@@ -18,6 +19,7 @@ const positionHe = (position: string) => {
  * while a pointer is over the cards or focus is inside them (to read or to ♥).
  */
 export function PlayerReviews({ players }: { players: HomePlayer[] }) {
+  const t = useTranslations('home')
   const root = useRef<HTMLDivElement>(null)
   const [tick, setTick] = useState(0)
   const [fading, setFading] = useState(false)
@@ -117,7 +119,7 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
                 </span>
               </div>
               {p.count === 0 ? (
-                <p className="hm-rating hm-unrated">עוד לא דורג</p>
+                <p className="hm-rating hm-unrated">{t('notRatedYet')}</p>
               ) : (
                 <div className="hm-rating">
                   <span className="hm-stars" aria-hidden="true">
@@ -126,9 +128,7 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
                   </span>
                   <b className="t-num">{p.avg === null ? '–' : p.avg.toFixed(1)}</b>
                   <small className="t-num">({p.count.toLocaleString('he-IL')})</small>
-                  <span className="sr-only">
-                    ממוצע {p.avg ?? '–'} מתוך 5, {p.count} מדרגים
-                  </span>
+                  <span className="sr-only">{t('avgOf5', { avg: p.avg ?? '–', count: p.count })}</span>
                 </div>
               )}
               {r ? (
@@ -142,7 +142,7 @@ export function PlayerReviews({ players }: { players: HomePlayer[] }) {
                 </div>
               ) : (
                 <Link href={`/stand/players?p=${p.id}#p-${p.id}`} className="hm-rv-first">
-                  היה הראשון לכתוב ביקורת
+                  {t('beFirstReview')}
                 </Link>
               )}
             </article>

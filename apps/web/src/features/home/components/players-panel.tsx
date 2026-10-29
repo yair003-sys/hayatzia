@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { FanPitch } from '@/features/stand-home/components/fan-pitch'
 import type { Team } from '@/features/teams/data'
 import type { PlayerRow } from '@/features/ratings/schema'
@@ -13,15 +14,16 @@ import type { HomePlayer } from '../server/queries'
  * Both datasets are already on the client, so the toggle is instant.
  */
 export function PlayersPanel({ team, players, squad }: { team: Team; players: HomePlayer[] | null; squad: PlayerRow[] }) {
+  const t = useTranslations('home')
   const [view, setView] = useState<'pitch' | 'list'>('pitch')
   return (
     <>
-      <div className="hm-seg" role="tablist" aria-label="תצוגת שחקנים">
+      <div className="hm-seg" role="tablist" aria-label={t('playersView')}>
         <button type="button" role="tab" aria-selected={view === 'pitch'} className="hm-seg-btn" data-on={view === 'pitch'} onClick={() => setView('pitch')}>
-          מגרש
+          {t('pitch')}
         </button>
         <button type="button" role="tab" aria-selected={view === 'list'} className="hm-seg-btn" data-on={view === 'list'} onClick={() => setView('list')}>
-          רשימה
+          {t('list')}
         </button>
       </div>
       {view === 'pitch' ? (
@@ -29,7 +31,7 @@ export function PlayersPanel({ team, players, squad }: { team: Team; players: Ho
       ) : players ? (
         <PlayerReviews players={players} />
       ) : (
-        <p className="hm-seg-empty">לא הצלחנו לטעון את הביקורות. נסה שוב.</p>
+        <p className="hm-seg-empty">{t('reviewsLoadFail')}</p>
       )}
     </>
   )

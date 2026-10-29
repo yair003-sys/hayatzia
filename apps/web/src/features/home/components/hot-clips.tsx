@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { Heart, ImagePlus } from 'lucide-react'
 import { UploadClip } from '@/features/square/components/upload-clip'
@@ -15,6 +16,7 @@ type Props = { clips: Clip[]; meId: string; myTeamId: string; myNick: string; te
  * yet, an empty card of the row's size opens the Square upload sheet (as the stories "+" does).
  */
 export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
+  const t = useTranslations('home')
   const [open, setOpen] = useState<number | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [uploaded, setUploaded] = useState(false)
@@ -25,7 +27,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
     return (
       <div className="hm-reels-empty">
         <ImagePlus className="size-6 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
-        <p>{uploaded ? 'הפוסט עלה לכיכר ✓' : 'עוד אין פוסטים היום'}</p>
+        <p>{uploaded ? t('postedToSquare') : t('noPostsToday')}</p>
         <UploadClip
           meId={meId}
           myTeamId={myTeamId}
@@ -44,7 +46,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
           }}
           trigger={
             <button type="button" className="hm-empty-btn" onClick={() => setChoosing(true)}>
-              העלה את הראשון
+              {t('uploadFirst')}
             </button>
           }
         />
@@ -58,7 +60,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
             <button
               type="button"
               className="hm-reel"
-              aria-label={`הפוסט של ${c.nick}, ${shortCount(c.likes_count)} לייקים`}
+              aria-label={t('clipAria', { nick: c.nick, count: shortCount(c.likes_count) })}
               onClick={() => {
                 markSeen(c.id)
                 setOpen(i)
@@ -84,7 +86,7 @@ export function HotClips({ clips, meId, myTeamId, myNick, teamShort }: Props) {
           </li>
         ))}
       </ul>
-      {open !== null && <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label="החם בכיכר היום" onSeen={markSeen} onClose={close} />}
+      {open !== null && <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label={t('hotInSquare')} onSeen={markSeen} onClose={close} />}
     </>
   )
 }

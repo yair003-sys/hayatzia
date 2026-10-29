@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { mergeMessages, messageFromBroadcast, type ChatMessage } from '@/features/chat/schema'
@@ -13,6 +14,7 @@ const SHOWN = 3
 
 /** "עכשיו בצ׳אט של האוהדים": the last 3 club chat messages; new ones slide in live (team:<club> broadcast). */
 export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initial: ChatMessage[]; hidden: string[] }) {
+  const t = useTranslations('home')
   const [msgs, setMsgs] = useState(initial)
   const hiddenRef = useRef(hidden)
   useEffect(() => {
@@ -49,15 +51,15 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
     <section aria-labelledby="hm-chat-h" className="hm-chat">
       <div className="hm-chat-top">
         <h2 id="hm-chat-h" className="hm-h2">
-          צ׳אט היציע
+          {t('standChatTitle')}
         </h2>
         <span className="hm-chat-live">
           <i aria-hidden="true" />
-          חי עכשיו
+          {t('liveNow')}
         </span>
       </div>
       {msgs.length === 0 ? (
-        <p className="hm-empty">הצ׳אט שקט כרגע — כתוב את ההודעה הראשונה</p>
+        <p className="hm-empty">{t('chatQuiet')}</p>
       ) : (
         <ul className="hm-chat-list">
           {msgs.map((m) => (
@@ -73,8 +75,8 @@ export function ChatPreview({ teamId, initial, hidden }: { teamId: string; initi
           ))}
         </ul>
       )}
-      <Link href="/stand/chat" className="hm-chat-bar" aria-label="הצטרף לשיחה">
-        <span className="hm-chat-bar-txt">הצטרף לשיחה…</span>
+      <Link href="/stand/chat" className="hm-chat-bar" aria-label={t('joinChatAria')}>
+        <span className="hm-chat-bar-txt">{t('joinChat')}</span>
         <span className="hm-chat-send" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2 11 13" />

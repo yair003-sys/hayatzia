@@ -2,6 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { ClipCard } from '@/features/square/components/clip-card'
@@ -44,6 +45,7 @@ function baseState(): { state: Record<string, unknown>; stale: boolean } {
  * focus trapped, and focus back on the opener when it closes.
  */
 export function StoryViewer({ items, start, meId, myTeamId, label, onSeen, onClose }: Props) {
+  const t = useTranslations('home')
   const [index, setIndex] = useState(start)
   const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set())
   const [progress, setProgress] = useState(0)
@@ -248,11 +250,11 @@ export function StoryViewer({ items, start, meId, myTeamId, label, onSeen, onClo
           story={{ onEnded: () => go(1), onProgress: setProgress }}
         />
       </div>
-      <button type="button" className="hm-viewer-tap" data-side="start" aria-label="הסטורי הקודם" onClick={() => {
+      <button type="button" className="hm-viewer-tap" data-side="start" aria-label={t('prevStory')} onClick={() => {
           if (!swiped.current) go(-1)
         }}
       />
-      <button type="button" className="hm-viewer-tap" data-side="end" aria-label="הסטורי הבא" onClick={() => {
+      <button type="button" className="hm-viewer-tap" data-side="end" aria-label={t('nextStory')} onClick={() => {
           if (!swiped.current) go(1)
         }}
       />
@@ -274,7 +276,7 @@ export function StoryViewer({ items, start, meId, myTeamId, label, onSeen, onClo
             </span>
           ))}
         </div>
-        <button ref={closeBtn} type="button" className="hm-viewer-close" aria-label="סגור" onClick={leave}>
+        <button ref={closeBtn} type="button" className="hm-viewer-close" aria-label={t('close')} onClick={leave}>
           <X className="size-5" aria-hidden="true" />
         </button>
       </div>

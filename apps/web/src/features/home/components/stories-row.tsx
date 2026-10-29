@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Shirt, Star } from 'lucide-react'
@@ -28,6 +29,7 @@ type Props = {
  * unseen post and plays on through the next fans. Circles keep their place while you watch; only the rings change.
  */
 export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNick, teamShort }: Props) {
+  const t = useTranslations('home')
   const seenNow = useSeenNow()
   const [open, setOpen] = useState<number | null>(null)
   const [choosing, setChoosing] = useState(false)
@@ -54,10 +56,10 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
     }
   }, [upload])
 
-  const label = upload === 'busy' ? 'מעלה…' : upload === 'done' ? 'עלה לכיכר ✓' : 'הסטורי שלך'
+  const label = upload === 'busy' ? t('uploading') : upload === 'done' ? t('postedShort') : t('yourStory')
 
   return (
-    <div className="hm-stories" role="list" aria-label="סטוריז">
+    <div className="hm-stories" role="list" aria-label={t('storiesAria')}>
       <div role="listitem" className="hm-story">
         <UploadClip
           meId={meId}
@@ -79,7 +81,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
             if (clip) router.refresh()
           }}
           trigger={
-            <button type="button" className="hm-story-btn" aria-label={`סטורי חדש לאוהדי ${teamShort}`} onClick={() => setChoosing(true)}>
+            <button type="button" className="hm-story-btn" aria-label={t('newStoryFor', { team: teamShort })} onClick={() => setChoosing(true)}>
               <span className="hm-ring" data-kind="add">
                 <span className="hm-face">
                   <Plus className="size-6" strokeWidth={2.4} aria-hidden="true" />
@@ -102,7 +104,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
               </span>
             </span>
             <span className="hm-story-name" data-strong>
-              ההרכב שלך
+              {t('yourLineup')}
             </span>
           </Link>
         </div>
@@ -116,7 +118,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
               </span>
             </span>
             <span className="hm-story-name" data-strong>
-              דרג את השחקנים
+              {t('ratePlayers')}
             </span>
           </Link>
         </div>
@@ -129,7 +131,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
             <button
               type="button"
               className="hm-story-btn"
-              aria-label={`הסטורי של ${g.nick}${g.seen ? '' : ', חדש'}`}
+              aria-label={g.seen ? t('storyOf', { nick: g.nick }) : t('storyOfNew', { nick: g.nick })}
               onClick={() => {
                 const start = starts[gi] ?? 0
                 const first = items[start]
@@ -157,7 +159,7 @@ export function StoriesRow({ groups, lineupFixtureId, rate, meId, myTeamId, myNi
       })}
 
       {open !== null && (
-        <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label="סטוריז של האוהדים" onSeen={markSeen} onClose={close} />
+        <StoryViewer items={items} start={open} meId={meId} myTeamId={myTeamId} label={t('fansStories')} onSeen={markSeen} onClose={close} />
       )}
     </div>
   )

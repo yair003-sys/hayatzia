@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useTranslations } from 'next-intl'
 
 export type StandRow = { team: number; rank: number; short: string; bg: string; ring: string; p: number; pts: number; mine: boolean }
 
@@ -11,6 +12,7 @@ export type StandRow = { team: number; rank: number; short: string; bg: string; 
  * are already on the client, so the toggle is instant and the page never scrolls sideways.
  */
 export function StandingsTable({ rows }: { rows: StandRow[] }) {
+  const t = useTranslations('home')
   const [open, setOpen] = useState(false)
   const i = rows.findIndex((r) => r.mine)
   const start = i < 0 ? 0 : Math.max(0, Math.min(i - 1, rows.length - 3))
@@ -27,10 +29,10 @@ export function StandingsTable({ rows }: { rows: StandRow[] }) {
         </colgroup>
         <thead className="sr-only">
           <tr>
-            <th scope="col">מקום</th>
-            <th scope="col">קבוצה</th>
-            <th scope="col">משחקים</th>
-            <th scope="col">נקודות</th>
+            <th scope="col">{t('rankCol')}</th>
+            <th scope="col">{t('teamCol')}</th>
+            <th scope="col">{t('playedCol')}</th>
+            <th scope="col">{t('pointsCol')}</th>
           </tr>
         </thead>
         <tbody>
@@ -51,7 +53,7 @@ export function StandingsTable({ rows }: { rows: StandRow[] }) {
       </table>
       {canOpen && (
         <button type="button" className="hm-table-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          {open ? 'הצג פחות' : 'הטבלה המלאה'}
+          {open ? t('showLess') : t('fullTable')}
         </button>
       )}
     </>
