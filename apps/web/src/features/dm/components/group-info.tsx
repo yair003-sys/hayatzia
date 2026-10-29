@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Bell, BellOff, Check, LogOut, Pencil, UserPlus, X } from 'lucide-react'
@@ -12,17 +13,19 @@ import { Avatar } from './avatar'
 import { FanList, SearchField, SheetHead, useTeammates, type Fan } from './new-sheet'
 
 type Result = { data?: { error?: string } | unknown; serverError?: string; validationErrors?: unknown } | undefined
+type T = ReturnType<typeof useTranslations>
 
-/** Hebrew error from a safe-action result, or null when it went through. */
-function failure(r: Result): string | null {
+/** Error text from a safe-action result, or null when it went through. */
+function failure(r: Result, t: T): string | null {
   const err = r?.data && typeof r.data === 'object' && 'error' in r.data ? (r.data as { error?: string }).error : undefined
   if (err) return err
-  if (r?.serverError || r?.validationErrors) return 'הפעולה נכשלה. נסה שוב'
+  if (r?.serverError || r?.validationErrors) return t('actionFailed')
   return null
 }
 
 /** Group info: members (admin badge), and the admin's invite / remove / rename; mute and leave for everyone. */
 export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }) {
+  const t = useTranslations('dm')
   const router = useRouter()
   const admin = group.role === 'admin'
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +43,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
     start(async () => {
       setError(null)
       setNote(null)
-      const msg = failure(await fn())
+      const msg = failure(await fn(), t)
       if (msg) setError(msg)
       else {
         after?.()
@@ -65,15 +68,15 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
             }}
           >
             <label className="flex-1">
-              <span className="sr-only">שם הקבוצה</span>
+              <span className="sr-only">{t('groupNameLabel')}</span>
               <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} minLength={2} required autoFocus className="ib-input" />
             </label>
-            <button type="submit" disabled={pending || name.trim().length < 2} aria-label="שמירת השם" className="ib-icon-btn text-ok">
+            <button type="submit" disabled={pending || name.trim().length < 2} aria-label={t('saveNameAria')} className="ib-icon-btn text-ok">
               <Check className="size-5" aria-hidden="true" />
             </button>
             <button
               type="button"
-              aria-label="ביטול"
+              aria-label={t('cancel')}
               className="ib-icon-btn"
               onClick={() => {
                 setName(group.name)
@@ -87,7 +90,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
           <div className="flex items-center gap-1">
             <h1 className="t-page">{group.name}</h1>
             {admin && (
-              <button type="button" aria-label="שינוי שם הקבוצה" className="ib-icon-btn" onClick={() => setRenaming(true)}>
+              <button type="button" aria-label={t('renameGroupAria')} className="ib-icon-btn" onClick={() => setRenaming(true)}>
                 <Pencil className="size-4" aria-hidden="true" />
               </button>
             )}
@@ -109,7 +112,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
       >
         <span className="flex items-center gap-2">
           {muted ? <BellOff className="size-5 text-dim" aria-hidden="true" /> : <Bell className="size-5 text-accent-text" aria-hidden="true" />}
-          השתקת התראות
+          {t('muteNotifications')}
         </span>
         <span className="ib-check" data-on={muted} aria-hidden="true">
           {muted && <Check className="size-3.5" strokeWidth={3} />}
@@ -119,16 +122,16 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
       <section className="space-y-2" aria-labelledby="members-title">
         <div className="flex items-center justify-between">
           <h2 id="members-title" className="t-sec">
-            חברים
+            {t('membersTitle')}
           </h2>
           {admin && room > 0 && (
             <button type="button" className="flex items-center gap-1 text-sm text-accent-text" onClick={() => setInviting(true)}>
               <UserPlus className="size-4" aria-hidden="true" />
-              הזמנת אוהדים
+              {t('inviteFans')}
             </button>
           )}
         </div>
-        <ul className="ib-list" aria-label="חברי הקבוצה">
+        <ul className="ib-list" aria-label={t('membersListAria')}>
           {members.map((m) => {
             const me = m.userId === meId
             const expanded = open === m.userId
@@ -156,22 +159,22 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
                     {admin &&
                       (confirmRemove === m.userId ? (
                         <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted">להוציא את {m.nick}?</span>
+                          <span className="text-muted">{t('removeConfirm', { nick: m.nick })}</span>
                           <button
                             type="button"
                             disabled={pending}
                             className="rounded-full bg-live px-3 py-1 text-xs font-semibold text-white"
                             onClick={() => run(() => removeMemberAction({ groupId: group.id, userId: m.userId }), () => setOpen(null))}
                           >
-                            הוצאה
+                            {t('removeDo')}
                           </button>
                           <button type="button" className="text-xs text-muted" onClick={() => setConfirmRemove(null)}>
-                            ביטול
+                            {t('cancel')}
                           </button>
                         </div>
                       ) : (
                         <button type="button" className="text-sm text-live" onClick={() => setConfirmRemove(m.userId)}>
-                          הוצאה מהקבוצה
+                          {t('removeFromGroup')}
                         </button>
                       ))}
                     <ReportBlock kind="user" refId={m.userId} userId={m.userId} userNick={m.nick} />
@@ -188,11 +191,11 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
                   <button
                     type="button"
                     disabled={pending}
-                    aria-label={`ביטול ההזמנה של ${inv.nick}`}
+                    aria-label={t('cancelInvite', { nick: inv.nick })}
                     className="text-xs text-live"
                     onClick={() => run(() => removeMemberAction({ groupId: group.id, userId: inv.userId }))}
                   >
-                    ביטול
+                    {t('cancel')}
                   </button>
                 </div>
               </li>
@@ -213,20 +216,20 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
 
       {confirmLeave ? (
         <div className="space-y-2 rounded-xl border border-line bg-surface p-3">
-          <p className="text-sm">אחרי העזיבה לא תראה את ההודעות בקבוצה, גם אם יזמינו אותך שוב.</p>
+          <p className="text-sm">{t('leaveConfirm')}</p>
           <div className="flex gap-2">
             <button type="button" disabled={pending} className="ib-pill bg-live! text-white" onClick={() => run(() => leaveGroupAction({ groupId: group.id }))}>
-              עזיבה
+              {t('leaveDo')}
             </button>
             <button type="button" className="ib-pill" onClick={() => setConfirmLeave(false)}>
-              ביטול
+              {t('cancel')}
             </button>
           </div>
         </div>
       ) : (
         <button type="button" className="flex items-center gap-2 text-live" onClick={() => setConfirmLeave(true)}>
           <LogOut className="size-5 -scale-x-100" aria-hidden="true" />
-          עזיבת הקבוצה
+          {t('leaveGroup')}
         </button>
       )}
 
@@ -238,7 +241,7 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
           onClose={() => setInviting(false)}
           onDone={(n) => {
             setInviting(false)
-            setNote(n === 0 ? null : n === 1 ? 'ההזמנה נשלחה' : `${n} הזמנות נשלחו`)
+            setNote(n === 0 ? null : n === 1 ? t('inviteSent1') : t('invitesSent', { count: n }))
             router.refresh()
           }}
         />
@@ -248,15 +251,16 @@ export function GroupInfo({ group, meId }: { group: GroupDetails; meId: string }
 }
 
 function MemberLine({ nick, userId, admin, me = false, invited = false }: { nick: string; userId: string; admin: boolean; me?: boolean; invited?: boolean }) {
+  const t = useTranslations('dm')
   return (
     <>
       <Avatar id={userId} name={nick} size="sm" />
       <span className="min-w-0 flex-1 truncate">
         {nick}
-        {me && <span className="text-dim"> (אתה)</span>}
+        {me && <span className="text-dim"> ({t('you')})</span>}
       </span>
-      {admin && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-accent-text">מנהל</span>}
-      {invited && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted">הוזמן</span>}
+      {admin && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-accent-text">{t('adminBadge')}</span>}
+      {invited && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted">{t('invitedBadge')}</span>}
     </>
   )
 }
@@ -275,6 +279,7 @@ function InviteSheet({
   onClose: () => void
   onDone: (n: number) => void
 }) {
+  const t = useTranslations('dm')
   const { q, fans, search } = useTeammates()
   const [picked, setPicked] = useState<Fan[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -288,7 +293,7 @@ function InviteSheet({
     start(async () => {
       setError(null)
       const r = await inviteAction({ groupId, memberIds: picked.map((p) => p.user_id) })
-      const msg = failure(r)
+      const msg = failure(r, t)
       if (msg) setError(msg)
       else onDone(r?.data && 'invited' in r.data ? (r.data.invited ?? 0) : 0) // only fans the database actually invited
     })
@@ -301,14 +306,14 @@ function InviteSheet({
         if (e.key === 'Escape') onClose()
       }}
     >
-      <div className="sq-sheet ib-sheet" role="dialog" aria-modal="true" aria-label="הזמנת אוהדים" onClick={(e) => e.stopPropagation()}>
+      <div className="sq-sheet ib-sheet" role="dialog" aria-modal="true" aria-label={t('inviteFans')} onClick={(e) => e.stopPropagation()}>
         <span className="sq-grip" aria-hidden="true" />
-        <SheetHead title="הזמנת אוהדים" onBack={onClose} />
+        <SheetHead title={t('inviteFans')} onBack={onClose} />
         {picked.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="נבחרו">
+          <ul className="flex flex-wrap gap-1.5" aria-label={t('pickedAria')}>
             {picked.map((p) => (
               <li key={p.user_id}>
-                <button type="button" className="ib-chip" onClick={() => toggle(p)} aria-label={`הסר את ${p.nick}`}>
+                <button type="button" className="ib-chip" onClick={() => toggle(p)} aria-label={t('removePick', { nick: p.nick })}>
                   {p.nick}
                   <X className="size-3.5" aria-hidden="true" />
                 </button>
@@ -317,7 +322,12 @@ function InviteSheet({
           </ul>
         )}
         <p className="text-xs text-dim">
-          נבחרו <span className="t-num">{picked.length}</span> מתוך <span className="t-num">{room}</span> מקומות פנויים
+          {t.rich('pickedOfRoom', {
+            count: picked.length,
+            max: room,
+            c: (chunks) => <span className="t-num">{chunks}</span>,
+            m: (chunks) => <span className="t-num">{chunks}</span>,
+          })}
         </p>
         <SearchField q={q} onChange={search} />
         <FanList fans={candidates}>
@@ -340,7 +350,7 @@ function InviteSheet({
           </p>
         )}
         <button type="button" disabled={picked.length === 0 || pending} onClick={send} className="su-btn su-btn-blue">
-          שליחת הזמנות
+          {t('sendInvites')}
         </button>
       </div>
     </div>,
