@@ -70,6 +70,26 @@ describe('fromRows', () => {
   })
 })
 
+describe('multiple competitions (e.g. the Toto Cup)', () => {
+  // A cup fixture carries its own competition id in `lg`; league fixtures leave it unset (the primary league).
+  const cup = { id: 5, t: 1_724_700_000, st: 'NS', el: null, r: 'Toto Cup - Group A', lg: 999, h: 604, a: 563, gh: null, ga: null, v: '' }
+  const mixed: League = { ...league, fixtures: [...league.fixtures, cup] }
+
+  it('stamps each fixture with its own competition (lg), falling back to the primary league', () => {
+    const rows = toRows(mixed, {})
+    expect(rows.fixtures.find((f) => f.id === 5)?.league_id).toBe(999) // the cup
+    expect(rows.fixtures.find((f) => f.id === 1)?.league_id).toBe(383) // the league (no lg)
+  })
+
+  it('round-trips: the league stays primary, the cup fixture keeps its lg', () => {
+    const rows = toRows(mixed, {})
+    const back = fromRows({ ...rows, detailIds: [] })
+    expect(back.league.id).toBe(383) // the most common league_id, not the cup
+    expect(back.fixtures.find((f) => f.id === 5)?.lg).toBe(999)
+    expect(back.fixtures.find((f) => f.id === 1)?.lg).toBeUndefined()
+  })
+})
+
 describe('demo fixtures', () => {
   it('flags a demo match so pages can label it', () => {
     const rows = toRows(league, details)

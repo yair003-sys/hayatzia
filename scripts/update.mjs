@@ -8,7 +8,15 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
 const KEY = process.env.API_FOOTBALL_KEY;
-const LEAGUE = Number(process.env.LEAGUE || 383);
+// Competitions to pull, most important first. The first is the "primary" league (383 = Ligat Ha'Al): it labels the
+// season and owns the standings table. Add more (e.g. the Toto Cup) via the LEAGUES repo variable, comma-separated:
+// LEAGUES=383,<toto-cup-id>. Fixtures from a non-primary competition are tagged with their league id (`lg`) so the
+// app shows them as full matches. Back-compatible: unset LEAGUES / LEAGUE keeps the single league behaviour.
+const LEAGUES = String(process.env.LEAGUES || process.env.LEAGUE || '383')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isInteger(n) && n > 0);
+const PRIMARY = LEAGUES[0];
 // The football season label (API-Football uses the starting year). It flips in the summer, so from July
 // on it is the current calendar year, before that the previous one. Auto-detected so no yearly edit is needed;
 // an explicit SEASON env (repo variable) still overrides, e.g. to backfill a past season.
@@ -52,18 +60,26 @@ const fixtures = league?.fixtures || [];
 const inWindow = fixtures.some(f => LIVE.has(f.st) || (f.t * 1000 > now - 150 * M && f.t * 1000 < now + 30 * M));
 const needFull = !league || inWindow || now - (meta.lastFull || 0) > 3 * H;
 
-let out = league ? { ...league } : { league: { id: LEAGUE, season: SEASON }, teams: {}, fixtures: [], standings: [] };
-out.league = { id: LEAGUE, season: SEASON };
+let out = league ? { ...league } : { league: { id: PRIMARY, season: SEASON }, teams: {}, fixtures: [], standings: [] };
+out.league = { id: PRIMARY, season: SEASON };
 
 if (needFull) {
-  const res = await api(`/fixtures?league=${LEAGUE}&season=${SEASON}`);
-  if (res) {
-    const teams = {};
-    const list = res.map(x => {
+  const teams = {};
+  const list = [];
+  let ok = true;
+  // One fixtures request per competition. If any fails (e.g. the daily cap), keep the previous file for this run.
+  for (const L of LEAGUES) {
+    const res = await api(`/fixtures?league=${L}&season=${SEASON}`);
+    if (!res) { ok = false; break; }
+    for (const x of res) {
       for (const side of ['home', 'away']) teams[x.teams[side].id] = { name: x.teams[side].name, logo: x.teams[side].logo };
-      return { id: x.fixture.id, t: x.fixture.timestamp, st: x.fixture.status.short, el: x.fixture.status.elapsed,
-        r: x.league.round, h: x.teams.home.id, a: x.teams.away.id, gh: x.goals.home, ga: x.goals.away, v: x.fixture.venue?.name || '' };
-    }).sort((p, q) => p.t - q.t);
+      list.push({ id: x.fixture.id, t: x.fixture.timestamp, st: x.fixture.status.short, el: x.fixture.status.elapsed,
+        r: x.league.round, h: x.teams.home.id, a: x.teams.away.id, gh: x.goals.home, ga: x.goals.away, v: x.fixture.venue?.name || '',
+        ...(L !== PRIMARY ? { lg: L } : {}) });
+    }
+  }
+  if (ok) {
+    list.sort((p, q) => p.t - q.t);
     const finishedNow = list.filter(f => DONE.has(f.st)).length;
     const finishedBefore = fixtures.filter(f => DONE.has(f.st)).length;
     if (finishedNow !== finishedBefore) meta.lastStand = 0; // a match just ended: refresh the table
@@ -71,8 +87,9 @@ if (needFull) {
   }
 }
 
+// Standings are the primary league's table only (a cup's group tables would mix into the one league table).
 if (!out.standings?.length || now - (meta.lastStand || 0) > 6 * H) {
-  const res = await api(`/standings?league=${LEAGUE}&season=${SEASON}`);
+  const res = await api(`/standings?league=${PRIMARY}&season=${SEASON}`);
   if (res && res[0]) {
     out.standings = res[0].league.standings.map(group => group.map(s => ({
       rank: s.rank, team: s.team.id, pts: s.points, gd: s.goalsDiff, form: s.form || '', grp: s.group || '', desc: s.description || '',

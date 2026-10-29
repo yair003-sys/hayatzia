@@ -8,6 +8,7 @@ export const fixtureSchema = z.object({
   st: z.string(), // status short code (NS, 1H, HT, 2H, FT…)
   el: z.number().nullable().optional(),
   r: z.string(), // round label from API-Football
+  lg: z.number().optional(), // competition id when not the primary league (e.g. the Toto Cup); absent = the league
   h: z.number(), // home team api id
   a: z.number(), // away team api id
   gh: z.number().nullable(),

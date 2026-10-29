@@ -60,7 +60,7 @@ export function toRows(league: League, details: Record<number, FixtureDetail>): 
     ensureTeam(f.a)
     return {
       id: f.id,
-      league_id: leagueId,
+      league_id: f.lg ?? leagueId, // a fixture from another competition (the Toto Cup) carries its own id in `lg`
       season,
       round: f.r,
       kickoff_at: new Date(f.t * 1000).toISOString(),
@@ -111,6 +111,11 @@ export type LeagueReadRows = Pick<LeagueRows, 'apiTeams' | 'fixtures' | 'standin
 export function fromRows(rows: LeagueReadRows): League {
   const first = rows.fixtures[0]
   const season = first?.season ?? rows.standings[0]?.season ?? 0
+  // Most fixtures are the league's; a few may be another competition (the Toto Cup). The primary league is the most
+  // common league_id — it labels the season header and the standings — and any other competition is marked per fixture.
+  const byLeague = new Map<number, number>()
+  for (const f of rows.fixtures) byLeague.set(f.league_id, (byLeague.get(f.league_id) ?? 0) + 1)
+  const primary = [...byLeague.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? first?.league_id ?? 0
 
   const teams: League['teams'] = {}
   for (const t of rows.apiTeams) teams[String(t.api_id)] = { name: t.name, logo: t.logo }
@@ -128,6 +133,7 @@ export function fromRows(rows: LeagueReadRows): League {
         gh: f.home_goals,
         ga: f.away_goals,
         v: f.venue,
+        ...(f.league_id !== primary ? { lg: f.league_id } : {}),
         ...(f.is_demo ? { dm: true } : {}),
       }),
     )
@@ -156,7 +162,7 @@ export function fromRows(rows: LeagueReadRows): League {
   }
 
   return {
-    league: { id: first?.league_id ?? 0, season },
+    league: { id: primary, season },
     teams,
     fixtures,
     standings: [...groups.values()],

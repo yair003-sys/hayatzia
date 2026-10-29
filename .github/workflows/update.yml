@@ -35,6 +35,8 @@ jobs:
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           SEASON: ${{ vars.SEASON }}
+          # Comma-separated competitions, primary first. Empty = just the league (383). Set e.g. "383,<toto-cup-id>".
+          LEAGUES: ${{ vars.LEAGUES }}
         run: node scripts/update.mjs
       - name: Save data if it changed
         if: steps.run.outputs.changed == 'true'
