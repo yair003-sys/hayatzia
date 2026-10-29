@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { Eye, Flag, Heart, MessageCircle, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
 import { ReportBlock, ReportForm } from '@/features/safety/components/report-block'
@@ -28,6 +29,7 @@ type Props = {
 }
 
 export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
+  const t = useTranslations('square')
   const team = teamById(clip.team_id)
   const mine = clip.user_id === meId
   const rival = clip.team_id !== myTeamId
@@ -68,7 +70,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           setRespected(!on)
           setRespects((n) => n - (on ? 1 : -1))
         }
-        setNote(r.data?.error ?? 'לא הצלחנו לשמור')
+        setNote(r.data?.error ?? t('saveFailed'))
       }
     })
   }
@@ -139,10 +141,10 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const canRespect = rival && clip.audience === 'all'
 
   return (
-    <article ref={card} className="relative h-full snap-start snap-always overflow-hidden bg-black" aria-label={`פוסט של ${clip.nick}`}>
+    <article ref={card} className="relative h-full snap-start snap-always overflow-hidden bg-black" aria-label={t('postOf', { nick: clip.nick })}>
       {url ? (
         clip.kind === 'video' ? (
-          <button type="button" onClick={toggleSound} className="absolute inset-0" aria-label={muted ? 'הפעל קול' : 'השתק'}>
+          <button type="button" onClick={toggleSound} className="absolute inset-0" aria-label={muted ? t('soundOn') : t('mute')}>
             <video
               ref={media}
               src={url}
@@ -166,7 +168,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
-              alt={clip.caption || 'פוסט בכיכר'}
+              alt={clip.caption || t('squarePost')}
               className={cn('absolute inset-0 size-full', landscape ? 'object-contain' : 'object-cover', `filt-${clip.filter}`)}
               loading="lazy"
               onLoad={(e) => setLandscape(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight)}
@@ -182,14 +184,14 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               start(async () => {
                 const r = await openOnceClipAction({ clipId: clip.id })
                 if (r.data?.url) setUrl(r.data.url)
-                else setNote(r.data?.error ?? 'לא הצלחנו לפתוח')
+                else setNote(r.data?.error ?? t('openFailed'))
               })
             }
             className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface/80 px-6 py-5 text-sm"
           >
             <Eye className="size-7 text-accent-text" aria-hidden="true" />
-            חד פעמי · הקש לצפייה
-            <span className="text-xs text-muted">אחרי הצפייה הפוסט ייעלם בשבילך</span>
+            {t('onceTapToView')}
+            <span className="text-xs text-muted">{t('onceDisappears')}</span>
           </button>
         </div>
       )}
@@ -200,7 +202,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
         <div className="absolute inset-0 z-10 grid place-items-center bg-black/35" role="status">
           <span className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">
             <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />
-            מעלה…
+            {t('uploading')}
           </span>
         </div>
       )}
@@ -212,7 +214,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
         {team && <TeamScarf team={team} />}
         <b className="text-sm drop-shadow">{clip.nick}</b>
         <span className="text-xs text-white/70">{team?.short}</span>
-        {clip.once && <span className="rounded-full bg-black/50 px-2 py-0.5 text-[11px]">חד פעמי</span>}
+        {clip.once && <span className="rounded-full bg-black/50 px-2 py-0.5 text-[11px]">{t('onceBadge')}</span>}
         <span className="ms-auto rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white/80">{timeLeftHe(clip.expires_at, now)}</span>
       </header>
 
@@ -227,14 +229,14 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">
             <Heart className={cn('size-6', liked && 'fill-live text-live')} aria-hidden="true" />
           </span>
-          <span className="sr-only">לייק</span>
+          <span className="sr-only">{t('likeSr')}</span>
           {shortCount(likes)}
         </button>
         {clip.audience === 'all' && (
           <button
             type="button"
             aria-pressed={respected}
-            aria-label={canRespect ? 'כבוד מאוהד יריב' : 'כבוד נותנים רק אוהדים של קבוצות אחרות'}
+            aria-label={canRespect ? t('respectRival') : t('respectOnlyOthers')}
             disabled={!canRespect}
             onClick={() => toggle('respect')}
             className="flex flex-col items-center gap-0.5 text-xs font-bold disabled:opacity-60"
@@ -256,19 +258,19 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">
             <MessageCircle className="size-6" aria-hidden="true" />
           </span>
-          <span className="sr-only">תגובות</span>
+          <span className="sr-only">{t('comments')}</span>
           {shortCount(commentCount)}
         </button>
         {mine && (
           <button
             type="button"
-            aria-label="מחק את הפוסט"
+            aria-label={t('deletePost')}
             disabled={pending}
             onClick={() =>
               start(async () => {
                 const r = await deleteClipAction({ clipId: clip.id })
                 if (r.data?.ok) onRemoved(clip.id)
-                else setNote('המחיקה נכשלה')
+                else setNote(t('deleteFailed'))
               })
             }
             className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm"
@@ -281,7 +283,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       <div className="absolute start-3 end-16 bottom-4 space-y-1 text-white">
         {clip.caption && <p className="text-sm leading-snug drop-shadow">{clip.caption}</p>}
         {clip.tags && <p className="text-xs font-semibold text-accent-text">{clip.tags}</p>}
-        {clip.once && mine && <p className="text-xs text-white/70">{shortCount(clip.views_count)} צפו</p>}
+        {clip.once && mine && <p className="text-xs text-white/70">{t('viewed', { count: shortCount(clip.views_count) })}</p>}
         {!mine && <ReportBlock kind="clip" refId={clip.id} userId={clip.user_id} userNick={clip.nick} />}
         {note && (
           <p role="alert" className="text-xs text-live">
@@ -293,12 +295,12 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       {comments && (
         <div className="absolute inset-x-0 bottom-0 max-h-[65%] space-y-2 overflow-y-auto rounded-t-3xl border-t border-line bg-surface-2/95 p-4 backdrop-blur">
           <div className="flex items-center justify-between">
-            <b className="text-sm">תגובות</b>
-            <button type="button" aria-label="סגור תגובות" onClick={() => setComments(null)} className="grid size-9 place-items-center text-muted">
+            <b className="text-sm">{t('comments')}</b>
+            <button type="button" aria-label={t('closeComments')} onClick={() => setComments(null)} className="grid size-9 place-items-center text-muted">
               <X className="size-5" aria-hidden="true" />
             </button>
           </div>
-          {comments.length === 0 && <p className="text-xs text-muted">עוד אין תגובות.</p>}
+          {comments.length === 0 && <p className="text-xs text-muted">{t('noComments')}</p>}
           <ul className="space-y-1.5">
             {comments.map((c) => (
               <li key={c.id} className="space-y-1.5 text-sm">
@@ -314,11 +316,11 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
                         setReportingComment(reportingComment === c.id ? null : c.id)
                       }}
                       aria-expanded={reportingComment === c.id}
-                      aria-label={`דווח על התגובה של ${c.nick}`}
+                      aria-label={t('reportComment', { nick: c.nick })}
                       className="-my-2 flex min-h-11 shrink-0 items-center gap-1 px-1 text-xs text-muted"
                     >
                       <Flag className="size-3.5" aria-hidden="true" />
-                      דווח
+                      {t('report')}
                     </button>
                   )}
                 </div>
@@ -353,7 +355,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
                   setComments((cur) => [...(cur ?? []), c])
                   setCommentCount((n) => n + 1)
                   setDraft('')
-                } else setNote(r.data?.error ?? 'התגובה לא נשלחה')
+                } else setNote(r.data?.error ?? t('commentFailed'))
               })
             }}
           >
@@ -361,12 +363,12 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={150}
-              placeholder="תגובה…"
-              aria-label="תגובה"
+              placeholder={t('commentPlaceholder')}
+              aria-label={t('commentLabel')}
               className="min-w-0 flex-1 rounded-md border border-line bg-elev px-3 py-2 text-sm"
             />
             <button type="submit" disabled={pending || !draft.trim()} className="rounded-md bg-accent px-3 text-sm text-white disabled:opacity-40">
-              שלח
+              {t('send')}
             </button>
           </form>
         </div>

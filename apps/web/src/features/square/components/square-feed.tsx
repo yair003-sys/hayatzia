@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { ImagePlus } from 'lucide-react'
 import { LoadError } from '@/components/load-error'
 import { FEED_SIZE, type Audience, type Clip } from '../schema'
@@ -14,6 +15,7 @@ type Props = { initial: Clip[] | null; meId: string; myTeamId: string; myNick: s
 
 /** Reels: one post per screen, swipe up for the next; the next page loads as the last post comes into view. */
 export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
+  const t = useTranslations('square')
   const [clips, setClips] = useState(initial ?? [])
   // Ranked feed → offset pagination: how many posts the server has already returned for this tab.
   const [loaded, setLoaded] = useState(initial?.length ?? 0)
@@ -97,19 +99,19 @@ export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audienc
             <ImagePlus className="size-7" strokeWidth={1.5} />
           </span>
           <p className="text-lg font-semibold">{empty}</p>
-          <p className="text-sm text-muted">כל פוסט נעלם אחרי 24 שעות.</p>
+          <p className="text-sm text-muted">{t('clipsExpire')}</p>
           <button type="button" className="su-btn su-btn-green mt-3 max-w-64" onClick={() => setChoosing(true)}>
-            העלה את הרגע הראשון
+            {t('uploadFirstMoment')}
           </button>
         </div>
       ) : (
-        <div ref={scroller} className="sq-scroller" aria-label="רילס">
+        <div ref={scroller} className="sq-scroller" aria-label={t('reelsAria')}>
           {clips.map((c) => (
             <ClipCard key={c.id} clip={c} meId={meId} myTeamId={myTeamId} onRemoved={(id) => setClips((cur) => cur.filter((x) => x.id !== id))} />
           ))}
           {hasMore && (
             <div ref={end} className="grid h-24 snap-start place-items-center text-sm text-muted">
-              {moreFailed && last ? <LoadError compact onRetry={() => loadMore()} /> : pending ? 'טוען עוד…' : ''}
+              {moreFailed && last ? <LoadError compact onRetry={() => loadMore()} /> : pending ? t('loadingMore') : ''}
             </div>
           )}
         </div>

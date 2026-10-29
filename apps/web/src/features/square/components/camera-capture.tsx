@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Images, SwitchCamera, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -43,6 +44,7 @@ export function CameraCapture({
   setTo: (a: Audience) => void
   teamShort: string
 }) {
+  const t = useTranslations('square')
   const video = useRef<HTMLVideoElement>(null)
   const stream = useRef<MediaStream | null>(null)
   const track = useRef<MediaStreamTrack | null>(null)
@@ -78,11 +80,14 @@ export function CameraCapture({
   }, [])
 
   // Open (and re-open on flip / retry) the camera; always stop the old stream first so the light goes off.
+  // Messages read once here (string values, stable per locale) so the effect's deps stay value-based, not identity.
+  const errUnsupported = t('cameraUnsupported')
+  const errPermission = t('cameraPermission')
   useEffect(() => {
     let cancelled = false
     const start = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setErr('הדפדפן הזה לא תומך במצלמה — אי אפשר להעלות מהמכשיר הזה.')
+        setErr(errUnsupported)
         return
       }
       const videoConstraints = { facingMode: facing, width: { ideal: IDEAL_W }, height: { ideal: IDEAL_H }, frameRate: { ideal: 30 } }
@@ -97,7 +102,7 @@ export function CameraCapture({
         }
       }
       if (!s) {
-        setErr('כדי להעלות צריך לאשר גישה למצלמה. אם כבר דחית — אשר/י ידנית בהגדרות האתר בדפדפן, ואז נסה/י שוב.')
+        setErr(errPermission)
         return
       }
       if (cancelled) {
@@ -126,7 +131,7 @@ export function CameraCapture({
     return () => {
       cancelled = true
     }
-  }, [facing, attempt])
+  }, [facing, attempt, errUnsupported, errPermission])
 
   useEffect(
     () => () => {
@@ -256,8 +261,8 @@ export function CameraCapture({
 
   const OPTS: { id: Audience; label: string }[] = [
     { id: 'team', label: teamShort },
-    { id: 'all', label: 'הליגה' },
-    { id: 'both', label: 'שניהם' },
+    { id: 'all', label: t('league') },
+    { id: 'both', label: t('both') },
   ]
 
   // Software zoom scales the preview; native zoom is already in the stream, so leave the element at 1×.
@@ -271,7 +276,7 @@ export function CameraCapture({
       className="cam"
       role="dialog"
       aria-modal="true"
-      aria-label="מצלמה"
+      aria-label={t('cameraAria')}
       onPointerDown={bgDown}
       onPointerMove={bgMove}
       onPointerUp={bgUp}
@@ -280,7 +285,7 @@ export function CameraCapture({
       <video ref={video} className="cam-view" style={viewStyle} muted playsInline autoPlay />
 
       <div className="cam-top">
-        <button type="button" aria-label="סגירה" onClick={onClose} className="sq-round">
+        <button type="button" aria-label={t('closeAria')} onClick={onClose} className="sq-round">
           <X className="size-5" aria-hidden="true" />
         </button>
         {zoom > 1.05 && (
@@ -294,13 +299,13 @@ export function CameraCapture({
         <div className="cam-err">
           <p>{err}</p>
           <button type="button" className="sq-cap-done" onClick={() => setAttempt((a) => a + 1)}>
-            נסה שוב
+            {t('retry')}
           </button>
         </div>
       ) : (
         <div className="cam-controls">
-          <p className="cam-hint">החזק לסרטון · צבוט לזום · החלק מטה לגלריה</p>
-          <div className="cam-aud" role="group" aria-label="למי לפרסם">
+          <p className="cam-hint">{t('cameraHint')}</p>
+          <div className="cam-aud" role="group" aria-label={t('audienceAria')}>
             {OPTS.map((o) => (
               <button key={o.id} type="button" aria-pressed={to === o.id} onClick={() => setTo(o.id)} className={cn('cam-aud-chip', to === o.id && 'on')}>
                 {o.label}
@@ -308,12 +313,12 @@ export function CameraCapture({
             ))}
           </div>
           <div className="cam-bar">
-            <button type="button" aria-label="גלריה" onClick={onGallery} className="cam-gallery">
+            <button type="button" aria-label={t('gallery')} onClick={onGallery} className="cam-gallery">
               <Images className="size-6" aria-hidden="true" />
             </button>
             <button
               type="button"
-              aria-label={recording ? 'עצור הקלטה' : 'צילום (לחיצה ארוכה לסרטון)'}
+              aria-label={recording ? t('stopRec') : t('shutterAria')}
               className={cn('cam-shutter', recording && 'cam-shutter--rec')}
               onPointerDown={shutterDown}
               onPointerUp={shutterUp}
@@ -321,7 +326,7 @@ export function CameraCapture({
             >
               <span className="cam-shutter-core" />
             </button>
-            <button type="button" aria-label="היפוך מצלמה" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} className="sq-round cam-flip">
+            <button type="button" aria-label={t('flipCamera')} onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} className="sq-round cam-flip">
               <SwitchCamera className="size-5" aria-hidden="true" />
             </button>
           </div>
