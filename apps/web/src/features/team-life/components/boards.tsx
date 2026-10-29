@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Camera, MessageSquare, ShieldCheck, Shirt, Trash2 } from 'lucide-react'
@@ -38,16 +39,18 @@ import {
 } from '../server/actions'
 
 type Result = { data?: { ok?: true; error?: string } | undefined; serverError?: string; validationErrors?: unknown }
-const errorOf = (r: Result) => r.data?.error ?? r.serverError ?? (r.validationErrors ? 'בדוק את הפרטים' : null)
+type T = ReturnType<typeof useTranslations>
+const errorOf = (r: Result, t: T) => r.data?.error ?? r.serverError ?? (r.validationErrors ? t('checkDetails') : null)
 
 function useRun() {
+  const t = useTranslations('teamLife')
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const run = (fn: () => Promise<Result>, after?: () => void) =>
     start(async () => {
       const r = await fn()
-      const e = errorOf(r)
+      const e = errorOf(r, t)
       setError(e)
       if (!e) {
         after?.()
@@ -57,8 +60,10 @@ function useRun() {
   return { pending, error, run }
 }
 
-function MessageTo({ userId, label = 'הודעה' }: { userId: string; label?: string }) {
+function MessageTo({ userId, label }: { userId: string; label?: string }) {
+  const t = useTranslations('teamLife')
   const [pending, start] = useTransition()
+  const text = label ?? t('message')
   return (
     <button
       type="button"
@@ -67,7 +72,7 @@ function MessageTo({ userId, label = 'הודעה' }: { userId: string; label?: s
       className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs"
     >
       <MessageSquare className="size-3.5" aria-hidden="true" />
-      {label}
+      {text}
     </button>
   )
 }
@@ -108,6 +113,7 @@ function VerifiedBadge() {
 }
 
 export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify }: TripsProps) {
+  const t = useTranslations('teamLife')
   // A trip opened from a notification: its match is picked and the trip scrolled into view.
   const focused = focusId ? trips.find((t) => t.id === focusId) : undefined
   const [fixtureId, setFixtureId] = useState(matches.find((m) => m.id === focused?.fixture_id)?.id ?? matches[0]?.id)
@@ -138,7 +144,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
     <div className="space-y-4">
       <RateRides rides={toRate} />
       {!match ? (
-        <p className="py-8 text-center text-muted">אין משחקים קרובים של הקבוצה כרגע.</p>
+        <p className="py-8 text-center text-muted">{t('noUpcomingMatches')}</p>
       ) : (
         <>
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -174,15 +180,15 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
             <div role="status" className="space-y-2 rounded-lg border border-accent bg-surface p-3 text-sm">
               <p>{ROLLOUT_BANNER}</p>
               <Link href="/me/verify" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-semibold text-white">
-                לאימות
+                {t('toVerify')}
               </Link>
             </div>
           )}
           {verify?.required && verify.identity && !verify.driver && (
             <p className="text-xs text-muted">
-              כדי להציע נסיעה צריך גם רישיון נהיגה ורכב רשום.{' '}
+              {t('needLicense')}{' '}
               <Link href="/me/verify" className="underline">
-                לאימות
+                {t('toVerify')}
               </Link>
             </p>
           )}
@@ -225,7 +231,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
               }}
             >
               <p className="rounded-md bg-elev p-2.5 text-xs leading-relaxed text-muted">{RIDE_DISCLAIMER}</p>
-              <Field label="סוג">
+              <Field label={t('kindLabel')}>
                 <select name="kind" className={input}>
                   {Object.entries(TRIP_KIND).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -234,8 +240,8 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                   ))}
                 </select>
               </Field>
-              <Field label="יוצאים מ־">
-                <input name="from" required maxLength={40} placeholder="למשל: חיפה" className={input} />
+              <Field label={t('leavingFrom')}>
+                <input name="from" required maxLength={40} placeholder={t('fromPlaceholder')} className={input} />
               </Field>
               <div className="space-y-1.5">
                 <label className="block space-y-1 text-sm">
@@ -248,7 +254,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                     value={pickup}
                     onChange={(e) => setPickup(e.target.value)}
                     list="pickup-suggestions"
-                    placeholder="למשל: תחנת רכבת מרכז"
+                    placeholder={t('pickupPlaceholder')}
                     aria-describedby="pickup-warning"
                     className={input}
                   />
@@ -258,7 +264,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                     <option key={s} value={s} />
                   ))}
                 </datalist>
-                <div className="flex flex-wrap gap-2" aria-label="הצעות לנקודת איסוף">
+                <div className="flex flex-wrap gap-2" aria-label={t('pickupSuggestionsAria')}>
                   {PICKUP_SUGGESTIONS.map((s) => (
                     <button key={s} type="button" onClick={() => setPickup(s)} className="min-h-11 rounded-full border border-line px-3 text-xs">
                       {s}
@@ -270,23 +276,23 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Field label="כמה לפני המשחק">
+                <Field label={t('howLongBefore')}>
                   <select name="before" defaultValue="120" className={input}>
                     {[60, 90, 120, 150, 180, 240].map((m) => (
                       <option key={m} value={m}>
-                        {m / 60} שע׳ ({departureLabel(match.kickoff, m)})
+                        {m / 60} {t('hoursShort')} ({departureLabel(match.kickoff, m)})
                       </option>
                     ))}
                   </select>
                 </Field>
-                <Field label="מקומות פנויים">
+                <Field label={t('freeSeatsLabel')}>
                   <input name="seats" type="number" min={0} max={8} defaultValue={3} className={input} />
                 </Field>
               </div>
-              <Field label="עלות">
+              <Field label={t('costLabel')}>
                 <select name="cost" className={input}>
-                  <option value="share">השתתפות בדלק</option>
-                  <option value="free">בלי עלות</option>
+                  <option value="share">{t('costShare')}</option>
+                  <option value="free">{t('costFree')}</option>
                 </select>
               </Field>
               {isWoman && (
@@ -295,15 +301,15 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                   {WOMEN_ONLY_LABEL}
                 </label>
               )}
-              <Field label="הערה">
-                <input name="note" maxLength={140} placeholder="לא חובה" className={input} />
+              <Field label={t('noteLabel')}>
+                <input name="note" maxLength={140} placeholder={t('optional')} className={input} />
               </Field>
               <div className="flex gap-2">
                 <button type="submit" disabled={pending} className="min-h-11 flex-1 rounded-lg bg-accent font-semibold text-white">
-                  פרסם
+                  {t('publish')}
                 </button>
                 <button type="button" onClick={() => setForm(false)} className="min-h-11 rounded-lg border border-line px-4">
-                  ביטול
+                  {t('cancel')}
                 </button>
               </div>
             </form>
@@ -314,7 +320,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                 onClick={() => guarded(() => setForm(true))}
                 className="min-h-11 w-full rounded-lg bg-accent py-3 font-semibold text-white"
               >
-                + נסיעה חדשה
+                {t('newRide')}
               </button>
             )
           )}
@@ -325,50 +331,50 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
           )}
 
           {list.length === 0 && (
-            <p className="py-6 text-center text-muted">{womenDrivers ? 'אין נסיעות עם נהגות למשחק הזה.' : 'עוד אין נסיעות למשחק הזה.'}</p>
+            <p className="py-6 text-center text-muted">{womenDrivers ? t('noWomenRides') : t('noRides')}</p>
           )}
           <ul className="space-y-3">
-            {list.map((t) => {
-              const mine = t.user_id === meId
-              const myReq = t.requests.find((r) => r.user_id === meId)
-              const accepted = t.requests.filter((r) => r.status === 'accepted').length
-              const free = Math.max(t.seats - accepted, 0)
-              const closedToMe = t.women_only && !isWoman
-              const verifiedAuthor = t.trust ? (t.kind === 'offer' ? t.trust.driver : t.trust.identity) : false
-              const inRide = t.kind !== 'meet' && (myReq?.status === 'accepted' || (mine && t.requests.some((r) => r.status === 'accepted')))
+            {list.map((tr) => {
+              const mine = tr.user_id === meId
+              const myReq = tr.requests.find((r) => r.user_id === meId)
+              const accepted = tr.requests.filter((r) => r.status === 'accepted').length
+              const free = Math.max(tr.seats - accepted, 0)
+              const closedToMe = tr.women_only && !isWoman
+              const verifiedAuthor = tr.trust ? (tr.kind === 'offer' ? tr.trust.driver : tr.trust.identity) : false
+              const inRide = tr.kind !== 'meet' && (myReq?.status === 'accepted' || (mine && tr.requests.some((r) => r.status === 'accepted')))
               return (
-                <li key={t.id} id={`trip-${t.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', t.id === focusedId && 'trip-focus')}>
+                <li key={tr.id} id={`trip-${tr.id}`} className={cn('space-y-2 rounded-lg border border-line-soft bg-surface p-3', tr.id === focusedId && 'trip-focus')}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <b>{t.nick}</b>
+                    <b>{tr.nick}</b>
                     {verifiedAuthor && <VerifiedBadge />}
-                    <span className="text-xs text-accent-text">{TRIP_KIND[t.kind]}</span>
-                    {t.women_only && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold">{WOMEN_ONLY_LABEL}</span>}
+                    <span className="text-xs text-accent-text">{TRIP_KIND[tr.kind]}</span>
+                    {tr.women_only && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold">{WOMEN_ONLY_LABEL}</span>}
                     {mine && (
-                      <button type="button" aria-label="מחק נסיעה" onClick={() => run(() => deleteTripAction({ id: t.id }))} className="ms-auto flex size-11 items-center justify-center text-dim">
+                      <button type="button" aria-label={t('deleteRide')} onClick={() => run(() => deleteTripAction({ id: tr.id }))} className="ms-auto flex size-11 items-center justify-center text-dim">
                         <Trash2 className="size-4" aria-hidden="true" />
                       </button>
                     )}
                   </div>
-                  {t.kind === 'offer' && t.driver && <p className="text-xs text-muted">{trustLine(t.driver)}</p>}
-                  {t.kind === 'offer' && t.trust?.car && <p className="text-sm">רכב: {t.trust.car}</p>}
-                  {t.plate && (
+                  {tr.kind === 'offer' && tr.driver && <p className="text-xs text-muted">{trustLine(tr.driver)}</p>}
+                  {tr.kind === 'offer' && tr.trust?.car && <p className="text-sm">{t('carLabel')} {tr.trust.car}</p>}
+                  {tr.plate && (
                     <p className="text-sm">
-                      מספר רכב:{' '}
+                      {t('plateLabel')}{' '}
                       <b dir="ltr" className="t-num">
-                        {formatPlate(t.plate)}
+                        {formatPlate(tr.plate)}
                       </b>
                     </p>
                   )}
                   <p className="text-sm">
-                    מ{t.from_city} · יציאה {departureLabel(match.kickoff, t.depart_before_min)}
-                    {t.kind === 'offer' && <> · {free > 0 ? `${free} מקומות פנויים` : 'מלא'}</>} · {t.cost === 'free' ? 'בלי עלות' : 'השתתפות בדלק'}
+                    {t('from', { city: tr.from_city })} · {t('departure')} {departureLabel(match.kickoff, tr.depart_before_min)}
+                    {tr.kind === 'offer' && <> · {free > 0 ? t('freeSeats', { count: free }) : t('full')}</>} · {tr.cost === 'free' ? t('costFree') : t('costShare')}
                   </p>
-                  {t.pickup && <p className="text-sm">איסוף: {t.pickup}</p>}
-                  {t.note && <p className="text-sm text-muted">{t.note}</p>}
+                  {tr.pickup && <p className="text-sm">{t('pickupShort')} {tr.pickup}</p>}
+                  {tr.note && <p className="text-sm text-muted">{tr.note}</p>}
                   {mine ? (
-                    t.requests.length > 0 && (
+                    tr.requests.length > 0 && (
                       <ul className="space-y-2 border-t border-line-soft pt-2">
-                        {t.requests.map((r) => (
+                        {tr.requests.map((r) => (
                           <li key={r.user_id} className="space-y-1.5">
                             <div className="flex items-center gap-2 text-sm">
                               <span className="flex flex-1 items-center gap-1.5">
@@ -379,21 +385,21 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: true }))}
+                                    onClick={() => run(() => decideSeatAction({ tripId: tr.id, userId: r.user_id, accept: true }))}
                                     className="min-h-11 rounded-full bg-ok/20 px-3 text-xs text-ok"
                                   >
-                                    אשר
+                                    {t('approve')}
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => run(() => decideSeatAction({ tripId: t.id, userId: r.user_id, accept: false }))}
+                                    onClick={() => run(() => decideSeatAction({ tripId: tr.id, userId: r.user_id, accept: false }))}
                                     className="min-h-11 rounded-full border border-line px-3 text-xs"
                                   >
-                                    דחה
+                                    {t('reject')}
                                   </button>
                                 </>
                               ) : (
-                                <span className="text-xs text-muted">{r.status === 'accepted' ? 'אושר ✓' : 'נדחה'}</span>
+                                <span className="text-xs text-muted">{r.status === 'accepted' ? t('accepted') : t('rejected')}</span>
                               )}
                               <MessageTo userId={r.user_id} />
                             </div>
@@ -406,7 +412,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                     <div className="flex flex-wrap items-center gap-2">
                       {myReq ? (
                         <span className="text-xs text-muted">
-                          {myReq.status === 'pending' ? 'הבקשה נשלחה' : myReq.status === 'accepted' ? 'אושרת ✓' : 'הבקשה נדחתה'}
+                          {myReq.status === 'pending' ? t('requestSent') : myReq.status === 'accepted' ? t('youAccepted') : t('requestRejected')}
                         </span>
                       ) : closedToMe ? (
                         <span className="text-xs text-muted">{WOMEN_ONLY_LABEL}</span>
@@ -414,34 +420,34 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
                         !suspended && (
                           <button
                             type="button"
-                            disabled={pending || (t.kind === 'offer' && free === 0)}
-                            onClick={() => guarded(() => run(() => requestSeatAction({ id: t.id })))}
+                            disabled={pending || (tr.kind === 'offer' && free === 0)}
+                            onClick={() => guarded(() => run(() => requestSeatAction({ id: tr.id })))}
                             className="min-h-11 rounded-full bg-accent px-3 text-xs font-semibold text-white disabled:opacity-40"
                           >
-                            {t.kind === 'offer' ? 'בקש מקום' : 'מצטרף'}
+                            {tr.kind === 'offer' ? t('requestSeat') : t('joining')}
                           </button>
                         )
                       )}
-                      <MessageTo userId={t.user_id} />
+                      <MessageTo userId={tr.user_id} />
                     </div>
                   )}
-                  {t.kind === 'offer' && (mine || myReq?.status === 'accepted') && (
+                  {tr.kind === 'offer' && (mine || myReq?.status === 'accepted') && (
                     <div className="flex flex-wrap items-center gap-2">
                       <ShareRide
-                        tripId={t.id}
-                        driverNick={t.nick}
-                        pickup={t.pickup}
-                        fromCity={t.from_city}
+                        tripId={tr.id}
+                        driverNick={tr.nick}
+                        pickup={tr.pickup}
+                        fromCity={tr.from_city}
                         kickoffSec={match.kickoff}
-                        departBeforeMin={t.depart_before_min}
+                        departBeforeMin={tr.depart_before_min}
                         match={match.label}
-                        car={t.trust?.car ?? null}
-                        verified={t.trust?.driver ?? false}
+                        car={tr.trust?.car ?? null}
+                        verified={tr.trust?.driver ?? false}
                       />
                     </div>
                   )}
-                  {inRide && emergencyOpen(match.kickoff, t.depart_before_min) && <EmergencyButton tripId={t.id} />}
-                  {!mine && <ReportBlock kind="trip" refId={t.id} userId={t.user_id} userNick={t.nick} />}
+                  {inRide && emergencyOpen(match.kickoff, tr.depart_before_min) && <EmergencyButton tripId={tr.id} />}
+                  {!mine && <ReportBlock kind="trip" refId={tr.id} userId={tr.user_id} userNick={tr.nick} />}
                 </li>
               )
             })}
@@ -454,6 +460,7 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
 
 // ---------------- events ----------------
 export function EventsBoard({ events, meId }: { events: FanEvent[]; meId: string }) {
+  const t = useTranslations('teamLife')
   const [form, setForm] = useState(false)
   const [going, setGoing] = useState<Record<string, boolean>>(() => Object.fromEntries(events.map((e) => [e.id, e.going])))
   const { pending, error, run } = useRun()
@@ -482,7 +489,7 @@ export function EventsBoard({ events, meId }: { events: FanEvent[]; meId: string
             )
           }}
         >
-          <Field label="סוג">
+          <Field label={t('kindLabel')}>
             <select name="kind" className={input}>
               {Object.entries(EVENT_KIND).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -491,34 +498,34 @@ export function EventsBoard({ events, meId }: { events: FanEvent[]; meId: string
               ))}
             </select>
           </Field>
-          <Field label="כותרת">
+          <Field label={t('titleLabel')}>
             <input name="title" required minLength={3} maxLength={80} className={input} />
           </Field>
-          <Field label="מתי">
+          <Field label={t('whenLabel')}>
             <input name="when" type="datetime-local" required className={input} />
           </Field>
-          <Field label="איפה">
-            <input name="area" required maxLength={80} placeholder="עיר ומקום" className={input} />
+          <Field label={t('whereLabel')}>
+            <input name="area" required maxLength={80} placeholder={t('cityPlace')} className={input} />
           </Field>
-          <Field label="פרטים">
-            <input name="note" maxLength={200} placeholder="לא חובה" className={input} />
+          <Field label={t('detailsLabel')}>
+            <input name="note" maxLength={200} placeholder={t('optional')} className={input} />
           </Field>
           <div className="flex gap-2">
             <button type="submit" disabled={pending} className="flex-1 rounded-lg bg-accent py-2.5 font-semibold text-white">
-              פרסם אירוע
+              {t('publishEvent')}
             </button>
             <button type="button" onClick={() => setForm(false)} className="rounded-lg border border-line px-4">
-              ביטול
+              {t('cancel')}
             </button>
           </div>
         </form>
       ) : (
         <button type="button" onClick={() => setForm(true)} className="w-full rounded-lg bg-accent py-3 font-semibold text-white">
-          + אירוע חדש
+          {t('newEvent')}
         </button>
       )}
       {error && <p role="alert" className="text-sm text-live">{error}</p>}
-      {events.length === 0 && <p className="py-6 text-center text-muted">אין אירועים קרובים.</p>}
+      {events.length === 0 && <p className="py-6 text-center text-muted">{t('noEvents')}</p>}
       <ul className="space-y-3">
         {events.map((e) => {
           const on = going[e.id] ?? false
@@ -541,16 +548,16 @@ export function EventsBoard({ events, meId }: { events: FanEvent[]; meId: string
                   }}
                   className={cn('rounded-full px-3 py-1 text-xs font-semibold', on ? 'bg-ok/20 text-ok' : 'bg-accent text-white')}
                 >
-                  {on ? 'מגיע ✓' : 'מגיע?'}
+                  {on ? t('going') : t('goingQ')}
                 </button>
-                <span className="text-xs text-muted">{n} מגיעים · מארגן: {e.nick}</span>
+                <span className="text-xs text-muted">{t('goingCount', { count: n })} · {t('organizer', { nick: e.nick })}</span>
                 {e.user_id === meId ? (
-                  <button type="button" aria-label="מחק אירוע" onClick={() => run(() => deleteEventAction({ id: e.id }))} className="ms-auto text-dim">
+                  <button type="button" aria-label={t('deleteEvent')} onClick={() => run(() => deleteEventAction({ id: e.id }))} className="ms-auto text-dim">
                     <Trash2 className="size-4" aria-hidden="true" />
                   </button>
                 ) : (
                   <span className="ms-auto">
-                    <MessageTo userId={e.user_id} label="למארגן" />
+                    <MessageTo userId={e.user_id} label={t('toOrganizer')} />
                   </span>
                 )}
               </div>
@@ -566,6 +573,7 @@ export function EventsBoard({ events, meId }: { events: FanEvent[]; meId: string
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 
 export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; meId: string; teamShort: string }) {
+  const t = useTranslations('teamLife')
   const [form, setForm] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const cam = useRef<HTMLInputElement>(null)
@@ -575,7 +583,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
   return (
     <div className="space-y-4">
       <p className="rounded-md bg-surface p-3 text-sm text-muted">
-        חולצות, צעיפים ומזכרות בין אוהדי {teamShort}. <b>בלי כרטיסים.</b> התשלום ביד, לא דרך האפליקציה.
+        {t.rich('marketIntro', { team: teamShort, b: (c) => <b>{c}</b> })}
       </p>
       {form ? (
         <form
@@ -589,7 +597,7 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                 if (file && EXT[file.type]) {
                   path = `${meId}/${crypto.randomUUID()}.${EXT[file.type]}`
                   const up = await createClient().storage.from('market').upload(path, file, { contentType: file.type })
-                  if (up.error) return { data: { error: 'העלאת התמונה נכשלה' } }
+                  if (up.error) return { data: { error: t('imageUploadFailed') } }
                 }
                 return createItemAction({
                   category: f.get('cat') as 'shirt',
@@ -613,18 +621,18 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
           <div className="flex gap-2">
             <button type="button" onClick={() => cam.current?.click()} className="flex flex-1 items-center justify-center gap-1 rounded-md border border-line py-2 text-sm">
               <Camera className="size-4" aria-hidden="true" />
-              צילום
+              {t('photo')}
             </button>
             <button type="button" onClick={() => gal.current?.click()} className="flex-1 rounded-md border border-line py-2 text-sm">
-              מהגלריה
+              {t('fromGallery')}
             </button>
           </div>
           {file && <p className="text-xs text-muted">{file.name}</p>}
-          <Field label="מה מוכרים">
-            <input name="title" required maxLength={40} placeholder="למשל: חולצת בית 2024" className={input} />
+          <Field label={t('whatSelling')}>
+            <input name="title" required maxLength={40} placeholder={t('sellingPlaceholder')} className={input} />
           </Field>
           <div className="grid grid-cols-2 gap-2">
-            <Field label="קטגוריה">
+            <Field label={t('categoryLabel')}>
               <select name="cat" className={input}>
                 {Object.entries(MARKET_CAT).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -633,10 +641,10 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                 ))}
               </select>
             </Field>
-            <Field label="מחיר (₪)">
+            <Field label={t('priceLabel')}>
               <input name="price" type="number" min={0} max={100000} required className={input} />
             </Field>
-            <Field label="מצב">
+            <Field label={t('conditionLabel')}>
               <select name="cond" className={input}>
                 {Object.entries(CONDITION).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -645,26 +653,26 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                 ))}
               </select>
             </Field>
-            <Field label="מידה">
-              <input name="size" maxLength={10} placeholder="לא חובה" className={input} />
+            <Field label={t('sizeLabel')}>
+              <input name="size" maxLength={10} placeholder={t('optional')} className={input} />
             </Field>
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={pending} className="flex-1 rounded-lg bg-accent py-2.5 font-semibold text-white">
-              {pending ? 'מפרסם…' : 'פרסם מודעה'}
+              {pending ? t('publishing') : t('publishItem')}
             </button>
             <button type="button" onClick={() => setForm(false)} className="rounded-lg border border-line px-4">
-              ביטול
+              {t('cancel')}
             </button>
           </div>
         </form>
       ) : (
         <button type="button" onClick={() => setForm(true)} className="w-full rounded-lg bg-accent py-3 font-semibold text-white">
-          + מודעה חדשה
+          {t('newItem')}
         </button>
       )}
       {error && <p role="alert" className="text-sm text-live">{error}</p>}
-      {items.length === 0 && <p className="py-6 text-center text-muted">אין מודעות כרגע.</p>}
+      {items.length === 0 && <p className="py-6 text-center text-muted">{t('noItems')}</p>}
       <ul className="grid grid-cols-2 gap-3">
         {items.map((i) => {
           const mine = i.user_id === meId
@@ -678,28 +686,28 @@ export function MarketBoard({ items, meId, teamShort }: { items: MarketItem[]; m
                   <Shirt className="size-8 text-dim" strokeWidth={1.5} aria-hidden="true" />
                 )}
                 <span className="absolute bottom-1.5 start-1.5 rounded-full bg-canvas/85 px-2 py-0.5 text-sm font-bold">₪{i.price}</span>
-                {i.sold && <span className="absolute top-1.5 end-1.5 rounded-full bg-live px-2 py-0.5 text-xs text-white">נמכר</span>}
+                {i.sold && <span className="absolute top-1.5 end-1.5 rounded-full bg-live px-2 py-0.5 text-xs text-white">{t('sold')}</span>}
               </div>
               <div className="space-y-1 p-2">
                 <b className="block text-sm">{i.title}</b>
                 <p className="text-xs text-muted">
                   {CONDITION[i.condition]}
-                  {i.size && ` · מידה ${i.size}`} · {i.nick}
+                  {i.size && ` · ${t('sizeIs', { size: i.size })}`} · {i.nick}
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {mine ? (
                     <>
                       {!i.sold && (
                         <button type="button" onClick={() => run(() => markSoldAction({ id: i.id }))} className="rounded-full border border-line px-2 py-0.5 text-xs">
-                          נמכר
+                          {t('markSold')}
                         </button>
                       )}
                       <button type="button" onClick={() => run(() => deleteItemAction({ id: i.id }))} className="text-xs text-dim">
-                        מחיקה
+                        {t('deleteItem')}
                       </button>
                     </>
                   ) : (
-                    !i.sold && <MessageTo userId={i.user_id} label="למוכר" />
+                    !i.sold && <MessageTo userId={i.user_id} label={t('toSeller')} />
                   )}
                 </div>
                 {!mine && <ReportBlock kind="market_item" refId={i.id} userId={i.user_id} userNick={i.nick} />}

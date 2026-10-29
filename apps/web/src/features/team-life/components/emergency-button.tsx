@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Siren } from 'lucide-react'
 import { EMERGENCY_LABEL, EMERGENCY_NOTE } from '../ride-safety'
 import { reportEmergencyAction } from '../server/emergency'
@@ -11,15 +12,16 @@ import { reportEmergencyAction } from '../server/emergency'
  * background, without delaying the call.
  */
 export function EmergencyButton({ tripId }: { tripId: string }) {
+  const t = useTranslations('teamLife')
   const [msg, setMsg] = useState<string | null>(null)
   const alertTeam = () => {
     void reportEmergencyAction({ tripId })
       .then((r) => {
         const error = r?.data?.error ?? r?.serverError
         if (error) setMsg(error)
-        else setMsg(r?.data?.created ? 'הצוות של onefan קיבל התראה. המשיכו בשיחה עם 100.' : 'הצוות של onefan כבר קיבל התראה.')
+        else setMsg(r?.data?.created ? t('teamAlerted') : t('teamAlreadyAlerted'))
       })
-      .catch(() => setMsg('לא הצלחנו להודיע לצוות. בחירום חייגו 100'))
+      .catch(() => setMsg(t('alertFailed')))
   }
   return (
     <div className="space-y-1.5">
