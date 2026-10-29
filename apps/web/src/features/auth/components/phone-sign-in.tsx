@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +10,7 @@ import { safeNext } from '../safe-next'
 
 /** Sign in with a one-time SMS code (Supabase phone auth). */
 export function PhoneSignIn() {
+  const t = useTranslations('auth')
   const router = useRouter()
   const [phone, setPhone] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -18,11 +20,11 @@ export function PhoneSignIn() {
 
   const send = () => {
     const e164 = toE164Israel(phone)
-    if (!e164) return setError('צריך מספר נייד ישראלי, למשל 050-1234567')
+    if (!e164) return setError(t('needIsraeliPhone'))
     start(async () => {
       setError(null)
       const { error: e } = await createClient().auth.signInWithOtp({ phone: e164 })
-      if (e) return setError('לא הצלחנו לשלוח קוד. נסה שוב בעוד דקה')
+      if (e) return setError(t('sendCodeFailed'))
       setSentTo(e164)
     })
   }
@@ -31,7 +33,7 @@ export function PhoneSignIn() {
     if (!sentTo || code.length !== OTP_LENGTH) return
     start(async () => {
       const { error: e } = await createClient().auth.verifyOtp({ phone: sentTo, token: code, type: 'sms' })
-      if (e) return setError('הקוד שגוי או שפג תוקפו')
+      if (e) return setError(t('codeWrong'))
       // A scanned QR code sent the fan here with ?next=/add/<code>: back to that card (it sends new fans to sign-up).
       router.replace(safeNext(new URLSearchParams(window.location.search).get('next')) as Route)
       router.refresh()
@@ -56,11 +58,11 @@ export function PhoneSignIn() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="050-1234567"
-            aria-label="מספר טלפון נייד"
+            aria-label={t('phoneLabel')}
             className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-4 py-3.5 text-lg"
           />
           <button type="submit" disabled={pending} className="rounded-lg bg-accent px-5 font-bold text-white disabled:opacity-50">
-            {pending ? '…' : 'שלח קוד'}
+            {pending ? '…' : t('sendCode')}
           </button>
         </form>
       ) : (
@@ -72,7 +74,7 @@ export function PhoneSignIn() {
           }}
         >
           <p className="text-sm text-muted">
-            שלחנו קוד ב־SMS ל־<span dir="ltr">{sentTo}</span>
+            {t.rich('smsSentTo', { phone: sentTo, n: (c) => <span dir="ltr">{c}</span> })}
           </p>
           <input
             inputMode="numeric"
@@ -82,14 +84,14 @@ export function PhoneSignIn() {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="______"
-            aria-label="קוד אימות"
+            aria-label={t('codeLabel')}
             className="w-full rounded-lg border border-line bg-surface px-4 py-3.5 text-center font-display text-2xl tracking-[0.5em]"
           />
           <button type="submit" disabled={pending || code.length !== OTP_LENGTH} className="w-full rounded-lg bg-accent py-3.5 font-bold text-white disabled:opacity-50">
-            {pending ? 'בודק…' : 'כניסה'}
+            {pending ? t('checking') : t('enter')}
           </button>
           <button type="button" onClick={() => setSentTo(null)} className="w-full text-sm text-muted">
-            שינוי מספר
+            {t('changeNumber')}
           </button>
         </form>
       )}

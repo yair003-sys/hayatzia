@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import {
   INTRO_PAGES,
@@ -40,6 +41,7 @@ const HIDE_IF_SEEN = `try{if(localStorage.getItem(${JSON.stringify(INTRO_SEEN_KE
  * `then`: 'login' sends the fan to sign in at the end; 'close' just reveals the page underneath.
  */
 export function FirstRunIntro({ then }: { then: 'login' | 'close' }) {
+  const t = useTranslations('firstRun')
   const seen = useSyncExternalStore(noop, readSeen, () => false)
   const [closed, setClosed] = useState(false)
   const [stage, setStage] = useState<Stage>('splash')
@@ -63,7 +65,7 @@ export function FirstRunIntro({ then }: { then: 'login' | 'close' }) {
 
   if (seen || closed) return null
   return (
-    <div className="fr-root" role="dialog" aria-modal="true" aria-label="ברוכים הבאים ל-onefan">
+    <div className="fr-root" role="dialog" aria-modal="true" aria-label={t('welcomeAria')}>
       <script dangerouslySetInnerHTML={{ __html: HIDE_IF_SEEN }} />
       <div className="fr-bg" aria-hidden="true" />
 
@@ -76,12 +78,12 @@ export function FirstRunIntro({ then }: { then: 'login' | 'close' }) {
       <section className="fr-screen fr-welcome" data-on={stage === 'welcome'} aria-hidden={stage !== 'welcome'}>
         <Wordmark />
         <h2 className="fr-hello">
-          ברוך הבא הביתה
-          <span>הבית של האוהדים</span>
+          {t('helloHome')}
+          <span>{t('homeOfFans')}</span>
         </h2>
-        <p>רק אוהדים אמיתיים. רק הקבוצה שלך.</p>
+        <p>{t('realFansOnly')}</p>
         <button type="button" className="fr-btn fr-btn-green" onClick={() => setStage('tour')} tabIndex={stage === 'welcome' ? 0 : -1}>
-          בוא נכיר
+          {t('letsMeet')}
         </button>
       </section>
 
@@ -103,6 +105,7 @@ function Wordmark() {
 }
 
 function Tour({ onSkip, onDone }: { onSkip: () => void; onDone: () => void }) {
+  const t = useTranslations('firstRun')
   const stageRef = useRef<HTMLDivElement>(null)
   const slideRefs = useRef<(HTMLElement | null)[]>([])
   const pillRef = useRef<HTMLSpanElement>(null)
@@ -197,7 +200,7 @@ function Tour({ onSkip, onDone }: { onSkip: () => void; onDone: () => void }) {
           onefan
         </span>
         <button type="button" className="fr-skip" onClick={onSkip}>
-          דלג
+          {t('skip')}
         </button>
       </div>
       <div ref={stageRef} className="fr-stage" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
@@ -222,10 +225,10 @@ function Tour({ onSkip, onDone }: { onSkip: () => void; onDone: () => void }) {
           <span ref={pillRef} className="fr-pill" />
         </div>
         <p className="sr-only" aria-live="polite">
-          עמוד {active + 1} מתוך {N}
+          {t('pageOf', { n: active + 1, total: N })}
         </p>
         <button type="button" className="fr-btn fr-btn-blue" onClick={() => (last ? onDone() : goTo(active + 1))}>
-          {last ? 'בוא נתחיל' : 'הבא'}
+          {last ? t('letsStart') : t('next')}
         </button>
       </div>
     </>
@@ -233,11 +236,12 @@ function Tour({ onSkip, onDone }: { onSkip: () => void; onDone: () => void }) {
 }
 
 function Slide({ page, n, on, hidden, ref }: { page: IntroPage; n: number; on: boolean; hidden: boolean; ref: (el: HTMLElement | null) => void }) {
+  const t = useTranslations('firstRun')
   return (
     <article ref={ref} className="fr-slide" data-in={on} aria-hidden={hidden}>
       <div className="fr-art" aria-hidden="true">
         <IntroArt id={page.id} />
-        <span className="fr-demo">להמחשה</span>
+        <span className="fr-demo">{t('demo')}</span>
       </div>
       <span className="fr-kicker">
         <i>{String(n).padStart(2, '0')}</i>

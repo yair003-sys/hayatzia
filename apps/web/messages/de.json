@@ -26,7 +26,18 @@
     "signInFailed": "Anmeldung fehlgeschlagen. Erneut versuchen",
     "toGoogle": "Weiterleitung zu Google…",
     "continueGoogle": "Mit Google fortfahren",
-    "inAppNote": "Du hast diesen Link offenbar in einer App geöffnet (Instagram, Facebook…). Google blockiert dort die Anmeldung. Tippe auf ⋯ und wähle „Im Browser öffnen“, dann komm hierher zurück."
+    "inAppNote": "Du hast diesen Link offenbar in einer App geöffnet (Instagram, Facebook…). Google blockiert dort die Anmeldung. Tippe auf ⋯ und wähle „Im Browser öffnen“, dann komm hierher zurück.",
+    "needIsraeliPhone": "Gib eine israelische Handynummer ein, z. B. 050-1234567",
+    "sendCodeFailed": "Wir konnten keinen Code senden. Versuch es in einer Minute noch einmal.",
+    "codeWrong": "Der Code ist falsch oder abgelaufen",
+    "phoneLabel": "Handynummer",
+    "sendCode": "Code senden",
+    "smsSentTo": "Wir haben einen Code per SMS an <n>{phone}</n> gesendet",
+    "codeLabel": "Bestätigungscode",
+    "checking": "Wird geprüft…",
+    "enter": "Anmelden",
+    "changeNumber": "Nummer ändern",
+    "stepOf": "Schritt {step} von 3"
   },
   "home": {
     "onlineNow": "Jetzt online",
@@ -325,5 +336,17 @@
     "styleOutline": "Umriss",
     "styleNeon": "Neon",
     "styleMeme": "Meme"
+  },
+  "firstRun": {
+    "welcomeAria": "Willkommen bei onefan",
+    "helloHome": "Willkommen zu Hause",
+    "homeOfFans": "Das Zuhause der Fans",
+    "realFansOnly": "Nur echte Fans. Nur dein Verein.",
+    "letsMeet": "Lass uns loslegen",
+    "skip": "Überspringen",
+    "pageOf": "Seite {n} von {total}",
+    "letsStart": "Los geht’s",
+    "next": "Weiter",
+    "demo": "Illustration"
   }
 }

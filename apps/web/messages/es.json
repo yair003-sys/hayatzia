@@ -26,7 +26,18 @@
     "signInFailed": "Error al iniciar sesión. Inténtalo de nuevo",
     "toGoogle": "Redirigiendo a Google…",
     "continueGoogle": "Continuar con Google",
-    "inAppNote": "Parece que abriste esto dentro de una app (Instagram, Facebook…). Google bloquea el inicio de sesión ahí. Toca ⋯ y elige «Abrir en el navegador», luego vuelve aquí."
+    "inAppNote": "Parece que abriste esto dentro de una app (Instagram, Facebook…). Google bloquea el inicio de sesión ahí. Toca ⋯ y elige «Abrir en el navegador», luego vuelve aquí.",
+    "needIsraeliPhone": "Introduce un número de móvil israelí, p. ej. 050-1234567",
+    "sendCodeFailed": "No pudimos enviar un código. Inténtalo de nuevo en un minuto.",
+    "codeWrong": "El código es incorrecto o ha caducado",
+    "phoneLabel": "Número de móvil",
+    "sendCode": "Enviar código",
+    "smsSentTo": "Enviamos un código por SMS al <n>{phone}</n>",
+    "codeLabel": "Código de verificación",
+    "checking": "Comprobando…",
+    "enter": "Entrar",
+    "changeNumber": "Cambiar número",
+    "stepOf": "Paso {step} de 3"
   },
   "home": {
     "onlineNow": "En línea ahora",
@@ -325,5 +336,17 @@
     "styleOutline": "Contorno",
     "styleNeon": "Neón",
     "styleMeme": "Meme"
+  },
+  "firstRun": {
+    "welcomeAria": "Bienvenido a onefan",
+    "helloHome": "Bienvenido a casa",
+    "homeOfFans": "La casa de los aficionados",
+    "realFansOnly": "Solo aficionados de verdad. Solo tu club.",
+    "letsMeet": "Vamos a conocernos",
+    "skip": "Saltar",
+    "pageOf": "Página {n} de {total}",
+    "letsStart": "Empecemos",
+    "next": "Siguiente",
+    "demo": "Ilustración"
   }
 }

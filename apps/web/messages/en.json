@@ -26,7 +26,18 @@
     "signInFailed": "Sign-in failed. Try again",
     "toGoogle": "Redirecting to Google…",
     "continueGoogle": "Continue with Google",
-    "inAppNote": "It looks like you opened this from inside an app (Instagram, Facebook…). Google blocks sign-in there. Tap ⋯ and choose \"Open in browser\", then come back here."
+    "inAppNote": "It looks like you opened this from inside an app (Instagram, Facebook…). Google blocks sign-in there. Tap ⋯ and choose \"Open in browser\", then come back here.",
+    "needIsraeliPhone": "Enter an Israeli mobile number, e.g. 050-1234567",
+    "sendCodeFailed": "We couldn’t send a code. Try again in a minute.",
+    "codeWrong": "The code is wrong or has expired",
+    "phoneLabel": "Mobile phone number",
+    "sendCode": "Send code",
+    "smsSentTo": "We sent a code by SMS to <n>{phone}</n>",
+    "codeLabel": "Verification code",
+    "checking": "Checking…",
+    "enter": "Enter",
+    "changeNumber": "Change number",
+    "stepOf": "Step {step} of 3"
   },
   "home": {
     "onlineNow": "Online now",
@@ -325,5 +336,17 @@
     "styleOutline": "Outline",
     "styleNeon": "Neon",
     "styleMeme": "Meme"
+  },
+  "firstRun": {
+    "welcomeAria": "Welcome to onefan",
+    "helloHome": "Welcome home",
+    "homeOfFans": "The home of the fans",
+    "realFansOnly": "Only real fans. Only your club.",
+    "letsMeet": "Let’s get started",
+    "skip": "Skip",
+    "pageOf": "Page {n} of {total}",
+    "letsStart": "Let’s begin",
+    "next": "Next",
+    "demo": "Illustration"
   }
 }
