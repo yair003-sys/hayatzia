@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { CATEGORIES, CATEGORY_HE, type BeneficiaryKind, type Category } from '../schema'
 import { createCampaignAction } from '../server/actions'
-
-const KIND_HE: Record<BeneficiaryKind, string> = { amuta: 'עמותה רשומה', business: 'עסק מורשה', individual: 'אדם פרטי' }
 
 type VendorOption = { id: string; name: string }
 
@@ -12,6 +11,7 @@ type VendorOption = { id: string; name: string }
  * goes live — so the form ends with that message, not a live campaign. Vendor Direct: when an approved vendor is
  * picked, it is the money's destination; otherwise a free-text beneficiary is the fallback until the roster fills. */
 export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
+  const t = useTranslations('campaigns')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +23,7 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
     const shekels = Number(f.get('goal'))
     const dateStr = String(f.get('deadline'))
     if (!shekels || shekels < 1 || !dateStr) {
-      setError('מלאו יעד ותאריך סיום תקינים')
+      setError(t('fillGoalDate'))
       return
     }
     const vendorId = String(f.get('vendorId') ?? '')
@@ -32,7 +32,7 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
     // A chosen vendor is the money's destination; otherwise fall back to the free-text beneficiary.
     const beneficiaryName = vendor ? vendor.name : String(f.get('beneficiaryName') ?? '').trim()
     if (!beneficiaryName) {
-      setError('בחרו ספק מאומת או כתבו מי מקבל את הכסף')
+      setError(t('pickVendorOrBeneficiary'))
       return
     }
     setBusy(true)
@@ -52,13 +52,13 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
     setBusy(false)
     const d = r?.data
     if (d && 'id' in d) setSent(true)
-    else setError((d && 'error' in d ? d.error : null) ?? r?.serverError ?? 'הפתיחה נכשלה. בדקו את הפרטים ונסו שוב')
+    else setError((d && 'error' in d ? d.error : null) ?? r?.serverError ?? t('openFailed'))
   }
 
   if (sent) {
     return (
       <div className="rounded-2xl border border-ok/30 bg-ok/10 p-5 text-sm leading-relaxed text-ok">
-        הקמפיין נשלח לבדיקה ✔ נבדוק את המטרה ואת המוטב, ומיד לאחר מכן הוא יעלה לאוויר ואפשר יהיה לתרום.
+        {t('sentForReview')}
       </div>
     )
   }
@@ -67,11 +67,11 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">שם הקמפיין</span>
-        <input name="title" required maxLength={90} className={field} placeholder="למשל: טיפו ענק לדרבי" />
+        <span className="text-[13px] font-bold text-muted">{t('nameLabel')}</span>
+        <input name="title" required maxLength={90} className={field} placeholder={t('namePlaceholder')} />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">קטגוריה</span>
+        <span className="text-[13px] font-bold text-muted">{t('categoryLabel')}</span>
         <select name="category" className={field} defaultValue="tifo">
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -82,19 +82,19 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1.5">
-          <span className="text-[13px] font-bold text-muted">יעד (₪)</span>
+          <span className="text-[13px] font-bold text-muted">{t('goalLabel')}</span>
           <input name="goal" required inputMode="numeric" className={field} placeholder="20000" />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-[13px] font-bold text-muted">תאריך סיום</span>
+          <span className="text-[13px] font-bold text-muted">{t('deadlineLabel')}</span>
           <input name="deadline" required type="date" className={field} />
         </label>
       </div>
       {vendors.length > 0 && (
         <label className="block space-y-1.5">
-          <span className="text-[13px] font-bold text-muted">ספק מאומת (מי מבצע ומקבל את הכסף)</span>
+          <span className="text-[13px] font-bold text-muted">{t('vendorLabel')}</span>
           <select name="vendorId" className={field} defaultValue="">
-            <option value="">— בחר ספק —</option>
+            <option value="">{t('pickVendorOption')}</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
@@ -104,35 +104,35 @@ export function CreateForm({ vendors }: { vendors: VendorOption[] }) {
         </label>
       )}
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">מה קונים מהספק (לא חובה)</span>
-        <input name="item" maxLength={200} className={field} placeholder="למשל: באנר ענק 20 מטר" />
+        <span className="text-[13px] font-bold text-muted">{t('itemLabel')}</span>
+        <input name="item" maxLength={200} className={field} placeholder={t('itemPlaceholder')} />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">או — מי מקבל את הכסף (אם לא נבחר ספק)</span>
-        <input name="beneficiaryName" maxLength={120} className={field} placeholder="שם העסק / העמותה" />
+        <span className="text-[13px] font-bold text-muted">{t('beneficiaryLabel')}</span>
+        <input name="beneficiaryName" maxLength={120} className={field} placeholder={t('beneficiaryPlaceholder')} />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">סוג המוטב</span>
+        <span className="text-[13px] font-bold text-muted">{t('kindLabel')}</span>
         <select name="beneficiaryKind" className={field} defaultValue="business">
-          <option value="business">{KIND_HE.business}</option>
-          <option value="amuta">{KIND_HE.amuta}</option>
-          <option value="individual">{KIND_HE.individual}</option>
+          <option value="business">{t('kindBusiness')}</option>
+          <option value="amuta">{t('kindAmuta')}</option>
+          <option value="individual">{t('kindIndividual')}</option>
         </select>
       </label>
       <label className="block space-y-1.5">
-        <span className="text-[13px] font-bold text-muted">תיאור (לא חובה)</span>
-        <textarea name="description" rows={4} maxLength={4000} className={field} placeholder="ספרו על המטרה…" />
+        <span className="text-[13px] font-bold text-muted">{t('descriptionLabel')}</span>
+        <textarea name="description" rows={4} maxLength={4000} className={field} placeholder={t('descriptionPlaceholder')} />
       </label>
 
       <p className="rounded-xl border border-line bg-surface-2 p-3 text-[12px] leading-relaxed text-muted">
-        לאחר השליחה הקמפיין עובר בדיקה קצרה (מטרה + ספק). כשמושג היעד, הכסף משולם ישירות לספק כנגד חשבונית מס — onefan לא מחזיקה אותו.
+        {t('reviewNote')}
       </p>
       <button
         type="submit"
         disabled={busy}
         className="flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-accent text-[17px] font-extrabold text-white disabled:opacity-50"
       >
-        {busy ? 'שולח…' : 'שלחו לבדיקה ←'}
+        {busy ? t('sending') : t('submitForReview')}
       </button>
       {error && <p className="text-center text-[13px] text-live">{error}</p>}
     </form>
