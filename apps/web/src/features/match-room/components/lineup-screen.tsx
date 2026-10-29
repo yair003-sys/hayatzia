@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 
 /**
  * The line-up screen in the match centre: a switch between "הרכב המשחק" (the official XI on the pitch) and
@@ -10,16 +11,17 @@ import { useState, type ReactNode } from 'react'
  * is hidden and only the pitch shows.
  */
 export function LineupScreen({ match, fan, hasFan }: { match: ReactNode; fan: ReactNode; hasFan: boolean }) {
+  const t = useTranslations('room')
   const [tab, setTab] = useState<'match' | 'fan'>('match')
   return (
     <div className="space-y-3">
       {hasFan && (
-        <div className="lc-switch" role="tablist" aria-label="בחירת הרכב">
+        <div className="lc-switch" role="tablist" aria-label={t('lineupSwitch')}>
           <button type="button" role="tab" aria-selected={tab === 'match'} aria-pressed={tab === 'match'} onClick={() => setTab('match')}>
-            <span>הרכב המשחק</span>
+            <span>{t('matchLineup')}</span>
           </button>
           <button type="button" role="tab" aria-selected={tab === 'fan'} aria-pressed={tab === 'fan'} onClick={() => setTab('fan')}>
-            <span>הרכב האוהדים</span>
+            <span>{t('fanLineup')}</span>
           </button>
         </div>
       )}

@@ -459,5 +459,27 @@
     "of": "sur",
     "daysLeft": "{days} jours restants",
     "ended": "Terminé"
+  },
+  "room": {
+    "roomSoon": "La salle ouvre 30 minutes avant le coup d’envoi",
+    "roomOpen": "La salle est ouverte",
+    "roomClosing": "La salle ferme bientôt",
+    "roomClosed": "La salle est fermée",
+    "readOnlyNote": "Seuls les fans de {home} et {away} écrivent ici. Tu peux lire.",
+    "roomTitle": "Salle du match",
+    "inRoom": "{count} dans la salle",
+    "placeholder": "Que se passe-t-il sur le terrain ?",
+    "emptyEarly": "Encore tôt. À bientôt avant le coup d’envoi.",
+    "emptyNone": "Pas encore de messages dans la salle.",
+    "sendFailed": "Message non envoyé",
+    "liveCenterAria": "Centre du match en direct",
+    "close": "Fermer",
+    "lineupSwitch": "Choisir la composition",
+    "matchLineup": "Composition du match",
+    "fanLineup": "Composition des fans",
+    "battleAria": "Barre de duel en direct",
+    "leading": "en tête",
+    "whoControls": "Qui domine la tribune en ce moment",
+    "pushFor": "Pousser pour {team}"
   }
 }

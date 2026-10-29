@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { battleSplit, leader, type Side } from '../battle'
 import type { BattleStore } from './use-battle'
 
@@ -23,6 +24,7 @@ export function BattleBar({
   mySide: Side | null
   store: BattleStore
 }) {
+  const t = useTranslations('room')
   // The clock lives in state, bumped on each beat and once a second, so the lead fades as beats age — reading
   // Date.now() during render would be an impure call. Starts at 0 (→ a centred 50/50 bar) so server and client match.
   const [now, setNow] = useState(0)
@@ -43,16 +45,16 @@ export function BattleBar({
   const my = mySide === 'h' ? home : mySide === 'a' ? away : null
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-3" aria-label="פס הקרב החי">
+    <section className="rounded-2xl border border-line bg-surface p-3" aria-label={t('battleAria')}>
       <div className="mb-2 flex items-center justify-between text-sm font-extrabold">
         <span className="flex items-center gap-1.5" style={{ color: home.bar }}>
           <i className="size-2.5 rounded-full" style={{ background: home.bar }} aria-hidden="true" />
           {home.short}
-          {lead === 'h' && <span aria-label="מובילים">🔥</span>}
+          {lead === 'h' && <span aria-label={t('leading')}>🔥</span>}
         </span>
-        <span className="text-[11px] font-bold text-muted">מי שולט ביציע עכשיו</span>
+        <span className="text-[11px] font-bold text-muted">{t('whoControls')}</span>
         <span className="flex items-center gap-1.5" style={{ color: away.bar }}>
-          {lead === 'a' && <span aria-label="מובילים">🔥</span>}
+          {lead === 'a' && <span aria-label={t('leading')}>🔥</span>}
           {away.short}
           <i className="size-2.5 rounded-full" style={{ background: away.bar }} aria-hidden="true" />
         </span>
@@ -80,7 +82,7 @@ export function BattleBar({
           style={{ background: my.bar }}
         >
           <span aria-hidden="true">🔥</span>
-          דחוף ל{my.short}
+          {t('pushFor', { team: my.short })}
         </button>
       )}
     </section>

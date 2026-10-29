@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { X } from 'lucide-react'
@@ -31,6 +32,7 @@ export function LiveMatchCenter({
   backHref: string
   panels: Panel[]
 }) {
+  const t = useTranslations('room')
   const router = useRouter()
   const N = panels.length
   const [idx, setIdx] = useState(0)
@@ -70,14 +72,14 @@ export function LiveMatchCenter({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-black" role="dialog" aria-modal="true" aria-label="מרכז המשחק החי">
+    <div className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-black" role="dialog" aria-modal="true" aria-label={t('liveCenterAria')}>
       {/* scoreboard — always on top */}
       <header
         className="relative z-10 flex-none px-3.5 pb-2.5"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.6rem)', background: 'linear-gradient(180deg,#0c1322,rgba(12,19,34,.6))' }}
       >
         <div className="flex items-center justify-between">
-          <button type="button" onClick={close} aria-label="סגירה" className="sq-round">
+          <button type="button" onClick={close} aria-label={t('close')} className="sq-round">
             <X className="size-5" aria-hidden="true" />
           </button>
           {live && (

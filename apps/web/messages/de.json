@@ -459,5 +459,27 @@
     "of": "von",
     "daysLeft": "Noch {days} Tage",
     "ended": "Beendet"
+  },
+  "room": {
+    "roomSoon": "Der Raum öffnet 30 Minuten vor dem Anpfiff",
+    "roomOpen": "Der Raum ist offen",
+    "roomClosing": "Der Raum schließt bald",
+    "roomClosed": "Der Raum ist geschlossen",
+    "readOnlyNote": "Nur Fans von {home} und {away} schreiben hier. Du darfst gerne mitlesen.",
+    "roomTitle": "Spielraum",
+    "inRoom": "{count} im Raum",
+    "placeholder": "Was passiert auf dem Platz?",
+    "emptyEarly": "Noch früh. Bis zum Anpfiff.",
+    "emptyNone": "Noch keine Nachrichten im Raum.",
+    "sendFailed": "Nachricht nicht gesendet",
+    "liveCenterAria": "Live-Spielzentrum",
+    "close": "Schließen",
+    "lineupSwitch": "Aufstellung wählen",
+    "matchLineup": "Spielaufstellung",
+    "fanLineup": "Fan-Aufstellung",
+    "battleAria": "Live-Kampfleiste",
+    "leading": "in Führung",
+    "whoControls": "Wer gerade den Block beherrscht",
+    "pushFor": "Für {team} drücken"
   }
 }

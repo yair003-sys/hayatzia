@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { roomState, type RoomState } from '../schema'
@@ -30,14 +31,9 @@ type Props = {
   battle?: boolean
 }
 
-const STATE_LABEL: Record<RoomState, string> = {
-  soon: 'החדר נפתח 30 דקות לפני שריקת הפתיחה',
-  open: 'החדר פתוח',
-  closing: 'החדר נסגר בקרוב',
-  closed: 'החדר נסגר',
-}
-
 export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, initial, hidden, crowd, battle = false }: Props) {
+  const t = useTranslations('room')
+  const stateLabel: Record<RoomState, string> = { soon: t('roomSoon'), open: t('roomOpen'), closing: t('roomClosing'), closed: t('roomClosed') }
   const myGroup = myTeamId === home.id ? 'h' : myTeamId === away.id ? 'a' : 'n'
   const mySide = myGroup === 'h' ? 'h' : myGroup === 'a' ? 'a' : null
   const battleStore = useBattle(fixtureId, mySide, battle)
@@ -77,16 +73,16 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
   const playing = myTeamId === home.id || myTeamId === away.id
   const writable = state === 'open' || state === 'closing'
   const readOnly = !writable
-    ? STATE_LABEL[state]
+    ? stateLabel[state]
     : !playing
-      ? `רק אוהדי ${home.short} ו${away.short} כותבים כאן. אתה מוזמן לקרוא.`
+      ? t('readOnlyNote', { home: home.short, away: away.short })
       : undefined
 
   return (
     <section aria-labelledby="room-title" className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 id="room-title" className="font-bold">
-          חדר המשחק
+          {t('roomTitle')}
         </h3>
         <span
           className={
@@ -95,8 +91,8 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
               : 'rounded-full border border-line px-2 py-0.5 text-xs text-muted'
           }
         >
-          {STATE_LABEL[state]}
-          {inRoom !== null && inRoom > 0 && ` · ${inRoom.toLocaleString('he-IL')} בחדר`}
+          {stateLabel[state]}
+          {inRoom !== null && inRoom > 0 && ` · ${t('inRoom', { count: inRoom.toLocaleString('he-IL') })}`}
         </span>
       </div>
       {battle && <BattleBar home={home} away={away} mySide={mySide} store={battleStore} />}
@@ -128,15 +124,15 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         hiddenUsers={hidden}
         reportKind="match_message"
         readOnly={readOnly}
-        placeholder="מה קורה במגרש?"
-        emptyText={state === 'soon' ? 'עוד מוקדם. נתראה לפני שריקת הפתיחה.' : 'עוד אין הודעות בחדר.'}
+        placeholder={t('placeholder')}
+        emptyText={state === 'soon' ? t('emptyEarly') : t('emptyNone')}
         tint={(m) => (m.side === 'a' ? away.bar : home.bar)}
         // The writer's avatar opens a private message, also to fans of the other club (2026-10-16).
         clubOf={(m) => (m.side === 'a' ? { name: away.short, color: away.bar } : m.side === 'h' ? { name: home.short, color: home.bar } : null)}
         send={async (body, replyTo) => {
           const r = await sendMatchMessageAction({ fixtureId, body, replyTo })
           // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.
-          return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
+          return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? t('sendFailed'), kind: r.validationErrors ? 'permanent' : 'retry' }
         }}
         loadOlder={async (cursor) =>
           (await loadOlderMatchMessagesAction({ fixtureId, ...cursor })).data?.messages ?? null

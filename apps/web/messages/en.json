@@ -459,5 +459,27 @@
     "of": "of",
     "daysLeft": "{days} days left",
     "ended": "Ended"
+  },
+  "room": {
+    "roomSoon": "The room opens 30 minutes before kick-off",
+    "roomOpen": "The room is open",
+    "roomClosing": "The room closes soon",
+    "roomClosed": "The room is closed",
+    "readOnlyNote": "Only {home} and {away} fans write here. You’re welcome to read.",
+    "roomTitle": "Match room",
+    "inRoom": "{count} in the room",
+    "placeholder": "What’s happening on the pitch?",
+    "emptyEarly": "Still early. See you before kick-off.",
+    "emptyNone": "No messages in the room yet.",
+    "sendFailed": "Message not sent",
+    "liveCenterAria": "Live match centre",
+    "close": "Close",
+    "lineupSwitch": "Choose line-up",
+    "matchLineup": "Match line-up",
+    "fanLineup": "Fans’ line-up",
+    "battleAria": "Live battle bar",
+    "leading": "leading",
+    "whoControls": "Who controls the stand right now",
+    "pushFor": "Push for {team}"
   }
 }

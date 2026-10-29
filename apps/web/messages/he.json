@@ -459,5 +459,27 @@
     "of": "מתוך",
     "daysLeft": "נותרו {days} ימים",
     "ended": "הסתיים"
+  },
+  "room": {
+    "roomSoon": "החדר נפתח 30 דקות לפני שריקת הפתיחה",
+    "roomOpen": "החדר פתוח",
+    "roomClosing": "החדר נסגר בקרוב",
+    "roomClosed": "החדר נסגר",
+    "readOnlyNote": "רק אוהדי {home} ו{away} כותבים כאן. אתה מוזמן לקרוא.",
+    "roomTitle": "חדר המשחק",
+    "inRoom": "{count} בחדר",
+    "placeholder": "מה קורה במגרש?",
+    "emptyEarly": "עוד מוקדם. נתראה לפני שריקת הפתיחה.",
+    "emptyNone": "עוד אין הודעות בחדר.",
+    "sendFailed": "ההודעה לא נשלחה",
+    "liveCenterAria": "מרכז המשחק החי",
+    "close": "סגירה",
+    "lineupSwitch": "בחירת הרכב",
+    "matchLineup": "הרכב המשחק",
+    "fanLineup": "הרכב האוהדים",
+    "battleAria": "פס הקרב החי",
+    "leading": "מובילים",
+    "whoControls": "מי שולט ביציע עכשיו",
+    "pushFor": "דחוף ל{team}"
   }
 }
