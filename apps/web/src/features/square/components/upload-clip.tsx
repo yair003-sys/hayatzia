@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Plus, SlidersHorizontal, Trash2, Type, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -26,7 +27,6 @@ import { CaptionLayer } from './caption-layer'
 import { CameraCapture } from './camera-capture'
 import { createClipAction } from '../server/actions'
 
-const STYLE_LABEL: Record<CaptionStyle, string> = { classic: 'קלאסי', bar: 'רצועה', outline: 'קו מתאר', neon: 'ניאון', meme: 'ממים' }
 const CAPTION_COLORS = ['#ffffff', '#111111', '#ffe11a', '#ff2d55', '#00e5ff', '#34c759']
 const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
@@ -48,9 +48,17 @@ type Props = {
 
 /** Pick or shoot, write a caption, publish to the open tab. Photos are shrunk; the upload runs in the background. */
 export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStart, onDone, choosing, setChoosing, trigger }: Props) {
+  const t = useTranslations('square')
+  const styleLabel: Record<CaptionStyle, string> = {
+    classic: t('styleClassic'),
+    bar: t('styleBar'),
+    outline: t('styleOutline'),
+    neon: t('styleNeon'),
+    meme: t('styleMeme'),
+  }
   // The fan chooses who sees the post; the open tab is only the starting choice.
   const [to, setTo] = useState<Audience>(audience)
-  const label = (a: Audience) => (a === 'team' ? `לאוהדי ${teamShort}` : a === 'both' ? 'שני הפידים' : 'לכל הליגה')
+  const label = (a: Audience) => (a === 'team' ? t('audienceTeam', { team: teamShort }) : a === 'both' ? t('audienceBoth') : t('audienceAll'))
   const target = label(to)
   const [sent, setSent] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -120,8 +128,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
   const pick = (f: File | undefined) => {
     setError(null)
     if (!f) return
-    if (!mediaOf(f.type)) return setError('אפשר להעלות רק תמונה או סרטון')
-    if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(`הקובץ גדול מ־${MAX_UPLOAD_MB}MB`)
+    if (!mediaOf(f.type)) return setError(t('onlyImageVideo'))
+    if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(t('fileTooBig', { mb: MAX_UPLOAD_MB }))
     setChoosing(false)
     // Keep the audience the fan chose in the camera (incl. "both"); it only resets when the whole flow closes.
     setFile(f)
@@ -178,7 +186,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
       uploading: true,
     })
     const input = { caption, captions: caps, filter, speed: speed as 0.5 | 1 | 1.5 | 2, trimStart, trimEnd, tags, once, audience: to }
-    const elsewhere = to !== audience ? `הפוסט עלה ${label(to)} ✓` : null
+    const elsewhere = to !== audience ? t('postedTo', { target: label(to) }) : null
     const original = file
     close()
     void (async () => {
@@ -190,7 +198,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         .storage.from('clips')
         .upload(path, ready, { contentType: ready.type, cacheControl: '3600', upsert: false })
       if (upErr) {
-        setError('ההעלאה נכשלה. נסה שוב')
+        setError(t('uploadFailed'))
         return onDone(localId, null)
       }
       const r = await createClipAction({ path, kind: media.kind, ...input })
@@ -201,7 +209,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
         }
         return onDone(localId, r.data.clip ?? null)
       }
-      setError((r.data && 'error' in r.data && r.data.error) || 'הפרסום נכשל. נסה שוב')
+      setError((r.data && 'error' in r.data && r.data.error) || t('publishFailed'))
       onDone(localId, null)
     })()
   }
@@ -213,7 +221,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           e.target.value = '' // the same photo can be picked again
         }} />
       {trigger ?? (
-        <button type="button" className="sq-plus" aria-label="פוסט חדש" onClick={() => setChoosing(true)}>
+        <button type="button" className="sq-plus" aria-label={t('newPost')} onClick={() => setChoosing(true)}>
           <Plus className="size-5" strokeWidth={2.2} aria-hidden="true" />
         </button>
       )}
@@ -232,7 +240,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
       {file &&
         preview &&
         createPortal(
-        <div className="sq-compose" role="dialog" aria-label={`פוסט חדש ${target}`}>
+        <div className="sq-compose" role="dialog" aria-label={t('newPostTo', { target })}>
           <div
             className="sq-compose-media"
             onPointerDown={(e) => {
@@ -250,7 +258,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             ) : (
               // Local preview (blob: URL).
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="תצוגה מקדימה" className={`filt-${filter}`} />
+              <img src={preview} alt={t('previewAlt')} className={`filt-${filter}`} />
             )}
             <CaptionLayer
               captions={captions}
@@ -266,14 +274,14 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
             />
           </div>
           <div className="sq-compose-top">
-            <button type="button" aria-label="ביטול" onClick={close} className="sq-round">
+            <button type="button" aria-label={t('cancel')} onClick={close} className="sq-round">
               <X className="size-5" aria-hidden="true" />
             </button>
             <div className="sq-tools">
-              <button type="button" aria-label="הוספת טקסט" onClick={addCaption} className="sq-round" disabled={captions.length >= MAX_CAPTIONS}>
+              <button type="button" aria-label={t('addText')} onClick={addCaption} className="sq-round" disabled={captions.length >= MAX_CAPTIONS}>
                 <Type className="size-5" aria-hidden="true" />
               </button>
-              <button type="button" aria-label="אפקטים" onClick={() => setShowFx(true)} className={cn('sq-round', showFx && 'on')}>
+              <button type="button" aria-label={t('effects')} onClick={() => setShowFx(true)} className={cn('sq-round', showFx && 'on')}>
                 <SlidersHorizontal className="size-5" aria-hidden="true" />
               </button>
             </div>
@@ -282,7 +290,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           {/* Instagram-style text editor: full-screen, big centered text, a vertical size slider on the side, and
               style/colour rows up top (clear of the keyboard). "סיום" places the caption; tapping it on the clip reopens this. */}
           {editing && sel !== null && captions[sel] && (
-            <div className="cap-edit" role="group" aria-label="עריכת כתובית">
+            <div className="cap-edit" role="group" aria-label={t('editCaption')}>
               <div className="cap-edit-top">
                 <button
                   type="button"
@@ -293,23 +301,23 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                     else setSel(null)
                   }}
                 >
-                  סיום
+                  {t('done')}
                 </button>
-                <button type="button" aria-label="מחק כתובית" onClick={() => { removeCaption(sel); setEditing(false) }} className="cap-edit-del">
+                <button type="button" aria-label={t('deleteCaption')} onClick={() => { removeCaption(sel); setEditing(false) }} className="cap-edit-del">
                   <Trash2 className="size-5" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="cap-edit-styles" role="group" aria-label="סגנון">
+              <div className="cap-edit-styles" role="group" aria-label={t('styleGroup')}>
                 {CAPTION_STYLES.map((s) => (
                   <button key={s} type="button" aria-pressed={captions[sel]?.style === s} onClick={() => patchCaption(sel, { style: s })} className={cn('sq-chip', captions[sel]?.style === s && 'on')}>
-                    {STYLE_LABEL[s]}
+                    {styleLabel[s]}
                   </button>
                 ))}
               </div>
-              <div className="cap-edit-colors" role="group" aria-label="צבע">
+              <div className="cap-edit-colors" role="group" aria-label={t('colorGroup')}>
                 {CAPTION_COLORS.map((col) => (
-                  <button key={col} type="button" aria-label={`צבע ${col}`} onClick={() => patchCaption(sel, { color: col })} className={cn('sq-swatch', captions[sel]?.color === col && 'on')} style={{ background: col }} />
+                  <button key={col} type="button" aria-label={t('colorNamed', { color: col })} onClick={() => patchCaption(sel, { color: col })} className={cn('sq-swatch', captions[sel]?.color === col && 'on')} style={{ background: col }} />
                 ))}
               </div>
 
@@ -320,8 +328,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                   onChange={(e) => patchCaption(sel, { text: e.target.value })}
                   maxLength={80}
                   rows={1}
-                  placeholder="כתוב/י טקסט"
-                  aria-label="טקסט הכתובית"
+                  placeholder={t('captionTextPlaceholder')}
+                  aria-label={t('captionTextLabel')}
                   className={cn('cap-edit-text', `cap--${captions[sel]?.style}`)}
                   style={{ '--c': captions[sel]?.color, '--s': captions[sel]?.size } as CSSProperties}
                 />
@@ -332,7 +340,7 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                   step={0.1}
                   value={captions[sel]?.size ?? 1.4}
                   onChange={(e) => patchCaption(sel, { size: Number(e.target.value) })}
-                  aria-label="גודל הכתובית"
+                  aria-label={t('captionSize')}
                   className="cap-edit-slider"
                 />
               </div>
@@ -341,9 +349,9 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
           {/* Effects slide up only on demand (the sliders icon), so the editor stays a clean clip by default. */}
           {showFx && (
             <div className="sq-fx-wrap" onPointerDown={() => setShowFx(false)}>
-              <div className="sq-fx" role="dialog" aria-label="אפקטים" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="sq-fx" role="dialog" aria-label={t('effects')} onPointerDown={(e) => e.stopPropagation()}>
                 <span className="sq-grip" aria-hidden="true" />
-                <div className="sq-edit-row" role="group" aria-label="פילטר">
+                <div className="sq-edit-row" role="group" aria-label={t('filterGroup')}>
                   {CLIP_FILTERS.map((f) => (
                     <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn('sq-chip', filter === f && 'on')}>
                       {FILTER_LABEL[f]}
@@ -351,8 +359,8 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                   ))}
                 </div>
                 {isVideo && (
-                  <div className="sq-edit-row" role="group" aria-label="מהירות">
-                    <span className="sq-edit-lbl">מהירות</span>
+                  <div className="sq-edit-row" role="group" aria-label={t('speedGroup')}>
+                    <span className="sq-edit-lbl">{t('speed')}</span>
                     {CLIP_SPEEDS.map((s) => (
                       <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)} className={cn('sq-chip', speed === s && 'on')}>
                         {s}x
@@ -363,14 +371,14 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                 {isVideo && dur > 0 && (
                   <div className="sq-trim">
                     <span className="sq-edit-lbl">
-                      חיתוך · {fmtSec(trimStart)}–{fmtSec(trimEnd ?? dur)}
+                      {t('trim')} · {fmtSec(trimStart)}–{fmtSec(trimEnd ?? dur)}
                     </span>
                     <label className="sq-trim-row">
-                      <span>התחלה</span>
-                      <input type="range" min={0} max={Math.max(0.1, (trimEnd ?? dur) - 0.3)} step={0.1} value={trimStart} onChange={(e) => setTrimStart(Number(e.target.value))} aria-label="נקודת התחלה" />
+                      <span>{t('start')}</span>
+                      <input type="range" min={0} max={Math.max(0.1, (trimEnd ?? dur) - 0.3)} step={0.1} value={trimStart} onChange={(e) => setTrimStart(Number(e.target.value))} aria-label={t('startPoint')} />
                     </label>
                     <label className="sq-trim-row">
-                      <span>סוף</span>
+                      <span>{t('end')}</span>
                       <input
                         type="range"
                         min={trimStart + 0.3}
@@ -378,18 +386,18 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
                         step={0.1}
                         value={trimEnd ?? dur}
                         onChange={(e) => setTrimEnd(Number(e.target.value) >= dur ? null : Number(e.target.value))}
-                        aria-label="נקודת סוף"
+                        aria-label={t('endPoint')}
                       />
                     </label>
                   </div>
                 )}
-                <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder="#דרבי #מחזור10" aria-label="תגיות" className="sq-input" />
+                <input value={tags} onChange={(e) => setTags(e.target.value)} maxLength={60} placeholder={t('tagsPlaceholder')} aria-label={t('tagsLabel')} className="sq-input" />
                 <label className="flex items-center gap-2 text-sm text-white/85">
                   <input type="checkbox" checked={once} onChange={(e) => setOnce(e.target.checked)} className="size-4 accent-accent" />
-                  חד פעמי: כל אוהד יוכל לצפות פעם אחת
+                  {t('onceOption')}
                 </label>
                 <button type="button" className="sq-cap-done self-start" onClick={() => setShowFx(false)}>
-                  סיום
+                  {t('done')}
                 </button>
               </div>
             </div>
@@ -397,17 +405,17 @@ export function UploadClip({ meId, myTeamId, myNick, audience, teamShort, onStar
 
           {/* Minimal bottom bar: add a caption, pick who sees it, publish. Everything else lives behind the tool icons. */}
           <div className="sq-foot">
-            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder="הוספת כיתוב..." aria-label="כיתוב" className="sq-foot-cap" />
+            <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} placeholder={t('addCaptionPlaceholder')} aria-label={t('captionLabel')} className="sq-foot-cap" />
             <div className="sq-foot-row">
-              <div className="sq-aud-mini" role="group" aria-label="למי לפרסם">
+              <div className="sq-aud-mini" role="group" aria-label={t('audienceAria')}>
                 {(['team', 'all', 'both'] as const).map((a) => (
                   <button key={a} type="button" aria-pressed={to === a} onClick={() => setTo(a)} className={cn('sq-chip', to === a && 'on')}>
-                    {a === 'team' ? teamShort : a === 'all' ? 'הליגה' : 'שניהם'}
+                    {a === 'team' ? teamShort : a === 'all' ? t('league') : t('both')}
                   </button>
                 ))}
               </div>
               <button type="button" onClick={publish} className="sq-foot-post">
-                פרסום
+                {t('publish')}
               </button>
             </div>
           </div>
