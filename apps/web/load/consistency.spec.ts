@@ -188,12 +188,24 @@ test('a message sent by another fan reaches an open chat over realtime within 5 
 
 type Clip = { id: string; nick: string; likes_count: number; user_id: string }
 
-test('Square: the like count on the first post equals the database', async ({ page }) => {
+test('Square: the like count on the top post equals the database', async ({ page }) => {
   await checked('Square like count = database', async () => {
     const me = fan(1)
     await signIn(page, me)
-    const q = '/rest/v1/clips?select=id,nick,likes_count,user_id&audience=eq.all&order=created_at.desc,id.desc&limit=20'
-    const before = await rest<Clip[]>(me, q)
+    // getSquareFeed ranks by hotScore (engagement × time-decay), NOT recency, over a candidate window of the most
+    // RECENT and the most LIKED posts, in audiences 'all' + 'both'. So the top card is often a viral older post that
+    // is not among the newest. Mirror that same window here, or a viral post looks "missing" and the check cries wolf.
+    const cols = 'id,nick,likes_count,user_id'
+    const feed = async (): Promise<Clip[]> => {
+      const [recent, liked] = await Promise.all([
+        rest<Clip[]>(me, `/rest/v1/clips?select=${cols}&audience=in.(all,both)&order=created_at.desc,id.desc&limit=160`),
+        rest<Clip[]>(me, `/rest/v1/clips?select=${cols}&audience=in.(all,both)&order=likes_count.desc,id.desc&limit=80`),
+      ])
+      const byId = new Map<string, Clip>()
+      for (const c of [...recent, ...liked]) byId.set(c.id, c)
+      return [...byId.values()]
+    }
+    const before = await feed()
     await page.goto('/square', { waitUntil: 'load' })
     const card = page.locator('article[aria-label^="פוסט של"]').first()
     if ((await dataOrError(page, card)) === 'error') {
@@ -202,18 +214,28 @@ test('Square: the like count on the first post equals the database', async ({ pa
     }
     const label = (await card.getAttribute('aria-label')) ?? ''
     const likeText = ((await card.locator('button[aria-pressed]').first().innerText()) ?? '').replace('לייק', '').trim()
-    const after = await rest<Clip[]>(me, q)
+    const after = await feed()
     const nick = label.replace('פוסט של ', '')
-    const b = before.find((c) => c.nick === nick)
-    const a = after.find((c) => c.nick === nick && (!b || c.id === b.id))
+    // A fan may have several posts in the window; the screen's count must equal one of this fan's posts, within its
+    // before/after range (the data keeps moving under load). Match the id across the two reads when it is in both.
+    const mine = (list: Clip[]) => list.filter((c) => c.nick === nick)
+    const bPosts = mine(before)
+    const aPosts = mine(after)
+    const hits = (n: number) => shortCount(n) === likeText || (/^\d+$/.test(likeText) && Number(likeText) === n)
     let pass = false
-    let detail = `post of ${nick}: screen "${likeText}"`
-    if (a && b) {
-      const ok = [b.likes_count, a.likes_count].some((n) => shortCount(n) === likeText) || (/^\d+$/.test(likeText) && between(Number(likeText), b.likes_count, a.likes_count))
-      pass = ok
-      detail += `, database ${b.likes_count} before / ${a.likes_count} after`
-    } else detail += ', post not found in the database feed'
-    record('Square like count = database', pass, detail, { screen: likeText, before: b?.likes_count, after: a?.likes_count })
+    for (const b of bPosts) {
+      const a = aPosts.find((c) => c.id === b.id)
+      if (hits(b.likes_count) || (a && (hits(a.likes_count) || (/^\d+$/.test(likeText) && between(Number(likeText), b.likes_count, a.likes_count))))) {
+        pass = true
+        break
+      }
+    }
+    if (!pass) for (const a of aPosts) if (hits(a.likes_count)) { pass = true; break } // a brand-new post seen only in the after read
+    const counts = [...new Set([...bPosts, ...aPosts].map((c) => c.likes_count))].sort((x, y) => y - x)
+    const detail = counts.length
+      ? `post of ${nick}: screen "${likeText}", database candidate counts ${counts.join('/')}`
+      : `post of ${nick}: screen "${likeText}", post not found in the ranked candidate window`
+    record('Square like count = database', pass, detail, { screen: likeText, nick, candidates: counts.length })
     expect(pass).toBeTruthy()
   })
 })
