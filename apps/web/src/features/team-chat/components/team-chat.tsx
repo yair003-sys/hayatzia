@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { ChatRoom } from '@/features/chat/components/chat-room'
 import type { ChatMessage } from '@/features/chat/schema'
 import { loadOlderTeamMessagesAction, reactTeamMessageAction, sendTeamMessageAction } from '../server/actions'
@@ -19,6 +20,7 @@ export function TeamChat({
   color?: string
   clubName?: string
 }) {
+  const t = useTranslations('teamChat')
   return (
     <ChatRoom
       topic={`team:${teamId}`}
@@ -31,12 +33,12 @@ export function TeamChat({
       doodle={color}
       // Every writer here is of my club: the avatar opens a private message (2026-10-16).
       clubOf={() => (clubName ? { name: clubName, color: color ?? 'var(--accent)' } : null)}
-      placeholder="כתוב לקבוצה…"
-      emptyText="עוד אין הודעות. כתוב את הראשונה."
+      placeholder={t('placeholder')}
+      emptyText={t('emptyText')}
       send={async (body, replyTo) => {
         const r = await sendTeamMessageAction({ body, replyTo })
         // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.
-        return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? 'ההודעה לא נשלחה', kind: r.validationErrors ? 'permanent' : 'retry' }
+        return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? t('sendFailed'), kind: r.validationErrors ? 'permanent' : 'retry' }
       }}
       loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? null}
       onReact={(messageId, kind) => void reactTeamMessageAction({ messageId, kind })}

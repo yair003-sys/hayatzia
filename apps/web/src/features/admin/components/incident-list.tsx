@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { INCIDENTS_NOTE, reportTime } from '../schema'
 import type { IncidentRow } from '../server/queries'
 import { ackIncidentAction, closeIncidentAction } from '../server/actions'
@@ -10,6 +11,7 @@ import { ackIncidentAction, closeIncidentAction } from '../server/actions'
  * clears the badge; "סגור אירוע" ends the case (until then the trip and its requests cannot be deleted).
  */
 export function IncidentList({ rows }: { rows: IncidentRow[] }) {
+  const t = useTranslations('admin')
   const [msg, setMsg] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
   const [busy, start] = useTransition()
@@ -17,55 +19,55 @@ export function IncidentList({ rows }: { rows: IncidentRow[] }) {
     start(async () => {
       const r = await fn()
       setConfirm(null)
-      setMsg(r?.data?.ok ? done : (r?.data?.error ?? r?.serverError ?? 'הפעולה נכשלה. נסה שוב'))
+      setMsg(r?.data?.ok ? done : (r?.data?.error ?? r?.serverError ?? t('actionFailed')))
     })
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted">{INCIDENTS_NOTE}</p>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">אין אירועי חירום פתוחים.</p>
+        <p className="text-sm text-muted">{t('noIncidents')}</p>
       ) : (
         <ul className="divide-y divide-line rounded-2xl border border-live/50 bg-surface">
           {rows.map((r) => (
             <li key={r.id} className="space-y-2 p-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                {!r.acknowledged_at && <span className="rounded-full bg-live px-2 py-0.5 text-xs font-bold text-white">חדש</span>}
+                {!r.acknowledged_at && <span className="rounded-full bg-live px-2 py-0.5 text-xs font-bold text-white">{t('newBadge')}</span>}
                 <time dateTime={r.created_at} className="text-dim">
                   {reportTime(r.created_at)}
                 </time>
                 <span className="font-medium">
                   {r.from_city}
-                  {r.pickup ? ` · איסוף: ${r.pickup}` : ''}
+                  {r.pickup ? t('incidentPickup', { pickup: r.pickup }) : ''}
                 </span>
               </div>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
-                <dt className="text-muted">דיווח</dt>
-                <dd>{r.reporter_nick ?? 'אוהד'}</dd>
-                <dt className="text-muted">נהג</dt>
-                <dd>{r.driver_nick ?? 'לא ידוע'}</dd>
-                <dt className="text-muted">רכב</dt>
-                <dd dir="auto">{r.car || 'לא רשום'}</dd>
+                <dt className="text-muted">{t('incidentReporter')}</dt>
+                <dd>{r.reporter_nick ?? t('fan')}</dd>
+                <dt className="text-muted">{t('driver')}</dt>
+                <dd>{r.driver_nick ?? t('unknown')}</dd>
+                <dt className="text-muted">{t('car')}</dt>
+                <dd dir="auto">{r.car || t('notRegistered')}</dd>
                 {r.kickoff_at && (
                   <>
-                    <dt className="text-muted">משחק</dt>
+                    <dt className="text-muted">{t('match')}</dt>
                     <dd>{reportTime(r.kickoff_at)}</dd>
                   </>
                 )}
               </dl>
               {confirm === r.id ? (
-                <div role="group" aria-label="אישור" className="space-y-2 rounded-xl border border-line p-3">
-                  <p className="text-sm font-medium">לסגור את האירוע? אחרי הסגירה אפשר שוב למחוק את הנסיעה. סוגרים רק אחרי שהבירור הסתיים.</p>
+                <div role="group" aria-label={t('confirmGroup')} className="space-y-2 rounded-xl border border-line p-3">
+                  <p className="text-sm font-medium">{t('closeIncidentAsk')}</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => run(() => closeIncidentAction({ id: r.id }), 'האירוע נסגר')}
+                      onClick={() => run(() => closeIncidentAction({ id: r.id }), t('incidentClosed'))}
                       className="min-h-11 flex-1 rounded-xl border border-line px-3 text-sm font-medium disabled:opacity-50"
                     >
-                      כן, לסגור
+                      {t('closeYes')}
                     </button>
                     <button type="button" disabled={busy} onClick={() => setConfirm(null)} className="min-h-11 rounded-xl border border-line px-3 text-sm">
-                      ביטול
+                      {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -75,10 +77,10 @@ export function IncidentList({ rows }: { rows: IncidentRow[] }) {
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => run(() => ackIncidentAction({ id: r.id }), 'סומן שקיבלת')}
+                      onClick={() => run(() => ackIncidentAction({ id: r.id }), t('markedAck'))}
                       className="min-h-11 rounded-xl bg-live px-3 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      קיבלתי
+                      {t('ack')}
                     </button>
                   )}
                   <button
@@ -87,7 +89,7 @@ export function IncidentList({ rows }: { rows: IncidentRow[] }) {
                     onClick={() => setConfirm(r.id)}
                     className="min-h-11 rounded-xl border border-line px-3 text-sm disabled:opacity-50"
                   >
-                    סגור אירוע
+                    {t('closeIncident')}
                   </button>
                 </div>
               )}

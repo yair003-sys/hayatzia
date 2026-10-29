@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { verifyCodeHe } from '@/features/verification/schema'
 import { reportTime } from '../schema'
 import type { VerificationIssueRow } from '../server/queries'
 import { fixBirthDateAction, resetVerificationAction } from '../server/actions'
-
-const KIND = { identity: 'תעודה', licence: 'רישיון' } as const
 
 /**
  * Fans stuck in ride verification (2026-10-16): the latest attempt was rejected, or all three attempts are used.
@@ -14,14 +13,16 @@ const KIND = { identity: 'תעודה', licence: 'רישיון' } as const
  * fan (both logged in "פעולות אחרונות").
  */
 export function VerificationIssueList({ rows }: { rows: VerificationIssueRow[] }) {
+  const t = useTranslations('admin')
+  const KIND = { identity: t('vkIdentity'), licence: t('vkLicence') } as const
   const [msg, setMsg] = useState<string | null>(null)
   const [dates, setDates] = useState<Record<string, string>>({})
   const [busy, start] = useTransition()
-  if (rows.length === 0) return <p className="text-sm text-muted">אין אוהדים שנתקעו באימות.</p>
+  if (rows.length === 0) return <p className="text-sm text-muted">{t('noStuck')}</p>
   const run = (fn: () => Promise<{ data?: { ok?: true; error?: string }; serverError?: string } | undefined>, done: string) =>
     start(async () => {
       const r = await fn()
-      setMsg(r?.data?.ok ? done : (r?.data?.error ?? r?.serverError ?? 'הפעולה נכשלה. נסה שוב'))
+      setMsg(r?.data?.ok ? done : (r?.data?.error ?? r?.serverError ?? t('actionFailed')))
     })
   return (
     <div className="space-y-2">
@@ -32,22 +33,22 @@ export function VerificationIssueList({ rows }: { rows: VerificationIssueRow[] }
           return (
             <li key={key} className="space-y-2 p-3 text-sm">
               <p>
-                <b>{r.nick ?? 'אוהד'}</b> · {KIND[kind]} · {r.used} מתוך 3 ניסיונות · {reportTime(r.created_at)}
+                <b>{r.nick ?? t('fan')}</b> · {KIND[kind]} · {t('attemptsOfThree', { used: r.used })} · {reportTime(r.created_at)}
               </p>
               {r.reason_code && <p className="text-xs text-muted">{verifyCodeHe(r.reason_code) ?? r.reason_code}</p>}
               <div className="flex flex-wrap items-end gap-2">
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => run(() => resetVerificationAction({ userId: r.user_id, kind }), 'הניסיונות אופסו')}
+                  onClick={() => run(() => resetVerificationAction({ userId: r.user_id, kind }), t('attemptsReset'))}
                   className="min-h-11 rounded-xl border border-line px-3 disabled:opacity-50"
                 >
-                  אפס ניסיונות
+                  {t('resetAttempts')}
                 </button>
                 {r.reason_code === 'dob_mismatch' && (
                   <>
                     <label className="space-y-1">
-                      <span className="block text-xs text-muted">תאריך הלידה הנכון (לפי התעודה)</span>
+                      <span className="block text-xs text-muted">{t('correctDobLabel')}</span>
                       <input
                         type="date"
                         value={dates[key] ?? ''}
@@ -58,10 +59,10 @@ export function VerificationIssueList({ rows }: { rows: VerificationIssueRow[] }
                     <button
                       type="button"
                       disabled={busy || !dates[key]}
-                      onClick={() => run(() => fixBirthDateAction({ userId: r.user_id, birthDate: dates[key] ?? '' }), 'תאריך הלידה תוקן')}
+                      onClick={() => run(() => fixBirthDateAction({ userId: r.user_id, birthDate: dates[key] ?? '' }), t('dobFixed'))}
                       className="min-h-11 rounded-xl border border-line px-3 disabled:opacity-50"
                     >
-                      תקן תאריך לידה
+                      {t('fixDob')}
                     </button>
                   </>
                 )}

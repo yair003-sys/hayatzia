@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { Ban, Car, Check, EyeOff, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
 import { AUTO_HIDDEN_LABEL, BAN_DAYS, RIDE_URGENT_LABEL, isRemovable, isUrgentRide, kindLabel, reportsOnTarget, reportTime } from '../schema'
 import type { QueueRow } from '../server/queries'
@@ -8,17 +9,17 @@ import { banUserAction, removeContentAction, restoreContentAction, setReportStat
 
 type Pending = 'remove' | 'restore' | 'ban7' | 'banForever' | null
 
-const CONFIRM: Record<Exclude<Pending, null>, { ask: string; yes: string }> = {
-  remove: { ask: 'להסיר את התוכן? אי אפשר לבטל.', yes: 'כן, הסר' },
-  restore: { ask: 'להחזיר את התוכן לכל האוהדים? הדיווחים הפתוחים עליו יידחו.', yes: 'כן, החזר' },
-  ban7: { ask: `להשעות את האוהד מכתיבה ל־${BAN_DAYS} ימים?`, yes: 'כן, השעה' },
-  banForever: { ask: 'להשעות את האוהד מכתיבה לצמיתות?', yes: 'כן, השעה לצמיתות' },
-}
-
 const btn = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-sm font-medium disabled:opacity-50'
 
 /** One report in the moderation queue, with its actions. Destructive ones ask once more, inline. */
 export function ReportCard({ r }: { r: QueueRow }) {
+  const t = useTranslations('admin')
+  const CONFIRM: Record<Exclude<Pending, null>, { ask: string; yes: string }> = {
+    remove: { ask: t('removeAsk'), yes: t('removeYes') },
+    restore: { ask: t('restoreAsk'), yes: t('restoreYes') },
+    ban7: { ask: t('ban7Ask', { days: BAN_DAYS }), yes: t('ban7Yes') },
+    banForever: { ask: t('banForeverAsk'), yes: t('banForeverYes') },
+  }
   const [confirm, setConfirm] = useState<Pending>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, start] = useTransition()
@@ -34,16 +35,16 @@ export function ReportCard({ r }: { r: QueueRow }) {
     start(async () => {
       const res = await fn()
       setConfirm(null)
-      setMsg(res.data?.ok ? done : (res.data?.error ?? res.serverError ?? 'הפעולה נכשלה. נסה שוב'))
+      setMsg(res.data?.ok ? done : (res.data?.error ?? res.serverError ?? t('actionFailed')))
     })
 
   const doConfirmed = () => {
     const kind = r.kind
-    if (confirm === 'remove' && isRemovable(kind)) run(() => removeContentAction({ kind, ref: r.ref }), 'התוכן הוסר')
-    if (confirm === 'restore' && isRemovable(kind)) run(() => restoreContentAction({ kind, ref: r.ref }), 'התוכן הוחזר')
+    if (confirm === 'remove' && isRemovable(kind)) run(() => removeContentAction({ kind, ref: r.ref }), t('contentRemoved'))
+    if (confirm === 'restore' && isRemovable(kind)) run(() => restoreContentAction({ kind, ref: r.ref }), t('contentRestored'))
     if ((confirm === 'ban7' || confirm === 'banForever') && r.target_user_id) {
       const userId = r.target_user_id
-      run(() => banUserAction({ userId, days: confirm === 'ban7' ? BAN_DAYS : null, reason: r.reason }), 'האוהד הושעה')
+      run(() => banUserAction({ userId, days: confirm === 'ban7' ? BAN_DAYS : null, reason: r.reason }), t('fanSuspended'))
     }
   }
 
@@ -76,11 +77,11 @@ export function ReportCard({ r }: { r: QueueRow }) {
       {r.note && <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-muted">„{r.note}”</p>}
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-dim">{isContact ? 'פונה' : 'מדווח'}</dt>
-        <dd>{r.reporter_nick ?? 'חשבון שנמחק'}</dd>
+        <dt className="text-dim">{isContact ? t('contactLabel') : t('reporterLabel')}</dt>
+        <dd>{r.reporter_nick ?? t('deletedAccount')}</dd>
         {r.reporter_contact && (
           <>
-            <dt className="text-dim">חזרה אל</dt>
+            <dt className="text-dim">{t('replyTo')}</dt>
             <dd dir="ltr" className="text-end">
               {r.reporter_contact}
             </dd>
@@ -88,22 +89,22 @@ export function ReportCard({ r }: { r: QueueRow }) {
         )}
         {!isContact && (
           <>
-            <dt className="text-dim">על</dt>
-            <dd>{r.target_nick ?? (r.target_exists ? 'אוהד' : 'התוכן כבר לא קיים')}</dd>
+            <dt className="text-dim">{t('aboutLabel')}</dt>
+            <dd>{r.target_nick ?? (r.target_exists ? t('fan') : t('contentGone'))}</dd>
           </>
         )}
       </dl>
       {!isContact && r.open_reports_on_target > 0 && <p className="text-xs font-semibold text-warn">{reportsOnTarget(r.open_reports_on_target)}</p>}
 
       {confirm ? (
-        <div role="group" aria-label="אישור" className="space-y-2 rounded-xl border border-live/40 p-3">
+        <div role="group" aria-label={t('confirmGroup')} className="space-y-2 rounded-xl border border-live/40 p-3">
           <p className="text-sm font-medium">{CONFIRM[confirm].ask}</p>
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={doConfirmed} className={`${btn} flex-1 border-live bg-live text-white`}>
-              {busy ? 'רגע…' : CONFIRM[confirm].yes}
+              {busy ? t('wait') : CONFIRM[confirm].yes}
             </button>
             <button type="button" disabled={busy} onClick={() => setConfirm(null)} className={btn}>
-              ביטול
+              {t('cancel')}
             </button>
           </div>
         </div>
@@ -112,24 +113,24 @@ export function ReportCard({ r }: { r: QueueRow }) {
           {canRemove && (
             <button type="button" disabled={busy} onClick={() => setConfirm('remove')} className={`${btn} text-live`}>
               <Trash2 className="size-4" aria-hidden="true" />
-              הסר תוכן
+              {t('removeContent')}
             </button>
           )}
           {canRestore && (
             <button type="button" disabled={busy} onClick={() => setConfirm('restore')} className={btn}>
               <Undo2 className="size-4" aria-hidden="true" />
-              החזר תוכן
+              {t('restoreContent')}
             </button>
           )}
           {canBan && (
             <>
               <button type="button" disabled={busy} onClick={() => setConfirm('ban7')} className={btn}>
                 <Ban className="size-4" aria-hidden="true" />
-                השעה ל־{BAN_DAYS} ימים
+                {t('suspendDays', { days: BAN_DAYS })}
               </button>
               <button type="button" disabled={busy} onClick={() => setConfirm('banForever')} className={btn}>
                 <Ban className="size-4" aria-hidden="true" />
-                השעה לצמיתות
+                {t('suspendForever')}
               </button>
             </>
           )}
@@ -138,31 +139,31 @@ export function ReportCard({ r }: { r: QueueRow }) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'handled' }), 'סומן כטופל')}
+                onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'handled' }), t('markedHandled'))}
                 className={btn}
               >
                 <Check className="size-4" aria-hidden="true" />
-                סמן כטופל
+                {t('markHandled')}
               </button>
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'dismissed' }), 'הדיווח נדחה')}
+                onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'dismissed' }), t('reportDismissed'))}
                 className={btn}
               >
                 <X className="size-4" aria-hidden="true" />
-                דחה דיווח
+                {t('dismissReport')}
               </button>
             </>
           ) : (
             <button
               type="button"
               disabled={busy}
-              onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'open' }), 'הוחזר לפתוחים')}
+              onClick={() => run(() => setReportStatusAction({ reportId: r.id, status: 'open' }), t('returnedToOpen'))}
               className={btn}
             >
               <RotateCcw className="size-4" aria-hidden="true" />
-              החזר לפתוחים
+              {t('returnToOpen')}
             </button>
           )}
         </div>
