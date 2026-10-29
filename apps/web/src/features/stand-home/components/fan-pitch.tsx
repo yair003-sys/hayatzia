@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { average, positionGroup, type PlayerRow, type Review } from '@/features/ratings/schema'
@@ -12,6 +13,7 @@ import { cardTier, splitPitch } from '../schema'
 
 /** Home "הרכב לדוגמה" (legacy "ההרכב של האוהדים"; that name now belongs to features/lineup): the sample XI on a pitch as rating cards, the rest on a bench. Tap to rate. */
 export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }) {
+  const t = useTranslations('standHome')
   const [players, setPlayers] = useState(initial)
   const [open, setOpen] = useState<PlayerRow | null>(null)
   const close = useCallback(() => setOpen(null), [])
@@ -31,19 +33,19 @@ export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }
             <i className="six t" style={{ top: -1.5 }} />
             <i className="six b" style={{ bottom: -1.5 }} />
           </div>
-          <span className="sh-pitch-tag">4-3-3 · לדוגמה</span>
+          <span className="sh-pitch-tag">4-3-3 · {t('sample')}</span>
           {xi.map((p) => card(p, { left: `${p.pitch_x}%`, top: `${p.pitch_y}%` }))}
         </div>
       ) : (
-        <p className="rounded-lg border border-line-soft p-4 text-center text-sm text-muted">אין עדיין הרכב לקבוצה.</p>
+        <p className="rounded-lg border border-line-soft p-4 text-center text-sm text-muted">{t('noLineup')}</p>
       )}
       <div className="flex items-baseline justify-between font-display font-bold">
-        <span>ספסל</span>
-        <small className="text-[11.5px] font-normal text-dim">גוללים הצידה · לחיצה על שחקן לדירוג</small>
+        <span>{t('bench')}</span>
+        <small className="text-[11.5px] font-normal text-dim">{t('benchHint')}</small>
       </div>
       <div className="sh-bench">{bench.map((p) => card(p))}</div>
       <p className="rounded-xl border border-line-soft bg-white/2 px-4 py-3 text-[13px] leading-relaxed text-muted">
-        הדירוג הוא ממוצע אמיתי של אוהדי {team.short}. כל אוהד מדרג כל שחקן פעם אחת ויכול לעדכן. ההרכב על המגרש הוא דוגמה.
+        {t('ratingNote', { team: team.short })}
       </p>
       {open && (
         <RatingSheet
@@ -60,6 +62,7 @@ export function FanPitch({ team, initial }: { team: Team; initial: PlayerRow[] }
 }
 
 function PlayerCard({ p, team, style, onOpen }: { p: PlayerRow; team: Team; style?: CSSProperties; onOpen: () => void }) {
+  const t = useTranslations('standHome')
   const coach = positionGroup(p.position).order === 4
   const filled = Math.round(p.avg ?? 0)
   return (
@@ -70,7 +73,7 @@ function PlayerCard({ p, team, style, onOpen }: { p: PlayerRow; team: Team; styl
       data-rated={p.myStars !== null}
       style={style}
       onClick={onOpen}
-      aria-label={`${p.name_he}, דירוג ${p.avg ?? 'אין'}${p.myStars ? `, הדירוג שלך ${p.myStars}` : ''}`}
+      aria-label={`${t('cardAria', { name: p.name_he, avg: p.avg ?? t('noRating') })}${p.myStars ? t('yourRatingSuffix', { stars: p.myStars }) : ''}`}
     >
       <span className="sh-pc-in">
         <span className="r">{p.avg === null ? '–' : p.avg.toFixed(1)}</span>
@@ -107,6 +110,7 @@ function PlayerCard({ p, team, style, onOpen }: { p: PlayerRow; team: Team; styl
 }
 
 function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => void; onRated: (p: PlayerRow) => void }) {
+  const t = useTranslations('standHome')
   const [stars, setStars] = useState(p.myStars ?? 0)
   const [review, setReview] = useState(p.myReview)
   const [reviews, setReviews] = useState<Review[] | null>(null)
@@ -152,7 +156,7 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
     }
   }, [p.id])
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`דירוג ${p.name_he}`} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('rateAria', { name: p.name_he })} onClick={onClose}>
       <div
         ref={panel}
         className="w-full max-w-md space-y-3 rounded-t-3xl border border-line bg-surface-2 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] motion-safe:animate-pop"
@@ -163,16 +167,16 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
             {p.number !== null && <span className="me-2 text-muted tabular-nums">{p.number}</span>}
             {p.name_he}
           </h2>
-          <button ref={closeBtn} type="button" onClick={onClose} aria-label="סגור" className="grid size-10 place-items-center rounded-full text-muted">
+          <button ref={closeBtn} type="button" onClick={onClose} aria-label={t('close')} className="grid size-10 place-items-center rounded-full text-muted">
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
         <p className="text-sm text-muted">
-          ממוצע {p.avg ?? '–'} · {p.count} מדרגים
+          {t('avgRaters', { avg: p.avg ?? '–', count: p.count })}
         </p>
-        <div className="flex items-center gap-1" role="group" aria-label="הדירוג שלך">
+        <div className="flex items-center gap-1" role="group" aria-label={t('yourRating')}>
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" aria-pressed={stars === n} aria-label={`${n} כוכבים`} onClick={() => setStars(n)} className="p-1">
+            <button key={n} type="button" aria-pressed={stars === n} aria-label={t('starsN', { n })} onClick={() => setStars(n)} className="p-1">
               <Star className={cn('size-8', n <= stars ? 'fill-warn text-warn' : 'text-dim')} aria-hidden="true" />
             </button>
           ))}
@@ -182,8 +186,8 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
           onChange={(e) => setReview(e.target.value)}
           maxLength={200}
           rows={2}
-          placeholder="מה דעתך עליו? (לא חובה)"
-          aria-label="ביקורת"
+          placeholder={t('reviewPlaceholder')}
+          aria-label={t('reviewLabel')}
           className="w-full rounded-md border border-line bg-elev px-3 py-2 text-sm"
         />
         <button
@@ -192,18 +196,18 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
           onClick={() =>
             start(async () => {
               const r = await ratePlayerAction({ playerId: p.id, stars, review })
-              if (!r.data?.ok) return setMsg(r.data?.error ?? r.serverError ?? 'השמירה נכשלה')
+              if (!r.data?.ok) return setMsg(r.data?.error ?? r.serverError ?? t('saveFailed'))
               const prev = r.data.previous
               const sum = (p.avg ?? 0) * p.count - (prev ?? 0) + stars
               const count = p.count + (prev === null ? 1 : 0)
               onRated({ ...p, myStars: stars, myReview: review.trim(), count, avg: average(sum, count) })
-              setMsg('נשמר ✓')
+              setMsg(t('saved'))
             })
           }
           className="w-full rounded-xl py-3 font-bold disabled:opacity-40"
           style={{ background: 'linear-gradient(180deg, var(--acc2), var(--acc))', color: 'var(--acc-on)' }}
         >
-          {p.myStars ? 'עדכן דירוג' : 'שמור דירוג'}
+          {p.myStars ? t('updateRating') : t('saveRating')}
         </button>
         {msg && (
           <p role="status" className="text-xs text-muted">
@@ -211,7 +215,7 @@ function RatingSheet({ p, onClose, onRated }: { p: PlayerRow; onClose: () => voi
           </p>
         )}
         {reviews && reviews.length > 0 && (
-          <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label="ביקורות אחרונות">
+          <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label={t('recentReviews')}>
             {reviews.map((r) => (
               <li key={r.user_id} className="flex items-start gap-2 text-sm">
                 <span className="min-w-0 flex-1 py-2.5">

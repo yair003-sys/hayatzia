@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { ChevronLeft, MessageCircle } from 'lucide-react'
 import type { DisplayTeam } from '@/features/matches/api-teams'
@@ -16,6 +17,7 @@ const MIN = 60_000
 
 /** Legacy "יום משחק" ticket: live minute, score rows, and a footer that follows the match room's state. */
 export function MatchTicket({ fixture: initial, home, away }: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam }) {
+  const t = useTranslations('standHome')
   const [f, setF] = useState(initial)
   const [now, setNow] = useState(() => Date.now())
   const room = roomState(f.t, now)
@@ -49,14 +51,14 @@ export function MatchTicket({ fixture: initial, home, away }: { fixture: Fixture
             {minuteLabel(f, now)}
           </span>
         ) : started ? (
-          <span>הסתיים</span>
+          <span>{t('finished')}</span>
         ) : (
           <span>
             {kickoffTime(f.t)} · {kickoffDay(f.t)}
           </span>
         )}
-        {f.dm && <span className="sh-tag">משחק לדוגמה</span>}
-        <span className="sh-tag mine">הקבוצה שלך</span>
+        {f.dm && <span className="sh-tag">{t('sampleMatch')}</span>}
+        <span className="sh-tag mine">{t('yourTeam')}</span>
       </div>
       <div className="sh-tk-b">
         {[
@@ -74,14 +76,14 @@ export function MatchTicket({ fixture: initial, home, away }: { fixture: Fixture
         {room === 'open' && (
           <>
             <MessageCircle className="size-4" aria-hidden="true" />
-            הצ׳אט פתוח
-            {inRoom !== null && <span className="n">{inRoom.toLocaleString('he-IL')} אוהדים בחדר</span>}
+            {t('chatOpen')}
+            {inRoom !== null && <span className="n">{t('fansInRoom', { count: inRoom.toLocaleString('he-IL') })}</span>}
             <ChevronLeft className={inRoom === null ? 'ms-auto size-4' : 'size-4'} aria-hidden="true" />
           </>
         )}
-        {room === 'closing' && <>הצ׳אט נסגר בעוד {untilLabel(kick + (MATCH_MIN + CLOSE_AFTER_MIN) * MIN - now)}</>}
-        {room === 'soon' && <>הצ׳אט ייפתח בעוד {untilLabel(kick - OPEN_BEFORE_MIN * MIN - now)}</>}
-        {room === 'closed' && <>הצ׳אט נסגר · אפשר לקרוא</>}
+        {room === 'closing' && <>{t('chatClosingIn', { time: untilLabel(kick + (MATCH_MIN + CLOSE_AFTER_MIN) * MIN - now) })}</>}
+        {room === 'soon' && <>{t('chatOpeningIn', { time: untilLabel(kick - OPEN_BEFORE_MIN * MIN - now) })}</>}
+        {room === 'closed' && <>{t('chatClosedReadable')}</>}
       </div>
     </Link>
   )
