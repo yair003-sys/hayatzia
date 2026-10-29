@@ -1,13 +1,12 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import { useTranslations } from 'next-intl'
 import type { DisplayTeam } from '../api-teams'
 import { matchPhase, sideScore } from '../live'
 import type { Fixture } from '../schema'
 import { Crest } from './crest'
 import { useNow } from './use-now'
-
-const STATUS_HE: Record<string, string> = { PST: 'נדחה', CANC: 'בוטל', ABD: 'הופסק', TBD: 'מועד לא סופי' }
 
 /**
  * Top of the match page in both clubs' colours: crest discs, score with LIVE and minute, or the kick-off time.
@@ -15,6 +14,8 @@ const STATUS_HE: Record<string, string> = { PST: 'נדחה', CANC: 'בוטל', A
  */
 export function MatchHero(props: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam; round: string; day: string; time: string }) {
   const { fixture: f, home, away, round, day, time } = props
+  const t = useTranslations('matches')
+  const statusHe: Record<string, string> = { PST: t('stPST'), CANC: t('stCANC'), ABD: t('stABD'), TBD: t('stTBD') }
   const now = useNow()
   // Same rule as the Matches tiles: a stale 1H/2H after the 170′ cut-off reads "הסתיים", not its status or the date.
   const { live, done, minute } = matchPhase(f, now)
@@ -23,9 +24,9 @@ export function MatchHero(props: { fixture: Fixture; home: DisplayTeam; away: Di
   return (
     <header className="lc-hero" style={style}>
       <h1 className="sr-only">
-        {home.name} נגד {away.name}
+        {home.name} {t('versus')} {away.name}
       </h1>
-      {f.dm && <p className="lc-hero-demo">משחק לדוגמה · נתונים לדוגמה</p>}
+      {f.dm && <p className="lc-hero-demo">{t('sampleMatchData')}</p>}
       <p className="lc-hero-top">
         {round} · {day} {time}
       </p>
@@ -41,7 +42,7 @@ export function MatchHero(props: { fixture: Fixture; home: DisplayTeam; away: Di
               <span className="lc-min">{minute}</span>
             </>
           ) : (
-            <span className="lc-min">{done ? 'הסתיים' : (STATUS_HE[f.st] ?? day)}</span>
+            <span className="lc-min">{done ? t('finished') : (statusHe[f.st] ?? day)}</span>
           )}
           <span className="lc-score">{hasScore || live ? sideScore(f) : time}</span>
         </div>

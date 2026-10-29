@@ -385,5 +385,33 @@
     "saveFailed": "השמירה נכשלה. נסה שוב",
     "save": "שמירה",
     "notNow": "לא עכשיו"
+  },
+  "matches": {
+    "notYet": "ההרכבים יפורסמו לפני המשחק",
+    "posG": "שוער",
+    "posD": "הגנה",
+    "posM": "קישור",
+    "posF": "התקפה",
+    "teamSwitch": "בחירת קבוצה",
+    "coach": "מאמן:",
+    "startingXiOf": "ההרכב הפותח של {team}",
+    "startingXiPlayersOf": "שחקני ההרכב הפותח של {team}",
+    "startingXi": "הרכב פותח",
+    "bench": "ספסל",
+    "liveCardScore": "{home} נגד {away}, {status}, {home} {gh}, {away} {ga}",
+    "enterMatchRoom": "כניסה לחדר המשחק",
+    "live": "חי",
+    "finished": "הסתיים",
+    "sampleMatch": "משחק לדוגמה",
+    "sampleMatchData": "משחק לדוגמה · נתונים לדוגמה",
+    "versus": "נגד",
+    "stPST": "נדחה",
+    "stCANC": "בוטל",
+    "stABD": "הופסק",
+    "stTBD": "מועד לא סופי",
+    "tabGame": "משחק",
+    "tabLineup": "הרכב",
+    "tabRoom": "חדר",
+    "matchViewAria": "תצוגת המשחק"
   }
 }

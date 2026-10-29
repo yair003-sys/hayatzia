@@ -385,5 +385,33 @@
     "saveFailed": "Speichern fehlgeschlagen. Versuch es noch einmal.",
     "save": "Speichern",
     "notNow": "Nicht jetzt"
+  },
+  "matches": {
+    "notYet": "Die Aufstellungen werden vor dem Spiel veröffentlicht",
+    "posG": "TW",
+    "posD": "Abwehr",
+    "posM": "Mittelfeld",
+    "posF": "Angriff",
+    "teamSwitch": "Team wählen",
+    "coach": "Trainer:",
+    "startingXiOf": "Startelf von {team}",
+    "startingXiPlayersOf": "Spieler der Startelf von {team}",
+    "startingXi": "Startelf",
+    "bench": "Bank",
+    "liveCardScore": "{home} gegen {away}, {status}, {home} {gh}, {away} {ga}",
+    "enterMatchRoom": "Zum Spielraum",
+    "live": "live",
+    "finished": "beendet",
+    "sampleMatch": "Beispielspiel",
+    "sampleMatchData": "Beispielspiel · Beispieldaten",
+    "versus": "gegen",
+    "stPST": "Verschoben",
+    "stCANC": "Abgesagt",
+    "stABD": "Abgebrochen",
+    "stTBD": "Termin offen",
+    "tabGame": "Spiel",
+    "tabLineup": "Aufstellung",
+    "tabRoom": "Raum",
+    "matchViewAria": "Spielansicht"
   }
 }

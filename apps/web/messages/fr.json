@@ -385,5 +385,33 @@
     "saveFailed": "L’enregistrement a échoué. Réessaie.",
     "save": "Enregistrer",
     "notNow": "Pas maintenant"
+  },
+  "matches": {
+    "notYet": "Les compositions sont publiées avant le match",
+    "posG": "GB",
+    "posD": "Défense",
+    "posM": "Milieu",
+    "posF": "Attaque",
+    "teamSwitch": "Choisir l’équipe",
+    "coach": "Entraîneur :",
+    "startingXiOf": "Composition de départ de {team}",
+    "startingXiPlayersOf": "Joueurs de la composition de départ de {team}",
+    "startingXi": "Onze de départ",
+    "bench": "Banc",
+    "liveCardScore": "{home} contre {away}, {status}, {home} {gh}, {away} {ga}",
+    "enterMatchRoom": "Entrer dans la salle du match",
+    "live": "en direct",
+    "finished": "terminé",
+    "sampleMatch": "Match d’exemple",
+    "sampleMatchData": "Match d’exemple · données d’exemple",
+    "versus": "contre",
+    "stPST": "Reporté",
+    "stCANC": "Annulé",
+    "stABD": "Interrompu",
+    "stTBD": "Date à confirmer",
+    "tabGame": "Match",
+    "tabLineup": "Composition",
+    "tabRoom": "Salle",
+    "matchViewAria": "Vue du match"
   }
 }

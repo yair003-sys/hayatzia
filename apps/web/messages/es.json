@@ -385,5 +385,33 @@
     "saveFailed": "Error al guardar. Inténtalo de nuevo.",
     "save": "Guardar",
     "notNow": "Ahora no"
+  },
+  "matches": {
+    "notYet": "Las alineaciones se publican antes del partido",
+    "posG": "POR",
+    "posD": "Defensa",
+    "posM": "Centro",
+    "posF": "Ataque",
+    "teamSwitch": "Elegir equipo",
+    "coach": "Entrenador:",
+    "startingXiOf": "Alineación titular de {team}",
+    "startingXiPlayersOf": "Jugadores de la alineación titular de {team}",
+    "startingXi": "Once inicial",
+    "bench": "Banquillo",
+    "liveCardScore": "{home} contra {away}, {status}, {home} {gh}, {away} {ga}",
+    "enterMatchRoom": "Entrar a la sala del partido",
+    "live": "en directo",
+    "finished": "finalizado",
+    "sampleMatch": "Partido de ejemplo",
+    "sampleMatchData": "Partido de ejemplo · datos de ejemplo",
+    "versus": "contra",
+    "stPST": "Aplazado",
+    "stCANC": "Cancelado",
+    "stABD": "Suspendido",
+    "stTBD": "Fecha por confirmar",
+    "tabGame": "Partido",
+    "tabLineup": "Alineación",
+    "tabRoom": "Sala",
+    "matchViewAria": "Vista del partido"
   }
 }

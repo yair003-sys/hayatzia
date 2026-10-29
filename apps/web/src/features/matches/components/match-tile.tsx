@@ -1,6 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { roundLabelHe, type DisplayTeam } from '../api-teams'
 import { kickoffTime } from '../format'
@@ -11,6 +12,7 @@ import { useNow } from './use-now'
 
 /** Compact match on the Matches list: a coloured card while live, otherwise a row with kick-off time or final score. */
 export function MatchTile({ fixture: f, home, away }: { fixture: Fixture; home: DisplayTeam; away: DisplayTeam }) {
+  const t = useTranslations('matches')
   const now = useNow()
   const { live, done, minute } = matchPhase(f, now)
 
@@ -24,7 +26,7 @@ export function MatchTile({ fixture: f, home, away }: { fixture: Fixture; home: 
         <div className="lc-mid">
           <span className="lc-tag">LIVE {minute}</span>
           <span className="lc-score">{sideScore(f)}</span>
-          {f.dm && <span className="lc-demo">משחק לדוגמה</span>}
+          {f.dm && <span className="lc-demo">{t('sampleMatch')}</span>}
         </div>
         <div className="lc-team">
           <Crest team={away} size="sm" />
@@ -41,7 +43,7 @@ export function MatchTile({ fixture: f, home, away }: { fixture: Fixture; home: 
         {home.short} – {away.short}
         <small>
           {roundLabelHe(f.r)}
-          {f.dm && <span className="lc-demo"> · משחק לדוגמה</span>}
+          {f.dm && <span className="lc-demo"> · {t('sampleMatch')}</span>}
         </small>
       </span>
       <span className="lc-row-k" data-done={done}>

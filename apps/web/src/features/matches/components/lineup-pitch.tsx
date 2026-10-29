@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
+import { useTranslations } from 'next-intl'
 import type { DisplayTeam } from '../api-teams'
 import { type FixtureEvent, type PlayerMark, playerMarks } from '../events'
 import { pitchSpots } from '../live'
@@ -11,8 +12,8 @@ type Lineup = FixtureDetail['lu'][number]
 type SideTeam = Pick<DisplayTeam, 'name' | 'short' | 'bg' | 'ring'>
 export type PitchSide = { key: 'home' | 'away'; team: SideTeam; lu: Lineup | null }
 
-const NOT_YET = 'ההרכבים יפורסמו לפני המשחק'
-const POS_HE: Record<string, string> = { G: 'שוער', D: 'הגנה', M: 'קישור', F: 'התקפה' }
+type T = ReturnType<typeof useTranslations>
+const posLabel = (t: T, pos: string) => (pos ? (t.has(`pos${pos}`) ? t(`pos${pos}`) : pos) : pos)
 
 /** "E. Zahavi" → "Zahavi": the pitch has room for a surname only (full name stays in the title). */
 const pitchName = (name: string) => name.replace(/^(\p{L}\.\s*)+/u, '') || name
@@ -26,14 +27,15 @@ export function defaultSideKey(sides: PitchSide[]): PitchSide['key'] {
 
 /** The "הרכב" tab: each club's starting XI on a half-pitch (goalkeeper at the bottom), a club switch, the bench below. */
 export function LineupPitch({ sides, events }: { sides: PitchSide[]; events?: FixtureEvent[] }) {
+  const t = useTranslations('matches')
   // null until the fan picks: the default follows the data, so a line-up that arrives later is still opened.
   const [picked, setKey] = useState<PitchSide['key'] | null>(null)
-  if (sides.every((s) => !s.lu)) return <p className="lc-end">{NOT_YET}</p>
+  if (sides.every((s) => !s.lu)) return <p className="lc-end">{t('notYet')}</p>
   const key = picked ?? defaultSideKey(sides)
   const side = sides.find((s) => s.key === key) ?? sides[0]!
   return (
     <div className="space-y-3">
-      <div className="lc-switch" role="group" aria-label="בחירת קבוצה">
+      <div className="lc-switch" role="group" aria-label={t('teamSwitch')}>
         {sides.map((s) => (
           <button key={s.key} type="button" aria-pressed={s.key === side.key} onClick={() => setKey(s.key)}>
             <Crest team={s.team} size="sm" />
@@ -47,7 +49,8 @@ export function LineupPitch({ sides, events }: { sides: PitchSide[]; events?: Fi
 }
 
 function SideLineup({ side: { team, lu }, events }: { side: PitchSide; events?: FixtureEvent[] }) {
-  if (!lu || (lu.xi.length === 0 && lu.sub.length === 0)) return <p className="lc-end">{NOT_YET}</p>
+  const t = useTranslations('matches')
+  if (!lu || (lu.xi.length === 0 && lu.sub.length === 0)) return <p className="lc-end">{t('notYet')}</p>
   const spots = pitchSpots(lu.xi)
   const marks = events ? playerMarks(events, lu.team) : null
   const colours = { '--a': team.bg, '--b': team.ring, '--t': team.ring } as CSSProperties
@@ -66,14 +69,14 @@ function SideLineup({ side: { team, lu }, events }: { side: PitchSide; events?: 
           </span>
           {lu.coach && (
             <span>
-              מאמן: <bdi>{lu.coach}</bdi>
+              {t('coach')} <bdi>{lu.coach}</bdi>
             </span>
           )}
         </p>
       )}
       {spots ? (
         <>
-          <div className="lc-pitch" style={colours} role="img" aria-label={`ההרכב הפותח של ${team.name}`}>
+          <div className="lc-pitch" style={colours} role="img" aria-label={t('startingXiOf', { team: team.name })}>
             <i className="lc-pitch-arc" />
             <i className="lc-pitch-box" />
             <i className="lc-pitch-six" />
@@ -89,16 +92,16 @@ function SideLineup({ side: { team, lu }, events }: { side: PitchSide; events?: 
             })}
           </div>
           {/* The pitch is one picture for screen readers; this list reads the XI out to them. */}
-          <ul className="sr-only" aria-label={`שחקני ההרכב הפותח של ${team.name}`}>
+          <ul className="sr-only" aria-label={t('startingXiPlayersOf', { team: team.name })}>
             {lu.xi.map((pl, i) => (
-              <li key={i}>{[pl.n, pl.p, pl.pos ? (POS_HE[pl.pos] ?? pl.pos) : null].filter((x) => x !== null && x !== '').join(', ')}</li>
+              <li key={i}>{[pl.n, pl.p, pl.pos ? posLabel(t, pl.pos) : null].filter((x) => x !== null && x !== '').join(', ')}</li>
             ))}
           </ul>
         </>
       ) : (
-        lu.xi.length > 0 && <PlayerList title="הרכב פותח" players={lu.xi} />
+        lu.xi.length > 0 && <PlayerList title={t('startingXi')} players={lu.xi} />
       )}
-      {lu.sub.length > 0 && <PlayerList title="ספסל" players={lu.sub} />}
+      {lu.sub.length > 0 && <PlayerList title={t('bench')} players={lu.sub} />}
     </div>
   )
 }
@@ -120,6 +123,7 @@ function Marks({ mk }: { mk: PlayerMark }) {
 }
 
 function PlayerList({ title, players }: { title: string; players: { n: number | null; p: string; pos: string }[] }) {
+  const t = useTranslations('matches')
   return (
     <section className="space-y-2">
       <h3 className="lc-list-h">{title}</h3>
@@ -128,7 +132,7 @@ function PlayerList({ title, players }: { title: string; players: { n: number | 
           <li key={i}>
             <b className="t-num">{pl.n ?? ''}</b>
             <bdi>{pl.p}</bdi>
-            {pl.pos && <small>{POS_HE[pl.pos] ?? pl.pos}</small>}
+            {pl.pos && <small>{posLabel(t, pl.pos)}</small>}
           </li>
         ))}
       </ul>

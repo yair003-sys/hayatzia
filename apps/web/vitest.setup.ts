@@ -40,6 +40,7 @@ vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => {
     const t = (key: string, values?: Values) => interpolate(lookup(namespace, key), values)
     t.rich = (key: string, values?: Values) => rich(namespace, key, values)
+    t.has = (key: string) => (namespace ? messages[namespace]?.[key] : (messages as Record<string, unknown>)[key]) !== undefined
     return t
   },
   useLocale: () => 'he',

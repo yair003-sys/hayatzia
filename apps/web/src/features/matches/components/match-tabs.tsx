@@ -1,19 +1,18 @@
 'use client'
 
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import type { MatchTab } from '../live'
 
-const TABS: { id: MatchTab; label: string }[] = [
-  { id: 'game', label: 'משחק' },
-  { id: 'lineup', label: 'הרכב' },
-  { id: 'room', label: 'חדר' },
-]
+const TABS: { id: MatchTab }[] = [{ id: 'game' }, { id: 'lineup' }, { id: 'room' }]
 
 /**
  * Pill tabs for the match page. All three panels are rendered once and the inactive ones are `hidden`,
  * so the room (chat, polls, realtime) never remounts on a tab click; `?tab=` follows the choice.
  */
 export function MatchTabs({ initial, game, lineup, room }: { initial: MatchTab; game: ReactNode; lineup: ReactNode; room: ReactNode }) {
+  const tr = useTranslations('matches')
+  const labels: Record<MatchTab, string> = { game: tr('tabGame'), lineup: tr('tabLineup'), room: tr('tabRoom') }
   const [tab, setTab] = useState<MatchTab>(initial)
   const refs = useRef<Partial<Record<MatchTab, HTMLButtonElement | null>>>({})
   const panels: Record<MatchTab, ReactNode> = { game, lineup, room }
@@ -41,7 +40,7 @@ export function MatchTabs({ initial, game, lineup, room }: { initial: MatchTab; 
 
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="תצוגת המשחק" className="lc-tabs" onKeyDown={onKey}>
+      <div role="tablist" aria-label={tr('matchViewAria')} className="lc-tabs" onKeyDown={onKey}>
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -57,7 +56,7 @@ export function MatchTabs({ initial, game, lineup, room }: { initial: MatchTab; 
             className="lc-tab"
             onClick={() => select(t.id)}
           >
-            {t.label}
+            {labels[t.id]}
           </button>
         ))}
       </div>

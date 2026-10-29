@@ -385,5 +385,33 @@
     "saveFailed": "Saving failed. Try again.",
     "save": "Save",
     "notNow": "Not now"
+  },
+  "matches": {
+    "notYet": "Line-ups are published before the match",
+    "posG": "GK",
+    "posD": "Defence",
+    "posM": "Midfield",
+    "posF": "Attack",
+    "teamSwitch": "Choose team",
+    "coach": "Coach:",
+    "startingXiOf": "{team}’s starting line-up",
+    "startingXiPlayersOf": "{team}’s starting line-up players",
+    "startingXi": "Starting XI",
+    "bench": "Bench",
+    "liveCardScore": "{home} vs {away}, {status}, {home} {gh}, {away} {ga}",
+    "enterMatchRoom": "Enter the match room",
+    "live": "live",
+    "finished": "finished",
+    "sampleMatch": "Sample match",
+    "sampleMatchData": "Sample match · sample data",
+    "versus": "vs",
+    "stPST": "Postponed",
+    "stCANC": "Cancelled",
+    "stABD": "Abandoned",
+    "stTBD": "Date TBD",
+    "tabGame": "Match",
+    "tabLineup": "Line-up",
+    "tabRoom": "Room",
+    "matchViewAria": "Match view"
   }
 }
