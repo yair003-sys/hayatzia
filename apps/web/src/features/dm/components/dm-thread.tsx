@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage, safetyCode } from '@/lib/e2e/crypto'
@@ -43,6 +44,7 @@ export function DmThread({
   /** A message request (2026-10-16): incoming → accept or block; outgoing → one message, then wait. */
   request?: RequestSide
 }) {
+  const t = useTranslations('dm')
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
@@ -151,12 +153,12 @@ export function DmThread({
     try {
       const devices = await devicesOf([meId, otherId])
       if (!devices.some((d) => d.user_id === otherId)) {
-        return fail(p, `${otherNick} עוד לא פתח את ההודעות הפרטיות במכשיר שלו. אפשר לשלוח אחרי שייכנס.`, 'permanent')
+        return fail(p, t('notOpenedDm', { nick: otherNick }), 'permanent')
       }
       const enc = await encryptMessage(p.text, key, devices)
       // Every key of the other fan may be unusable (skipped): then nobody but me could read it.
       if (!devices.some((d) => d.user_id === otherId && enc.wrapped_keys[d.id])) {
-        return fail(p, 'ההודעה לא נשלחה', 'permanent')
+        return fail(p, t('sendFailed'), 'permanent')
       }
       const { data, error } = await createClient()
         .from('dm_messages')
@@ -165,11 +167,11 @@ export function DmThread({
         .single()
       if (error) {
         const m = error.message
-        if (m.includes('blocked')) return fail(p, 'אי אפשר לשלוח לאוהד הזה', 'permanent')
+        if (m.includes('blocked')) return fail(p, t('cannotSendFan'), 'permanent')
         if (m.includes('awaiting_accept')) return fail(p, dmErrorHe('awaiting_accept'), 'permanent')
         if (/\bbanned\b/.test(m)) return fail(p, dmErrorHe('banned'), 'permanent')
-        if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
-        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
+        if (m.includes('bad_reply')) return fail(p, t('replyGone'), 'bad_reply')
+        return fail(p, m.includes('rate_limit') ? t('slowDown') : t('sendFailed'))
       }
       confirmed.current.add(data.id)
       // Writing back in a request I received accepts it (the database stamps it the same way).
@@ -179,7 +181,7 @@ export function DmThread({
       setMessages((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { ...data, text: p.text }]))
       void notifyDmAction({ threadId })
     } catch {
-      fail(p, 'ההודעה לא נשלחה')
+      fail(p, t('sendFailed'))
     }
   }
 
@@ -196,12 +198,12 @@ export function DmThread({
 
   const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
   const byId = new Map(messages.map((m) => [m.id, m]))
-  const nickOf = (id: string) => (id === meId ? 'אתה' : otherNick)
+  const nickOf = (id: string) => (id === meId ? t('you') : otherNick)
   const quoteOf = (m: Shown): ShownQuote | null => {
     if (!m.reply_to) return null
     const orig = byId.get(m.reply_to)
-    if (!orig) return { nick: 'הודעה קודמת', text: '' }
-    return { nick: nickOf(orig.sender_id), text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text), to: orig.id }
+    if (!orig) return { nick: t('quotedPrev'), text: '' }
+    return { nick: nickOf(orig.sender_id), text: orig.text === null ? t('encryptedMsg') : replySnippet(orig.text), to: orig.id }
   }
 
   const rows: ReactNode[] = []
@@ -217,7 +219,7 @@ export function DmThread({
         mine={m.sender_id === meId}
         text={m.text}
         createdAt={m.created_at}
-        locked="נשלח למכשיר אחר שלך"
+        locked={t('sentToOtherDevice')}
         failed={m.failed}
         quote={quoteOf(m)}
         onJump={jump}
@@ -269,7 +271,7 @@ export function DmThread({
           }}
         >
           <ShieldCheck className="size-3.5" aria-hidden="true" />
-          קוד אימות
+          {t('verifyCode')}
         </button>
       </E2eNote>
       {code && (
@@ -277,15 +279,15 @@ export function DmThread({
           <p dir="ltr" className="text-2xl t-num tracking-widest">
             {code}
           </p>
-          <p className="text-xs text-muted">השוו עם {otherNick} (פנים אל פנים או בטלפון). אם הקוד זהה, אף אחד לא מתחזה באמצע.</p>
+          <p className="text-xs text-muted">{t('compareCode', { nick: otherNick })}</p>
         </div>
       )}
       <span className="sr-only" aria-live="polite">
         {divider?.label ?? ''}
       </span>
 
-      <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
-        {all.length === 0 && <li className="py-10 text-center text-muted">התחל שיחה עם {otherNick}</li>}
+      <ol className="flex flex-1 flex-col gap-2" aria-label={t('messagesAria')}>
+        {all.length === 0 && <li className="py-10 text-center text-muted">{t('startChatWith', { nick: otherNick })}</li>}
         {rows}
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
@@ -298,7 +300,7 @@ export function DmThread({
           startDeciding(async () => {
             const r = await acceptThreadAction({ threadId })
             if (r?.data && 'ok' in r.data) setRequest(null)
-            else setStatus((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'לא הצלחנו לאשר. נסה שוב')
+            else setStatus((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? t('acceptFailed'))
           })
         }
         onBlock={() =>
@@ -314,13 +316,13 @@ export function DmThread({
       {reqState === 'open' && (
       <Composer
         ready={!!key}
-        placeholder="הודעה פרטית…"
-        label="הודעה פרטית"
+        placeholder={t('dmPlaceholder')}
+        label={t('dmLabel')}
         onSend={send}
         draft={draft}
         onDraft={setDraft}
         inputRef={input}
-        reply={replyTo ? { nick: nickOf(replyTo.sender_id) === 'אתה' ? 'עצמך' : otherNick, text: replyTo.text === null ? 'הודעה מוצפנת' : replySnippet(replyTo.text) } : null}
+        reply={replyTo ? { nick: nickOf(replyTo.sender_id) === t('you') ? t('yourself') : otherNick, text: replyTo.text === null ? t('encryptedMsg') : replySnippet(replyTo.text) } : null}
         onCancelReply={() => {
           setReplyTo(null)
           input.current?.focus()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage } from '@/lib/e2e/crypto'
 import { notifyGroupAction } from '@/features/push/server/actions'
@@ -31,6 +32,7 @@ const byTime = (a: Item, b: Item) => a.created_at.localeCompare(b.created_at) ||
 // Group messages never pass through the app server: encrypted on this device for every device of every
 // current member, written and read straight against the database with the fan's own session.
 export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: string; meId: string; nicks: Record<string, string> }) {
+  const t = useTranslations('dm')
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
@@ -173,7 +175,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         supabase.from('dm_group_members').select('user_id,role').eq('group_id', groupId),
         supabase.from('blocks').select('blocked_id'),
       ])
-      if (mem.error || blk.error) return fail(p, 'ההודעה לא נשלחה')
+      if (mem.error || blk.error) return fail(p, t('sendFailed'))
       blocked.current = new Set(blk.data.map((b) => b.blocked_id))
       const ids = recipientsFor(
         mem.data.map((m) => ({ userId: m.user_id, role: m.role })),
@@ -192,9 +194,9 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
         .single()
       if (error) {
         const m = error.message
-        if (m.includes('not_member')) return fail(p, 'אתה כבר לא בקבוצה הזאת', 'permanent')
-        if (m.includes('bad_reply')) return fail(p, 'ההודעה שענית לה כבר לא זמינה', 'bad_reply')
-        return fail(p, m.includes('rate_limit') ? 'רגע, לאט יותר' : 'ההודעה לא נשלחה')
+        if (m.includes('not_member')) return fail(p, t('notInGroup'), 'permanent')
+        if (m.includes('bad_reply')) return fail(p, t('replyGone'), 'bad_reply')
+        return fail(p, m.includes('rate_limit') ? t('slowDown') : t('sendFailed'))
       }
       confirmed.current.add(data.id)
       replyOf.current.delete(p.id)
@@ -202,7 +204,7 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       setItems((cur) => (cur.some((x) => x.id === data.id) ? cur : [...cur, { type: 'msg' as const, ...data, text: p.text }]))
       void notifyGroupAction({ groupId })
     } catch {
-      fail(p, 'ההודעה לא נשלחה')
+      fail(p, t('sendFailed'))
     }
   }
 
@@ -218,16 +220,16 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
   }
 
   const shownStatus = status ?? keyStatus
-  const nickOf = (id: string | null) => (id && nicks[id]) || 'אוהד'
+  const nickOf = (id: string | null) => (id && nicks[id]) || t('fan')
   const jump = useCallback((id: string) => jumpToMessage(root.current, id), [])
   const byId = new Map(msgs.map((m) => [m.id, m]))
   const quoteOf = (m: Msg): ShownQuote | null => {
     if (!m.reply_to) return null
     const orig = byId.get(m.reply_to)
-    if (!orig) return { nick: 'הודעה קודמת', text: '' }
+    if (!orig) return { nick: t('quotedPrev'), text: '' }
     return {
-      nick: orig.sender_id === meId ? 'אתה' : nickOf(orig.sender_id),
-      text: orig.text === null ? 'הודעה מוצפנת' : replySnippet(orig.text),
+      nick: orig.sender_id === meId ? t('you') : nickOf(orig.sender_id),
+      text: orig.text === null ? t('encryptedMsg') : replySnippet(orig.text),
       to: orig.id,
     }
   }
@@ -295,20 +297,20 @@ export function GroupThread({ groupId, meId, nicks: initialNicks }: { groupId: s
       <span className="sr-only" aria-live="polite">
         {divider?.label ?? ''}
       </span>
-      <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
-        {all.length === 0 && <li className="py-10 text-center text-muted">עוד אין הודעות. כתוב ראשון</li>}
+      <ol className="flex flex-1 flex-col gap-2" aria-label={t('messagesAria')}>
+        {all.length === 0 && <li className="py-10 text-center text-muted">{t('groupEmpty')}</li>}
         {rows}
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
       <Composer
         ready={!!key}
-        placeholder="הודעה לקבוצה…"
-        label="הודעה לקבוצה"
+        placeholder={t('groupPlaceholder')}
+        label={t('groupLabel')}
         onSend={send}
         draft={draft}
         onDraft={setDraft}
         inputRef={input}
-        reply={replyTo ? { nick: replyTo.sender_id === meId ? 'עצמך' : nickOf(replyTo.sender_id), text: replyTo.text === null ? 'הודעה מוצפנת' : replySnippet(replyTo.text) } : null}
+        reply={replyTo ? { nick: replyTo.sender_id === meId ? t('yourself') : nickOf(replyTo.sender_id), text: replyTo.text === null ? t('encryptedMsg') : replySnippet(replyTo.text) } : null}
         onCancelReply={() => {
           setReplyTo(null)
           input.current?.focus()

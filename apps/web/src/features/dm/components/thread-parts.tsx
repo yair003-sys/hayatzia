@@ -1,13 +1,14 @@
 'use client'
 
 import type { ReactNode, Ref } from 'react'
+import { useTranslations } from 'next-intl'
 import { Lock, SendHorizontal } from 'lucide-react'
 import { MessageMeta, MessageRow, Quote, ReplyBar } from '@/features/chat/components/chat-parts'
 import { isLocalId, sendState } from '@/features/chat/essentials'
 import { cn } from '@/lib/utils'
 import { DM_MAX } from '../schema'
 
-/** A quoted message as the device found it: decrypted from the loaded messages, or "הודעה קודמת" when not loaded. */
+/** A quoted message as the device found it: decrypted from the loaded messages, or a fallback label when not loaded. */
 export type ShownQuote = { nick: string; text: string; /** The original's id when it is loaded (tap to jump). */ to?: string }
 
 /** One message bubble. Mine sit at the start (right in RTL) in the accent colour. */
@@ -17,7 +18,7 @@ export function Bubble({
   text,
   createdAt,
   sender,
-  locked = 'הודעה שנשלחה לפני שהמכשיר הזה הופעל',
+  locked,
   failed,
   quote,
   onJump,
@@ -42,6 +43,7 @@ export function Bubble({
   onRetry?: () => void
   onDiscard?: () => void
 }) {
+  const t = useTranslations('dm')
   const local = isLocalId(id)
   const state = mine ? sendState({ id, failed }) : undefined
   return (
@@ -55,7 +57,7 @@ export function Bubble({
         {quote && <Quote mine={mine} nick={quote.nick} text={quote.text} onJump={quote.to && onJump ? () => onJump(quote.to as string) : undefined} />}
         {text ?? (
           <span className="inline-flex items-center gap-1 text-xs italic opacity-70">
-            <Lock className="size-3" aria-hidden="true" /> {locked}
+            <Lock className="size-3" aria-hidden="true" /> {locked ?? t('lockedBefore')}
           </span>
         )}
       </div>
@@ -96,6 +98,7 @@ export function Composer({
   /** Floats above the box (the "go down" button). */
   above?: ReactNode
 }) {
+  const t = useTranslations('dm')
   const send = async () => {
     const text = draft.trim()
     if (!text || !ready || sending) return
@@ -132,10 +135,10 @@ export function Composer({
             maxLength={DM_MAX}
             rows={1}
             disabled={!ready}
-            placeholder={ready ? placeholder : 'מכין הצפנה…'}
+            placeholder={ready ? placeholder : t('preparingEncryption')}
             className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 outline-none"
           />
-          <button type="submit" disabled={sending || !ready || !draft.trim()} aria-label="שלח" className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40">
+          <button type="submit" disabled={sending || !ready || !draft.trim()} aria-label={t('send')} className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40">
             <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
           </button>
         </form>
@@ -145,10 +148,11 @@ export function Composer({
 }
 
 export function E2eNote({ children }: { children?: ReactNode }) {
+  const t = useTranslations('dm')
   return (
     <div className="mb-3 flex items-center gap-2 rounded-md bg-surface px-3 py-2 text-xs text-muted">
       <Lock className="size-3.5 text-ok" aria-hidden="true" />
-      מוצפן מקצה לקצה. גם אנחנו לא יכולים לקרוא.
+      {t('e2e')}
       {children}
     </div>
   )
