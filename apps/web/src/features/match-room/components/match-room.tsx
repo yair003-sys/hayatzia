@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { ChatRoom } from '@/features/chat/components/chat-room'
-import type { ChatMessage } from '@/features/chat/schema'
+import { SEND_COOLDOWN_SECONDS, type ChatMessage } from '@/features/chat/schema'
 import { roomState, type RoomState } from '../schema'
 import { loadOlderMatchMessagesAction, sendMatchMessageAction } from '../server/actions'
 import { PinnedStrip } from '@/features/crowd-verdict/components/pinned-strip'
@@ -124,6 +124,7 @@ export function MatchRoom({ fixtureId, kickoff, meId, myTeamId, home, away, init
         hiddenUsers={hidden}
         reportKind="match_message"
         readOnly={readOnly}
+        cooldownSeconds={SEND_COOLDOWN_SECONDS}
         placeholder={t('placeholder')}
         emptyText={state === 'soon' ? t('emptyEarly') : t('emptyNone')}
         tint={(m) => (m.side === 'a' ? away.bar : home.bar)}

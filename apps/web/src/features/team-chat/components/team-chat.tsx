@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { ChatRoom } from '@/features/chat/components/chat-room'
-import type { ChatMessage } from '@/features/chat/schema'
+import { SEND_COOLDOWN_SECONDS, type ChatMessage } from '@/features/chat/schema'
 import { loadOlderTeamMessagesAction, reactTeamMessageAction, sendTeamMessageAction } from '../server/actions'
 
 export function TeamChat({
@@ -35,6 +35,7 @@ export function TeamChat({
       clubOf={() => (clubName ? { name: clubName, color: color ?? 'var(--accent)' } : null)}
       placeholder={t('placeholder')}
       emptyText={t('emptyText')}
+      cooldownSeconds={SEND_COOLDOWN_SECONDS}
       send={async (body, replyTo) => {
         const r = await sendTeamMessageAction({ body, replyTo })
         // A text the schema refuses (too long…) goes back to the box; a server failure can be retried.

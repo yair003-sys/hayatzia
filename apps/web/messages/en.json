@@ -163,7 +163,8 @@
     "reply": "Reply",
     "reportMsg": "Report the message",
     "report": "Report",
-    "sendPrivateTo": "Send a private message to {nick}"
+    "sendPrivateTo": "Send a private message to {nick}",
+    "waitSeconds": "Wait {n}s"
   },
   "dm": {
     "requestIntro": "{nick} wants to message you. They can keep writing only after you accept.",

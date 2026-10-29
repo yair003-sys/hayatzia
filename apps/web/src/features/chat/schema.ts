@@ -54,6 +54,12 @@ export type Cursor = z.infer<typeof cursorSchema>
 export type SendErrorKind = FailureKind
 export type SendResult = { message: ChatMessage } | { error: string; kind?: SendErrorKind }
 
+/**
+ * Seconds a fan waits between messages in the public chats (team chat + match room; owner, 2026-10-29), shown as a
+ * live countdown on the send button. The database keeps its own anti-spam floor (5 per 10 s) behind this.
+ */
+export const SEND_COOLDOWN_SECONDS = 10
+
 /** Which kind of failure a database error is (see SendErrorKind). Unknown errors may be passing: retry. */
 export function chatErrorKind(message: string): SendErrorKind {
   if (message.includes('bad_reply')) return 'bad_reply'

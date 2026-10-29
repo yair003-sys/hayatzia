@@ -163,7 +163,8 @@
     "reply": "Antworten",
     "reportMsg": "Nachricht melden",
     "report": "Melden",
-    "sendPrivateTo": "Private Nachricht an {nick} senden"
+    "sendPrivateTo": "Private Nachricht an {nick} senden",
+    "waitSeconds": "Warte {n}s"
   },
   "dm": {
     "requestIntro": "{nick} möchte dir eine Nachricht senden. Erst nach deiner Zustimmung kann die Person weiterschreiben.",

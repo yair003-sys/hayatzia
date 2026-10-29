@@ -163,7 +163,8 @@
     "reply": "השב",
     "reportMsg": "דווח על ההודעה",
     "report": "דווח",
-    "sendPrivateTo": "שלח הודעה פרטית ל-{nick}"
+    "sendPrivateTo": "שלח הודעה פרטית ל-{nick}",
+    "waitSeconds": "המתן {n} שניות"
   },
   "dm": {
     "requestIntro": "{nick} רוצה לשלוח לך הודעה. רק אחרי שתאשר הוא יוכל להמשיך לכתוב.",

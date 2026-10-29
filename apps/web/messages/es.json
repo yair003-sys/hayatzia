@@ -163,7 +163,8 @@
     "reply": "Responder",
     "reportMsg": "Reportar el mensaje",
     "report": "Reportar",
-    "sendPrivateTo": "Enviar un mensaje privado a {nick}"
+    "sendPrivateTo": "Enviar un mensaje privado a {nick}",
+    "waitSeconds": "Espera {n}s"
   },
   "dm": {
     "requestIntro": "{nick} quiere enviarte un mensaje. Solo podrá seguir escribiendo después de que aceptes.",
