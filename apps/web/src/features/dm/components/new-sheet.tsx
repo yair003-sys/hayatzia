@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Check, ChevronLeft, MessageCirclePlus, Search, Users, X } from 'lucide-react'
 import { GROUP_MAX } from '../schema'
@@ -14,6 +15,7 @@ const PICK_MAX = GROUP_MAX - 1 // everyone besides me
 
 /** Bottom sheet behind the "+" button: start a private chat, or open a small group. */
 export function NewSheet({ mode, onMode }: { mode: SheetMode | null; onMode: (m: SheetMode | null) => void }) {
+  const t = useTranslations('dm')
   if (!mode) return null
   return createPortal(
     <div
@@ -27,7 +29,7 @@ export function NewSheet({ mode, onMode }: { mode: SheetMode | null; onMode: (m:
         className="sq-sheet ib-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={mode === 'group' ? 'קבוצה חדשה' : mode === 'dm' ? 'שיחה חדשה' : 'חדש'}
+        aria-label={mode === 'group' ? t('newGroup') : mode === 'dm' ? t('newChat') : t('newMenu')}
         onClick={(e) => e.stopPropagation()}
       >
         <span className="sq-grip" aria-hidden="true" />
@@ -35,12 +37,12 @@ export function NewSheet({ mode, onMode }: { mode: SheetMode | null; onMode: (m:
           <>
             <button type="button" className="sq-choice" onClick={() => onMode('dm')}>
               <MessageCirclePlus className="size-5 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
-              שיחה חדשה
+              {t('newChat')}
             </button>
             <button type="button" className="sq-choice" onClick={() => onMode('group')}>
               <Users className="size-5 text-accent-text" strokeWidth={1.75} aria-hidden="true" />
-              קבוצה חדשה
-              <span className="ms-auto text-xs font-normal text-dim">עד {GROUP_MAX} אוהדים</span>
+              {t('newGroup')}
+              <span className="ms-auto text-xs font-normal text-dim">{t('upToFans', { max: GROUP_MAX })}</span>
             </button>
           </>
         )}
@@ -53,9 +55,10 @@ export function NewSheet({ mode, onMode }: { mode: SheetMode | null; onMode: (m:
 }
 
 export function SheetHead({ title, onBack }: { title: string; onBack: () => void }) {
+  const t = useTranslations('dm')
   return (
     <div className="flex items-center gap-2">
-      <button type="button" onClick={onBack} aria-label="חזרה" className="ib-icon-btn">
+      <button type="button" onClick={onBack} aria-label={t('back')} className="ib-icon-btn">
         <ChevronLeft className="size-5 -scale-x-100" aria-hidden="true" />
       </button>
       <h2 className="t-sec">{title}</h2>
@@ -87,16 +90,18 @@ export function useTeammates() {
 }
 
 export function SearchField({ q, onChange }: { q: string; onChange: (v: string) => void }) {
+  const t = useTranslations('dm')
   return (
     <label className="ib-search ib-search-sheet">
       <Search className="size-4 shrink-0" aria-hidden="true" />
-      <span className="sr-only">חיפוש אוהד</span>
-      <input value={q} onChange={(e) => onChange(e.target.value)} maxLength={20} placeholder="חפש אוהד מהקבוצה לפי כינוי" />
+      <span className="sr-only">{t('searchFanLabel')}</span>
+      <input value={q} onChange={(e) => onChange(e.target.value)} maxLength={20} placeholder={t('searchFanPlaceholder')} />
     </label>
   )
 }
 
 function NewChat({ onBack }: { onBack: () => void }) {
+  const t = useTranslations('dm')
   const { q, fans, search } = useTeammates()
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
@@ -111,7 +116,7 @@ function NewChat({ onBack }: { onBack: () => void }) {
 
   return (
     <>
-      <SheetHead title="שיחה חדשה" onBack={onBack} />
+      <SheetHead title={t('newChat')} onBack={onBack} />
       <SearchField q={q} onChange={search} />
       <FanList fans={fans}>
         {(f) => (
@@ -131,6 +136,7 @@ function NewChat({ onBack }: { onBack: () => void }) {
 }
 
 function NewGroup({ onBack }: { onBack: () => void }) {
+  const t = useTranslations('dm')
   const { q, fans, search } = useTeammates()
   const [name, setName] = useState('')
   const [picked, setPicked] = useState<Fan[]>([])
@@ -147,23 +153,23 @@ function NewGroup({ onBack }: { onBack: () => void }) {
       setError(null)
       const r = await createGroupAction({ name: name.trim(), memberIds: picked.map((p) => p.user_id) })
       if (r?.data?.error) setError(r.data.error)
-      else if (r?.validationErrors) setError(r.validationErrors.name?._errors?.[0] ?? 'בדוק את הפרטים')
+      else if (r?.validationErrors) setError(r.validationErrors.name?._errors?.[0] ?? t('checkDetails'))
       else if (r?.serverError) setError(r.serverError)
     })
 
   return (
     <>
-      <SheetHead title="קבוצה חדשה" onBack={onBack} />
+      <SheetHead title={t('newGroup')} onBack={onBack} />
       <label className="block">
-        <span className="sr-only">שם הקבוצה</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="שם הקבוצה, למשל נוסעים לב״ש" className="ib-input" />
+        <span className="sr-only">{t('groupNameLabel')}</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder={t('groupNamePlaceholder')} className="ib-input" />
       </label>
 
       {picked.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="נבחרו">
+        <ul className="flex flex-wrap gap-1.5" aria-label={t('pickedAria')}>
           {picked.map((p) => (
             <li key={p.user_id}>
-              <button type="button" className="ib-chip" onClick={() => toggle(p)} aria-label={`הסר את ${p.nick}`}>
+              <button type="button" className="ib-chip" onClick={() => toggle(p)} aria-label={t('removePick', { nick: p.nick })}>
                 {p.nick}
                 <X className="size-3.5" aria-hidden="true" />
               </button>
@@ -172,8 +178,13 @@ function NewGroup({ onBack }: { onBack: () => void }) {
         </ul>
       )}
       <p className="text-xs text-dim">
-        נבחרו <span className="t-num">{picked.length}</span> מתוך <span className="t-num">{PICK_MAX}</span>
-        {full && ' · הקבוצה מלאה'}
+        {t.rich('pickedCount', {
+          count: picked.length,
+          max: PICK_MAX,
+          c: (chunks) => <span className="t-num">{chunks}</span>,
+          m: (chunks) => <span className="t-num">{chunks}</span>,
+        })}
+        {full && ` · ${t('groupFull')}`}
       </p>
 
       <SearchField q={q} onChange={search} />
@@ -198,15 +209,16 @@ function NewGroup({ onBack }: { onBack: () => void }) {
         </p>
       )}
       <button type="button" disabled={!ready || pending} onClick={create} className="su-btn su-btn-blue">
-        פתיחת הקבוצה
+        {t('createGroup')}
       </button>
     </>
   )
 }
 
 export function FanList({ fans, children }: { fans: Fan[] | null; children: (f: Fan) => React.ReactNode }) {
+  const t = useTranslations('dm')
   if (fans === null) return <div className="skeleton h-24 rounded-xl" aria-hidden="true" />
-  if (fans.length === 0) return <p className="px-1 py-3 text-sm text-muted">לא נמצאו אוהדים</p>
+  if (fans.length === 0) return <p className="px-1 py-3 text-sm text-muted">{t('noFans')}</p>
   return (
     <ul className="ib-fans">
       {fans.map((f) => (

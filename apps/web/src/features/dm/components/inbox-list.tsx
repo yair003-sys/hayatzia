@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { BellOff, ChevronDown, Inbox as InboxIcon, MessagesSquare, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -20,6 +21,7 @@ const rowKey = (r: { kind: string; id: string }) => `${r.kind}:${r.id}`
  * ciphertext (one query per kind) and decrypted here on the device; the server never sees them.
  */
 export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRow[]; invites: Invite[] }) {
+  const t = useTranslations('dm')
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
   const { key, status, reveal } = useDeviceKey(meId)
@@ -86,19 +88,19 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
           <span className="ib-empty-ico" aria-hidden="true">
             <MessagesSquare className="size-7" strokeWidth={1.6} />
           </span>
-          <p className="t-sec">עוד אין שיחות</p>
-          <p className="mb-3 text-sm text-muted">כתוב לכל אוהד בליגה, או פתח קבוצה קטנה לחבר׳ה שאיתך ביציע.</p>
+          <p className="t-sec">{t('emptyTitle')}</p>
+          <p className="mb-3 text-sm text-muted">{t('emptyBody')}</p>
           <button type="button" className="su-btn su-btn-blue" onClick={() => setSheet('dm')}>
-            שיחה חדשה
+            {t('newChat')}
           </button>
           <button type="button" className="su-btn ib-btn-soft" onClick={() => setSheet('group')}>
-            קבוצה חדשה
+            {t('newGroup')}
           </button>
         </div>
       ) : (
         <div className="space-y-3 pb-20">
           {requests.length > 0 && (
-            <section aria-label="בקשות הודעה" className="space-y-2">
+            <section aria-label={t('requestsAria')} className="space-y-2">
               <button
                 type="button"
                 className="ib-row w-full"
@@ -110,16 +112,16 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
                   <InboxIcon className="size-[45%]" strokeWidth={2} />
                 </span>
                 <span className="ib-body text-start">
-                  <b className="ib-name">בקשות ({requests.length})</b>
-                  <span className="ib-preview">אוהדים שרוצים לשלוח לך הודעה</span>
+                  <b className="ib-name">{t('requestsCount', { count: requests.length })}</b>
+                  <span className="ib-preview">{t('requestsSub')}</span>
                 </span>
                 <ChevronDown className={`size-5 shrink-0 text-dim transition-transform ${showRequests ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
               {showRequests && (
-                <ul id="ib-requests" className="ib-list" aria-label="בקשות">
+                <ul id="ib-requests" className="ib-list" aria-label={t('requestsShort')}>
                   {requests.map((r) => (
                     <li key={rowKey(r)}>
-                      <Row row={r} preview={previewOf(r, previews)} />
+                      <Row row={r} preview={previewOf(r, previews, t)} />
                     </li>
                   ))}
                 </ul>
@@ -129,29 +131,29 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
           {chats.length > 0 && (
             <label className="ib-search">
               <Search className="size-4 shrink-0" aria-hidden="true" />
-              <span className="sr-only">חיפוש בשיחות</span>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש" type="search" />
+              <span className="sr-only">{t('searchChatsLabel')}</span>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('searchPlaceholder')} type="search" />
             </label>
           )}
           {invites.length > 0 && (
-            <ul className="space-y-2" aria-label="הזמנות לקבוצות">
+            <ul className="space-y-2" aria-label={t('invitesAria')}>
               {invites.map((i) => (
                 <InviteCard key={i.groupId} invite={i} />
               ))}
             </ul>
           )}
-          <ul className="ib-list" aria-label="שיחות">
+          <ul className="ib-list" aria-label={t('chatsAria')}>
             {shown.map((r) => (
               <li key={rowKey(r)}>
-                <Row row={r} preview={previewOf(r, previews)} />
+                <Row row={r} preview={previewOf(r, previews, t)} />
               </li>
             ))}
-            {chats.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">לא נמצאו שיחות</li>}
+            {chats.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">{t('noChats')}</li>}
           </ul>
         </div>
       )}
 
-      <button type="button" className="ib-fab" aria-label="שיחה או קבוצה חדשה" onClick={() => setSheet('menu')}>
+      <button type="button" className="ib-fab" aria-label={t('newFabAria')} onClick={() => setSheet('menu')}>
         <Plus className="size-6" strokeWidth={2.2} aria-hidden="true" />
       </button>
       <NewSheet mode={sheet} onMode={setSheet} />
@@ -159,12 +161,16 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
   )
 }
 
-function previewOf(r: InboxRow, previews: Map<string, string>): string | null {
-  if (!r.lastMessageId) return r.kind === 'group' ? `עוד אין הודעות · ${membersLabel(r.members ?? 1)}` : 'עוד אין הודעות'
+type T = ReturnType<typeof useTranslations>
+
+function previewOf(r: InboxRow, previews: Map<string, string>, t: T): string | null {
+  if (!r.lastMessageId)
+    return r.kind === 'group' ? t('noMessagesGroup', { members: membersLabel(r.members ?? 1) }) : t('noMessages')
   return previews.get(rowKey(r)) ?? null // null while decrypting
 }
 
 function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
+  const t = useTranslations('dm')
   const badge = unreadLabel(row.unread)
   // A request shows the sender's club colours (they may be of another club).
   const club = row.request === 'incoming' && row.otherTeam ? teamById(row.otherTeam) : undefined
@@ -180,7 +186,7 @@ function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
               {club.short}
             </span>
           )}
-          {row.muted && <BellOff className="size-3.5 shrink-0 self-center text-dim" aria-label="מושתק" />}
+          {row.muted && <BellOff className="size-3.5 shrink-0 self-center text-dim" aria-label={t('muted')} />}
           <time dateTime={row.lastAt} className="ib-time">
             {chatTime(row.lastAt)}
           </time>
@@ -188,7 +194,7 @@ function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
         <div className="flex items-center gap-2">
           <p className="ib-preview">{preview ?? <span className="ib-preview-wait" aria-hidden="true" />}</p>
           {badge && (
-            <span className="ib-badge" data-muted={row.muted ? 'true' : undefined} aria-label={`${badge} הודעות שלא נקראו`}>
+            <span className="ib-badge" data-muted={row.muted ? 'true' : undefined} aria-label={t('unreadAria', { badge })}>
               {badge}
             </span>
           )}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { RefreshCw, ScanLine } from 'lucide-react'
 import { QR_CODE_RE, qrUrl } from '../schema'
@@ -12,6 +13,7 @@ import { resetQrAction } from '../server/actions'
  * code; the old one (and any screenshot of it) stops working at once.
  */
 export function MyQr({ code: initial, nick, origin }: { code: string; nick: string; origin?: string }) {
+  const t = useTranslations('dm')
   const [code, setCode] = useState(initial)
   const [src, setSrc] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -37,17 +39,17 @@ export function MyQr({ code: initial, nick, origin }: { code: string; nick: stri
       <figure className="mx-auto w-full max-w-72 space-y-2 rounded-2xl bg-white p-4 text-center text-black">
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element -- a data URL drawn on the device
-          <img src={src} alt="הברקוד שלי" className="aspect-square w-full" />
+          <img src={src} alt={t('qrAlt')} className="aspect-square w-full" />
         ) : (
           <div className="skeleton aspect-square w-full rounded-lg" aria-hidden="true" />
         )}
         <figcaption className="text-lg font-bold">{nick}</figcaption>
       </figure>
-      <p className="text-center text-sm text-muted">אוהד אחר סורק את הברקוד במצלמה של הטלפון, ויכול לכתוב לך מיד.</p>
+      <p className="text-center text-sm text-muted">{t('qrHint')}</p>
 
       {confirming ? (
-        <div role="group" aria-label="חדש ברקוד" className="space-y-2 rounded-lg border border-line p-3">
-          <p className="text-sm">הברקוד הנוכחי יפסיק לעבוד, גם אם מישהו צילם אותו. להמשיך?</p>
+        <div role="group" aria-label={t('qrReset')} className="space-y-2 rounded-lg border border-line p-3">
+          <p className="text-sm">{t('qrResetConfirm')}</p>
           <div className="flex gap-2">
             <button
               type="button"
@@ -59,23 +61,23 @@ export function MyQr({ code: initial, nick, origin }: { code: string; nick: stri
                   const next = r?.data?.code
                   if (next) {
                     setCode(next)
-                    setMsg('נוצר ברקוד חדש')
-                  } else setMsg((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? 'לא הצלחנו ליצור ברקוד חדש. נסה שוב')
+                    setMsg(t('qrResetDone'))
+                  } else setMsg((r?.data && 'error' in r.data ? r.data.error : r?.serverError) ?? t('qrResetFail'))
                   setConfirming(false)
                 })
               }
             >
-              כן, ברקוד חדש
+              {t('qrResetYes')}
             </button>
             <button type="button" className="min-h-11 rounded-lg border border-line px-4" onClick={() => setConfirming(false)}>
-              ביטול
+              {t('cancel')}
             </button>
           </div>
         </div>
       ) : (
         <button type="button" className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-sm" onClick={() => setConfirming(true)}>
           <RefreshCw className="size-4" aria-hidden="true" />
-          חדש ברקוד
+          {t('qrReset')}
         </button>
       )}
       {msg && (
@@ -103,6 +105,7 @@ export function codeFromScan(text: string): string | null {
  * phone camera app is the way (it opens the link by itself). Video stays on the device.
  */
 export function QrScanner() {
+  const t = useTranslations('dm')
   const router = useRouter()
   const video = useRef<HTMLVideoElement>(null)
   const [state, setState] = useState<'idle' | 'scanning' | 'unsupported' | 'denied'>('idle')
@@ -152,9 +155,9 @@ export function QrScanner() {
     <div className="space-y-2">
       {state === 'scanning' ? (
         <>
-          <video ref={video} className="aspect-square w-full rounded-2xl bg-black object-cover" muted playsInline aria-label="מצלמה לסריקת ברקוד" />
+          <video ref={video} className="aspect-square w-full rounded-2xl bg-black object-cover" muted playsInline aria-label={t('scanCameraAria')} />
           <button type="button" className="min-h-11 w-full rounded-lg border border-line" onClick={() => setState('idle')}>
-            עצור סריקה
+            {t('scanStop')}
           </button>
         </>
       ) : (
@@ -164,17 +167,17 @@ export function QrScanner() {
           onClick={() => setState(detectorCtor() && typeof navigator.mediaDevices?.getUserMedia === 'function' ? 'scanning' : 'unsupported')}
         >
           <ScanLine className="size-5" aria-hidden="true" />
-          סרוק ברקוד
+          {t('scan')}
         </button>
       )}
       {state === 'unsupported' && (
         <p role="status" className="text-sm text-muted">
-          הדפדפן הזה לא סורק ברקודים. פתח את המצלמה של הטלפון וכוון אותה לברקוד: הקישור ייפתח לבד.
+          {t('scanUnsupported')}
         </p>
       )}
       {state === 'denied' && (
         <p role="alert" className="text-sm text-live">
-          אין גישה למצלמה. אפשר לאשר מצלמה בהגדרות הדפדפן, או לסרוק עם המצלמה של הטלפון.
+          {t('scanDenied')}
         </p>
       )}
     </div>
