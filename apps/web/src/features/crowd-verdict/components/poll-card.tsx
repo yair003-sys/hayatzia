@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, type CSSProperties } from 'react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { canVote, pollState, resultsFor, showResults, type Group, type MyVote, type Poll, type PollOption, type Tally } from '../schema'
 
@@ -17,11 +18,12 @@ type Props = {
   onVote: (pollId: string, option: string, optionIn?: string) => Promise<string | null>
 }
 
-const SOURCE: Record<Poll['source'], string> = { chat: 'דעת הקהל · מהצ׳אט', event: 'אירוע במשחק', schedule: 'דעת הקהל' }
 const pctStyle = (pct: number) => ({ '--pct': pct }) as CSSProperties
 
 /** One poll as a compact, tactile card inside the match-room chat (mockup v3, 3D pass). */
 export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVote }: Props) {
+  const t = useTranslations('live')
+  const source: Record<Poll['source'], string> = { chat: t('sourceChat'), event: t('sourceEvent'), schedule: t('sourceSchedule') }
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [pickOut, setPickOut] = useState<string | null>(null)
@@ -44,15 +46,15 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
   return (
     <article id={`poll-${poll.id}`} aria-label={poll.question} data-open={open} className="crowd-card my-1.5 grid gap-2.5 self-stretch p-3.5">
       <header className="flex items-center gap-2 text-[11px] font-bold">
-        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent-text">{club ? `רק אוהדי ${club.short}` : SOURCE[poll.source]}</span>
-        <span className="ms-auto">{open ? <Countdown poll={poll} now={now} /> : <span className="font-normal text-muted">נסגר</span>}</span>
+        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent-text">{club ? t('onlyFansOf', { club: club.short }) : source[poll.source]}</span>
+        <span className="ms-auto">{open ? <Countdown poll={poll} now={now} /> : <span className="font-normal text-muted">{t('pollClosed')}</span>}</span>
       </header>
       <h4 className="t-sec">{poll.question}</h4>
 
       {poll.kind === 'sub60' ? (
         <>
           <ChipRow
-            title="יוצא"
+            title={t('subOut')}
             options={poll.options}
             results={resultsFor(poll, tallies, 'o')}
             reveal={reveal}
@@ -65,7 +67,7 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
             }}
           />
           <ChipRow
-            title="נכנס"
+            title={t('subIn')}
             options={poll.optionsIn ?? []}
             results={resultsFor(poll, tallies, 'i')}
             reveal={reveal}
@@ -74,10 +76,10 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
             burst={burst}
             onPick={(id) => out && send(out, id)}
           />
-          {voter && !mine && <p className="text-[11px] text-muted">בחר מי יוצא ואז מי נכנס</p>}
+          {voter && !mine && <p className="text-[11px] text-muted">{t('pickOutThenIn')}</p>}
         </>
       ) : (
-        <div className="flex gap-2 pb-1" role="group" aria-label="הצבעה">
+        <div className="flex gap-2 pb-1" role="group" aria-label={t('voteAria')}>
           {resultsFor(poll, tallies, 'o').map((r, i) => {
             const o = poll.options[i]!
             const on = mine?.option === o.id
@@ -110,11 +112,11 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
         <span className={cn(poll.summary && 'font-bold text-fg')}>
           {poll.summary
             ? poll.summary
-            : `${total.toLocaleString('he-IL')} הצביעו${mine && open ? ' · אפשר לשנות' : voter && !mine ? ' · הצבע כדי לראות תוצאות' : ''}`}
+            : `${t('votedCount', { count: total.toLocaleString('he-IL') })}${mine && open ? t('canChange') : voter && !mine ? t('voteToSee') : ''}`}
         </span>
         {reveal && poll.kind !== 'sub60' && (
           <button type="button" aria-expanded={splitOpen} onClick={() => setSplitOpen((v) => !v)} className="min-h-9 shrink-0 font-bold text-accent-text">
-            {splitOpen ? 'סגור ▴' : 'לפי קבוצה ▾'}
+            {splitOpen ? t('closeSplit') : t('bySplit')}
           </button>
         )}
       </footer>
@@ -129,13 +131,14 @@ export function PollCard({ poll, tallies, mine, now, myTeamId, home, away, onVot
 
 /** Seconds left, with a ring that drains. */
 function Countdown({ poll, now }: { poll: Poll; now: number }) {
+  const t = useTranslations('live')
   const total = Math.max(1, Date.parse(poll.closesAt) - Date.parse(poll.opensAt))
   const leftMs = Math.max(0, Date.parse(poll.closesAt) - now)
   const c = 2 * Math.PI * 8
   const low = leftMs < 10_000
   return (
     <span className={cn('flex items-center gap-1.5 font-display tabular-nums', low ? 'text-live' : 'text-muted')}>
-      {Math.ceil(leftMs / 1000)} שנ׳
+      {t('secondsLeft', { n: Math.ceil(leftMs / 1000) })}
       <svg viewBox="0 0 20 20" className="size-5 -rotate-90" aria-hidden="true">
         <circle cx="10" cy="10" r="8" fill="none" stroke="var(--color-line)" strokeWidth="3" />
         <circle
@@ -213,18 +216,19 @@ function ChipRow(props: {
 }
 
 function Split({ poll, tallies, home, away }: { poll: Poll; tallies: Tally[]; home: CrowdSide; away: CrowdSide }) {
+  const t = useTranslations('live')
   const overall = resultsFor(poll, tallies, 'o')
   const leadIndex = overall.reduce((best, r, i) => (r.n > overall[best]!.n ? i : best), 0)
   const lead = poll.options[leadIndex]!
   const rows: { g: Group; name: string; color: string }[] = [
-    { g: 'h', name: `אוהדי ${home.short}`, color: home.bar },
-    { g: 'a', name: `אוהדי ${away.short}`, color: away.bar },
-    { g: 'n', name: 'ניטרליים', color: 'var(--color-dim)' },
+    { g: 'h', name: t('fansOf', { team: home.short }), color: home.bar },
+    { g: 'a', name: t('fansOf', { team: away.short }), color: away.bar },
+    { g: 'n', name: t('neutrals'), color: 'var(--color-dim)' },
   ]
   return (
     <div className="grid gap-2 border-t border-line-soft pt-2.5 text-[11px] text-muted">
       <span>
-        כמה אחוז בחרו {lead.emoji} {lead.label}:
+        {t('pctChose', { emoji: lead.emoji, label: lead.label })}
       </span>
       {rows.map((row) => {
         const pct = resultsFor(poll, tallies, 'o', row.g)[leadIndex]?.pct ?? 0
