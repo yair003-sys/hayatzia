@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { Flag, SendHorizontal, ThumbsDown, ThumbsUp, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
@@ -98,6 +99,7 @@ export function ChatRoom({
   reportKind,
   clubOf,
 }: ChatRoomProps) {
+  const t = useTranslations('chat')
   const typing = useTyping(presenceTopic, meId, hiddenUsers)
   const [messages, setMessages] = useState<ChatMessage[]>(initial)
   // My messages on their way (one tick) or failed ("נסה שוב"); always the newest, so kept apart from the sorted list.
@@ -222,7 +224,7 @@ export function ChatRoom({
     try {
       res = await send(p.body, p.reply_to ?? undefined)
     } catch {
-      res = { error: 'ההודעה לא נשלחה. נסה שוב' }
+      res = { error: t('sendFailedRetry') }
     }
     if ('message' in res) {
       const saved = res.message
@@ -364,13 +366,13 @@ export function ChatRoom({
     >
       <div className="mb-2 flex items-center gap-2 text-xs text-muted" aria-live="polite">
         <span className={cn('size-2 rounded-full', live ? 'bg-ok' : 'bg-dim')} aria-hidden="true" />
-        {live ? 'מחובר בזמן אמת' : 'מתחבר…'}
+        {live ? t('connected') : t('connecting')}
       </div>
       <span className="sr-only" aria-live="polite">
         {divider?.label ?? ''}
       </span>
 
-      <ol className="flex flex-1 flex-col gap-2" aria-label="הודעות">
+      <ol className="flex flex-1 flex-col gap-2" aria-label={t('messagesAria')}>
         {hasOlder && firstSaved && (
           <li className="self-center">
             <button
@@ -390,11 +392,11 @@ export function ChatRoom({
               }}
               className="min-h-11 rounded-full border border-line px-3 py-1 text-xs text-muted disabled:opacity-50"
             >
-              {loadingOlder ? 'טוען…' : olderFailed ? 'לא הצלחנו לטעון. נסה שוב' : 'הודעות קודמות'}
+              {loadingOlder ? t('loading') : olderFailed ? t('loadFailed') : t('olderMessages')}
             </button>
           </li>
         )}
-        {all.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? 'עוד אין הודעות.'}</li>}
+        {all.length === 0 && <li className="py-10 text-center text-muted">{emptyText ?? t('noMessages')}</li>}
         {rows}
         <div ref={bottom} className="scroll-mb-48" />
       </ol>
@@ -404,14 +406,14 @@ export function ChatRoom({
         {pinned}
         {presenceTopic && <TypingLine count={typing.count} />}
         {reporting && reportKind && (
-          <section aria-label="דיווח על הודעה" className="space-y-2 rounded-xl border border-line bg-elev/95 p-3 backdrop-blur">
+          <section aria-label={t('reportSection')} className="space-y-2 rounded-xl border border-line bg-elev/95 p-3 backdrop-blur">
             <div className="flex items-start gap-2">
               <Flag className="mt-0.5 size-4 shrink-0 text-live" aria-hidden="true" />
               <div className="min-w-0 flex-1 text-sm">
-                <b>דיווח על ההודעה של {reporting.nick}</b>
+                <b>{t('reportOf', { nick: reporting.nick })}</b>
                 <p className="truncate text-muted">{replySnippet(reporting.body)}</p>
               </div>
-              <button type="button" className="chat-replybar-x" onClick={() => setReporting(null)} aria-label="ביטול הדיווח">
+              <button type="button" className="chat-replybar-x" onClick={() => setReporting(null)} aria-label={t('cancelReport')}>
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
@@ -438,7 +440,7 @@ export function ChatRoom({
           <div className="rounded-xl border border-line bg-elev/95 backdrop-blur">
             {replyTo && (
               <ReplyBar
-                nick={replyTo.user_id === meId ? 'עצמך' : replyTo.nick}
+                nick={replyTo.user_id === meId ? t('yourself') : replyTo.nick}
                 text={replySnippet(replyTo.body)}
                 onCancel={() => {
                   setReplyTo(null)
@@ -454,7 +456,7 @@ export function ChatRoom({
               }}
             >
               <label className="sr-only" htmlFor={`chat-input-${topic}`}>
-                הודעה
+                {t('messageLabel')}
               </label>
               <textarea
                 ref={input}
@@ -474,13 +476,13 @@ export function ChatRoom({
                 }}
                 maxLength={MESSAGE_MAX}
                 rows={1}
-                placeholder={placeholder ?? 'כתוב הודעה…'}
+                placeholder={placeholder ?? t('writeMessage')}
                 className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 outline-none"
               />
               <button
                 type="submit"
                 disabled={!draft.trim()}
-                aria-label="שלח"
+                aria-label={t('send')}
                 className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-white disabled:opacity-40"
               >
                 <SendHorizontal className="size-5 -scale-x-100" aria-hidden="true" />
@@ -541,6 +543,7 @@ const MessageItem = memo(function MessageItem({
   onRetry: (id: string) => void
   onDiscard: (id: string) => void
 }) {
+  const t = useTranslations('chat')
   const state = mine ? sendState(m) : undefined
   const hot = isHotMessage(m)
   return (
@@ -565,12 +568,12 @@ const MessageItem = memo(function MessageItem({
         className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2', hot && 'chat-bubble--hot')}
         style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
       >
-        {hot && <span className="chat-hot">🔥 מדובר</span>}
+        {hot && <span className="chat-hot">{t('hotBadge')}</span>}
         {m.reply_to && (
           <Quote
             mine={mine}
-            nick={quoteHidden ? 'אוהד' : (m.reply_nick ?? 'הודעה קודמת')}
-            text={quoteHidden ? 'הודעה מוסתרת' : (m.reply_body ?? '')}
+            nick={quoteHidden ? t('fan') : (m.reply_nick ?? t('quotedPrev'))}
+            text={quoteHidden ? t('hiddenMsg') : (m.reply_body ?? '')}
             onJump={quoteLoaded && !quoteHidden && m.reply_to ? () => onJump(m.reply_to as string) : undefined}
           />
         )}
@@ -581,7 +584,7 @@ const MessageItem = memo(function MessageItem({
           <button
             type="button"
             aria-pressed={m.myReaction === 1}
-            aria-label="אהבתי"
+            aria-label={t('like')}
             className={cn('chat-react-btn', m.myReaction === 1 && 'on')}
             onClick={() => onReact(m.id, 1)}
           >
@@ -591,7 +594,7 @@ const MessageItem = memo(function MessageItem({
           <button
             type="button"
             aria-pressed={m.myReaction === -1}
-            aria-label="לא אהבתי"
+            aria-label={t('dislike')}
             className={cn('chat-react-btn', 'down', m.myReaction === -1 && 'on')}
             onClick={() => onReact(m.id, -1)}
           >

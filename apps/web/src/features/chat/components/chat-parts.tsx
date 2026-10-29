@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertCircle, ArrowDown, Check, CheckCheck, CornerUpLeft, Flag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/features/dm/components/avatar'
@@ -68,18 +69,19 @@ export function MessageMeta({
   onRetry?: () => void
   onDiscard?: () => void
 }) {
+  const t = useTranslations('chat')
   if (state === 'failed') {
     return (
       <span className="chat-meta chat-meta-failed">
         <AlertCircle className="size-3.5" aria-hidden="true" />
-        לא נשלח
+        {t('notSent')}
         {onRetry && (
           <button type="button" className="chat-meta-btn" onClick={onRetry}>
-            נסה שוב
+            {t('retry')}
           </button>
         )}
         {onDiscard && (
-          <button type="button" className="chat-meta-btn" onClick={onDiscard} aria-label="הסר את ההודעה">
+          <button type="button" className="chat-meta-btn" onClick={onDiscard} aria-label={t('removeMessage')}>
             <X className="size-3.5" aria-hidden="true" />
           </button>
         )}
@@ -96,6 +98,7 @@ export function MessageMeta({
 
 /** The quoted message inside a reply. A button that jumps to the original when it is loaded. */
 export function Quote({ nick, text, onJump, mine }: { nick: string; text: string; onJump?: () => void; mine: boolean }) {
+  const t = useTranslations('chat')
   const body = (
     <>
       <b className="chat-quote-nick">{nick}</b>
@@ -108,7 +111,7 @@ export function Quote({ nick, text, onJump, mine }: { nick: string; text: string
       type="button"
       className={cn('chat-quote', mine && 'chat-quote-mine')}
       onClick={onJump}
-      aria-label={`תגובה ל${nick}: ${text}. מעבר להודעה`}
+      aria-label={t('quoteJump', { nick, text })}
     >
       {body}
     </button>
@@ -117,14 +120,15 @@ export function Quote({ nick, text, onJump, mine }: { nick: string; text: string
 
 /** Above the typing box while replying: who and what, and ✕ to cancel. */
 export function ReplyBar({ nick, text, onCancel }: { nick: string; text: string; onCancel: () => void }) {
+  const t = useTranslations('chat')
   return (
     <div className="chat-replybar">
       <CornerUpLeft className="size-4 shrink-0 text-accent-text" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <b className="chat-quote-nick">תגובה ל{nick}</b>
+        <b className="chat-quote-nick">{t('replyingTo', { nick })}</b>
         <span className="chat-quote-text">{text}</span>
       </div>
-      <button type="button" className="chat-replybar-x" onClick={onCancel} aria-label="ביטול התגובה">
+      <button type="button" className="chat-replybar-x" onClick={onCancel} aria-label={t('cancelReply')}>
         <X className="size-4" aria-hidden="true" />
       </button>
     </div>
@@ -133,12 +137,13 @@ export function ReplyBar({ nick, text, onCancel }: { nick: string; text: string;
 
 /** Round "go down" button above the typing box, with a badge of messages that arrived while scrolled up. */
 export function JumpButton({ count, onClick }: { count: number; onClick: () => void }) {
+  const t = useTranslations('chat')
   return (
     <button
       type="button"
       className="chat-jump"
       onClick={onClick}
-      aria-label={count > 0 ? `לסוף הצ׳אט, ${count} הודעות חדשות` : 'לסוף הצ׳אט'}
+      aria-label={count > 0 ? t('toEndCount', { count }) : t('toEnd')}
     >
       <ArrowDown className="size-5" aria-hidden="true" />
       {count > 0 && (
@@ -188,6 +193,7 @@ export function MessageRow({
   onReport?: () => void
   children: ReactNode
 }) {
+  const t = useTranslations('chat')
   const hasActions = Boolean(onReply || onReport)
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; long: boolean }>({ timer: null, long: false })
   const clear = () => {
@@ -234,10 +240,10 @@ export function MessageRow({
                 onActive(null)
                 onReply()
               }}
-              aria-label="השב להודעה"
+              aria-label={t('replyToMsg')}
             >
               <CornerUpLeft className="size-4" aria-hidden="true" />
-              <span className="chat-reply-btn-text">השב</span>
+              <span className="chat-reply-btn-text">{t('reply')}</span>
             </button>
           )}
           {onReport && (
@@ -248,10 +254,10 @@ export function MessageRow({
                 onActive(null)
                 onReport()
               }}
-              aria-label="דווח על ההודעה"
+              aria-label={t('reportMsg')}
             >
               <Flag className="size-4" aria-hidden="true" />
-              <span className="chat-reply-btn-text">דווח</span>
+              <span className="chat-reply-btn-text">{t('report')}</span>
             </button>
           )}
         </div>
@@ -265,9 +271,10 @@ export function MessageRow({
  * their club. Nothing on my own messages, or when the chat offers no private messages.
  */
 export function MessageAuthor({ mine, userId, nick, onFan }: { mine: boolean; userId: string; nick: string; onFan?: () => void }) {
+  const t = useTranslations('chat')
   if (mine || !onFan) return null
   return (
-    <button type="button" className="chat-author" onClick={onFan} aria-label={`שלח הודעה פרטית ל-${nick}`}>
+    <button type="button" className="chat-author" onClick={onFan} aria-label={t('sendPrivateTo', { nick })}>
       <Avatar id={userId} name={nick} size="sm" />
     </button>
   )
