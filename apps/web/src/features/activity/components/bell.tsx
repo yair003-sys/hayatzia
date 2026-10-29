@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell as BellIcon } from 'lucide-react'
@@ -22,12 +23,13 @@ const IMMERSIVE = (pathname: string) => pathname === '/square' || pathname.start
  *  with the onefan logo (back to the home) at one end and the bell at the other. Not on screens that carry both in
  *  their own header (the home). */
 export function FloatingBell(props: { meId: string; count: number | null }) {
+  const t = useTranslations('activity')
   const pathname = usePathname()
   if (OWN_BELL_PATHS.has(pathname)) return null
   if (IMMERSIVE(pathname)) return <Bell {...props} />
   return (
     <header className="topbar">
-      <Link href="/stand" aria-label="onefan, למסך הראשי" className="topbar-home">
+      <Link href="/stand" aria-label={t('homeAria')} className="topbar-home">
         <Brand size={24} />
       </Link>
       <Bell {...props} inline />
@@ -54,6 +56,7 @@ export const RETRY_UNKNOWN_MS = 10_000
  * reads the clock, which Next.js reports as an error during prerendering).
  */
 export function Bell({ meId, count: serverCount, inline = false }: { meId: string; count: number | null; inline?: boolean }) {
+  const t = useTranslations('activity')
   const pathname = usePathname()
   const [count, setCount] = useState(serverCount)
   // A new server count (a refresh) wins; in between, the live updates. A refresh whose read failed (null) keeps the
@@ -131,14 +134,14 @@ export function Bell({ meId, count: serverCount, inline = false }: { meId: strin
       return
     }
     const wait = Math.max(0, prev.at + ANNOUNCE_EVERY_MS - Date.now())
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       last.current = { shown: known, at: Date.now() }
-      setSaid(`${badgeLabel(known)} התראות חדשות`)
+      setSaid(t('newNotifications', { count: badgeLabel(known) ?? '' }))
     }, wait)
     return () => {
-      clearTimeout(t)
+      clearTimeout(timer)
     }
-  }, [known])
+  }, [known, t])
 
   return (
     <>

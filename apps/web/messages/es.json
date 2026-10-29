@@ -16,7 +16,21 @@
   },
   "account": {
     "signOut": "Cerrar sesión",
-    "deleted": "Tu cuenta fue eliminada. Gracias por ser parte de la comunidad."
+    "deleted": "Tu cuenta fue eliminada. Gracias por ser parte de la comunidad.",
+    "deleteTitle": "Eliminar la cuenta",
+    "deleteIntro": "La eliminación es definitiva y no se puede deshacer. Se eliminarán:",
+    "deleteItem1": "La cuenta, el apodo, el club y el número de aficionado",
+    "deleteItem2": "Tus mensajes en el chat del club y en las salas de partido, tus publicaciones, fotos y comentarios",
+    "deleteItem3": "Tus conversaciones privadas (también en el lado de con quien hablaste) y tus mensajes de grupo",
+    "deleteItem4": "Pronósticos, valoraciones, reseñas, alineaciones, votos y registros de asistencia",
+    "deleteItem5": "Viajes, eventos y anuncios del mercado, y todos los archivos que subiste",
+    "deleteItem6": "Notificaciones, ajustes y bloqueos",
+    "deleteReportsKept": "Los reportes y solicitudes que enviaste se conservan sin tu nombre, para que podamos terminar de gestionarlos.",
+    "deleteAggregates": "Los totales generales anónimos (como el número de aficionados de un club) se actualizan en consecuencia. Puedes registrarte de nuevo más adelante, pero los datos no volverán.",
+    "deleteConfirm": "Para confirmar, escribe «{word}»",
+    "deleting": "Eliminando…",
+    "deletePermanent": "Eliminar la cuenta permanentemente",
+    "deleteCancel": "Cancelar"
   },
   "pwa": {
     "install": "Instala onefan en tu teléfono",
@@ -95,7 +109,15 @@
     "blocked": "Las notificaciones están bloqueadas en los ajustes del navegador. Puedes permitirlas ahí.",
     "turnOff": "Desactivar notificaciones en este dispositivo",
     "turnOn": "Activar notificaciones",
-    "note": "Goles, pitidos finales, mensajes y solicitudes de viaje. Nunca el contenido de los mensajes."
+    "note": "Goles, pitidos finales, mensajes y solicitudes de viaje. Nunca el contenido de los mensajes.",
+    "matchAll": "Toda la liga",
+    "matchTeam": "Solo mi equipo",
+    "matchOff": "Desactivado",
+    "saveFailed": "No se pudo guardar. Inténtalo de nuevo",
+    "matchesTitle": "Notificaciones de partidos",
+    "matchesHint": "Goles y final del partido",
+    "messagesTitle": "Mensajes privados y de grupo",
+    "messagesHint": "Sin el contenido del mensaje en la notificación"
   },
   "alerts": {
     "close": "Cerrar notificación"
@@ -765,5 +787,36 @@
     "sending": "Enviando…",
     "send": "Enviar",
     "close": "Cerrar"
+  },
+  "verification": {
+    "checkDetails": "Revisa los datos",
+    "requiredNote": "Para ofrecer o pedir un viaje debes verificar tu identidad. Los conductores también verifican el carné de conducir y registran un coche.",
+    "notRequiredNote": "La verificación aún no es obligatoria para los viajes. Puedes empezar ya de todos modos.",
+    "licenceBlocked": "Primero verifica una identificación",
+    "carDriversOnly": "El coche solo es necesario para los conductores",
+    "attemptsLeft": "Quedan {count} intentos",
+    "noAttempts": "No quedan intentos. Escríbenos por «Contacto» y lo reiniciaremos",
+    "notAvailable": "La verificación aún no está disponible. Te avisaremos cuando se abra.",
+    "wait": "Un momento…",
+    "startVerification": "Iniciar verificación",
+    "reverify": "Verificar de nuevo",
+    "myCar": "Mi coche",
+    "plateValueLabel": "Matrícula:",
+    "plateVisibility": "(solo la ven los pasajeros que apruebes)",
+    "removeCar": "Quitar coche",
+    "plateInputLabel": "Matrícula",
+    "plateHint": "Comprobaremos el número en la base de datos pública del Ministerio de Transporte. La marca, el modelo y el color aparecerán en la tarjeta del viaje.",
+    "checking": "Comprobando…",
+    "checkAndRegister": "Comprobar y registrar",
+    "step1": "Foto del documento (ejemplo, sin cámara)",
+    "step2": "Escaneo facial en vivo (ejemplo)",
+    "step3": "Comparación con el documento y la fecha de nacimiento de la cuenta (ejemplo)"
+  },
+  "activity": {
+    "homeAria": "onefan, a la pantalla de inicio",
+    "newNotifications": "{count} notificaciones nuevas",
+    "loadFailed": "No se pudo cargar. Inténtalo de nuevo",
+    "loading": "Cargando…",
+    "moreNotifications": "Más notificaciones"
   }
 }

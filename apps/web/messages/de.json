@@ -16,7 +16,21 @@
   },
   "account": {
     "signOut": "Abmelden",
-    "deleted": "Dein Konto wurde gelöscht. Danke, dass du Teil der Community warst."
+    "deleted": "Dein Konto wurde gelöscht. Danke, dass du Teil der Community warst.",
+    "deleteTitle": "Konto löschen",
+    "deleteIntro": "Die Löschung ist endgültig und kann nicht rückgängig gemacht werden. Gelöscht werden:",
+    "deleteItem1": "Konto, Spitzname, Verein und Fan-Nummer",
+    "deleteItem2": "Deine Nachrichten im Vereinschat und in den Spielräumen, deine Beiträge, Fotos und Kommentare",
+    "deleteItem3": "Deine privaten Chats (auch bei denen, mit denen du geschrieben hast) und deine Gruppennachrichten",
+    "deleteItem4": "Tipps, Bewertungen, Rezensionen, Aufstellungen, Abstimmungen und Check-ins",
+    "deleteItem5": "Fahrten, Events und Marktplatz-Anzeigen sowie alle von dir hochgeladenen Dateien",
+    "deleteItem6": "Benachrichtigungen, Einstellungen und Blockierungen",
+    "deleteReportsKept": "Von dir gesendete Meldungen und Anfragen werden ohne deinen Namen aufbewahrt, damit wir sie zu Ende bearbeiten können.",
+    "deleteAggregates": "Anonyme Gesamtzahlen (etwa die Anzahl der Fans eines Vereins) werden entsprechend aktualisiert. Du kannst dich später erneut anmelden, aber die Daten kommen nicht zurück.",
+    "deleteConfirm": "Zum Bestätigen tippe „{word}“",
+    "deleting": "Wird gelöscht…",
+    "deletePermanent": "Konto endgültig löschen",
+    "deleteCancel": "Abbrechen"
   },
   "pwa": {
     "install": "onefan auf dem Handy installieren",
@@ -95,7 +109,15 @@
     "blocked": "Benachrichtigungen sind in den Browsereinstellungen blockiert. Du kannst sie dort erlauben.",
     "turnOff": "Benachrichtigungen auf diesem Gerät ausschalten",
     "turnOn": "Benachrichtigungen einschalten",
-    "note": "Tore, Schlusspfiff, Nachrichten und Mitfahr-Anfragen. Nie die Nachrichteninhalte."
+    "note": "Tore, Schlusspfiff, Nachrichten und Mitfahr-Anfragen. Nie die Nachrichteninhalte.",
+    "matchAll": "Ganze Liga",
+    "matchTeam": "Nur mein Verein",
+    "matchOff": "Aus",
+    "saveFailed": "Konnte nicht gespeichert werden. Versuch es erneut",
+    "matchesTitle": "Spiel-Benachrichtigungen",
+    "matchesHint": "Tore und Spielende",
+    "messagesTitle": "Private und Gruppennachrichten",
+    "messagesHint": "Ohne den Nachrichteninhalt in der Benachrichtigung"
   },
   "alerts": {
     "close": "Benachrichtigung schließen"
@@ -765,5 +787,36 @@
     "sending": "Senden…",
     "send": "Senden",
     "close": "Schließen"
+  },
+  "verification": {
+    "checkDetails": "Prüfe die Angaben",
+    "requiredNote": "Um eine Fahrt anzubieten oder anzufragen, musst du deine Identität verifizieren. Fahrer verifizieren auch einen Führerschein und registrieren ein Auto.",
+    "notRequiredNote": "Für Fahrten ist die Verifizierung noch nicht erforderlich. Du kannst aber schon jetzt beginnen.",
+    "licenceBlocked": "Zuerst einen Ausweis verifizieren",
+    "carDriversOnly": "Ein Auto wird nur für Fahrer benötigt",
+    "attemptsLeft": "Noch {count} Versuche",
+    "noAttempts": "Keine Versuche mehr. Schreib uns über „Kontakt“, und wir setzen es zurück",
+    "notAvailable": "Die Verifizierung ist noch nicht verfügbar. Wir melden uns, sobald sie öffnet.",
+    "wait": "Einen Moment…",
+    "startVerification": "Verifizierung starten",
+    "reverify": "Erneut verifizieren",
+    "myCar": "Mein Auto",
+    "plateValueLabel": "Kennzeichen:",
+    "plateVisibility": "(nur von dir bestätigte Mitfahrer sehen es)",
+    "removeCar": "Auto entfernen",
+    "plateInputLabel": "Kennzeichen",
+    "plateHint": "Wir prüfen das Kennzeichen in der öffentlichen Datenbank des Verkehrsministeriums. Marke, Modell und Farbe erscheinen auf der Fahrtkarte.",
+    "checking": "Wird geprüft…",
+    "checkAndRegister": "Prüfen und registrieren",
+    "step1": "Foto des Ausweises (Beispiel, ohne Kamera)",
+    "step2": "Live-Gesichtsscan (Beispiel)",
+    "step3": "Abgleich mit dem Ausweis und dem Geburtsdatum im Konto (Beispiel)"
+  },
+  "activity": {
+    "homeAria": "onefan, zum Startbildschirm",
+    "newNotifications": "{count} neue Benachrichtigungen",
+    "loadFailed": "Konnte nicht geladen werden. Versuch es erneut",
+    "loading": "Lädt…",
+    "moreNotifications": "Weitere Benachrichtigungen"
   }
 }

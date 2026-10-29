@@ -16,7 +16,21 @@
   },
   "account": {
     "signOut": "Se déconnecter",
-    "deleted": "Votre compte a été supprimé. Merci d'avoir fait partie de la communauté."
+    "deleted": "Votre compte a été supprimé. Merci d'avoir fait partie de la communauté.",
+    "deleteTitle": "Supprimer le compte",
+    "deleteIntro": "La suppression est définitive et irréversible. Seront supprimés :",
+    "deleteItem1": "Le compte, le pseudo, le club et le numéro de fan",
+    "deleteItem2": "Tes messages dans le chat du club et les salons de match, tes publications, photos et commentaires",
+    "deleteItem3": "Tes conversations privées (aussi chez celui ou celle à qui tu as parlé) et tes messages de groupe",
+    "deleteItem4": "Pronostics, notes, avis, compositions, votes et check-ins",
+    "deleteItem5": "Trajets, événements et annonces du marché, et tous les fichiers que tu as importés",
+    "deleteItem6": "Notifications, réglages et blocages",
+    "deleteReportsKept": "Les signalements et demandes que tu as envoyés sont conservés sans ton nom, pour que nous puissions finir de les traiter.",
+    "deleteAggregates": "Les totaux globaux anonymes (comme le nombre de fans d’un club) sont mis à jour en conséquence. Tu pourras te réinscrire plus tard, mais les données ne reviendront pas.",
+    "deleteConfirm": "Pour confirmer, tape « {word} »",
+    "deleting": "Suppression…",
+    "deletePermanent": "Supprimer le compte définitivement",
+    "deleteCancel": "Annuler"
   },
   "pwa": {
     "install": "Installez onefan sur votre téléphone",
@@ -95,7 +109,15 @@
     "blocked": "Les notifications sont bloquées dans les réglages du navigateur. Vous pouvez les y autoriser.",
     "turnOff": "Désactiver les notifications sur cet appareil",
     "turnOn": "Activer les notifications",
-    "note": "Buts, coups de sifflet final, messages et demandes de covoiturage. Jamais le contenu des messages."
+    "note": "Buts, coups de sifflet final, messages et demandes de covoiturage. Jamais le contenu des messages.",
+    "matchAll": "Toute la ligue",
+    "matchTeam": "Seulement mon équipe",
+    "matchOff": "Désactivé",
+    "saveFailed": "Échec de l’enregistrement. Réessaie",
+    "matchesTitle": "Notifications de match",
+    "matchesHint": "Buts et fin du match",
+    "messagesTitle": "Messages privés et de groupe",
+    "messagesHint": "Sans le contenu du message dans la notification"
   },
   "alerts": {
     "close": "Fermer la notification"
@@ -765,5 +787,36 @@
     "sending": "Envoi…",
     "send": "Envoyer",
     "close": "Fermer"
+  },
+  "verification": {
+    "checkDetails": "Vérifie les informations",
+    "requiredNote": "Pour proposer ou demander un trajet, tu dois vérifier ton identité. Les conducteurs vérifient aussi un permis de conduire et enregistrent une voiture.",
+    "notRequiredNote": "La vérification n’est pas encore obligatoire pour les trajets. Tu peux déjà commencer.",
+    "licenceBlocked": "Vérifie d’abord une pièce d’identité",
+    "carDriversOnly": "Une voiture n’est nécessaire que pour les conducteurs",
+    "attemptsLeft": "{count} tentatives restantes",
+    "noAttempts": "Plus de tentatives. Écris-nous via « Nous contacter » et nous réinitialiserons",
+    "notAvailable": "La vérification n’est pas encore disponible. Nous te préviendrons dès son ouverture.",
+    "wait": "Un instant…",
+    "startVerification": "Commencer la vérification",
+    "reverify": "Vérifier à nouveau",
+    "myCar": "Ma voiture",
+    "plateValueLabel": "Plaque d’immatriculation :",
+    "plateVisibility": "(seuls les passagers que tu as acceptés la voient)",
+    "removeCar": "Retirer la voiture",
+    "plateInputLabel": "Plaque d’immatriculation",
+    "plateHint": "Nous vérifierons le numéro dans la base de données publique du ministère des Transports. La marque, le modèle et la couleur apparaîtront sur la carte du trajet.",
+    "checking": "Vérification…",
+    "checkAndRegister": "Vérifier et enregistrer",
+    "step1": "Photo de la pièce d’identité (exemple, sans caméra)",
+    "step2": "Scan facial en direct (exemple)",
+    "step3": "Comparaison avec la pièce d’identité et la date de naissance du compte (exemple)"
+  },
+  "activity": {
+    "homeAria": "onefan, vers l’écran d’accueil",
+    "newNotifications": "{count} nouvelles notifications",
+    "loadFailed": "Échec du chargement. Réessaie",
+    "loading": "Chargement…",
+    "moreNotifications": "Plus de notifications"
   }
 }

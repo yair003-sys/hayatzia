@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { DEMO_BUTTON, DEMO_LABEL } from '../schema'
 import { demoApproveAction } from '../server/actions'
 
 /** The mock provider's "session" (staging and local only): no camera, no document; labelled demo everywhere. */
 export function DemoSession({ sessionId }: { sessionId: string }) {
+  const t = useTranslations('verification')
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -16,9 +18,9 @@ export function DemoSession({ sessionId }: { sessionId: string }) {
         {DEMO_LABEL}
       </p>
       <ol className="list-decimal space-y-1 ps-5 text-sm text-muted">
-        <li>צילום התעודה (לדוגמה, בלי מצלמה)</li>
-        <li>סריקת פנים חיה (לדוגמה)</li>
-        <li>השוואה לתעודה ולתאריך הלידה בחשבון (לדוגמה)</li>
+        <li>{t('step1')}</li>
+        <li>{t('step2')}</li>
+        <li>{t('step3')}</li>
       </ol>
       <button
         type="button"
@@ -33,7 +35,7 @@ export function DemoSession({ sessionId }: { sessionId: string }) {
         }
         className="min-h-11 w-full rounded-lg bg-accent font-semibold text-white disabled:opacity-40"
       >
-        {pending ? 'רגע…' : DEMO_BUTTON}
+        {pending ? t('wait') : DEMO_BUTTON}
       </button>
       {error && (
         <p role="alert" className="text-sm text-live">

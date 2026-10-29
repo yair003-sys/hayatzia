@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { debounce } from '@/lib/debounce'
 import { createClient } from '@/lib/supabase/client'
@@ -36,6 +37,7 @@ export function ActivityFeed({
   newestAt: string | null
   empty: ReactNode
 }) {
+  const t = useTranslations('activity')
   const router = useRouter()
   // The first render's view of the previous visit, kept while the page stays open (refreshes included).
   const [visitSeenAt] = useState(seenAt)
@@ -119,12 +121,12 @@ export function ActivityFeed({
       {starving && <div className="skeleton h-16 rounded-xl" aria-hidden="true" />}
       {failed && (
         <p role="alert" className="text-center text-sm text-live">
-          לא הצלחנו לטעון. נסה שוב
+          {t('loadFailed')}
         </p>
       )}
       {cursor && !starving && (
         <button type="button" className="act-more" onClick={load} disabled={pending}>
-          {pending ? 'טוען…' : 'עוד התראות'}
+          {pending ? t('loading') : t('moreNotifications')}
         </button>
       )}
     </>

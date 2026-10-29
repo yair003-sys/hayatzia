@@ -16,7 +16,21 @@
   },
   "account": {
     "signOut": "Sign out",
-    "deleted": "Your account was deleted. Thanks for being part of the community."
+    "deleted": "Your account was deleted. Thanks for being part of the community.",
+    "deleteTitle": "Delete account",
+    "deleteIntro": "Deletion is permanent and can’t be undone. We’ll delete:",
+    "deleteItem1": "The account, nickname, club and fan number",
+    "deleteItem2": "Your messages in the club chat and match rooms, your posts, photos and comments",
+    "deleteItem3": "Your private chats (also on the side of whoever you talked to) and your group messages",
+    "deleteItem4": "Predictions, ratings, reviews, lineups, votes and check-ins",
+    "deleteItem5": "Rides, events and marketplace listings, and every file you uploaded",
+    "deleteItem6": "Notifications, settings and blocks",
+    "deleteReportsKept": "Reports and requests you sent are kept without your name, so we can finish handling them.",
+    "deleteAggregates": "Anonymous overall totals (like the number of fans in a club) update accordingly. You can sign up again later, but the data won’t come back.",
+    "deleteConfirm": "To confirm, type “{word}”",
+    "deleting": "Deleting…",
+    "deletePermanent": "Delete account permanently",
+    "deleteCancel": "Cancel"
   },
   "pwa": {
     "install": "Install onefan on your phone",
@@ -95,7 +109,15 @@
     "blocked": "Notifications are blocked in your browser settings. You can allow them there.",
     "turnOff": "Turn off notifications on this device",
     "turnOn": "Turn on notifications",
-    "note": "Goals, final whistles, messages and ride requests. Never the message contents."
+    "note": "Goals, final whistles, messages and ride requests. Never the message contents.",
+    "matchAll": "Whole league",
+    "matchTeam": "My team only",
+    "matchOff": "Off",
+    "saveFailed": "Couldn’t save. Try again",
+    "matchesTitle": "Match notifications",
+    "matchesHint": "Goals and full time",
+    "messagesTitle": "Private and group messages",
+    "messagesHint": "Without the message content in the notification"
   },
   "alerts": {
     "close": "Dismiss notification"
@@ -765,5 +787,36 @@
     "sending": "Sending…",
     "send": "Send",
     "close": "Close"
+  },
+  "verification": {
+    "checkDetails": "Check the details",
+    "requiredNote": "To offer or request a ride you must verify your identity. Drivers also verify a driving licence and register a car.",
+    "notRequiredNote": "Verification isn’t required for rides yet. You can start now anyway.",
+    "licenceBlocked": "Verify an ID first",
+    "carDriversOnly": "A car is only needed for drivers",
+    "attemptsLeft": "{count} attempts left",
+    "noAttempts": "No attempts left. Message us via “Contact us” and we’ll reset it",
+    "notAvailable": "Verification isn’t available yet. We’ll let you know when it opens.",
+    "wait": "One moment…",
+    "startVerification": "Start verification",
+    "reverify": "Verify again",
+    "myCar": "My car",
+    "plateValueLabel": "Licence plate:",
+    "plateVisibility": "(only passengers you approve can see it)",
+    "removeCar": "Remove car",
+    "plateInputLabel": "Licence plate",
+    "plateHint": "We’ll check the number in the Ministry of Transport’s public database. The make, model and colour will appear on the ride card.",
+    "checking": "Checking…",
+    "checkAndRegister": "Check and register",
+    "step1": "Photo of the ID (sample, no camera)",
+    "step2": "Live face scan (sample)",
+    "step3": "Comparison with the ID and the birth date on the account (sample)"
+  },
+  "activity": {
+    "homeAria": "onefan, to the home screen",
+    "newNotifications": "{count} new notifications",
+    "loadFailed": "Couldn’t load. Try again",
+    "loading": "Loading…",
+    "moreNotifications": "More notifications"
   }
 }

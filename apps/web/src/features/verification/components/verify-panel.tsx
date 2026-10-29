@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { BadgeCheck, Car, IdCard, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -9,10 +10,11 @@ import type { KindState, MyVerification } from '../server/queries'
 import { registerCarAction, removeCarAction, startVerificationAction } from '../server/actions'
 
 type Result = { data?: { ok?: true; error?: string; url?: string }; serverError?: string; validationErrors?: unknown } | undefined
-const errorOf = (r: Result) => r?.data?.error ?? r?.serverError ?? (r?.validationErrors ? 'בדוק את הפרטים' : null)
+const errorOf = (r: Result, invalid: string) => r?.data?.error ?? r?.serverError ?? (r?.validationErrors ? invalid : null)
 
 /** "אימות לנסיעות" (2026-10-16): ID + face scan for everyone, licence and car for drivers. */
 export function VerifyPanel({ v }: { v: MyVerification }) {
+  const t = useTranslations('verification')
   const identityOk = v.identity.status === 'approved'
   const licenceOk = v.licence.status === 'approved'
   return (
@@ -23,17 +25,17 @@ export function VerifyPanel({ v }: { v: MyVerification }) {
         </p>
       )}
       <p className="text-sm text-muted">
-        {v.required ? 'כדי להציע או לבקש נסיעה צריך לאמת זהות. נהגים מאמתים גם רישיון נהיגה ורושמים רכב.' : 'האימות עוד לא חובה בנסיעות. אפשר להתחיל כבר עכשיו.'}
+        {v.required ? t('requiredNote') : t('notRequiredNote')}
       </p>
       <KindCard kind="identity" state={v.identity} available={v.available} icon={<IdCard className="size-5" aria-hidden="true" />} />
       <KindCard
         kind="licence"
         state={v.licence}
         available={v.available}
-        blocked={identityOk ? null : 'קודם מאמתים תעודה מזהה'}
+        blocked={identityOk ? null : t('licenceBlocked')}
         icon={<BadgeCheck className="size-5" aria-hidden="true" />}
       />
-      <CarCard car={v.car} hint={licenceOk ? null : 'הרכב נדרש רק לנהגים'} />
+      <CarCard car={v.car} hint={licenceOk ? null : t('carDriversOnly')} />
       <p className="flex gap-2 text-xs leading-relaxed text-muted">
         <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
         {VERIFY_PRIVACY_NOTE}
@@ -55,6 +57,7 @@ function KindCard({
   blocked?: string | null
   icon: ReactNode
 }) {
+  const t = useTranslations('verification')
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const done = state.status === 'approved'
@@ -69,10 +72,10 @@ function KindCard({
         {statusLabel(state.status, state.reason)}
       </p>
       {!done && (
-        <p className="text-xs text-muted">{state.left > 0 ? `נשארו ${state.left} ניסיונות` : 'נגמרו הניסיונות. כתבו לנו ב„צור קשר” ונאפס'}</p>
+        <p className="text-xs text-muted">{state.left > 0 ? t('attemptsLeft', { count: state.left }) : t('noAttempts')}</p>
       )}
       {blocked && !done && <p className="text-xs text-muted">{blocked}</p>}
-      {!available && !done && <p className="text-xs text-muted">האימות עוד לא זמין. נעדכן כשייפתח.</p>}
+      {!available && !done && <p className="text-xs text-muted">{t('notAvailable')}</p>}
       {canStart && (
         <button
           type="button"
@@ -80,14 +83,14 @@ function KindCard({
           onClick={() =>
             start(async () => {
               const r = (await startVerificationAction({ kind })) as Result
-              const e = errorOf(r)
+              const e = errorOf(r, t('checkDetails'))
               setError(e)
               if (!e && r?.data?.url) window.location.assign(r.data.url)
             })
           }
           className="min-h-11 w-full rounded-lg bg-accent font-semibold text-white disabled:opacity-40"
         >
-          {pending ? 'רגע…' : state.status === 'none' ? 'התחלת אימות' : 'אימות מחדש'}
+          {pending ? t('wait') : state.status === 'none' ? t('startVerification') : t('reverify')}
         </button>
       )}
       {error && (
@@ -100,13 +103,14 @@ function KindCard({
 }
 
 function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | null }) {
+  const t = useTranslations('verification')
   const router = useRouter()
   const [plate, setPlate] = useState('')
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const run = (fn: () => Promise<Result>, after?: () => void) =>
     start(async () => {
-      const e = errorOf(await fn())
+      const e = errorOf(await fn(), t('checkDetails'))
       setError(e)
       if (!e) {
         after?.()
@@ -114,10 +118,10 @@ function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | nul
       }
     })
   return (
-    <section className="space-y-2 rounded-lg border border-line bg-surface p-3" aria-label="הרכב שלי">
+    <section className="space-y-2 rounded-lg border border-line bg-surface p-3" aria-label={t('myCar')}>
       <h2 className="flex items-center gap-2 font-semibold">
         <Car className="size-5" aria-hidden="true" />
-        הרכב שלי
+        {t('myCar')}
       </h2>
       {hint && !car && <p className="text-xs text-muted">{hint}</p>}
       {car ? (
@@ -128,11 +132,11 @@ function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | nul
             {car.year ? ` · ${car.year}` : ''}
           </p>
           <p className="text-sm">
-            מספר רכב:{' '}
+            {t('plateValueLabel')}{' '}
             <b dir="ltr" className="t-num">
               {formatPlate(car.plate)}
             </b>{' '}
-            <span className="text-xs text-muted">(רק נוסעים שאישרת רואים)</span>
+            <span className="text-xs text-muted">{t('plateVisibility')}</span>
           </p>
           <button
             type="button"
@@ -140,7 +144,7 @@ function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | nul
             onClick={() => run(() => removeCarAction({}) as Promise<Result>)}
             className="min-h-11 rounded-lg border border-line px-3 text-sm disabled:opacity-40"
           >
-            הסרת הרכב
+            {t('removeCar')}
           </button>
         </div>
       ) : (
@@ -152,7 +156,7 @@ function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | nul
           }}
         >
           <label className="block space-y-1 text-sm">
-            <span className="text-muted">מספר רכב</span>
+            <span className="text-muted">{t('plateInputLabel')}</span>
             <input
               value={plate}
               onChange={(e) => setPlate(e.target.value)}
@@ -165,9 +169,9 @@ function CarCard({ car, hint }: { car: MyVerification['car']; hint: string | nul
               className="w-full rounded-md border border-line bg-elev px-3 py-2"
             />
           </label>
-          <p className="text-xs text-muted">נבדוק את המספר במאגר הפתוח של משרד התחבורה. בכרטיס הנסיעה יופיעו היצרן, הדגם והצבע.</p>
+          <p className="text-xs text-muted">{t('plateHint')}</p>
           <button type="submit" disabled={pending || !plate.trim()} className="min-h-11 w-full rounded-lg bg-accent font-semibold text-white disabled:opacity-40">
-            {pending ? 'בודקים…' : 'בדיקה ורישום'}
+            {pending ? t('checking') : t('checkAndRegister')}
           </button>
         </form>
       )}

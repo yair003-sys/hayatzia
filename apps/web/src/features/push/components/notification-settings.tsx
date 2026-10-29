@@ -1,17 +1,18 @@
 'use client'
 
 import { useRef, useState, useTransition, type KeyboardEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { PREFS_EVENT } from '../banner'
 import { MATCH_PREFS, type NotificationPrefs } from '../schema'
 import { savePrefsAction } from '../server/actions'
-
-const MATCH_LABELS: Record<NotificationPrefs['matches'], string> = { all: 'כל הליגה', team: 'רק הקבוצה שלי', off: 'כבוי' }
 
 /**
  * "התראות משחקים" (three-way) and "הודעות פרטיות וקבוצות" (on/off). Saved at once; reverts if saving fails.
  * Controls are disabled while a save is in flight, so saves never overlap or revert each other.
  */
 export function NotificationSettings({ initial }: { initial: NotificationPrefs }) {
+  const t = useTranslations('push')
+  const MATCH_LABELS: Record<NotificationPrefs['matches'], string> = { all: t('matchAll'), team: t('matchTeam'), off: t('matchOff') }
   const [prefs, setPrefs] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
@@ -25,7 +26,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
       const r = await savePrefsAction(next)
       if (!r.data?.ok) {
         setPrefs(before)
-        setError(r.data?.error ?? r.serverError ?? 'השמירה נכשלה. נסה שוב')
+        setError(r.data?.error ?? r.serverError ?? t('saveFailed'))
         return
       }
       // The in-app banner follows the new settings at once, without a reload.
@@ -52,9 +53,9 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
       <div className="me-pref">
         <div>
           <p id="pref-matches" className="me-pref-title">
-            התראות משחקים
+            {t('matchesTitle')}
           </p>
-          <p className="me-pref-hint">שערים וסיום משחק</p>
+          <p className="me-pref-hint">{t('matchesHint')}</p>
         </div>
         <div className="me-seg" role="radiogroup" aria-labelledby="pref-matches">
           {MATCH_PREFS.map((m, i) => (
@@ -86,8 +87,8 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefs }
         onClick={() => save({ ...prefs, messages: !prefs.messages })}
       >
         <span>
-          <span className="me-pref-title block">הודעות פרטיות וקבוצות</span>
-          <span className="me-pref-hint block">בלי תוכן ההודעה בהתראה</span>
+          <span className="me-pref-title block">{t('messagesTitle')}</span>
+          <span className="me-pref-hint block">{t('messagesHint')}</span>
         </span>
         <span className="me-switch" data-on={prefs.messages} aria-hidden="true" />
       </button>
