@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { membersLabel, type Invite } from '../schema'
 import { answerInviteAction } from '../server/actions'
@@ -8,6 +9,7 @@ import { Avatar } from './avatar'
 
 /** "דני הזמין אותך לקבוצה…" with join / decline. Joining opens the group; declining removes the invite. */
 export function InviteCard({ invite }: { invite: Invite }) {
+  const t = useTranslations('dm')
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
@@ -17,7 +19,7 @@ export function InviteCard({ invite }: { invite: Invite }) {
       setError(null)
       const r = await answerInviteAction({ groupId: invite.groupId, yes })
       if (r?.data?.error) setError(r.data.error)
-      else if (r?.serverError || r?.validationErrors) setError('הפעולה נכשלה. נסה שוב')
+      else if (r?.serverError || r?.validationErrors) setError(t('actionFailed'))
       else if (!yes) router.refresh()
     })
 
@@ -26,8 +28,11 @@ export function InviteCard({ invite }: { invite: Invite }) {
       <div className="flex items-center gap-3">
         <Avatar id={invite.groupId} name={invite.name} group />
         <p className="min-w-0 flex-1 text-sm leading-snug text-muted">
-          <b className="font-semibold text-fg">{invite.invitedBy}</b> הזמין אותך לקבוצה{' '}
-          <b className="font-semibold text-fg">&#x27;{invite.name}&#x27;</b>
+          {t.rich('invitedToGroup', {
+            invitedBy: invite.invitedBy,
+            name: invite.name,
+            b: (chunks) => <b className="font-semibold text-fg">{chunks}</b>,
+          })}
           <span className="block text-xs text-dim">
             {membersLabel(invite.members)}
           </span>
@@ -35,10 +40,10 @@ export function InviteCard({ invite }: { invite: Invite }) {
       </div>
       <div className="flex gap-2">
         <button type="button" disabled={pending} onClick={() => answer(true)} className="ib-pill ib-pill-blue">
-          הצטרפות
+          {t('join')}
         </button>
         <button type="button" disabled={pending} onClick={() => answer(false)} className="ib-pill">
-          לא תודה
+          {t('decline')}
         </button>
       </div>
       {error && (

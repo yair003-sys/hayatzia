@@ -50,5 +50,19 @@
     "opening": "Ouverture…",
     "sendPrivate": "Envoyer un message privé",
     "firstMsgNote": "Le premier message arrive comme une demande. {nick} décide de continuer."
+  },
+  "dm": {
+    "requestIntro": "{nick} veut t’envoyer un message. Il ne pourra continuer à écrire qu’après ton accord.",
+    "accept": "Accepter et continuer",
+    "block": "Bloquer",
+    "sentWaiting": "Message envoyé. Tu pourras réécrire une fois qu’ils auront accepté.",
+    "actionFailed": "Une erreur est survenue. Réessaie.",
+    "invitedToGroup": "<b>{invitedBy}</b> t’a invité dans le groupe <b>'{name}'</b>",
+    "join": "Rejoindre",
+    "decline": "Non merci",
+    "badCodeHint": "Le fan a peut-être créé un nouveau code-barres. Demande-lui de te le montrer à nouveau.",
+    "toInbox": "Vers les messages",
+    "opening": "Ouverture…",
+    "sendMessage": "Envoyer un message"
   }
 }

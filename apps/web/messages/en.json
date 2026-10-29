@@ -50,5 +50,19 @@
     "opening": "Opening…",
     "sendPrivate": "Send private message",
     "firstMsgNote": "The first message arrives as a request. {nick} decides whether to continue."
+  },
+  "dm": {
+    "requestIntro": "{nick} wants to message you. They can keep writing only after you accept.",
+    "accept": "Accept and continue",
+    "block": "Block",
+    "sentWaiting": "Message sent. You can write again once they accept.",
+    "actionFailed": "Something went wrong. Try again.",
+    "invitedToGroup": "<b>{invitedBy}</b> invited you to the group <b>'{name}'</b>",
+    "join": "Join",
+    "decline": "No thanks",
+    "badCodeHint": "The fan may have created a new barcode. Ask them to show you the barcode again.",
+    "toInbox": "To messages",
+    "opening": "Opening…",
+    "sendMessage": "Send message"
   }
 }

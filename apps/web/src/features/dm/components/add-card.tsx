@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { MessageCircle } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
@@ -13,6 +14,7 @@ import { Avatar } from './avatar'
  * already accepted: showing the code is that fan's consent. A reset or unknown code shows "הברקוד לא תקף".
  */
 export function AddCard({ code, card }: { code: string; card: { nick: string; teamId: string } | null }) {
+  const t = useTranslations('dm')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
   if (!card) {
@@ -21,9 +23,9 @@ export function AddCard({ code, card }: { code: string; card: { nick: string; te
         <p role="alert" className="t-sec">
           {dmErrorHe('bad_code')}
         </p>
-        <p className="text-sm text-muted">ייתכן שהאוהד יצר ברקוד חדש. בקש ממנו להראות לך את הברקוד שוב.</p>
+        <p className="text-sm text-muted">{t('badCodeHint')}</p>
         <Link href="/inbox" className="inline-flex min-h-11 items-center text-accent-text underline">
-          להודעות
+          {t('toInbox')}
         </Link>
       </div>
     )
@@ -56,7 +58,7 @@ export function AddCard({ code, card }: { code: string; card: { nick: string; te
         }
       >
         <MessageCircle className="size-5" aria-hidden="true" />
-        {pending ? 'פותח…' : 'שלח הודעה'}
+        {pending ? t('opening') : t('sendMessage')}
       </button>
       {error && (
         <p role="alert" className="text-sm text-live">

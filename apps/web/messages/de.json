@@ -50,5 +50,19 @@
     "opening": "Wird geöffnet…",
     "sendPrivate": "Private Nachricht senden",
     "firstMsgNote": "Die erste Nachricht kommt als Anfrage an. {nick} entscheidet, ob es weitergeht."
+  },
+  "dm": {
+    "requestIntro": "{nick} möchte dir eine Nachricht senden. Erst nach deiner Zustimmung kann die Person weiterschreiben.",
+    "accept": "Annehmen und fortsetzen",
+    "block": "Blockieren",
+    "sentWaiting": "Nachricht gesendet. Du kannst wieder schreiben, sobald sie zustimmt.",
+    "actionFailed": "Etwas ist schiefgelaufen. Versuch es noch einmal.",
+    "invitedToGroup": "<b>{invitedBy}</b> hat dich in die Gruppe <b>'{name}'</b> eingeladen",
+    "join": "Beitreten",
+    "decline": "Nein danke",
+    "badCodeHint": "Der Fan hat möglicherweise einen neuen Barcode erstellt. Bitte ihn, dir den Barcode noch einmal zu zeigen.",
+    "toInbox": "Zu den Nachrichten",
+    "opening": "Wird geöffnet…",
+    "sendMessage": "Nachricht senden"
   }
 }
