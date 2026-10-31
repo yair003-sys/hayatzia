@@ -164,6 +164,7 @@
     "reportMsg": "דווח על ההודעה",
     "report": "דווח",
     "sendPrivateTo": "שלח הודעה פרטית ל-{nick}",
+    "viewProfileOf": "צפייה בפרופיל של {nick}",
     "waitSeconds": "המתן {n} שניות"
   },
   "dm": {

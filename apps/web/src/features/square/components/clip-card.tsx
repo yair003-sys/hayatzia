@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Eye, Flag, Heart, MessageCircle, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
@@ -211,9 +212,11 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
       <header className="absolute inset-x-3 top-16 flex items-center gap-2 text-white">
-        {team && <TeamScarf team={team} />}
-        <b className="text-sm drop-shadow">{clip.nick}</b>
-        <span className="text-xs text-white/70">{team?.short}</span>
+        <Link href={`/fans/${clip.user_id}`} className="flex items-center gap-2" aria-label={`צפייה בפרופיל של ${clip.nick}`}>
+          {team && <TeamScarf team={team} />}
+          <b className="text-sm drop-shadow">{clip.nick}</b>
+          <span className="text-xs text-white/70">{team?.short}</span>
+        </Link>
         {clip.once && <span className="rounded-full bg-black/50 px-2 py-0.5 text-[11px]">{t('onceBadge')}</span>}
         <span className="ms-auto rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white/80">{timeLeftHe(clip.expires_at, now)}</span>
       </header>

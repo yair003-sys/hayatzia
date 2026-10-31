@@ -164,6 +164,7 @@
     "reportMsg": "Reportar el mensaje",
     "report": "Reportar",
     "sendPrivateTo": "Enviar un mensaje privado a {nick}",
+    "viewProfileOf": "Ver el perfil de {nick}",
     "waitSeconds": "Espera {n}s"
   },
   "dm": {

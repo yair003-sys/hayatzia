@@ -42,10 +42,10 @@ describe('MessageRow actions', () => {
 })
 
 describe('MessageAuthor: private message from the chat (2026-10-16)', () => {
-  it('another fan\'s message has an avatar button that opens the private-message sheet', () => {
+  it("another fan's message has an avatar button that opens their profile", () => {
     const onFan = vi.fn()
     render(<MessageAuthor mine={false} userId="u2" nick="יריב" onFan={onFan} />)
-    fireEvent.click(screen.getByRole('button', { name: 'שלח הודעה פרטית ל-יריב' }))
+    fireEvent.click(screen.getByRole('button', { name: 'צפייה בפרופיל של יריב' }))
     expect(onFan).toHaveBeenCalledOnce()
   })
 

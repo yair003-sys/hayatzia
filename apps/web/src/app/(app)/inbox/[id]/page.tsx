@@ -38,7 +38,7 @@ async function Thread({ id }: { id: string }) {
   return (
     <>
       <header className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <Link href={`/fans/${t.otherId}`} className="flex min-w-0 items-center gap-3" aria-label={`צפייה בפרופיל של ${t.otherNick}`}>
           <Avatar id={t.otherId} name={t.otherNick} />
           <div className="min-w-0">
             <h1 className="t-page truncate">{t.otherNick}</h1>
@@ -49,7 +49,7 @@ async function Thread({ id }: { id: string }) {
               </p>
             )}
           </div>
-        </div>
+        </Link>
         {/* A request offers block only (owner, 2026-10-16: no report of message content); an accepted chat keeps both. */}
         {t.request !== 'incoming' && <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />}
       </header>

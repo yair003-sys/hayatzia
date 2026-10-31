@@ -274,7 +274,7 @@ export function MessageAuthor({ mine, userId, nick, onFan }: { mine: boolean; us
   const t = useTranslations('chat')
   if (mine || !onFan) return null
   return (
-    <button type="button" className="chat-author" onClick={onFan} aria-label={t('sendPrivateTo', { nick })}>
+    <button type="button" className="chat-author" onClick={onFan} aria-label={t('viewProfileOf', { nick })}>
       <Avatar id={userId} name={nick} size="sm" />
     </button>
   )

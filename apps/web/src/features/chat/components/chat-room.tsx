@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Flag, SendHorizontal, ThumbsDown, ThumbsUp, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
 import { DayDivider, JumpButton, jumpToMessage, MessageAuthor, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
-import { FanSheet, type SheetFan } from './fan-sheet'
+import { type SheetFan } from './fan-sheet'
 import { useFollowEnd, useReadPosition } from './use-read-position'
 import { ReportForm } from '@/features/safety/components/report-block'
 import { canReport, cooldownRemaining, echoMatch, failurePlan, LOCAL_ID, replySnippet, sendState, startsNewDay } from '../essentials'
@@ -120,7 +121,6 @@ export function ChatRoom({
   const [active, setActive] = useState<string | null>(null)
   const [reporting, setReporting] = useState<ChatMessage | null>(null)
   const [reportNote, setReportNote] = useState<string | null>(null)
-  const [fan, setFan] = useState<SheetFan | null>(null)
   // Send cooldown (team chat + match room): the epoch ms the next message is allowed, and the whole seconds left.
   const [cooldownUntil, setCooldownUntil] = useState(0)
   const [cooldownLeft, setCooldownLeft] = useState(0)
@@ -323,12 +323,9 @@ export function ChatRoom({
     setReportNote(null)
     setReporting(m)
   }, [])
-  // Kept in a ref: pages pass a new function each render, and the memoised rows must not all re-render for it.
-  const clubOfRef = useRef(clubOf)
-  useEffect(() => {
-    clubOfRef.current = clubOf
-  })
-  const openFan = useCallback((m: ChatMessage) => setFan({ id: m.user_id, nick: m.nick, club: clubOfRef.current?.(m) ?? null }), [])
+  const router = useRouter()
+  // Tapping a fan in chat opens their profile; the private message happens from the button there.
+  const openFan = useCallback((m: ChatMessage) => router.push(`/fans/${m.user_id}`), [router])
 
   const firstSaved = messages[0]
   const loadedIds = new Set(messages.map((m) => m.id))
@@ -526,7 +523,6 @@ export function ChatRoom({
           {error}
         </p>
       )}
-      <FanSheet fan={fan} onClose={() => setFan(null)} />
     </div>
   )
 }
