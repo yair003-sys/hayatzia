@@ -43,7 +43,7 @@ function usePhotoUpload(kind: Kind, meId: string, initialUrl: string | null) {
       if (upErr) throw upErr
       const r = await setProfilePhotoAction({ kind, path })
       if (r?.data && 'ok' in r.data) {
-        setUrl(r.data.url)
+        setUrl(r.data.url ?? null)
       } else {
         throw new Error((r?.data && 'error' in r.data && r.data.error) || 'failed')
       }
