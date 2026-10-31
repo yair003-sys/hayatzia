@@ -1,8 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import Link from 'next/link'
-import { Pencil, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard, getMyClips, getMyPhotos, type MyClip } from '@/features/me/server/queries'
@@ -10,6 +9,7 @@ import { memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
 import { ProfileAvatar, ProfileCover } from '@/features/me/components/profile-photos'
 import { CountPanel, ProfileTabs } from '@/features/me/components/profile-tabs'
+import { EditProfile } from '@/features/me/components/edit-profile'
 import { ShareProfile } from '@/features/me/components/share-profile'
 import { LoadError } from '@/components/load-error'
 
@@ -105,13 +105,7 @@ async function Profile() {
           </p>
 
           <div className="mt-4 flex gap-2">
-            <Link
-              href="/settings"
-              className="inline-flex min-h-[42px] flex-[1.4] items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-3 text-sm font-bold"
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-              ערוך פרופיל
-            </Link>
+            <EditProfile nick={s.nick} />
             <ShareProfile nick={s.nick} />
           </div>
         </div>

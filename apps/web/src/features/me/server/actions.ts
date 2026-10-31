@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import { moderationHe } from '@/lib/moderation'
+import { nickSchema } from '@/features/profile/schema'
 
 /**
  * Set (or clear) the fan's profile photo or cover photo. The browser has already uploaded the file to the public
@@ -41,4 +43,21 @@ export const setProfilePhotoAction = actionClient.inputSchema(schema).action(asy
   revalidatePath('/me')
   const url = path ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null
   return { ok: true as const, url }
+})
+
+/**
+ * "ערוך פרופיל": change the fan's nickname (the name shown to others). The team is locked for life and the photos have
+ * their own inline controls, so the nick is the one editable field. RLS limits the update to the fan's own row (and to
+ * the nick column via the column grant); the moderation trigger screens the text server-side.
+ */
+export const updateNickAction = actionClient.inputSchema(z.object({ nick: nickSchema })).action(async ({ parsedInput: { nick } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data: auth } = await supabase.auth.getUser()
+  const uid = auth.user?.id
+  if (!uid) return { error: 'אין חשבון מחובר' }
+  const { error } = await supabase.from('profiles').update({ nick }).eq('user_id', uid)
+  if (error) return { error: moderationHe(error.message) ?? 'השמירה נכשלה. נסה שוב' }
+  revalidatePath('/me')
+  return { ok: true as const, nick }
 })
