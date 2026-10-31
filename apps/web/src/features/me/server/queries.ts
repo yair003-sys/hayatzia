@@ -47,6 +47,24 @@ export async function getFanCard(userId: string, teamId: string, season: number 
   }
 }
 
+export type MyPhotos = { avatarUrl: string | null; coverUrl: string | null }
+
+/**
+ * The fan's profile photo and cover photo for "הכרטיס שלי". Both buckets are public, so a plain public URL is enough
+ * (no signing); the file name is a fresh uuid on every upload, so the URL changes when the photo changes and caches
+ * never go stale. Missing photos come back as null and the card falls back to the club-coloured placeholder.
+ */
+export async function getMyPhotos(userId: string): Promise<MyPhotos> {
+  const supabase = await createClient()
+  if (!supabase) return { avatarUrl: null, coverUrl: null }
+  const { data } = await supabase.from('profiles').select('avatar_path,cover_path').eq('user_id', userId).maybeSingle()
+  if (!data) return { avatarUrl: null, coverUrl: null }
+  return {
+    avatarUrl: data.avatar_path ? supabase.storage.from('avatars').getPublicUrl(data.avatar_path).data.publicUrl : null,
+    coverUrl: data.cover_path ? supabase.storage.from('covers').getPublicUrl(data.cover_path).data.publicUrl : null,
+  }
+}
+
 export type MyClip = { id: string; kind: string; likes: number; url: string | null }
 
 /**

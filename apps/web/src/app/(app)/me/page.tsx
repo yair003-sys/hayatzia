@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { IdCard, Lock, Pencil, Play, Swords } from 'lucide-react'
+import { IdCard, Pencil, Play, Swords } from 'lucide-react'
 import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
 import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
 import { SignOutButton } from '@/features/profile/components/sign-out-button'
@@ -13,7 +13,8 @@ import { NotificationSettings } from '@/features/push/components/notification-se
 import { getMyPrefs } from '@/features/push/server/queries'
 import { env } from '@/lib/env'
 import { getLeague } from '@/features/matches/server/queries'
-import { getFanCard, getMyClips, type MyClip } from '@/features/me/server/queries'
+import { getFanCard, getMyClips, getMyPhotos, type MyClip } from '@/features/me/server/queries'
+import { ProfileAvatar, ProfileCover } from '@/features/me/components/profile-photos'
 import { fanNumber, memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
 import { recordLine } from '@/features/crowd-war/schema'
@@ -50,13 +51,14 @@ async function Profile() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, clips, prefs, war, ride, priv] = await Promise.all([
+  const [card, clips, prefs, war, ride, priv, photos] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyClips(s.userId),
     getMyPrefs(s.userId),
     season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
     getMyRideProfile(),
     getPrivateProfile(),
+    getMyPhotos(s.userId),
   ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
@@ -65,28 +67,11 @@ async function Profile() {
     <div className="space-y-6">
       {/* Profile header: cover + avatar + identity. The look lives in the club's own colours. */}
       <article className="overflow-hidden rounded-3xl bg-surface" style={colours} aria-label={`הפרופיל של ${s.nick}`}>
-        <div className="relative h-36" style={{ background: 'linear-gradient(135deg, var(--club) -10%, #0b1026 78%)' }}>
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
-            <span dir="ltr" className="font-brand text-sm font-extrabold tracking-[-0.02em] text-white/90 drop-shadow">
-              onefan
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2.5 py-1 text-[11px] font-bold text-white/90 backdrop-blur">
-              <Lock className="size-3" aria-hidden="true" />
-              פרטי · רק אתה
-            </span>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-surface" aria-hidden="true" />
-        </div>
+        <ProfileCover meId={s.userId} initialUrl={photos.coverUrl} />
 
         <div className="px-4 pb-5">
           <div className="-mt-11 mb-3 flex items-end justify-between gap-3">
-            <span
-              className="grid size-[86px] place-items-center rounded-3xl text-4xl font-black ring-4 ring-surface"
-              style={{ background: 'linear-gradient(160deg, var(--club), var(--club2))', color: 'var(--club-text)' }}
-              aria-hidden="true"
-            >
-              {s.nick.slice(0, 1)}
-            </span>
+            <ProfileAvatar meId={s.userId} nick={s.nick} initialUrl={photos.avatarUrl} />
             <a
               href="#settings"
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line bg-surface-2 px-4 text-sm font-bold"
