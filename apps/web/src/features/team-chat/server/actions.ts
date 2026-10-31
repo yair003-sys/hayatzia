@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { chatErrorHe, chatErrorKind, cursorSchema, MESSAGE_COLUMNS, sendMessageSchema, type SendResult } from '@/features/chat/schema'
 import { getTeamMessages } from './queries'
 
-const reactSchema = z.object({ messageId: z.uuid(), kind: z.union([z.literal(1), z.literal(-1), z.literal(0)]) })
+const reactSchema = z.object({ messageId: z.uuid(), emoji: z.string().min(1).max(32).nullable() })
 
 /**
  * Only the text (and the answered message, for a reply) is sent. The database stamps club, nickname, time and the
@@ -36,17 +36,18 @@ export const loadOlderTeamMessagesAction = actionClient
  * my club; one reaction per fan per message (so a like replaces a dislike). Not upsert — the column grants let me set
  * only `kind` on update and only `message_id`+`kind` on insert, so we update my row and insert it when there is none.
  */
-export const reactTeamMessageAction = actionClient.inputSchema(reactSchema).action(async ({ parsedInput: { messageId, kind } }) => {
+export const reactTeamMessageAction = actionClient.inputSchema(reactSchema).action(async ({ parsedInput: { messageId, emoji } }) => {
   const supabase = await createClient()
   if (!supabase) return { ok: false as const, error: 'התגובות לא זמינות בסביבה הזאת' }
-  if (kind === 0) {
+  if (emoji === null) {
     const { error } = await supabase.from('message_reactions').delete().eq('message_id', messageId)
     return error ? { ok: false as const, error: 'לא נשמר' } : { ok: true as const }
   }
-  const upd = await supabase.from('message_reactions').update({ kind }).eq('message_id', messageId).select('message_id')
+  // RLS limits the update/insert to my own row (user_id = auth.uid()); the trigger stamps club + user and refuses another club.
+  const upd = await supabase.from('message_reactions').update({ emoji }).eq('message_id', messageId).select('message_id')
   if (upd.error) return { ok: false as const, error: 'לא נשמר' }
   if ((upd.data?.length ?? 0) === 0) {
-    const ins = await supabase.from('message_reactions').insert({ message_id: messageId, kind })
+    const ins = await supabase.from('message_reactions').insert({ message_id: messageId, emoji })
     if (ins.error) return { ok: false as const, error: 'לא נשמר' }
   }
   return { ok: true as const }

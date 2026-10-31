@@ -42,7 +42,7 @@ export function TeamChat({
         return r.data ?? { error: r.serverError ?? r.validationErrors?.body?._errors?.[0] ?? t('sendFailed'), kind: r.validationErrors ? 'permanent' : 'retry' }
       }}
       loadOlder={async (cursor) => (await loadOlderTeamMessagesAction(cursor)).data?.messages ?? null}
-      onReact={(messageId, kind) => void reactTeamMessageAction({ messageId, kind })}
+      onReact={(messageId, emoji) => void reactTeamMessageAction({ messageId, emoji })}
     />
   )
 }
