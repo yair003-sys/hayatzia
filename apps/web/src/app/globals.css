@@ -34,6 +34,8 @@
   --font-brand: var(--font-inter), 'SF Pro Display', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   /* Clean type (owner, 2026-10-13): one Hebrew family, light weights; Inter for numbers and the wordmark. */
   --font-display: var(--font-heebo), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  /* Serif for the fan's name on their card (profile redesign, 2026-10-31). */
+  --font-serif: var(--font-frank), 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
 
   --animate-shimmer: shimmer 1.4s linear infinite;
   @keyframes shimmer {
@@ -52,6 +54,7 @@
   .t-page { font-family: var(--font-sans); font-size: 1.75rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; text-wrap: balance; }
   .t-sec { font-family: var(--font-sans); font-size: 1.15rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-wrap: balance; }
   .t-num { font-family: var(--font-brand); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .t-serif { font-family: var(--font-serif); font-weight: 900; }
 }
 
 @layer base {
@@ -1500,6 +1503,11 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .topbar-home { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: 18px; color: var(--color-fg); }
   .topbar-home:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 0.6rem; }
   .topbar .bell-face { border-color: transparent; background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  /* Settings gear sits next to the bell (owner, 2026-10-31): the one way into settings, off the card. */
+  .topbar-actions { display: inline-flex; align-items: center; gap: 0.1rem; }
+  .topbar-gear { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; color: var(--color-muted); transition: color 0.15s; }
+  .topbar-gear:hover { color: var(--color-fg); }
+  .topbar-gear:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 0.6rem; }
 }
 
 /* Sign-up background (owner, 2026-10-15): the onefan mark, faint and large, in a glow of the logo's blue and green. */

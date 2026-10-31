@@ -76,7 +76,7 @@ function usePhotoUpload(kind: Kind, meId: string, initialUrl: string | null) {
 export function ProfileCover({ meId, initialUrl }: { meId: string; initialUrl: string | null }) {
   const { url, busy, error, open, field } = usePhotoUpload('cover', meId, initialUrl)
   return (
-    <div className="relative h-36" style={{ background: 'linear-gradient(135deg, var(--club) -10%, #0b1026 78%)' }}>
+    <div className="relative h-44" style={{ background: 'linear-gradient(135deg, var(--club) -10%, #0b1026 78%)' }}>
       {url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
@@ -99,7 +99,7 @@ export function ProfileCover({ meId, initialUrl }: { meId: string; initialUrl: s
         className="absolute bottom-3 end-3 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-black/45 px-3 text-xs font-bold text-white backdrop-blur disabled:opacity-60"
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <ImagePlus className="size-3.5" aria-hidden="true" />}
-        תמונת נושא
+        שנה תמונת נושא
       </button>
       {field}
       {error && (
@@ -116,14 +116,17 @@ export function ProfileCover({ meId, initialUrl }: { meId: string; initialUrl: s
 export function ProfileAvatar({ meId, nick, initialUrl }: { meId: string; nick: string; initialUrl: string | null }) {
   const { url, busy, error, open, field } = usePhotoUpload('avatar', meId, initialUrl)
   return (
-    <div className="relative size-[86px] shrink-0">
+    <div
+      className="relative size-[92px] shrink-0 rounded-[22px] p-[3px] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.8)]"
+      style={{ background: 'linear-gradient(150deg, var(--club), var(--club2))' }}
+    >
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="size-[86px] rounded-3xl object-cover ring-4 ring-surface" />
+        <img src={url} alt="" className="size-full rounded-[19px] object-cover" />
       ) : (
         <span
-          className="grid size-[86px] place-items-center rounded-3xl text-4xl font-black ring-4 ring-surface"
-          style={{ background: 'linear-gradient(160deg, var(--club), var(--club2))', color: 'var(--club-text)' }}
+          className="t-serif grid size-full place-items-center rounded-[19px] text-[38px] text-fg"
+          style={{ background: 'radial-gradient(120% 120% at 30% 20%, #2a3350, #141a2b 70%)' }}
           aria-hidden="true"
         >
           {nick.slice(0, 1)}
@@ -134,7 +137,8 @@ export function ProfileAvatar({ meId, nick, initialUrl }: { meId: string; nick: 
         onClick={open}
         disabled={busy}
         aria-label="שנה תמונת פרופיל"
-        className="absolute -bottom-1 -end-1 grid size-7 place-items-center rounded-full bg-surface-2 text-fg ring-2 ring-surface disabled:opacity-60"
+        className="absolute -bottom-1.5 -end-1.5 grid size-[30px] place-items-center rounded-full ring-[3px] ring-surface disabled:opacity-60"
+        style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' }}
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Camera className="size-3.5" aria-hidden="true" />}
       </button>

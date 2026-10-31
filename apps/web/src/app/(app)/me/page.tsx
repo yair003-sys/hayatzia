@@ -2,37 +2,24 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { IdCard, Pencil, Play, Swords } from 'lucide-react'
-import { getPrivateProfile, getSessionProfile } from '@/features/profile/server/queries'
-import { DmRequestsSetting } from '@/features/dm/components/dm-requests-setting'
-import { SignOutButton } from '@/features/profile/components/sign-out-button'
-import { InstallApp } from '@/features/pwa/install-app'
-import { PushToggle } from '@/features/push/components/push-toggle'
-import { pushConfigured } from '@/features/push/server/send'
-import { NotificationSettings } from '@/features/push/components/notification-settings'
-import { getMyPrefs } from '@/features/push/server/queries'
-import { env } from '@/lib/env'
+import { Pencil, Play, Swords } from 'lucide-react'
+import { getSessionProfile } from '@/features/profile/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard, getMyClips, getMyPhotos, type MyClip } from '@/features/me/server/queries'
-import { ProfileAvatar, ProfileCover } from '@/features/me/components/profile-photos'
 import { fanNumber, memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
 import { recordLine } from '@/features/crowd-war/schema'
 import { getWarRecord } from '@/features/crowd-war/server/queries'
-import { DeleteAccount } from '@/features/account/components/delete-account'
-import { AdminBadge } from '@/features/admin/components/admin-badge'
-import { ContactForm } from '@/features/safety/components/contact-form'
-import { LegalLinks } from '@/features/legal/components/legal-links'
-import { NOT_AFFILIATED } from '@/lib/legal'
-import { GenderPicker } from '@/features/team-life/components/ride-safety'
-import { getMyRideProfile } from '@/features/team-life/server/queries'
-import { features } from '@/lib/flags'
+import { ProfileAvatar, ProfileCover } from '@/features/me/components/profile-photos'
+import { CountPanel, ProfileTabs } from '@/features/me/components/profile-tabs'
+import { ShareProfile } from '@/features/me/components/share-profile'
 import { LoadError } from '@/components/load-error'
 
 export const metadata: Metadata = { title: 'הכרטיס שלי' }
 
-// "הכרטיס שלי" (owner, 2026-10-31 redesign): the owner's view of their own profile — cover, avatar, identity and their
-// own content — with every account setting kept below. The public view of another fan is /fans/[userId].
+// "הכרטיס שלי" (owner, 2026-10-31 redesign): a clean profile — cover, avatar, identity, and the fan's own content in
+// word-tabs. Settings moved to their own page (/settings), reached from the gear by the bell. The public view of
+// another fan is /fans/[userId].
 export default function MePage() {
   return (
     <section className="space-y-6">
@@ -51,52 +38,55 @@ async function Profile() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, clips, prefs, war, ride, priv, photos] = await Promise.all([
+  const [card, clips, war, photos] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyClips(s.userId),
-    getMyPrefs(s.userId),
     season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
-    getMyRideProfile(),
-    getPrivateProfile(),
     getMyPhotos(s.userId),
   ])
   const a = teamAccent(s.team.bar)
   const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
 
   return (
-    <div className="space-y-6">
-      {/* Profile header: cover + avatar + identity. The look lives in the club's own colours. */}
-      <article className="overflow-hidden rounded-3xl bg-surface" style={colours} aria-label={`הפרופיל של ${s.nick}`}>
+    <div className="space-y-5" style={colours}>
+      {/* Profile header: cover + avatar + identity + actions. The look lives in the club's own colours. */}
+      <article className="overflow-hidden rounded-3xl bg-surface" aria-label={`הפרופיל של ${s.nick}`}>
         <ProfileCover meId={s.userId} initialUrl={photos.coverUrl} />
 
         <div className="px-4 pb-5">
-          <div className="-mt-11 mb-3 flex items-end justify-between gap-3">
+          <div className="-mt-12 mb-2.5">
             <ProfileAvatar meId={s.userId} nick={s.nick} initialUrl={photos.avatarUrl} />
-            <a
-              href="#settings"
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line bg-surface-2 px-4 text-sm font-bold"
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-              ערוך פרופיל
-            </a>
           </div>
 
-          <h2 className="text-2xl font-black leading-tight">{s.nick}</h2>
+          <h2 className="t-serif text-[26px] leading-tight">{s.nick}</h2>
+
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {card?.label && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' }}>
-                <span aria-hidden="true">{card.label.emoji}</span>
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-extrabold"
+                style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' }}
+              >
                 {card.label.label}
               </span>
             )}
-            <span className="text-sm font-semibold text-muted">אוהד {s.team.name}</span>
+            <span className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-muted">
+              <span
+                className="t-serif grid size-5 place-items-center rounded-md text-[11px]"
+                style={{ background: 'linear-gradient(160deg, var(--club), var(--club2))', color: 'var(--club-text)' }}
+                aria-hidden="true"
+              >
+                {s.team.short.slice(0, 1)}
+              </span>
+              {s.team.name}
+            </span>
           </div>
 
-          <p className="mt-3 text-xs font-medium text-dim">
-            מס׳ אוהד <b className="t-num text-muted">{card ? fanNumber(card.number) : '—'}</b> · אוהד מאז{' '}
-            <b className="text-muted">{card ? memberSince(card.joinedAt) : '—'}</b> · הקבוצה נעולה לתמיד
+          <p className="mt-1.5 text-[13px] text-muted">
+            אוהד מאז <b className="text-fg">{card ? memberSince(card.joinedAt) : '—'}</b> · מס׳ אוהד{' '}
+            <b className="t-num text-fg">{card ? fanNumber(card.number) : '—'}</b> · נעול לתמיד
           </p>
-          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-dim">
+
+          <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-dim">
             <span>
               <b className="t-num text-muted">{(card?.games ?? 0).toLocaleString('he-IL')}</b> משחקים באצטדיון
             </span>
@@ -104,56 +94,43 @@ async function Profile() {
               <b className="t-num text-muted">{(card?.points ?? 0).toLocaleString('he-IL')}</b> נק׳ בניחושים
             </span>
             <span>
-              <b className="t-num text-muted">{(card?.rated ?? 0).toLocaleString('he-IL')}</b> משחקים שדירגת
+              <b className="t-num text-muted">{(card?.rated ?? 0).toLocaleString('he-IL')}</b> דירוגים
             </span>
-            {card?.rank ? <span>מקום {card.rank} באוהדי {s.team.short}</span> : null}
+            {card?.rank ? (
+              <span>
+                מקום <b className="t-num text-muted">{card.rank}</b> ב{s.team.short}
+              </span>
+            ) : null}
           </p>
+
           {/* Hidden when the record cannot be read: never a made-up 0–0. */}
           {war && (
-            <p className="cw-record mt-3">
+            <p className="cw-record mt-2.5">
               <Swords className="size-4 shrink-0" aria-hidden="true" />
               <span className="t-num">{recordLine(war)}</span>
             </p>
           )}
+
+          <div className="mt-4 flex gap-2">
+            <Link
+              href="/settings"
+              className="inline-flex min-h-[42px] flex-[1.4] items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-3 text-sm font-bold"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              ערוך פרופיל
+            </Link>
+            <ShareProfile nick={s.nick} />
+          </div>
         </div>
       </article>
 
-      {/* The fan's own content. */}
-      <section aria-labelledby="me-content" className="space-y-3">
-        <h2 id="me-content" className="me-label">
-          הקליפים שלי
-        </h2>
-        <ClipsGrid clips={clips} />
-      </section>
-
-      <section id="settings" aria-labelledby="me-settings" className="scroll-mt-20 space-y-3">
-        <h2 id="me-settings" className="me-label">
-          הגדרות
-        </h2>
-        <div className="space-y-2.5">
-          <Suspense fallback={null}>
-            <AdminBadge />
-          </Suspense>
-          <InstallApp />
-          {pushConfigured() && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <PushToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />}
-          <NotificationSettings initial={prefs} />
-          {features.rides && (
-            <>
-              <GenderPicker initial={ride?.gender ?? null} />
-              <Link href="/me/verify" className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-line px-4 py-3 font-medium">
-                <IdCard className="size-4" aria-hidden="true" />
-                אימות לנסיעות
-              </Link>
-            </>
-          )}
-          {priv && <DmRequestsSetting initial={priv.dmRequests} />}
-          <SignOutButton />
-          <ContactForm />
-          <DeleteAccount />
-        </div>
-        <LegalLinks />
-        <p className="text-center text-xs text-dim">{NOT_AFFILIATED}</p>
-      </section>
+      <ProfileTabs
+        tabs={[
+          { key: 'clips', label: 'הקליפים שלי', node: <ClipsGrid clips={clips} /> },
+          { key: 'here', label: 'הייתי שם', node: <CountPanel value={card?.games ?? 0} label="משחקים שהיית בהם באצטדיון העונה" /> },
+          { key: 'rated', label: 'הדירוגים שלי', node: <CountPanel value={card?.rated ?? 0} label="משחקים שדירגת העונה" /> },
+        ]}
+      />
     </div>
   )
 }

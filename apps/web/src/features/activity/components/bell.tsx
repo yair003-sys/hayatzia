@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bell as BellIcon } from 'lucide-react'
+import { Bell as BellIcon, Settings } from 'lucide-react'
 import { Brand } from '@/components/brand'
 import { debounce } from '@/lib/debounce'
 import { cn } from '@/lib/utils'
@@ -32,7 +32,12 @@ export function FloatingBell(props: { meId: string; count: number | null }) {
       <Link href="/stand" aria-label={t('homeAria')} className="topbar-home">
         <Brand size={24} />
       </Link>
-      <Bell {...props} inline />
+      <span className="topbar-actions">
+        <Link href="/settings" aria-label="הגדרות" className="topbar-gear">
+          <Settings aria-hidden="true" className="size-[1.3rem]" strokeWidth={2.1} />
+        </Link>
+        <Bell {...props} inline />
+      </span>
     </header>
   )
 }
