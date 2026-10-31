@@ -2,14 +2,12 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { Pencil, Play, Swords } from 'lucide-react'
+import { Pencil, Play } from 'lucide-react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard, getMyClips, getMyPhotos, type MyClip } from '@/features/me/server/queries'
-import { fanNumber, memberSince } from '@/features/me/schema'
+import { memberSince } from '@/features/me/schema'
 import { teamAccent } from '@/features/stand-home/schema'
-import { recordLine } from '@/features/crowd-war/schema'
-import { getWarRecord } from '@/features/crowd-war/server/queries'
 import { ProfileAvatar, ProfileCover } from '@/features/me/components/profile-photos'
 import { CountPanel, ProfileTabs } from '@/features/me/components/profile-tabs'
 import { ShareProfile } from '@/features/me/components/share-profile'
@@ -38,14 +36,14 @@ async function Profile() {
   }
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const [card, clips, war, photos] = await Promise.all([
+  const [card, clips, photos] = await Promise.all([
     getFanCard(s.userId, s.team.id, season),
     getMyClips(s.userId),
-    season === null ? Promise.resolve(null) : getWarRecord(s.team.id, season),
     getMyPhotos(s.userId),
   ])
   const a = teamAccent(s.team.bar)
-  const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-text': a.text } as CSSProperties
+  // --club-on is the contrasting ink for text/icons that sit ON the club colour (so it never ends up club-on-club).
+  const colours = { '--club': s.team.bg, '--club2': s.team.ring, '--club-rgb': a.rgb, '--club-on': a.on } as CSSProperties
 
   return (
     <div className="space-y-5" style={colours}>
@@ -64,7 +62,7 @@ async function Profile() {
             {card?.label && (
               <span
                 className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-extrabold"
-                style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' }}
+                style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-on)' }}
               >
                 {card.label.label}
               </span>
@@ -72,7 +70,7 @@ async function Profile() {
             <span className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-muted">
               <span
                 className="t-serif grid size-5 place-items-center rounded-md text-[11px]"
-                style={{ background: 'linear-gradient(160deg, var(--club), var(--club2))', color: 'var(--club-text)' }}
+                style={{ background: 'linear-gradient(160deg, var(--club), var(--club2))', color: 'var(--club-on)' }}
                 aria-hidden="true"
               >
                 {s.team.short.slice(0, 1)}
@@ -82,16 +80,19 @@ async function Profile() {
           </div>
 
           <p className="mt-1.5 text-[13px] text-muted">
-            אוהד מאז <b className="text-fg">{card ? memberSince(card.joinedAt) : '—'}</b> · מס׳ אוהד{' '}
-            <b className="t-num text-fg">{card ? fanNumber(card.number) : '—'}</b> · נעול לתמיד
+            אוהד מאז <b className="text-fg">{card ? memberSince(card.joinedAt) : '—'}</b>
           </p>
 
+          {/* Community cred: who turns up (home + away), who reads the game (exact calls, ratings), where they rank. */}
           <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-dim">
             <span>
               <b className="t-num text-muted">{(card?.games ?? 0).toLocaleString('he-IL')}</b> משחקים באצטדיון
             </span>
             <span>
-              <b className="t-num text-muted">{(card?.points ?? 0).toLocaleString('he-IL')}</b> נק׳ בניחושים
+              <b className="t-num text-muted">{(card?.away ?? 0).toLocaleString('he-IL')}</b> משחקי חוץ
+            </span>
+            <span>
+              <b className="t-num text-muted">{(card?.exact ?? 0).toLocaleString('he-IL')}</b> ניחושים מדויקים
             </span>
             <span>
               <b className="t-num text-muted">{(card?.rated ?? 0).toLocaleString('he-IL')}</b> דירוגים
@@ -102,14 +103,6 @@ async function Profile() {
               </span>
             ) : null}
           </p>
-
-          {/* Hidden when the record cannot be read: never a made-up 0–0. */}
-          {war && (
-            <p className="cw-record mt-2.5">
-              <Swords className="size-4 shrink-0" aria-hidden="true" />
-              <span className="t-num">{recordLine(war)}</span>
-            </p>
-          )}
 
           <div className="mt-4 flex gap-2">
             <Link

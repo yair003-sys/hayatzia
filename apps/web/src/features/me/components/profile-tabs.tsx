@@ -24,7 +24,7 @@ export function ProfileTabs({ tabs }: { tabs: ProfileTab[] }) {
               aria-selected={on}
               onClick={() => setActive(t.key)}
               className={cn('min-h-9 shrink-0 rounded-full border px-4 text-sm font-bold transition', on ? 'border-transparent' : 'border-line text-muted')}
-              style={on ? { background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' } : undefined}
+              style={on ? { background: 'rgb(var(--club-rgb))', color: 'var(--club-on)' } : undefined}
             >
               {t.label}
             </button>

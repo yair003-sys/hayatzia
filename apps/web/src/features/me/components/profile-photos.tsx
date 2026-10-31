@@ -138,7 +138,7 @@ export function ProfileAvatar({ meId, nick, initialUrl }: { meId: string; nick: 
         disabled={busy}
         aria-label="שנה תמונת פרופיל"
         className="absolute -bottom-1.5 -end-1.5 grid size-[30px] place-items-center rounded-full ring-[3px] ring-surface disabled:opacity-60"
-        style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-text)' }}
+        style={{ background: 'rgb(var(--club-rgb))', color: 'var(--club-on)' }}
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Camera className="size-3.5" aria-hidden="true" />}
       </button>
