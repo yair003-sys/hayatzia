@@ -46,3 +46,28 @@ export async function getFanCard(userId: string, teamId: string, season: number 
     label: fanLabel({ games: checkins.length, tactical: ratedCount + exact, uploads: me.clips_posted }),
   }
 }
+
+export type MyClip = { id: string; kind: string; likes: number; url: string | null }
+
+/**
+ * The fan's own recent Square clips for the profile grid. Clips expire 24h after posting (the Square rule) and RLS
+ * hides expired ones, so this is the last day's posts; the lifetime count lives in `profiles.clips_posted`.
+ * Returns null on a read error (the grid then shows the load-error state, never a fake empty grid).
+ */
+export async function getMyClips(userId: string, limit = 12): Promise<MyClip[] | null> {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('clips')
+    .select('id,media_path,kind,likes_count')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error || !data) return null
+  if (data.length === 0) return []
+  const { data: signed } = await supabase.storage.from('clips').createSignedUrls(
+    data.map((c) => c.media_path),
+    3600,
+  )
+  return data.map((c, i) => ({ id: c.id, kind: c.kind, likes: c.likes_count, url: signed?.[i]?.signedUrl ?? null }))
+}
