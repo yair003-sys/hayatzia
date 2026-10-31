@@ -18,6 +18,7 @@ set local role authenticated;
 insert into public.team_messages (body) values ('גול!');
 reset role;
 create temp table _m as select id from public.team_messages limit 1;
+grant select on _m to authenticated;  -- the fan roles below read the message id from here
 
 -- ===== schema =====
 select has_column('public', 'message_reactions', 'emoji', 'a reaction stores an emoji');
