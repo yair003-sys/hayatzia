@@ -204,4 +204,7 @@ Function: `crowd_war_record(p_team, p_season) → (wins, losses, draws)` (invoke
 |---|---|---|
 | `clips` | read: authenticated (signed URLs); write: own folder | `clips/{user_id}/{clip_id}.{ext}` |
 | `team-photos` | read: same team (signed URLs); write: own folder | `team-photos/{team_id}/{user_id}/{id}.jpg` |
-| `avatars` | public read; write own | `avatars/{user_id}.jpg` |
+| `avatars` | public read; write/replace/delete own folder | `avatars/{user_id}/{file}` |
+| `covers` | public read; write/replace/delete own folder | `covers/{user_id}/{file}` |
+
+Profile photos (2026-10-31, migration `profile_photos`): `profiles.avatar_path` / `cover_path` (nullable text; readable by any fan, set only on the fan's own row; trigger `profiles_photo_path` refuses a path outside `<user id>/…` with `bad_path`). The public buckets `avatars`/`covers` are read-by-anyone, write only inside your own folder.
