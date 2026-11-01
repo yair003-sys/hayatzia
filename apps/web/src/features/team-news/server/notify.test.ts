@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
+vi.mock('server-only', () => ({}))
+
 const rpc = vi.fn()
 const sendPush = vi.fn()
 
