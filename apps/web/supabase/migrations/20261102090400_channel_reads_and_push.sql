@@ -39,7 +39,7 @@ grant execute on function public.channel_mark_seen() to authenticated;
 
 -- Fans of a club that have at least one push subscription, keyset-paginated by user_id. Service-role only (the push
 -- dispatcher runs with the admin client), exactly like alert_recipients.
-create function public.channel_post_recipients(p_club text, p_after uuid, p_limit int)
+create function public.channel_post_recipients(p_club text, p_after uuid default null, p_limit int default 1000)
 returns setof uuid
 language sql stable security definer set search_path = '' as $$
   select p.user_id

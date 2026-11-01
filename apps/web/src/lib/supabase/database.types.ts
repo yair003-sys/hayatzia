@@ -2018,7 +2018,7 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "channel_post_recipients":
-{ Args: { "p_after": string,"p_club": string,"p_limit": number }; Returns: string[]
+{ Args: { "p_after"?: string,"p_club": string,"p_limit"?: number }; Returns: string[]
                            },
 "channel_unread":
 { Args: Record<PropertyKey, never>; Returns: boolean

@@ -78,6 +78,17 @@ create trigger channel_posts_stamp before insert or update on public.channel_pos
 create trigger zz_moderate before insert or update on public.channel_posts
   for each row execute function private.moderate_row('title:name', 'body:text');
 
+-- Tell the club's news feed a post was published (posts are infrequent, so the client fetches the full post by id).
+create function public.channel_posts_broadcast() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform realtime.send(jsonb_build_object('post_id', new.id), 'INSERT', 'news:' || new.team_id, true);
+  return null;
+end $$;
+revoke all on function public.channel_posts_broadcast() from public, anon, authenticated;
+create trigger channel_posts_broadcast after insert on public.channel_posts
+  for each row execute function public.channel_posts_broadcast();
+
 alter table public.channel_posts enable row level security;
 create policy channel_posts_read on public.channel_posts for select to authenticated
   using (team_id = (select public.my_team()));
