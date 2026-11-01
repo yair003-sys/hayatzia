@@ -8,10 +8,16 @@ import { getSessionProfile } from '@/features/profile/server/queries'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { LoadError } from '@/components/load-error'
+import { NewsTabs } from '@/features/team-news/components/news-tabs'
+import { NewsFeed } from '@/features/team-news/components/news-feed'
+import { PinnedPost } from '@/features/team-news/components/pinned-post'
+import { amIChannelAdmin, getChannelUnread, getLatestPost, getTeamNews } from '@/features/team-news/server/queries'
 
 export const metadata: Metadata = { title: 'צ׳אט הקבוצה' }
 
-export default function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const sp = await searchParams
+  const initialTab = sp?.tab === 'news' ? 'news' : 'chat'
   return (
     <section>
       <Link href="/stand" className="mb-3 inline-flex items-center gap-1 text-sm text-muted">
@@ -19,19 +25,36 @@ export default function Page() {
         onefan
       </Link>
       <Suspense fallback={<ChatSkeleton />}>
-        <ChatScreen />
+        <ChatScreen initialTab={initialTab} />
       </Suspense>
     </section>
   )
 }
 
-async function ChatScreen() {
+async function ChatScreen({ initialTab }: { initialTab: 'chat' | 'news' }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') {
     return <p className="text-muted">הצ׳אט פועל רק כשהשרת מחובר (לא בסביבה הזאת).</p>
   }
   if (s.status !== 'ready') return <ChatSkeleton />
-  const [initial, hidden] = await Promise.all([getTeamMessages(), getBlockedIdsOrNull()])
+  const [initial, hidden, news, latest, unread, isAdmin] = await Promise.all([
+    getTeamMessages(),
+    getBlockedIdsOrNull(),
+    getTeamNews(),
+    getLatestPost(),
+    getChannelUnread(),
+    amIChannelAdmin(),
+  ])
+  const chatPanel =
+    initial && hidden ? (
+      <>
+        {latest && <PinnedPost post={latest} />}
+        <TeamChat teamId={s.team.id} meId={s.userId} initial={initial} hidden={hidden} color={s.team.bg} clubName={s.team.name} />
+      </>
+    ) : (
+      <LoadError />
+    )
+  const newsPanel = <NewsFeed teamId={s.team.id} meId={s.userId} isAdmin={isAdmin} initial={news ?? []} />
   return (
     <>
       <header className="mb-4 flex items-center gap-3">
@@ -41,12 +64,7 @@ async function ChatScreen() {
           <p className="text-xs text-muted">רק אוהדי {s.team.short} רואים את הצ׳אט הזה</p>
         </div>
       </header>
-      {/* A failed history read is "could not load", never an empty chat that fills with live messages only. */}
-      {initial && hidden ? (
-        <TeamChat teamId={s.team.id} meId={s.userId} initial={initial} hidden={hidden} color={s.team.bg} clubName={s.team.name} />
-      ) : (
-        <LoadError />
-      )}
+      <NewsTabs initialTab={initialTab} chat={chatPanel} news={newsPanel} unread={unread} />
     </>
   )
 }

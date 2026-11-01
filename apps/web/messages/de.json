@@ -915,6 +915,8 @@
     "tooBig": "Datei zu groß (max. 50 MB)",
     "postFailed": "Konnte nicht veröffentlicht werden",
     "commentFailed": "Konnte nicht gesendet werden",
-    "adminOnly": "Nur Admins posten hier"
+    "adminOnly": "Nur Admins posten hier",
+    "cancel": "Abbrechen",
+    "loadOlder": "Ältere laden"
   }
 }

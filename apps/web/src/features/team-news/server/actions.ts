@@ -110,9 +110,18 @@ export const markNewsSeenAction = actionClient.inputSchema(z.object({})).action(
   return { ok: !error }
 })
 
+/** Fetch one post (used when a realtime INSERT tells the feed a post was published). */
+export const loadPostAction = actionClient
+  .inputSchema(postIdSchema)
+  .action(async ({ parsedInput: { postId } }) => ({ post: await getPostById(postId) }))
+
 export const loadOlderNewsAction = actionClient
   .inputSchema(postCursorSchema)
   .action(async ({ parsedInput }) => ({ posts: await getTeamNews(parsedInput) }))
+
+export const loadCommentsAction = actionClient
+  .inputSchema(postIdSchema)
+  .action(async ({ parsedInput: { postId } }) => ({ comments: await getPostComments(postId) }))
 
 export const loadOlderCommentsAction = actionClient
   .inputSchema(commentCursorSchema)
