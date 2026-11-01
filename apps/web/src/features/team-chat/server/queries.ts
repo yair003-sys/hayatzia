@@ -12,7 +12,7 @@ export async function getTeamMessages(before?: { createdAt: string; id: string }
   if (!supabase) return []
   let q = supabase
     .from('team_messages')
-    .select(`${MESSAGE_COLUMNS},likes,dislikes`)
+    .select(`${MESSAGE_COLUMNS},reactions`)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(PAGE_SIZE)
@@ -28,8 +28,8 @@ export async function getTeamMessages(before?: { createdAt: string; id: string }
   const me = claims?.claims.sub
   const mine =
     ids.length > 0 && me
-      ? (await supabase.from('message_reactions').select('message_id,kind').eq('user_id', me).in('message_id', ids)).data
+      ? (await supabase.from('message_reactions').select('message_id,emoji').eq('user_id', me).in('message_id', ids)).data
       : []
-  const myKind = new Map((mine ?? []).map((r) => [r.message_id, r.kind]))
-  return rows.map((r) => ({ ...r, myReaction: (myKind.get(r.id) ?? 0) as 1 | -1 | 0 }))
+  const myEmoji = new Map((mine ?? []).map((r) => [r.message_id, r.emoji]))
+  return rows.map((r) => ({ ...r, reactions: (r.reactions ?? {}) as Record<string, number>, myReaction: myEmoji.get(r.id) ?? null }))
 }

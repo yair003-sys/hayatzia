@@ -27,19 +27,38 @@ export type ChatMessage = {
   reply_user?: string | null
   reply_nick?: string | null
   reply_body?: string | null
-  /** Team chat only: אהבתי / לא אהבתי counts and my own reaction (1 like, -1 dislike, 0 none). */
-  likes?: number
-  dislikes?: number
-  myReaction?: 1 | -1 | 0
+  /** Team chat: per-emoji reaction counts ({emoji: count}) and my own reaction emoji (null/undefined = none). */
+  reactions?: Record<string, number>
+  myReaction?: string | null
   /** This device only: a message that could not be sent (its id is a local one). */
   failed?: boolean
 }
 
-/** A live reaction-count update from the "REACTION" broadcast, or null when the shape is unexpected. */
-export function reactionFromBroadcast(payload: unknown): { id: string; likes: number; dislikes: number } | null {
-  const p = payload as { message_id?: unknown; likes?: unknown; dislikes?: unknown } | null
-  if (!p || typeof p.message_id !== 'string' || typeof p.likes !== 'number' || typeof p.dislikes !== 'number') return null
-  return { id: p.message_id, likes: p.likes, dislikes: p.dislikes }
+/** A live reaction update from the "REACTION" broadcast ({message_id, reactions}), or null when the shape is off. */
+export function reactionFromBroadcast(payload: unknown): { id: string; reactions: Record<string, number> } | null {
+  const p = payload as { message_id?: unknown; reactions?: unknown } | null
+  if (!p || typeof p.message_id !== 'string' || typeof p.reactions !== 'object' || p.reactions === null) return null
+  const reactions: Record<string, number> = {}
+  for (const [emoji, count] of Object.entries(p.reactions as Record<string, unknown>)) {
+    if (typeof count === 'number' && count > 0) reactions[emoji] = count
+  }
+  return { id: p.message_id, reactions }
+}
+
+/** The quick reaction on a double-tap, the bar of popular emoji on a single tap, and the wider "+" picker set. */
+export const QUICK_LIKE = '❤️'
+export const POPULAR_REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '💪', '⚽'] as const
+export const MORE_REACTIONS = [
+  '❤️', '🔥', '👏', '😂', '😮', '😢', '💪', '⚽', '👍', '👎', '🙏', '😍', '🤯', '😡', '🥳',
+  '🏆', '💛', '💙', '🤣', '😭', '🫡', '🐐', '🤝', '✅', '💯', '👑', '🚀', '😤', '🙌', '🤬',
+] as const
+
+/** Total reactions on a message (for the "hot message" highlight). */
+export function totalReactions(reactions?: Record<string, number> | null): number {
+  if (!reactions) return 0
+  let n = 0
+  for (const c of Object.values(reactions)) n += c
+  return n
 }
 
 /** Columns every chat read and write returns. */

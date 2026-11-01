@@ -139,7 +139,14 @@ export default function TermsPage() {
         ב<Link href="/accessibility">הצהרת הנגישות</Link>.
       </p>
 
-      <h2>16. יצירת קשר</h2>
+      <h2>16. קרדיטים</h2>
+      <p>
+        האימוג׳ים באפליקציה הם מסט Twemoji, ברישיון{' '}
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC-BY 4.0</a>, מבית Twitter
+        ותורמי הקהילה.
+      </p>
+
+      <h2>17. יצירת קשר</h2>
       <LegalContact topic="שאלות, בקשות ותלונות" />
     </LegalPage>
   )

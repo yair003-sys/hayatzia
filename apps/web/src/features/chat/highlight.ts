@@ -1,12 +1,11 @@
-// Algorithm phase 6: lift the messages the room is reacting to above the noise. A message is "hot" when enough fans
-// liked it and it is clearly net-positive (so a flamed/divisive message isn't highlighted). Pure, from existing
-// reaction counts — no new data, computed on the client as reactions stream in.
+// Algorithm phase 6: lift the messages the room is reacting to above the noise. With emoji reactions (2026-11-01) a
+// message is "hot" simply when enough fans reacted to it (any emoji). Pure, from the counts already on the message,
+// computed on the client as reactions stream in — no new data.
 
-export const HOT_LIKES = 5
-export const HOT_NET = 3
+import { totalReactions } from './schema'
 
-export function isHotMessage(r: { likes?: number | null; dislikes?: number | null }): boolean {
-  const likes = r.likes ?? 0
-  const dislikes = r.dislikes ?? 0
-  return likes >= HOT_LIKES && likes - dislikes >= HOT_NET
+export const HOT_REACTIONS = 5
+
+export function isHotMessage(r: { reactions?: Record<string, number> | null }): boolean {
+  return totalReactions(r.reactions) >= HOT_REACTIONS
 }

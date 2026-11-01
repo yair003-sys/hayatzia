@@ -3,11 +3,12 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Flag, SendHorizontal, ThumbsDown, ThumbsUp, X } from 'lucide-react'
+import { Flag, Plus, SendHorizontal, SmilePlus, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { Emoji } from '@/components/emoji'
 import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
 import { DayDivider, JumpButton, jumpToMessage, MessageAuthor, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
@@ -20,7 +21,10 @@ import {
   MESSAGE_MAX,
   mergeMessages,
   messageFromBroadcast,
+  MORE_REACTIONS,
   PAGE_SIZE,
+  POPULAR_REACTIONS,
+  QUICK_LIKE,
   reactionFromBroadcast,
   type ChatMessage,
   type Cursor,
@@ -53,7 +57,7 @@ export type ChatRoomProps = {
   /** Match centre's battle bar: fired for every message that arrives live, with the writer's side. */
   onLiveMessage?: (side: 'h' | 'a' | undefined) => void
   /** Team chat: when set, each message shows אהבתי / לא אהבתי; a tap fires this (kind 0 removes my reaction). */
-  onReact?: (messageId: string, kind: 1 | -1 | 0) => void
+  onReact?: (messageId: string, emoji: string | null) => void
   /** Shown just above the composer (e.g. the open poll's jump button). */
   pinned?: ReactNode
   /**
@@ -181,20 +185,21 @@ export function ChatRoom({
     messagesRef.current = messages
   })
   const react = useCallback(
-    (id: string, want: 1 | -1) => {
+    (id: string, emoji: string) => {
       if (!onReact) return
-      const prev = messagesRef.current.find((m) => m.id === id)?.myReaction ?? 0
-      const next: 1 | -1 | 0 = prev === want ? 0 : want
+      const prev = messagesRef.current.find((m) => m.id === id)?.myReaction ?? null
+      // Tapping the emoji already on = remove it; otherwise switch to it (one reaction per fan).
+      const next: string | null = prev === emoji ? null : emoji
       setMessages((list) =>
         list.map((m) => {
           if (m.id !== id) return m
-          let likes = m.likes ?? 0
-          let dislikes = m.dislikes ?? 0
-          if (prev === 1) likes--
-          if (prev === -1) dislikes--
-          if (next === 1) likes++
-          if (next === -1) dislikes++
-          return { ...m, myReaction: next, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) }
+          const reactions = { ...(m.reactions ?? {}) }
+          if (prev) {
+            reactions[prev] = Math.max(0, (reactions[prev] ?? 1) - 1)
+            if (reactions[prev] === 0) delete reactions[prev]
+          }
+          if (next) reactions[next] = (reactions[next] ?? 0) + 1
+          return { ...m, myReaction: next, reactions }
         }),
       )
       onReact(id, next)
@@ -226,11 +231,11 @@ export function ChatRoom({
       for (const ev of EXTRA_EVENTS) {
         ch.on('broadcast', { event: ev }, ({ payload }) => onExtra.current?.(ev, payload))
       }
-      // Live like / dislike totals for the club (team chat). The server sends the authoritative counts, so this also
-      // corrects any optimistic over/undercount from a tap.
+      // Live reaction totals for the club (team chat). The server sends the authoritative {emoji: count}, so this also
+      // corrects any optimistic over/undercount from a tap (my own reaction stays as the client set it).
       ch.on('broadcast', { event: 'REACTION' }, ({ payload }) => {
         const r = reactionFromBroadcast(payload)
-        if (r) setMessages((cur) => cur.map((m) => (m.id === r.id ? { ...m, likes: r.likes, dislikes: r.dislikes } : m)))
+        if (r) setMessages((cur) => cur.map((m) => (m.id === r.id ? { ...m, reactions: r.reactions } : m)))
       })
       await supabase.realtime.setAuth()
       if (!cancelled) ch.subscribe((status) => setLive(status === 'SUBSCRIBED'))
@@ -561,7 +566,7 @@ const MessageItem = memo(function MessageItem({
   onActive: (id: string | null) => void
   onReply?: (m: ChatMessage) => void
   onReport?: (m: ChatMessage) => void
-  onReact?: (id: string, kind: 1 | -1) => void
+  onReact?: (id: string, emoji: string) => void
   onFan?: (m: ChatMessage) => void
   quoteLoaded: boolean
   quoteHidden: boolean
@@ -572,6 +577,7 @@ const MessageItem = memo(function MessageItem({
   const t = useTranslations('chat')
   const state = mine ? sendState(m) : undefined
   const hot = isHotMessage(m)
+  const [picker, setPicker] = useState(false)
   return (
     <MessageRow
       id={m.id}
@@ -593,6 +599,7 @@ const MessageItem = memo(function MessageItem({
       <div
         className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2', hot && 'chat-bubble--hot')}
         style={color ? { borderInlineStartColor: color, borderInlineStartWidth: 3 } : undefined}
+        onDoubleClick={onReact && !m.id.startsWith(LOCAL_ID) ? () => onReact(m.id, QUICK_LIKE) : undefined}
       >
         {hot && <span className="chat-hot">{t('hotBadge')}</span>}
         {m.reply_to && (
@@ -607,26 +614,67 @@ const MessageItem = memo(function MessageItem({
       </div>
       {onReact && !m.id.startsWith(LOCAL_ID) && (
         <div className="chat-react">
-          <button
-            type="button"
-            aria-pressed={m.myReaction === 1}
-            aria-label={t('like')}
-            className={cn('chat-react-btn', m.myReaction === 1 && 'on')}
-            onClick={() => onReact(m.id, 1)}
-          >
-            <ThumbsUp className="size-3.5" aria-hidden="true" />
-            {m.likes ? m.likes : ''}
-          </button>
-          <button
-            type="button"
-            aria-pressed={m.myReaction === -1}
-            aria-label={t('dislike')}
-            className={cn('chat-react-btn', 'down', m.myReaction === -1 && 'on')}
-            onClick={() => onReact(m.id, -1)}
-          >
-            <ThumbsDown className="size-3.5" aria-hidden="true" />
-            {m.dislikes ? m.dislikes : ''}
-          </button>
+          {/* Chips of the reactions already on this message; tapping mine again removes it. */}
+          {Object.entries(m.reactions ?? {}).map(([emoji, count]) =>
+            count > 0 ? (
+              <button
+                key={emoji}
+                type="button"
+                aria-pressed={m.myReaction === emoji}
+                aria-label={`${emoji} ${count}`}
+                className={cn('chat-react-chip', m.myReaction === emoji && 'on')}
+                onClick={() => onReact(m.id, emoji)}
+              >
+                <Emoji emoji={emoji} size={16} decorative />
+                <span className="t-num">{count}</span>
+              </button>
+            ) : null,
+          )}
+          {/* A single tap on the message opens the popular bar (+ "…" for more); a double-tap is a quick ❤️. */}
+          {active ? (
+            <div className="chat-react-bar" role="group" aria-label={t('addReaction')}>
+              {POPULAR_REACTIONS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  className="chat-react-emoji"
+                  aria-label={e}
+                  onClick={() => {
+                    onReact(m.id, e)
+                    onActive(null)
+                  }}
+                >
+                  <Emoji emoji={e} size={24} decorative />
+                </button>
+              ))}
+              <button type="button" className="chat-react-more" aria-label={t('moreEmoji')} aria-expanded={picker} onClick={() => setPicker((v) => !v)}>
+                <Plus className="size-4" aria-hidden="true" />
+              </button>
+              {picker && (
+                <div className="chat-react-picker" role="group" aria-label={t('pickEmoji')}>
+                  {MORE_REACTIONS.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      className="chat-react-emoji"
+                      aria-label={e}
+                      onClick={() => {
+                        onReact(m.id, e)
+                        setPicker(false)
+                        onActive(null)
+                      }}
+                    >
+                      <Emoji emoji={e} size={24} decorative />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="chat-react-add" aria-label={t('addReaction')} onClick={() => onActive(m.id)}>
+              <SmilePlus className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
         </div>
       )}
       <MessageMeta
