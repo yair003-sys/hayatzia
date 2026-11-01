@@ -25,7 +25,7 @@ describe('notifyNewPost', () => {
 
     expect(rpc).toHaveBeenCalledTimes(2)
     expect(sendPush).toHaveBeenCalledTimes(1)
-    const [ids, payload] = sendPush.mock.calls[0]
+    const [ids, payload] = sendPush.mock.calls[0]!
     expect(ids).toHaveLength(1003)
     expect(payload.url).toBe('/stand/chat?tab=news')
     expect(payload.title).toContain('מכבי')
