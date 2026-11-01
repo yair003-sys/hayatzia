@@ -8,6 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { Emoji } from '@/components/emoji'
 import { TypingLine } from './typing-line'
 import { useTyping } from './use-typing'
 import { DayDivider, JumpButton, jumpToMessage, MessageAuthor, MessageMeta, MessageRow, Quote, ReplyBar, UnreadDivider, useNowMinute } from './chat-parts'
@@ -624,7 +625,7 @@ const MessageItem = memo(function MessageItem({
                 className={cn('chat-react-chip', m.myReaction === emoji && 'on')}
                 onClick={() => onReact(m.id, emoji)}
               >
-                <span aria-hidden="true">{emoji}</span>
+                <Emoji emoji={emoji} size={16} decorative />
                 <span className="t-num">{count}</span>
               </button>
             ) : null,
@@ -643,7 +644,7 @@ const MessageItem = memo(function MessageItem({
                     onActive(null)
                   }}
                 >
-                  {e}
+                  <Emoji emoji={e} size={24} decorative />
                 </button>
               ))}
               <button type="button" className="chat-react-more" aria-label={t('moreEmoji')} aria-expanded={picker} onClick={() => setPicker((v) => !v)}>
@@ -663,7 +664,7 @@ const MessageItem = memo(function MessageItem({
                         onActive(null)
                       }}
                     >
-                      {e}
+                      <Emoji emoji={e} size={24} decorative />
                     </button>
                   ))}
                 </div>
