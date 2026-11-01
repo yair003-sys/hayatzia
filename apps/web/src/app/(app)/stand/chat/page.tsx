@@ -15,9 +15,7 @@ import { amIChannelAdmin, getChannelUnread, getLatestPost, getTeamNews } from '@
 
 export const metadata: Metadata = { title: 'צ׳אט הקבוצה' }
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const sp = await searchParams
-  const initialTab = sp?.tab === 'news' ? 'news' : 'chat'
+export default function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   return (
     <section>
       <Link href="/stand" className="mb-3 inline-flex items-center gap-1 text-sm text-muted">
@@ -25,13 +23,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         onefan
       </Link>
       <Suspense fallback={<ChatSkeleton />}>
-        <ChatScreen initialTab={initialTab} />
+        <ChatScreen searchParams={searchParams} />
       </Suspense>
     </section>
   )
 }
 
-async function ChatScreen({ initialTab }: { initialTab: 'chat' | 'news' }) {
+async function ChatScreen({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const sp = await searchParams
+  const initialTab = sp?.tab === 'news' ? 'news' : 'chat'
   const s = await getSessionProfile()
   if (s.status === 'disabled') {
     return <p className="text-muted">הצ׳אט פועל רק כשהשרת מחובר (לא בסביבה הזאת).</p>
