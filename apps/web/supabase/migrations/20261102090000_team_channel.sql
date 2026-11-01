@@ -35,8 +35,8 @@ grant execute on function public.channel_can_post() to authenticated;
 
 create table public.channel_posts (
   id             uuid primary key default gen_random_uuid(),
-  team_id        text not null references public.teams (id),
-  author_id      uuid not null references auth.users (id) on delete cascade,
+  team_id        text not null default public.my_team() references public.teams (id),   -- stamped again by trigger
+  author_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
   title          text,
   body           text not null check (char_length(body) between 1 and 1000),
   media_path     text,
