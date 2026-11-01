@@ -895,5 +895,26 @@
     "placeholder": "כתוב לקבוצה…",
     "emptyText": "עוד אין הודעות. כתוב את הראשונה.",
     "sendFailed": "ההודעה לא נשלחה"
+  },
+  "teamNews": {
+    "tabNews": "חדשות",
+    "tabChat": "צ׳אט",
+    "postPlaceholder": "כתוב עדכון…",
+    "titlePlaceholder": "כותרת (לא חובה)",
+    "addMedia": "הוסף תמונה/וידאו",
+    "publish": "פרסם",
+    "publishing": "מפרסם…",
+    "comments": "תגובות ({n})",
+    "noComments": "עוד אין תגובות. כתוב את הראשונה.",
+    "writeComment": "כתוב תגובה…",
+    "empty": "עוד אין עדכונים בערוץ.",
+    "views": "{n} צפיות",
+    "edited": "נערך",
+    "deletePost": "מחק פוסט",
+    "confirmDelete": "למחוק את הפוסט?",
+    "tooBig": "הקובץ גדול מדי (עד 50MB)",
+    "postFailed": "הפוסט לא פורסם",
+    "commentFailed": "התגובה לא נשלחה",
+    "adminOnly": "רק אדמינים מפרסמים כאן"
   }
 }

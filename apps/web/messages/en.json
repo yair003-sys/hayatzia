@@ -895,5 +895,26 @@
     "placeholder": "Write to the club…",
     "emptyText": "No messages yet. Write the first one.",
     "sendFailed": "The message wasn’t sent"
+  },
+  "teamNews": {
+    "tabNews": "News",
+    "tabChat": "Chat",
+    "postPlaceholder": "Write an update…",
+    "titlePlaceholder": "Title (optional)",
+    "addMedia": "Add photo/video",
+    "publish": "Publish",
+    "publishing": "Publishing…",
+    "comments": "Comments ({n})",
+    "noComments": "No comments yet. Be the first.",
+    "writeComment": "Write a comment…",
+    "empty": "No channel updates yet.",
+    "views": "{n} views",
+    "edited": "edited",
+    "deletePost": "Delete post",
+    "confirmDelete": "Delete this post?",
+    "tooBig": "File too large (max 50MB)",
+    "postFailed": "Could not publish",
+    "commentFailed": "Could not send",
+    "adminOnly": "Only admins post here"
   }
 }

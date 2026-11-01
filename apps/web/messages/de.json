@@ -895,5 +895,26 @@
     "placeholder": "Schreib an den Verein…",
     "emptyText": "Noch keine Nachrichten. Schreib die erste.",
     "sendFailed": "Die Nachricht wurde nicht gesendet"
+  },
+  "teamNews": {
+    "tabNews": "News",
+    "tabChat": "Chat",
+    "postPlaceholder": "Update schreiben…",
+    "titlePlaceholder": "Titel (optional)",
+    "addMedia": "Foto/Video hinzufügen",
+    "publish": "Veröffentlichen",
+    "publishing": "Wird veröffentlicht…",
+    "comments": "Kommentare ({n})",
+    "noComments": "Noch keine Kommentare. Sei der Erste.",
+    "writeComment": "Kommentar schreiben…",
+    "empty": "Noch keine Kanal-Updates.",
+    "views": "{n} Aufrufe",
+    "edited": "bearbeitet",
+    "deletePost": "Beitrag löschen",
+    "confirmDelete": "Beitrag löschen?",
+    "tooBig": "Datei zu groß (max. 50 MB)",
+    "postFailed": "Konnte nicht veröffentlicht werden",
+    "commentFailed": "Konnte nicht gesendet werden",
+    "adminOnly": "Nur Admins posten hier"
   }
 }
