@@ -6,7 +6,15 @@
 
 -- 1) message_reactions: kind (±1) -> emoji text.
 alter table public.message_reactions add column emoji text;
+-- Back-fill with the row triggers off: the stamp trigger (before insert/update) would re-stamp user_id from
+-- auth.uid(), which is null when a migration runs the UPDATE, and the count trigger would fire against columns we
+-- are about to drop. Existing user_id/team_id/created_at are preserved because the UPDATE only sets emoji.
+-- (On a fresh database the UPDATE touches no rows, so this is a no-op there; it matters only on a populated db.)
+alter table public.message_reactions disable trigger message_reactions_stamp;
+alter table public.message_reactions disable trigger message_reactions_count;
 update public.message_reactions set emoji = case when kind = 1 then '👍' else '👎' end;
+alter table public.message_reactions enable trigger message_reactions_count;
+alter table public.message_reactions enable trigger message_reactions_stamp;
 alter table public.message_reactions alter column emoji set not null;
 alter table public.message_reactions add constraint message_reactions_emoji_len check (char_length(emoji) between 1 and 32);
 
