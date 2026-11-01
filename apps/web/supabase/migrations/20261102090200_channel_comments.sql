@@ -13,6 +13,8 @@ create table public.channel_post_comments (
   created_at timestamptz not null default now()
 );
 create index channel_post_comments_thread_idx on public.channel_post_comments (post_id, created_at desc, id desc);
+-- The stamp trigger's 5/10s rate-limit counts a fan's recent comments on every insert; index that lookup (mirrors clip_comments_user_idx).
+create index channel_post_comments_user_idx on public.channel_post_comments (user_id, created_at desc);
 
 -- Stamp club (from the post) + user + nick + time; refuse a comment on another club's post; rate-limit 5/10s.
 create function public.channel_post_comments_stamp() returns trigger

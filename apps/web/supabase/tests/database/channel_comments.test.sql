@@ -1,7 +1,7 @@
 -- Channel post comments (2026-11-01): per-post thread, club/nick/time stamped, same-club only, moderated, rate-limited
 -- 5/10s, comments_count kept on the post by trigger.
 begin;
-select plan(8);
+select plan(9);
 
 insert into auth.users (id, aud, role, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'cc_admin@test.local'),
@@ -22,6 +22,7 @@ grant select on _p to authenticated;
 
 select has_table('public', 'channel_post_comments', 'the channel has a comments table');
 select has_trigger('public', 'channel_post_comments', 'zz_moderate', 'comment bodies pass moderation');
+select has_index('public', 'channel_post_comments', 'channel_post_comments_user_idx', 'the rate-limit lookup is indexed');
 
 -- a same-club fan comments; the post's counter and the stamped nick reflect it.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}', true);
