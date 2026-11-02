@@ -28,6 +28,10 @@ export const WOMEN_DRIVERS_FILTER = 'נהגות בלבד'
 export const ADULT_CONFIRM = 'אני בן/בת 18 ומעלה'
 export const RIDE_SUSPENDED_HE = 'החשבון מושעה מנסיעות עד שהצוות יבדוק דיווח. שאר האפליקציה פועלת כרגיל.'
 
+/** Shown while identity verification is not yet switched on: rides run, but no IDs are checked. */
+export const RIDES_UNVERIFIED_HE =
+  'זהות המשתמשים עדיין לא מאומתת. onefan לא בודקת תעודות של נהגים או נוסעים. ההצטרפות לנסיעה היא באחריותכם בלבד — היפגשו במקום ציבורי, שתפו מישהו בפרטי הנסיעה, וסמכו על ההיגיון שלכם.'
+
 export const SAFETY_TIPS = [
   'נפגשים רק במקום ציבורי ומואר, לא בבית.',
   'שולחים לחבר או להורה את פרטי הנסיעה (כפתור „שתף את הנסיעה”).',
