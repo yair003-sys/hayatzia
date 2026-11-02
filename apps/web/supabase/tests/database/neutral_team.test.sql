@@ -10,7 +10,7 @@ insert into auth.users (id, aud, role, email)
   values ('00000000-0000-0000-0000-0000000000ff', 'authenticated', 'authenticated', 'ff@test.local');
 insert into public.profiles (user_id, nick, team_id)
   values ('00000000-0000-0000-0000-0000000000ff', 'onefan', 'onf');
-select is((select team_id from public.profiles where user_id = '00000000-0000-0000-0000-0000000000ff'), 'onefan',
+select is((select team_id from public.profiles where user_id = '00000000-0000-0000-0000-0000000000ff'), 'onf',
           'a profile can live on the neutral team');
 
 select * from finish();
