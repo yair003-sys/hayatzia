@@ -9,28 +9,30 @@ import { getFansByTeam, getUserList, isAppAdmin, type Cursor } from '@/features/
 
 export const metadata: Metadata = { title: 'משתמשים · אדמין', robots: { index: false, follow: false } }
 
-type SP = { q?: string; team?: string; before?: string; id?: string }
+type Param = string | string[] | undefined
 
 export default function Page({ searchParams }: PageProps<'/admin/users'>) {
   return (
     <section className="space-y-5">
-      <Suspense fallback={<Skeleton />}>{searchParams.then((sp) => <Screen sp={sp as SP} />)}</Suspense>
+      <Suspense fallback={<Skeleton />}>
+        {searchParams.then((sp) => <Screen q={sp.q} team={sp.team} before={sp.before} id={sp.id} />)}
+      </Suspense>
     </section>
   )
 }
 
-function cursorOf(before: unknown, id: unknown): Cursor | null {
+function cursorOf(before: Param, id: Param): Cursor | null {
   if (typeof before !== 'string' || typeof id !== 'string') return null
   if (Number.isNaN(Date.parse(before)) || !/^[0-9a-f-]{36}$/.test(id)) return null
   return { before, beforeId: id }
 }
 
-async function Screen({ sp }: { sp: SP }) {
+async function Screen({ q, team: teamParam, before, id }: { q: Param; team: Param; before: Param; id: Param }) {
   if (!(await isAppAdmin())) notFound()
-  const search = typeof sp.q === 'string' ? sp.q.trim() : ''
-  const team = typeof sp.team === 'string' ? sp.team : ''
+  const search = typeof q === 'string' ? q.trim() : ''
+  const team = typeof teamParam === 'string' ? teamParam : ''
   const [{ rows, next }, byTeam] = await Promise.all([
-    getUserList({ search: search || undefined, team: team || undefined, cursor: cursorOf(sp.before, sp.id) }),
+    getUserList({ search: search || undefined, team: team || undefined, cursor: cursorOf(before, id) }),
     getFansByTeam(),
   ])
 

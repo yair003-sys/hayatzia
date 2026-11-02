@@ -10,26 +10,26 @@ import { getContentFeed, isAppAdmin, type Cursor } from '@/features/admin/server
 
 export const metadata: Metadata = { title: 'תוכן · אדמין', robots: { index: false, follow: false } }
 
-type SP = { kind?: string; before?: string; id?: string }
+type Param = string | string[] | undefined
 
 export default function Page({ searchParams }: PageProps<'/admin/content'>) {
   return (
     <section className="space-y-5">
-      <Suspense fallback={<Skeleton />}>{searchParams.then((sp) => <Screen sp={sp as SP} />)}</Suspense>
+      <Suspense fallback={<Skeleton />}>{searchParams.then((sp) => <Screen kind={sp.kind} before={sp.before} id={sp.id} />)}</Suspense>
     </section>
   )
 }
 
-function cursorOf(before: unknown, id: unknown): Cursor | null {
+function cursorOf(before: Param, id: Param): Cursor | null {
   if (typeof before !== 'string' || typeof id !== 'string') return null
   if (Number.isNaN(Date.parse(before))) return null
   return { before, beforeId: id }
 }
 
-async function Screen({ sp }: { sp: SP }) {
+async function Screen({ kind: kindParam, before, id }: { kind: Param; before: Param; id: Param }) {
   if (!(await isAppAdmin())) notFound()
-  const kind = contentKind(sp.kind)
-  const { rows, next } = await getContentFeed(kind, cursorOf(sp.before, sp.id))
+  const kind = contentKind(kindParam)
+  const { rows, next } = await getContentFeed(kind, cursorOf(before, id))
 
   return (
     <>

@@ -22,8 +22,9 @@ insert into public.profiles (user_id, nick, team_id) values
   (pg_temp.uid('0a02'), 'כותב', 'mta'),
   (pg_temp.uid('0a03'), 'יריב', 'hta'),
   (pg_temp.uid('0a04'), 'חסום', 'mta');
--- a2 and a3 are 18+ confirmed (fans_verified = 2; a3 needs it to open a ride).
-update public.profiles set adult_confirmed_at = '2000-01-01T00:00:00Z' where user_id in (pg_temp.uid('0a02'), pg_temp.uid('0a03'));
+-- a2 and a3 are 18+ confirmed (fans_verified = 2); a3 also needs a birth date to open a ride (ride_gate).
+update public.profiles set adult_confirmed_at = '2000-01-01T00:00:00Z', birth_date = '1990-01-01'
+ where user_id in (pg_temp.uid('0a02'), pg_temp.uid('0a03'));
 insert into public.app_admins (user_id) values (pg_temp.uid('0a01'));
 insert into public.team_channel_admins (team_id, user_id) values ('mta', pg_temp.uid('0a01'));
 -- a4 is banned from writing (active, forever).
