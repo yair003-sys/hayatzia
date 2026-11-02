@@ -71,7 +71,7 @@ select throws_ok($$ select adult_confirmed_at from public.profiles where user_id
   'the ride columns are read only through my_ride_profile');
 select throws_ok($$ update public.profiles set terms_version = 'x' where user_id = auth.uid() $$, '42501', null,
   'a fan cannot change other profile columns');
-select is((select count(*)::int from public.profiles), 8, 'fans of the club are still listed (nick, join date)');
+select is((select count(*)::int from public.profiles), 9, 'all fans are listed, including other clubs (profiles are cross-club since 2026-11-02)');
 reset role;
 select ok((select gender is null and adult_confirmed_at is null from public.profiles where user_id = pg_temp.uid('f04')),
   'a fan cannot set another fan''s gender or 18+');

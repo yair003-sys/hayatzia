@@ -52,14 +52,14 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 set local role authenticated;
 select lives_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version, birth_date) values ('00000000-0000-0000-0000-00000000000b', 'אוהד ב', 'mta', '2026-10-15', '1990-01-01') $$,
   'second fan joins the same club');
-select is((select count(*)::int from public.profiles), 2, 'a fan sees fans of their own club');
+select is((select count(*)::int from public.profiles), 2, 'a fan sees other fans (2 so far)');
 reset role;
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000c","role":"authenticated"}', true);
 set local role authenticated;
 select lives_ok($$ insert into public.profiles (user_id, nick, team_id, terms_version, birth_date) values ('00000000-0000-0000-0000-00000000000c', 'אוהד ג', 'hta', '2026-10-15', '1990-01-01') $$,
   'a fan of another club joins');
-select is((select count(*)::int from public.profiles), 1, 'fans of other clubs are not visible');
+select is((select count(*)::int from public.profiles), 3, 'fans of other clubs are visible too (profiles cross-club since 2026-11-02)');
 reset role;
 
 select * from finish();
