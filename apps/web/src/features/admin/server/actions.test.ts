@@ -78,7 +78,7 @@ describe('removeContentAction', () => {
     expect(s.rpcCalls).toEqual([{ fn: 'admin_remove_content', args: { p_kind: 'clip', p_ref: CLIP } }])
     expect(s.removed).toEqual([{ bucket: 'clips', paths: [`${FAN}/a.mp4`] }])
     expect(r.data).toEqual({ ok: true, removed: true, fileLeft: false })
-    expect(s.revalidated).toEqual(['/admin/reports'])
+    expect(s.revalidated).toEqual(['/admin/reports', '/admin/users', '/admin/content'])
   })
 
   it('touches no file for content without one', async () => {
@@ -114,7 +114,7 @@ describe('restoreContentAction', () => {
     const r = await restoreContentAction({ kind: 'clip', ref: CLIP })
     expect(s.rpcCalls).toEqual([{ fn: 'admin_restore_content', args: { p_kind: 'clip', p_ref: CLIP } }])
     expect(r.data).toEqual({ ok: true, restored: true })
-    expect(s.revalidated).toEqual(['/admin/reports'])
+    expect(s.revalidated).toEqual(['/admin/reports', '/admin/users', '/admin/content'])
     expect(s.removed).toEqual([])
   })
 
@@ -155,7 +155,7 @@ describe('liftRideSuspensionAction (ride safety, rule 9)', () => {
     const r = await liftRideSuspensionAction({ userId: FAN })
     expect(r.data).toEqual({ ok: true, lifted: true })
     expect(s.rpcCalls).toEqual([{ fn: 'admin_lift_ride_suspension', args: { p_user: FAN } }])
-    expect(s.revalidated).toEqual(['/admin/reports'])
+    expect(s.revalidated).toEqual(['/admin/reports', '/admin/users', '/admin/content'])
   })
   it('refuses a malformed id before calling the database', async () => {
     const r = await liftRideSuspensionAction({ userId: 'nope' })
