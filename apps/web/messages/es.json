@@ -895,5 +895,28 @@
     "placeholder": "Escribe al club…",
     "emptyText": "Aún no hay mensajes. Escribe el primero.",
     "sendFailed": "El mensaje no se envió"
+  },
+  "teamNews": {
+    "tabNews": "Noticias",
+    "tabChat": "Chat",
+    "postPlaceholder": "Escribe una actualización…",
+    "titlePlaceholder": "Título (opcional)",
+    "addMedia": "Añadir foto/vídeo",
+    "publish": "Publicar",
+    "publishing": "Publicando…",
+    "comments": "Comentarios ({n})",
+    "noComments": "Aún no hay comentarios. Sé el primero.",
+    "writeComment": "Escribe un comentario…",
+    "empty": "Aún no hay novedades en el canal.",
+    "views": "{n} visitas",
+    "edited": "editado",
+    "deletePost": "Eliminar publicación",
+    "confirmDelete": "¿Eliminar esta publicación?",
+    "tooBig": "Archivo demasiado grande (máx. 50 MB)",
+    "postFailed": "No se pudo publicar",
+    "commentFailed": "No se pudo enviar",
+    "adminOnly": "Solo los administradores publican aquí",
+    "cancel": "Cancelar",
+    "loadOlder": "Cargar anteriores"
   }
 }

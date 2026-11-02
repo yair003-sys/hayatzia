@@ -1559,6 +1559,78 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"channel_post_comments": {
+                  Row: {
+                    "body": string,"created_at": string,"id": string,"nick": string,"post_id": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"id"?: string,"nick"?: string,"post_id": string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"id"?: string,"nick"?: string,"post_id"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: []
+                },"channel_post_reactions": {
+                  Row: {
+                    "created_at": string,"emoji": string,"post_id": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"emoji": string,"post_id": string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"emoji"?: string,"post_id"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: []
+                },"channel_post_views": {
+                  Row: {
+                    "post_id": string,"user_id": string,"viewed_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "post_id": string,"user_id"?: string,"viewed_at"?: string
+                  }
+                  Update: {
+                    "post_id"?: string,"user_id"?: string,"viewed_at"?: string
+                  }
+                  Relationships: []
+                },"channel_posts": {
+                  Row: {
+                    "author_id": string,"body": string,"comments_count": number,"created_at": string,"edited_at": string | null,"id": string,"media_kind": string | null,"media_path": string | null,"reactions": NonNullable<Json>,"team_id": string,"title": string | null,"views_count": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_id"?: string,"body": string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
+                  }
+                  Update: {
+                    "author_id"?: string,"body"?: string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
+                  }
+                  Relationships: []
+                },"channel_reads": {
+                  Row: {
+                    "last_seen_at": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "last_seen_at"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "last_seen_at"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: []
+                },"team_channel_admins": {
+                  Row: {
+                    "created_at": string,"team_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"team_id": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"team_id"?: string,"user_id"?: string
+                  }
+                  Relationships: []
                 }
           }
           Views: {
@@ -1935,6 +2007,21 @@ isOneToOne: false
                            },
 "verification_result":
 { Args: { "p_approved": boolean,"p_doc_birth_date"?: string,"p_doc_expires"?: string,"p_fingerprint"?: string,"p_licence_issued"?: string,"p_provider": string,"p_provider_ref": string,"p_reason"?: string,"p_session": string }; Returns: string
+                           },
+"can_post_channel":
+{ Args: { "p_team": string }; Returns: boolean
+                           },
+"channel_can_post":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"channel_mark_seen":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"channel_post_recipients":
+{ Args: { "p_after"?: string,"p_club": string,"p_limit"?: number }; Returns: string[]
+                           },
+"channel_unread":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            }
           }
           Enums: {
