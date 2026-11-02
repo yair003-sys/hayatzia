@@ -12,7 +12,8 @@
     "chat": "Chat",
     "square": "La Place",
     "inbox": "Messages",
-    "me": "Ma carte"
+    "me": "Ma carte",
+    "rides": "Trajets"
   },
   "account": {
     "signOut": "Se déconnecter",

@@ -12,7 +12,8 @@
     "chat": "Chat",
     "square": "Square",
     "inbox": "Inbox",
-    "me": "My Card"
+    "me": "My Card",
+    "rides": "Rides"
   },
   "account": {
     "signOut": "Sign out",

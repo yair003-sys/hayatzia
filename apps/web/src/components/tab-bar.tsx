@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Suspense } from 'react'
-import { Clapperboard, IdCard, Mail, MessagesSquare, Trophy, type LucideIcon } from 'lucide-react'
+import { Car, Clapperboard, IdCard, Mail, MessagesSquare, type LucideIcon } from 'lucide-react'
 import type { Route } from 'next'
 
 type Tab = { href: Route; labelKey: string; icon: LucideIcon }
@@ -12,7 +12,7 @@ type Tab = { href: Route; labelKey: string; icon: LucideIcon }
 /** Owner, 2026-10-15: five tiles, the Square in the middle; the home is the onefan logo in the top bar.
  *  Labels come from the `nav` message catalogue (Hebrew by default), so the bar is ready for other languages. */
 export const TABS: readonly Tab[] = [
-  { href: '/matches', labelKey: 'matches', icon: Trophy },
+  { href: '/stand/trips', labelKey: 'rides', icon: Car },
   { href: '/stand/chat', labelKey: 'chat', icon: MessagesSquare },
   { href: '/square', labelKey: 'square', icon: Clapperboard },
   { href: '/inbox', labelKey: 'inbox', icon: Mail },

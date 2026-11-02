@@ -12,7 +12,8 @@
     "chat": "Chat",
     "square": "La Plaza",
     "inbox": "Mensajes",
-    "me": "Mi tarjeta"
+    "me": "Mi tarjeta",
+    "rides": "Viajes"
   },
   "account": {
     "signOut": "Cerrar sesión",
