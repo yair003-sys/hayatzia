@@ -100,7 +100,7 @@ select throws_ok($$ select * from public.admin_content_feed('nonsense') $$, '220
 -- ---------- 3. removing a club-news post ----------
 select is((select removed from public.admin_remove_channel_post((select id from public.channel_posts))), true, 'remove: the post is removed');
 select is((select count(*) from public.channel_posts), 0::bigint, 'remove: no channel posts left');
-select is((select count(*) from public.admin_actions where action = 'remove' and kind = 'channel_post'), 1::bigint, 'remove: the action is audited');
+select is((select count(*) from public.admin_recent_actions(50) a where a.action = 'remove' and a.kind = 'channel_post'), 1::bigint, 'remove: the action is audited');
 select is((select removed from public.admin_remove_channel_post('00000000-0000-0000-0000-000000000000')), false, 'remove: a gone post reports not removed');
 
 reset role;
