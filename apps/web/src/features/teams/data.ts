@@ -1,6 +1,7 @@
 export type TeamId =
   | 'mta' | 'hta' | 'mhf' | 'bei' | 'hbs' | 'hhf' | 'hjr'
   | 'mpt' | 'hpt' | 'ikn' | 'itb' | 'hrg' | 'mnt' | 'snk'
+  | 'onf' // neutral staff affiliation (operators); never a selectable club
 
 export type Team = {
   readonly id: TeamId
@@ -32,7 +33,22 @@ export const TEAMS = [
   { id: 'snk', name: 'בני סכנין', short: 'בני סכנין', bg: '#B91C1C', ring: '#ffffff', bar: '#DC3A3A' },
 ] as const satisfies readonly Team[]
 
-const BY_ID: ReadonlyMap<string, Team> = new Map(TEAMS.map((t) => [t.id, t]))
+/**
+ * Neutral "staff" affiliation for operators (owner, 2026-11-02). Every account must reference a team (profiles.team_id),
+ * but an operator should not be shown as, counted as, or visible to any real club. This team lives in the database (for
+ * the foreign key) and here (for its neutral branding), but is deliberately NOT in TEAMS, so it never appears in the
+ * sign-up club picker or any fan-facing club list. A fan on this team sees an empty, neutral stand and no real fan sees
+ * them, which is exactly the neutrality we want for an operator who works only in the admin console.
+ */
+export const NEUTRAL_TEAM = { id: 'onf', name: 'onefan', short: 'onefan', bg: '#6B7280', ring: '#F3F4F6', bar: '#9AA5B2' } as const satisfies Team
+
+/** True for the neutral staff affiliation. */
+export function isNeutralTeam(id: string): boolean {
+  return id === NEUTRAL_TEAM.id
+}
+
+// teamById / isTeamId know the neutral team (so an operator's card renders), but TEAMS (the picker) does not.
+const BY_ID: ReadonlyMap<string, Team> = new Map([...TEAMS, NEUTRAL_TEAM].map((t) => [t.id, t]))
 
 export function teamById(id: string): Team | undefined {
   return BY_ID.get(id)

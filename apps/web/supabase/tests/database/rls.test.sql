@@ -18,10 +18,10 @@ select is(
 select ok(not has_table_privilege('anon', 'public.profiles', 'select'), 'anon has no access to profiles');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'team_id', 'update'), 'team_id is not updatable by fans');
 
--- Reference data
-select is((select count(*)::int from public.teams), 14, '14 clubs seeded');
+-- Reference data (14 clubs + the neutral 'onf' staff team = 15 rows)
+select is((select count(*)::int from public.teams where id <> 'onf'), 14, '14 clubs seeded');
 set local role anon;
-select is((select count(*)::int from public.teams), 14, 'anon can read clubs');
+select is((select count(*)::int from public.teams), 15, 'anon can read clubs (14 + neutral staff team)');
 select lives_ok($$ select * from public.fixtures limit 1 $$, 'anon can read fixtures');
 select throws_ok($$ insert into public.api_teams (api_id, name) values (1, 'x') $$, '42501', null, 'anon cannot write league data');
 select throws_ok($$ insert into public.profiles (user_id, nick, team_id) values ('00000000-0000-0000-0000-00000000000a', 'x', 'mta') $$,
