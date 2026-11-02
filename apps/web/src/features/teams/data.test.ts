@@ -19,11 +19,12 @@ describe('TEAMS', () => {
 
 describe('neutral staff team', () => {
   it('resolves for branding but is NOT a selectable club', () => {
-    expect(teamById('onefan')).toEqual(NEUTRAL_TEAM)
-    expect(isTeamId('onefan')).toBe(true)
-    expect(isNeutralTeam('onefan')).toBe(true)
+    expect(NEUTRAL_TEAM.name).toBe('onefan')
+    expect(teamById('onf')).toEqual(NEUTRAL_TEAM)
+    expect(isTeamId('onf')).toBe(true)
+    expect(isNeutralTeam('onf')).toBe(true)
     expect(isNeutralTeam('mta')).toBe(false)
     // the sign-up picker iterates TEAMS, which must never include the neutral team
-    expect(TEAMS.some((t) => t.id === 'onefan')).toBe(false)
+    expect(TEAMS.some((t) => (t.id as string) === NEUTRAL_TEAM.id)).toBe(false)
   })
 })

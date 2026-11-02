@@ -1,7 +1,7 @@
 export type TeamId =
   | 'mta' | 'hta' | 'mhf' | 'bei' | 'hbs' | 'hhf' | 'hjr'
   | 'mpt' | 'hpt' | 'ikn' | 'itb' | 'hrg' | 'mnt' | 'snk'
-  | 'onefan' // neutral staff affiliation (operators); never a selectable club
+  | 'onf' // neutral staff affiliation (operators); never a selectable club
 
 export type Team = {
   readonly id: TeamId
@@ -40,7 +40,7 @@ export const TEAMS = [
  * sign-up club picker or any fan-facing club list. A fan on this team sees an empty, neutral stand and no real fan sees
  * them, which is exactly the neutrality we want for an operator who works only in the admin console.
  */
-export const NEUTRAL_TEAM = { id: 'onefan', name: 'onefan', short: 'onefan', bg: '#6B7280', ring: '#F3F4F6', bar: '#9AA5B2' } as const satisfies Team
+export const NEUTRAL_TEAM = { id: 'onf', name: 'onefan', short: 'onefan', bg: '#6B7280', ring: '#F3F4F6', bar: '#9AA5B2' } as const satisfies Team
 
 /** True for the neutral staff affiliation. */
 export function isNeutralTeam(id: string): boolean {

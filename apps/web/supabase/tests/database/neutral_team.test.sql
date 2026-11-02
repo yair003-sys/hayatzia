@@ -3,13 +3,13 @@
 begin;
 select plan(3);
 
-select is((select name from public.teams where id = 'onefan'), 'onefan', 'the neutral team exists');
-select ok((select api_names from public.teams where id = 'onefan') = array[]::text[], 'the neutral team has no api names (never matches a fixture)');
+select is((select name from public.teams where id = 'onf'), 'onefan', 'the neutral team exists');
+select ok((select api_names from public.teams where id = 'onf') = array[]::text[], 'the neutral team has no api names (never matches a fixture)');
 
 insert into auth.users (id, aud, role, email)
   values ('00000000-0000-0000-0000-0000000000ff', 'authenticated', 'authenticated', 'ff@test.local');
 insert into public.profiles (user_id, nick, team_id)
-  values ('00000000-0000-0000-0000-0000000000ff', 'onefan', 'onefan');
+  values ('00000000-0000-0000-0000-0000000000ff', 'onefan', 'onf');
 select is((select team_id from public.profiles where user_id = '00000000-0000-0000-0000-0000000000ff'), 'onefan',
           'a profile can live on the neutral team');
 
