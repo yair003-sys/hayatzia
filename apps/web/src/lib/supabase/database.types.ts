@@ -1709,31 +1709,6 @@ isOneToOne: false
 "admin_ack_incident":
 { Args: { "p_id": string }; Returns: boolean
                            },
-"admin_content_feed":
-{ Args: { "p_before"?: string,"p_before_id"?: string,"p_kind": string,"p_limit"?: number }; Returns: {
-              "author_id": string,"author_nick": string,"created_at": string,"hidden": boolean,"kind": string,"preview": string,"ref": string,"team_id": string,"team_name": string
-            }[]
-                           },
-"admin_fans_by_team":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "fans": number,"team_id": string,"team_name": string
-            }[]
-                           },
-"admin_overview_counts":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "metric": string,"value": number
-            }[]
-                           },
-"admin_remove_channel_post":
-{ Args: { "p_id": string }; Returns: {
-              "bucket": string,"path": string,"removed": boolean
-            }[]
-                           },
-"admin_user_list":
-{ Args: { "p_before"?: string,"p_before_id"?: string,"p_limit"?: number,"p_search"?: string,"p_team"?: string }; Returns: {
-              "ban_until": string,"banned": boolean,"clips_posted": number,"created_at": string,"is_admin": boolean,"nick": string,"team_id": string,"team_name": string,"user_id": string,"verified": boolean
-            }[]
-                           },
 "admin_ban_list":
 { Args: { "p_limit"?: number }; Returns: {
               "created_at": string,"nick": string,"reason": string,"until": string,"user_id": string
@@ -1744,6 +1719,16 @@ isOneToOne: false
                            },
 "admin_close_incident":
 { Args: { "p_id": string }; Returns: boolean
+                           },
+"admin_content_feed":
+{ Args: { "p_before"?: string,"p_before_id"?: string,"p_kind": string,"p_limit"?: number }; Returns: {
+              "author_id": string,"author_nick": string,"created_at": string,"hidden": boolean,"kind": string,"preview": string,"ref": string,"team_id": string,"team_name": string
+            }[]
+                           },
+"admin_fans_by_team":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "fans": number,"team_id": string,"team_name": string
+            }[]
                            },
 "admin_incident_count":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -1764,9 +1749,19 @@ isOneToOne: false
               "acknowledged_at": string,"car": string,"created_at": string,"driver_nick": string,"from_city": string,"id": string,"kickoff_at": string,"pickup": string,"reporter_nick": string,"trip_id": string
             }[]
                            },
+"admin_overview_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "metric": string,"value": number
+            }[]
+                           },
 "admin_recent_actions":
 { Args: { "p_limit"?: number }; Returns: {
               "action": string,"admin_nick": string,"created_at": string,"id": number,"kind": string,"note": string,"ref": string,"target_nick": string,"target_user": string
+            }[]
+                           },
+"admin_remove_channel_post":
+{ Args: { "p_id": string }; Returns: {
+              "bucket": string,"path": string,"removed": boolean
             }[]
                            },
 "admin_remove_content":
@@ -1804,6 +1799,11 @@ isOneToOne: false
                            },
 "admin_user_ids":
 { Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"admin_user_list":
+{ Args: { "p_before"?: string,"p_before_id"?: string,"p_limit"?: number,"p_search"?: string,"p_team"?: string }; Returns: {
+              "ban_until": string,"banned": boolean,"clips_posted": number,"created_at": string,"is_admin": boolean,"nick": string,"team_id": string,"team_name": string,"user_id": string,"verified": boolean
+            }[]
                            },
 "admin_verification_issues":
 { Args: { "p_limit"?: number }; Returns: {
