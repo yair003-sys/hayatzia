@@ -3,7 +3,7 @@
 import { useId, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { Phone, Share2, ShieldCheck, Star } from 'lucide-react'
+import { AlertTriangle, Phone, Share2, ShieldCheck, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { birthDateSchema } from '@/features/first-run/schema'
 import { setBirthDateAction } from '@/features/profile/server/actions'
@@ -15,6 +15,7 @@ import {
   GENDER_NOTE,
   RIDES_ADULT_ONLY,
   RIDES_NEED_BIRTH_DATE,
+  RIDES_UNVERIFIED_HE,
   SAFETY_TIPS,
   shareText,
   type Gender,
@@ -70,6 +71,10 @@ export function SafetyGate({ age, onDone, onCancel }: { age: RideAge; onDone: ()
         </div>
       ) : (
         <>
+          <p className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-sm">
+            <AlertTriangle className="size-5 shrink-0 text-amber-500" aria-hidden="true" />
+            <span>{RIDES_UNVERIFIED_HE}</span>
+          </p>
           <ul className="list-disc space-y-1 ps-5 text-sm leading-relaxed">
             {SAFETY_TIPS.map((t) => (
               <li key={t}>{t}</li>

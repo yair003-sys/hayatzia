@@ -42,6 +42,13 @@ describe('launch feature flags', () => {
     expect(features.i18n).toBe(false)
   })
 
+  it('rides is launched: on unless its env var is exactly off', async () => {
+    ;(mocks.env as { NEXT_PUBLIC_FEATURE_RIDES?: 'on' | 'off' }).NEXT_PUBLIC_FEATURE_RIDES = undefined
+    expect((await load()).rides).toBe(true)
+    mocks.env.NEXT_PUBLIC_FEATURE_RIDES = 'off'
+    expect((await load()).rides).toBe(false)
+  })
+
   it('rides, market, events, campaigns and i18n are independent', async () => {
     mocks.env.NEXT_PUBLIC_FEATURE_RIDES = 'on'
     mocks.env.NEXT_PUBLIC_FEATURE_EVENTS = 'on'

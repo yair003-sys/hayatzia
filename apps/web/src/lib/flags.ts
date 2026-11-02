@@ -11,8 +11,13 @@ import { env } from './env'
  * hidden area is hidden both in the navigation and on its own page.
  */
 export const features = {
-  /** Rides/trips to matches, plus the identity verification and gender settings that exist only for them. */
-  rides: env.NEXT_PUBLIC_FEATURE_RIDES === 'on',
+  /**
+   * Rides/trips to matches, plus the identity verification and gender settings that exist only for them.
+   * Launched 2026-11-02 (fans asked for it): on by default now. Set NEXT_PUBLIC_FEATURE_RIDES='off' in Vercel to
+   * hide it again. Identity verification is still off (no provider yet), so the rides screens carry an "identity not
+   * verified — ride at your own responsibility" warning.
+   */
+  rides: env.NEXT_PUBLIC_FEATURE_RIDES !== 'off',
   /** Fans' market (buy/sell/trade listings). */
   market: env.NEXT_PUBLIC_FEATURE_MARKET === 'on',
   /** Fan events board. */

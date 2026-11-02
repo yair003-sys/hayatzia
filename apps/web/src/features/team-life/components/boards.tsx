@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from 'reac
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Camera, MessageSquare, ShieldCheck, Shirt, Trash2 } from 'lucide-react'
+import { AlertTriangle, Camera, MessageSquare, ShieldCheck, Shirt, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { openThreadAction } from '@/features/dm/server/actions'
@@ -15,6 +15,7 @@ import {
   PICKUP_LABEL,
   PICKUP_SUGGESTIONS,
   PICKUP_WARNING,
+  RIDES_UNVERIFIED_HE,
   RIDE_SUSPENDED_HE,
   WOMEN_DRIVERS_FILTER,
   WOMEN_ONLY_LABEL,
@@ -142,6 +143,10 @@ export function TripsBoard({ matches, trips, meId, focusId, ride, toRate, verify
 
   return (
     <div className="space-y-4">
+      <div role="note" className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+        <AlertTriangle className="size-5 shrink-0 text-amber-500" aria-hidden="true" />
+        <p>{RIDES_UNVERIFIED_HE}</p>
+      </div>
       <RateRides rides={toRate} />
       {!match ? (
         <p className="py-8 text-center text-muted">{t('noUpcomingMatches')}</p>
