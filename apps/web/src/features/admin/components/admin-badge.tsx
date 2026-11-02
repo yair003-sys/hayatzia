@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShieldAlert, Siren } from 'lucide-react'
+import { LayoutDashboard, ShieldAlert, Siren } from 'lucide-react'
 import { getIncidentCount, getOpenReportCount } from '../server/queries'
 
 /**
@@ -12,6 +12,16 @@ export async function AdminBadge() {
   const emergencies = await getIncidentCount()
   return (
     <>
+      <Link
+        href="/admin"
+        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-4 py-3 font-medium"
+      >
+        <span className="flex items-center gap-2">
+          <LayoutDashboard className="size-4" aria-hidden="true" />
+          קונסולת אדמין
+        </span>
+        <ShieldAlert className="size-4 text-dim" aria-hidden="true" />
+      </Link>
       {emergencies > 0 && (
         <Link
           href="/admin/reports"

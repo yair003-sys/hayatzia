@@ -11,6 +11,7 @@ import {
   fixBirthDateSchema,
   incidentSchema,
   liftRideSchema,
+  removeChannelPostSchema,
   removeSchema,
   resetVerificationSchema,
   restoreSchema,
@@ -22,7 +23,12 @@ import {
 // anyone else ('not_admin'). The service key is used for one thing only: deleting the file of content that the
 // database has already removed for an admin.
 
-const PAGE = '/admin/reports'
+// Admin actions can be taken from the report queue or from the overview console; revalidate all three so the acted-on
+// row disappears wherever the admin is looking.
+const ADMIN_PAGES = ['/admin/reports', '/admin/users', '/admin/content'] as const
+function revalidateAdmin() {
+  for (const p of ADMIN_PAGES) revalidatePath(p)
+}
 
 export const removeContentAction = actionClient.inputSchema(removeSchema).action(async ({ parsedInput: { kind, ref } }) => {
   const supabase = await createClient()
@@ -41,7 +47,7 @@ export const removeContentAction = actionClient.inputSchema(removeSchema).action
       fileLeft = true
     }
   }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const, removed: row?.removed ?? false, fileLeft }
 })
 
@@ -51,7 +57,7 @@ export const restoreContentAction = actionClient.inputSchema(restoreSchema).acti
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { data, error } = await supabase.rpc('admin_restore_content', { p_kind: kind, p_ref: ref })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const, restored: data === true }
 })
 
@@ -61,7 +67,7 @@ export const banUserAction = actionClient.inputSchema(banSchema).action(async ({
   // No days = for good (the function's default).
   const { data, error } = await supabase.rpc('admin_ban_user', { p_user: userId, p_reason: reason, ...(days === null ? {} : { p_days: days }) })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const, until: data ?? null }
 })
 
@@ -70,7 +76,7 @@ export const unbanUserAction = actionClient.inputSchema(unbanSchema).action(asyn
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_unban_user', { p_user: userId })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const }
 })
 
@@ -80,7 +86,7 @@ export const liftRideSuspensionAction = actionClient.inputSchema(liftRideSchema)
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { data, error } = await supabase.rpc('admin_lift_ride_suspension', { p_user: userId })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const, lifted: data === true }
 })
 
@@ -89,7 +95,7 @@ export const setReportStatusAction = actionClient.inputSchema(statusSchema).acti
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_set_report_status', { p_report: reportId, p_status: status })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const }
 })
 
@@ -101,7 +107,7 @@ export const resetVerificationAction = actionClient
     if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
     const { error } = await supabase.rpc('admin_reset_verification', { p_user: userId, p_kind: kind })
     if (error) return { error: adminErrorHe(error.message) }
-    revalidatePath(PAGE)
+    revalidateAdmin()
     return { ok: true as const }
   })
 
@@ -111,7 +117,7 @@ export const fixBirthDateAction = actionClient.inputSchema(fixBirthDateSchema).a
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_set_birth_date', { p_user: userId, p_date: birthDate })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const }
 })
 
@@ -121,7 +127,7 @@ export const ackIncidentAction = actionClient.inputSchema(incidentSchema).action
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_ack_incident', { p_id: id })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const }
 })
 
@@ -131,6 +137,27 @@ export const closeIncidentAction = actionClient.inputSchema(incidentSchema).acti
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.rpc('admin_close_incident', { p_id: id })
   if (error) return { error: adminErrorHe(error.message) }
-  revalidatePath(PAGE)
+  revalidateAdmin()
   return { ok: true as const }
+})
+
+/** Remove a club-news post from the overview console (not a report kind). Deletes its media file too, if any. */
+export const removeChannelPostAction = actionClient.inputSchema(removeChannelPostSchema).action(async ({ parsedInput: { id } }) => {
+  const supabase = await createClient()
+  if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
+  const { data, error } = await supabase.rpc('admin_remove_channel_post', { p_id: id })
+  if (error) return { error: adminErrorHe(error.message) }
+  const row = data?.[0]
+  const file = fileToRemove(row?.bucket, row?.path)
+  let fileLeft = false
+  if (file) {
+    const admin = createAdminClient()
+    const removed = admin ? await admin.storage.from(file.bucket).remove([file.path]) : null
+    if (!removed || removed.error) {
+      console.error('admin remove channel post: file left in storage', file.bucket)
+      fileLeft = true
+    }
+  }
+  revalidateAdmin()
+  return { ok: true as const, removed: row?.removed ?? false, fileLeft }
 })

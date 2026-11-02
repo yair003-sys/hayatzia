@@ -101,3 +101,58 @@ export async function getRideSuspensions(): Promise<RideSuspensionRow[]> {
   const { data } = await supabase.rpc('admin_ride_suspensions', { p_limit: 50 })
   return data ?? []
 }
+
+// ---------- overview console (2026-11-02): browse everything across all clubs ----------
+
+export type FansByTeamRow = Fns['admin_fans_by_team']['Returns'][number]
+export type UserRow = Fns['admin_user_list']['Returns'][number]
+export type ContentRow = Fns['admin_content_feed']['Returns'][number]
+
+export const CONSOLE_PAGE = 30
+
+/** Every count for the hub tiles, as a plain map metric → value (missing metric reads as 0). */
+export async function getOverviewCounts(): Promise<Record<string, number>> {
+  const supabase = await createClient()
+  if (!supabase) return {}
+  const { data } = await supabase.rpc('admin_overview_counts')
+  const out: Record<string, number> = {}
+  for (const r of data ?? []) out[r.metric] = r.value
+  return out
+}
+
+/** Fans per club, biggest first. */
+export async function getFansByTeam(): Promise<FansByTeamRow[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+  const { data } = await supabase.rpc('admin_fans_by_team')
+  return data ?? []
+}
+
+/** One page of fans across all clubs, newest first (keyset by created_at, user_id). Optional search and club filter. */
+export async function getUserList(opts: { search?: string; team?: string; cursor?: Cursor | null }): Promise<{ rows: UserRow[]; next: Cursor | null }> {
+  const supabase = await createClient()
+  if (!supabase) return { rows: [], next: null }
+  const { data, error } = await supabase.rpc('admin_user_list', {
+    p_limit: CONSOLE_PAGE,
+    ...(opts.search ? { p_search: opts.search } : {}),
+    ...(opts.team ? { p_team: opts.team } : {}),
+    ...(opts.cursor ? { p_before: opts.cursor.before, p_before_id: opts.cursor.beforeId } : {}),
+  })
+  if (error || !data) return { rows: [], next: null }
+  const last = data.at(-1)
+  return { rows: data, next: data.length === CONSOLE_PAGE && last ? { before: last.created_at, beforeId: last.user_id } : null }
+}
+
+/** One page of content of a single kind across all clubs, newest first (keyset by created_at, ref). */
+export async function getContentFeed(kind: string, cursor: Cursor | null): Promise<{ rows: ContentRow[]; next: Cursor | null }> {
+  const supabase = await createClient()
+  if (!supabase) return { rows: [], next: null }
+  const { data, error } = await supabase.rpc('admin_content_feed', {
+    p_kind: kind,
+    p_limit: CONSOLE_PAGE,
+    ...(cursor ? { p_before: cursor.before, p_before_id: cursor.beforeId } : {}),
+  })
+  if (error || !data) return { rows: [], next: null }
+  const last = data.at(-1)
+  return { rows: data, next: data.length === CONSOLE_PAGE && last ? { before: last.created_at, beforeId: last.ref } : null }
+}

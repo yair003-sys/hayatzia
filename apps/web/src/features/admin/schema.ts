@@ -51,8 +51,9 @@ export function isRemovable(kind: string): kind is (typeof REMOVABLE_KINDS)[numb
   return (REMOVABLE_KINDS as readonly string[]).includes(kind)
 }
 
-/** Storage buckets a removed row can hold a file in (migration 20261015180000: clips, stand, market, chants). */
-export const CONTENT_BUCKETS = ['clips', 'stand', 'market', 'chants'] as const
+/** Storage buckets a removed row can hold a file in (migration 20261015180000: clips, stand, market, chants; the
+ *  2026-11-02 console adds 'channel' for club-news posts). */
+export const CONTENT_BUCKETS = ['clips', 'stand', 'market', 'chants', 'channel'] as const
 
 /** The file to delete after a removal, or null. Only a known bucket and a plain path inside it are accepted. */
 export function fileToRemove(bucket: string | null | undefined, path: string | null | undefined): { bucket: string; path: string } | null {
@@ -148,3 +149,39 @@ export const fixBirthDateSchema = z.object({ userId: z.uuid(), birthDate: z.iso.
 export const incidentSchema = z.object({ id: z.uuid() })
 export const INCIDENTS_NOTE = 'onefan אינה מוקד חירום 24/7. אם מישהו בסכנה עכשיו, אומרים לו לחייג 100 (משטרה). כאן רואים מי, מאיפה, מתי ואיזה רכב.'
 export const statusSchema = z.object({ reportId: z.uuid(), status: z.enum(['open', 'handled', 'dismissed']) })
+
+// ---------- overview console (2026-11-02) ----------
+
+/** The hub tiles, in order, with their Hebrew labels (admin_overview_counts.metric). */
+export const METRIC_LABEL = {
+  fans: 'אוהדים',
+  fans_verified: 'מאומתים (18+)',
+  clips: 'פוסטים בכיכר',
+  trips: 'טרמפים',
+  channel_posts: 'ידיעות בערוצים',
+  ratings: 'דירוגי שחקנים',
+  open_reports: 'דיווחים פתוחים',
+  active_bans: 'מושעים מכתיבה',
+} as const
+export type Metric = keyof typeof METRIC_LABEL
+export const METRICS = Object.keys(METRIC_LABEL) as Metric[]
+
+/** The tabs of /admin/content (admin_content_feed.p_kind). */
+export const CONTENT_KIND = {
+  clip: 'פוסטים בכיכר',
+  trip: 'טרמפים',
+  channel_post: 'ידיעות בערוצים',
+  review: 'דירוגי שחקנים',
+} as const
+export type ContentKind = keyof typeof CONTENT_KIND
+export function contentKind(v: unknown): ContentKind {
+  return typeof v === 'string' && v in CONTENT_KIND ? (v as ContentKind) : 'clip'
+}
+
+/** Removing a club-news post is its own action (not a report kind). */
+export const removeChannelPostSchema = z.object({ id: z.uuid() })
+
+/** "נרשם 15.10" — a fan's join date for the user list. */
+export function joinedLabel(iso: string): string {
+  return reportTime(iso)
+}

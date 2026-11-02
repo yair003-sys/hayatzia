@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { REPORT_KINDS } from '@/features/safety/schema'
 import {
   AUTO_HIDDEN_LABEL,
+  CONTENT_KIND,
   KIND_LABEL,
+  METRIC_LABEL,
+  METRICS,
   RIDE_URGENT_LABEL,
+  contentKind,
   isUrgentRide,
   actionBy,
   actionLabel,
@@ -14,6 +18,7 @@ import {
   isRemovable,
   kindLabel,
   queueStatus,
+  removeChannelPostSchema,
   removeSchema,
   reportsOnTarget,
   restoreSchema,
@@ -119,6 +124,31 @@ describe('auto-hide (migration 20261015200000_auto_hide)', () => {
     expect(restoreSchema.safeParse({ kind: 'review', ref: 'mta_1:x' }).success).toBe(true)
     expect(restoreSchema.safeParse({ kind: 'user', ref: 'x' }).success).toBe(false)
     expect(restoreSchema.safeParse({ kind: 'dm_thread', ref: 'x' }).success).toBe(false)
+  })
+})
+
+describe('overview console (migration 20261102110000_admin_overview)', () => {
+  it('names every hub metric in Hebrew', () => {
+    expect(METRICS).toContain('fans')
+    expect(METRICS).toContain('active_bans')
+    for (const m of METRICS) expect(METRIC_LABEL[m]).toMatch(/[א-ת]/)
+  })
+  it('reads the content tab from the address, clips by default', () => {
+    expect(contentKind('trip')).toBe('trip')
+    expect(contentKind('channel_post')).toBe('channel_post')
+    expect(contentKind('review')).toBe('review')
+    expect(contentKind('nope')).toBe('clip')
+    expect(contentKind(undefined)).toBe('clip')
+    expect(contentKind(['trip'])).toBe('clip')
+    for (const k of Object.keys(CONTENT_KIND)) expect(CONTENT_KIND[k as keyof typeof CONTENT_KIND]).toMatch(/[א-ת]/)
+  })
+  it('a club-news post is removed by its id', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(removeChannelPostSchema.safeParse({ id }).success).toBe(true)
+    expect(removeChannelPostSchema.safeParse({ id: 'x' }).success).toBe(false)
+  })
+  it('the channel bucket is accepted for file removal', () => {
+    expect(fileToRemove('channel', 'u1/a.jpg')).toEqual({ bucket: 'channel', path: 'u1/a.jpg' })
   })
 })
 
