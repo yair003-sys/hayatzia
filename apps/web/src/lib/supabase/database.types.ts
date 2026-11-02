@@ -1797,22 +1797,22 @@ isOneToOne: false
 "admin_unban_user":
 { Args: { "p_user": string }; Returns: undefined
                            },
+"admin_user_content":
+{ Args: { "p_before"?: string,"p_before_id"?: string,"p_kind": string,"p_limit"?: number,"p_user": string }; Returns: {
+              "author_id": string,"author_nick": string,"created_at": string,"hidden": boolean,"kind": string,"preview": string,"ref": string,"team_id": string,"team_name": string
+            }[]
+                           },
+"admin_user_detail":
+{ Args: { "p_user": string }; Returns: {
+              "ban_until": string,"banned": boolean,"channel_posts": number,"clips": number,"created_at": string,"is_admin": boolean,"nick": string,"reviews": number,"team_id": string,"team_name": string,"trips": number,"user_id": string,"verified": boolean
+            }[]
+                           },
 "admin_user_ids":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
 "admin_user_list":
 { Args: { "p_before"?: string,"p_before_id"?: string,"p_limit"?: number,"p_search"?: string,"p_team"?: string }; Returns: {
               "ban_until": string,"banned": boolean,"clips_posted": number,"created_at": string,"is_admin": boolean,"nick": string,"team_id": string,"team_name": string,"user_id": string,"verified": boolean
-            }[]
-                           },
-"admin_user_detail":
-{ Args: { "p_user": string }; Returns: {
-              "user_id": string,"nick": string,"team_id": string,"team_name": string,"created_at": string,"verified": boolean,"banned": boolean,"ban_until": string,"is_admin": boolean,"clips": number,"trips": number,"reviews": number,"channel_posts": number
-            }[]
-                           },
-"admin_user_content":
-{ Args: { "p_user": string,"p_kind": string,"p_limit"?: number,"p_before"?: string,"p_before_id"?: string }; Returns: {
-              "author_id": string,"author_nick": string,"created_at": string,"hidden": boolean,"kind": string,"preview": string,"ref": string,"team_id": string,"team_name": string
             }[]
                            },
 "admin_verification_issues":
