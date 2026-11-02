@@ -1805,6 +1805,16 @@ isOneToOne: false
               "ban_until": string,"banned": boolean,"clips_posted": number,"created_at": string,"is_admin": boolean,"nick": string,"team_id": string,"team_name": string,"user_id": string,"verified": boolean
             }[]
                            },
+"admin_user_detail":
+{ Args: { "p_user": string }; Returns: {
+              "user_id": string,"nick": string,"team_id": string,"team_name": string,"created_at": string,"verified": boolean,"banned": boolean,"ban_until": string,"is_admin": boolean,"clips": number,"trips": number,"reviews": number,"channel_posts": number
+            }[]
+                           },
+"admin_user_content":
+{ Args: { "p_user": string,"p_kind": string,"p_limit"?: number,"p_before"?: string,"p_before_id"?: string }; Returns: {
+              "author_id": string,"author_nick": string,"created_at": string,"hidden": boolean,"kind": string,"preview": string,"ref": string,"team_id": string,"team_name": string
+            }[]
+                           },
 "admin_verification_issues":
 { Args: { "p_limit"?: number }; Returns: {
               "created_at": string,"kind": string,"nick": string,"reason_code": string,"used": number,"user_id": string

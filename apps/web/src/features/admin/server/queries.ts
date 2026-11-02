@@ -156,3 +156,30 @@ export async function getContentFeed(kind: string, cursor: Cursor | null): Promi
   const last = data.at(-1)
   return { rows: data, next: data.length === CONSOLE_PAGE && last ? { before: last.created_at, beforeId: last.ref } : null }
 }
+
+// ---------- one fan's wall (2026-11-02) ----------
+
+export type UserDetailRow = Fns['admin_user_detail']['Returns'][number]
+
+/** One fan's profile header with counts, or null if there is no such fan. */
+export async function getUserDetail(userId: string): Promise<UserDetailRow | null> {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data } = await supabase.rpc('admin_user_detail', { p_user: userId })
+  return data?.[0] ?? null
+}
+
+/** One page of a single fan's own content of a kind (same shape and refs as the cross-club feed). */
+export async function getUserContent(userId: string, kind: string, cursor: Cursor | null): Promise<{ rows: ContentRow[]; next: Cursor | null }> {
+  const supabase = await createClient()
+  if (!supabase) return { rows: [], next: null }
+  const { data, error } = await supabase.rpc('admin_user_content', {
+    p_user: userId,
+    p_kind: kind,
+    p_limit: CONSOLE_PAGE,
+    ...(cursor ? { p_before: cursor.before, p_before_id: cursor.beforeId } : {}),
+  })
+  if (error || !data) return { rows: [], next: null }
+  const last = data.at(-1)
+  return { rows: data, next: data.length === CONSOLE_PAGE && last ? { before: last.created_at, beforeId: last.ref } : null }
+}
