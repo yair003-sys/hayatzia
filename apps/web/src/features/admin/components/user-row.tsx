@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { ShieldCheck, Ban, BadgeCheck } from 'lucide-react'
+import Link from 'next/link'
+import type { Route } from 'next'
+import { ShieldCheck, Ban, BadgeCheck, ChevronLeft } from 'lucide-react'
 import { banUntilLabel, joinedLabel } from '../schema'
 import type { UserRow as Row } from '../server/queries'
 import { banUserAction, unbanUserAction } from '../server/actions'
@@ -26,17 +28,20 @@ export function UserRow({ u }: { u: Row }) {
 
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 p-3">
-      <div className="min-w-0 text-sm">
-        <p className="flex items-center gap-1.5 truncate font-medium">
-          {u.nick}
-          {u.is_admin && <ShieldCheck className="size-4 shrink-0 text-accent" aria-label="מנהל" />}
-          {u.verified && <BadgeCheck className="size-4 shrink-0 text-muted" aria-label="מאומת 18+" />}
-        </p>
-        <p className="text-xs text-dim">
-          {u.team_name} · נרשם {joinedLabel(u.created_at)}
-          {u.banned ? ` · מושעה (${banUntilLabel(u.ban_until)})` : ''}
-        </p>
-      </div>
+      <Link href={`/admin/users/${u.user_id}` as Route} className="-m-1 flex min-w-0 flex-1 items-center gap-1 rounded-lg p-1 text-sm hover:bg-accent-soft">
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 truncate font-medium">
+            {u.nick}
+            {u.is_admin && <ShieldCheck className="size-4 shrink-0 text-accent" aria-label="מנהל" />}
+            {u.verified && <BadgeCheck className="size-4 shrink-0 text-muted" aria-label="מאומת 18+" />}
+          </span>
+          <span className="block text-xs text-dim">
+            {u.team_name} · נרשם {joinedLabel(u.created_at)}
+            {u.banned ? ` · מושעה (${banUntilLabel(u.ban_until)})` : ''}
+          </span>
+        </span>
+        <ChevronLeft className="size-4 shrink-0 text-dim" aria-hidden="true" />
+      </Link>
       <div className="flex shrink-0 items-center gap-2">
         {u.is_admin ? (
           <span className="text-xs text-dim">מנהל</span>
