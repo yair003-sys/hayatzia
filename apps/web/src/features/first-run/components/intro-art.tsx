@@ -43,8 +43,8 @@ export function IntroArt({ id }: { id: IntroPage['id'] }) {
             <span className="bg-accent">כל הליגה</span>
             <span className="text-muted">הקבוצה שלי</span>
           </div>
-          <span className="fr-reel top-[30px] right-3 rotate-6 bg-[linear-gradient(160deg,#1a3d8f,#0a0e1a)]" />
-          <span className="fr-reel top-[38px] left-3 -rotate-6 bg-[linear-gradient(160deg,#7a1424,#0a0e1a)]" />
+          <span className="fr-reel top-[30px] right-3 rotate-6 bg-[linear-gradient(160deg,#2b3340,#09090b)]" />
+          <span className="fr-reel top-[38px] left-3 -rotate-6 bg-[linear-gradient(160deg,#7a1424,#09090b)]" />
           <Badge className="-bottom-2.5 left-1/2 -translate-x-1/2">חי 24 שעות</Badge>
         </div>
       )
@@ -52,7 +52,7 @@ export function IntroArt({ id }: { id: IntroPage['id'] }) {
       return (
         <div className="fr-tile grid w-[240px] place-items-center">
           <div className="fr-card relative w-[170px] px-3.5 pt-4 pb-3.5 text-center">
-            <div className="mx-auto mb-2 grid size-[62px] place-items-center rounded-full bg-[linear-gradient(160deg,#2e86ff,#003399)] font-brand text-2xl font-semibold">
+            <div className="mx-auto mb-2 grid size-[62px] place-items-center rounded-full bg-[linear-gradient(160deg,#2a2b31,#121216)] font-brand text-2xl font-semibold">
               9
             </div>
             <div className="font-bold">החלוץ שלנו</div>
