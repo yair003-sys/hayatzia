@@ -27,8 +27,28 @@ export const reportAction = actionClient.inputSchema(reportSchema).action(async 
   }
   const { error } = await supabase.from('reports').insert(parsedInput)
   if (error) return { error: rateLimited(error.message) ? 'שלחת הרבה דיווחים היום. תודה!' : 'הדיווח לא נשלח' }
+  await notifyAdminsNewReport(false)
   return { ok: true as const }
 })
+
+/**
+ * Every new report, and every "צור קשר" request, pings the admins' phones so the queue is handled fast (owner, 2026-11-02,
+ * task 11). Reuses admin_user_ids + sendPush, exactly like the ride-harm path above. Fire-and-forget: it never fails or
+ * delays the report, and sendPush is a no-op until push is configured (VAPID). No detail about the content is sent — only
+ * that something new is waiting; the in-app "דיווחים פתוחים" badge carries the count.
+ */
+async function notifyAdminsNewReport(contact: boolean) {
+  const admin = createAdminClient()
+  if (!admin) return
+  const { data: admins, error } = await admin.rpc('admin_user_ids')
+  if (error || !admins?.length) return
+  await sendPush(
+    admins,
+    contact
+      ? { title: 'פנייה חדשה', body: 'התקבלה פנייה חדשה (צור קשר) לבדיקה', url: '/admin/reports', tag: 'new-contact' }
+      : { title: 'דיווח חדש', body: 'התקבל דיווח חדש לבדיקה', url: '/admin/reports', tag: 'new-report' },
+  )
+}
 
 /**
  * Harm during a ride (ride safety, rule 9). Every admin gets a phone notification now; it says the fan was suspended
@@ -65,6 +85,7 @@ export const contactAction = actionClient.inputSchema(contactSchema).action(asyn
   if (!supabase) return { error: 'לא זמין בסביבה הזאת' }
   const { error } = await supabase.from('reports').insert({ kind: 'contact', ref: '', reason: topic, note: text })
   if (error) return { error: rateLimited(error.message) ? 'שלחת הרבה פניות היום. נסה שוב מחר' : 'הפנייה לא נשלחה. נסה שוב' }
+  await notifyAdminsNewReport(true)
   return { ok: true as const }
 })
 
