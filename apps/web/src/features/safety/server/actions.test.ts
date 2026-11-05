@@ -68,10 +68,19 @@ describe('contactAction ("צור קשר")', () => {
     expect(s.inserts).toEqual([{ table: 'reports', row: { kind: 'contact', ref: '', reason: 'נגישות', note: 'הכפתור קטן מדי' } }])
   })
 
-  it('says when the daily limit is reached', async () => {
+  it('pings every admin that a new contact request is waiting (no content in the notification)', async () => {
+    await contactAction({ topic: 'נגישות', text: 'הכפתור קטן מדי' })
+    expect(s.rpc).toEqual([{ fn: 'admin_user_ids' }])
+    expect(s.pushes).toEqual([
+      { to: s.admins, payload: { title: 'פנייה חדשה', body: 'התקבלה פנייה חדשה (צור קשר) לבדיקה', url: '/admin/reports', tag: 'new-contact' } },
+    ])
+  })
+
+  it('says when the daily limit is reached, and then notifies nobody', async () => {
     s.error = { message: 'rate_limit' }
     const r = await contactAction({ topic: 'אחר', text: 'שאלה' })
     expect(r.data).toEqual({ error: 'שלחת הרבה פניות היום. נסה שוב מחר' })
+    expect(s.pushes).toEqual([])
   })
 })
 
@@ -79,6 +88,14 @@ describe('reportAction', () => {
   it('reports a market item by its own id', async () => {
     await reportAction({ kind: 'market_item', ref: 'item-1', reason: 'פריט מזויף / מכירת כרטיסים', note: '' })
     expect(s.inserts[0]?.row).toMatchObject({ kind: 'market_item', ref: 'item-1' })
+  })
+
+  it('pings every admin that a new report is waiting (no content in the notification)', async () => {
+    await reportAction({ kind: 'market_item', ref: 'item-1', reason: 'פריט מזויף / מכירת כרטיסים', note: '' })
+    expect(s.rpc).toEqual([{ fn: 'admin_user_ids' }])
+    expect(s.pushes).toEqual([
+      { to: s.admins, payload: { title: 'דיווח חדש', body: 'התקבל דיווח חדש לבדיקה', url: '/admin/reports', tag: 'new-report' } },
+    ])
   })
 })
 
@@ -121,11 +138,16 @@ describe('reportAction: harm during a ride (ride safety, rule 9)', () => {
     })
   })
 
-  it('an ordinary report, or a report that failed, notifies nobody', async () => {
+  it('an ordinary report does not go through the ride-harm path', async () => {
     await reportAction({ kind: 'trip', ref: 'trip-1', reason: 'ספאם', note: '' })
-    expect(s.harmCalls).toEqual([])
-    s.harm.error = { message: 'rate_limit' }
-    expect((await reportAction(harm)).data).toEqual({ error: 'שלחת הרבה דיווחים היום. תודה!' })
+    expect(s.harmCalls).toEqual([]) // not a harm report: the plain insert path, not report_ride_harm
+  })
+
+  it('a report that failed its insert notifies nobody', async () => {
+    s.error = { message: 'rate_limit' }
+    expect((await reportAction({ kind: 'trip', ref: 'trip-1', reason: 'ספאם', note: '' })).data).toEqual({
+      error: 'שלחת הרבה דיווחים היום. תודה!',
+    })
     expect(s.pushes).toEqual([])
   })
 })
