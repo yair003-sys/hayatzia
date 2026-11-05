@@ -387,8 +387,8 @@
   .fr-root { position: fixed; inset: 0; z-index: 100; overflow: hidden; isolation: isolate; user-select: none; -webkit-user-select: none;
     background: var(--color-canvas); }
   .fr-bg { position: absolute; inset: 0; z-index: -1;
-    background: radial-gradient(120% 60% at 50% 0%, rgb(0 51 153 / 0.55), transparent 60%),
-      radial-gradient(80% 40% at 50% 110%, rgb(0 255 102 / 0.12), transparent 70%), var(--color-canvas); }
+    background: radial-gradient(120% 60% at 50% 0%, rgb(255 255 255 / 0.06), transparent 60%),
+      radial-gradient(80% 40% at 50% 110%, rgb(255 255 255 / 0.03), transparent 70%), var(--color-canvas); }
   .fr-screen { position: absolute; inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); display: flex; flex-direction: column;
     max-width: 30rem; margin-inline: auto;
     transition: opacity 0.6s var(--ease-soft), transform 0.6s var(--ease-soft); }
@@ -397,7 +397,7 @@
   .fr-splash { align-items: center; justify-content: center; }
   .fr-mark { position: relative; filter: drop-shadow(0 20px 40px rgb(0 0 0 / 0.55)); animation: fr-rise 1s var(--ease-spring) both; }
   .fr-halo { position: absolute; width: 260px; height: 260px; border-radius: 50%;
-    background: radial-gradient(circle, rgb(var(--t-rgb, 0 102 255) / 0.35), transparent 65%); animation: fr-breathe 2s ease-in-out infinite; }
+    background: radial-gradient(circle, rgb(255 255 255 / 0.1), transparent 65%); animation: fr-breathe 2s ease-in-out infinite; }
 
   .fr-welcome { align-items: center; justify-content: center; gap: 1rem; padding-inline: 2rem; text-align: center; }
   .fr-welcome > * { animation: none; }
@@ -447,8 +447,8 @@
   .fr-card { position: absolute; border: 1px solid var(--color-line-soft); border-radius: 18px;
     background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); box-shadow: 0 20px 40px -18px rgb(0 0 0 / 0.9); }
   .fr-scarf { position: absolute; top: 50%; left: 50%; width: 66px; height: 180px; border-radius: 14px; transform: translate(-50%, -50%) rotate(-12deg);
-    background: repeating-linear-gradient(180deg, var(--color-accent) 0 22px, #fff 22px 30px, var(--color-accent) 30px 52px, var(--color-ok) 52px 60px);
-    box-shadow: 0 30px 50px -20px rgb(var(--t-rgb, 0 102 255) / 0.7); }
+    background: repeating-linear-gradient(180deg, #e6e9ee 0 22px, #15161a 22px 30px, #9aa5b2 30px 52px, #e6e9ee 52px 60px);
+    box-shadow: 0 30px 50px -20px rgb(0 0 0 / 0.7); }
   .fr-badge { position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--color-line);
     border-radius: 999px; background: rgb(10 14 26 / 0.85); font-size: 0.75rem; font-weight: 500; white-space: nowrap; backdrop-filter: blur(6px); }
   .fr-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 8px var(--color-ok); }
