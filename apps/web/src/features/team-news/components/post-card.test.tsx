@@ -24,6 +24,7 @@ const base: NewsPost = {
   comments: 3,
   createdAt: '2026-11-01T10:00:00+00:00',
   editedAt: null,
+  official: true,
 }
 
 const noop = () => {}
