@@ -52,6 +52,8 @@ export type NewsPost = {
   comments: number
   createdAt: string
   editedAt: string | null
+  /** True for a post by a channel admin (the club's official voice); false for a fan's wall post. */
+  official: boolean
 }
 
 export type NewsComment = {

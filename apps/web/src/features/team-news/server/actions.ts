@@ -36,11 +36,15 @@ export const createPostAction = actionClient.inputSchema(createPostSchema).actio
     .single()
   if (ins.error) {
     if (parsedInput.mediaPath) await supabase.storage.from('channel').remove([parsedInput.mediaPath])
-    return { error: moderationHe(ins.error.message) ?? 'הפוסט לא פורסם' }
+    const msg = ins.error.message
+    if (msg.includes('rate_limit')) return { error: 'רגע, יותר מדי פוסטים — נסו שוב בעוד כמה דקות' }
+    if (msg.includes('no_team')) return { error: 'צריך להיות משויכים לקבוצה כדי לפרסם' }
+    return { error: moderationHe(msg) ?? 'הפוסט לא פורסם' }
   }
   const post = await getPostById(ins.data.id)
   if (!post) return { error: 'הפוסט לא פורסם' }
-  void notifyNewPost(ins.data.team_id, { title: post.title, body: post.body })
+  // Only an official (admin) post pushes to the whole club; a fan's post must not notify everyone.
+  if (post.official) void notifyNewPost(ins.data.team_id, { title: post.title, body: post.body })
   return { post }
 })
 

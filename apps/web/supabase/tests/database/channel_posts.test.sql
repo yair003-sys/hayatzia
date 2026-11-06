@@ -1,8 +1,9 @@
--- Team news channel — posts + per-club admins (2026-11-01). A post's club and author are server-stamped; only a
--- channel admin of that club (or a global app admin) may post; fans read only their own club's posts; the client
--- cannot set the club column; the moderation trigger is attached to the free-text columns.
+-- Team news channel — posts + per-club admins (2026-11-01; wall opened to fans 2026-11-06). A post's club, author and
+-- official standing are server-stamped; a club member may post to their own club, but only a channel admin's post is
+-- official; fans read only their own club's posts; the client cannot set the club column; moderation is attached to
+-- the free-text columns.
 begin;
-select plan(11);
+select plan(12);
 
 insert into auth.users (id, aud, role, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'cp_admin@test.local'),
@@ -21,11 +22,15 @@ select has_table('public', 'team_channel_admins', 'there is a per-club channel-a
 select has_column('public', 'channel_posts', 'reactions', 'a post carries a reactions jsonb');
 select has_trigger('public', 'channel_posts', 'zz_moderate', 'the post body/title pass moderation');
 
--- ===== a non-admin fan cannot post =====
+-- ===== a club fan can now post to the wall, but the post is not official (rolled back so the counts below hold) =====
+savepoint fan_post;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}', true);
 set local role authenticated;
-select throws_ok($$ insert into public.channel_posts (body) values ('לא אמור לעבוד') $$,
-  '42501', null, 'a non-admin fan cannot post to the channel');
+select lives_ok($$ insert into public.channel_posts (body) values ('קדימה אלופים מהיציע') $$,
+  'a club fan can post to the wall');
+select is((select official from public.channel_posts where author_id = '00000000-0000-0000-0000-0000000000a2'), false,
+  'a fan''s wall post is not official');
+rollback to savepoint fan_post;
 reset role;
 
 -- ===== the admin posts; club + author are stamped from the session =====
