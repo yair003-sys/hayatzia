@@ -1611,3 +1611,65 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .lg-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 0.35rem; color: var(--color-muted);
     text-decoration: underline; text-underline-offset: 3px; }
 }
+
+/* ===== The wall — the club's X-style feed as home (redesign phase 3, 2026-11-06) =====
+   Ported from the approved mockup. Colours come from the existing tokens, so the wall wears each fan's club accent. */
+@layer components {
+  .wl { margin-inline: -1rem; }                 /* bleed to the app's side gutter for a full-width feed */
+  .wl-in { max-width: 32rem; margin-inline: auto; }
+
+  /* sticky header: crest + title + bell/settings, then feed tabs */
+  .wl-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: color-mix(in srgb, var(--color-canvas) 86%, transparent); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-line); }
+  .wl-top { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.7rem 0.9rem; }
+  .wl-title { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+  .wl-crest { width: 2.1rem; height: 2.1rem; flex: none; border-radius: 0.6rem; display: grid; place-items: center;
+    color: var(--acc-on); font-weight: 900; font-size: 0.7rem; background: linear-gradient(150deg, var(--acc2), var(--acc)); }
+  .wl-title b { display: block; font-size: 1rem; font-weight: 900; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-title span { font-size: 0.66rem; color: var(--color-dim); font-weight: 600; }
+  .wl-acts { display: flex; gap: 0.5rem; flex: none; }
+  .wl-ico { position: relative; width: 2.3rem; height: 2.3rem; border-radius: 0.7rem; display: grid; place-items: center;
+    color: var(--acc-text); background: var(--acc-soft); border: 1px solid var(--acc-line); }
+  .wl-badge { position: absolute; top: -0.25rem; inset-inline-start: -0.25rem; min-width: 1rem; height: 1rem; padding: 0 0.2rem;
+    border-radius: 999px; background: var(--acc); color: var(--acc-on); font-size: 0.6rem; font-weight: 900;
+    display: grid; place-items: center; border: 2px solid var(--color-canvas); font-variant-numeric: tabular-nums; }
+  .wl-ftabs { display: flex; }
+  .wl-ftab { flex: 1; text-align: center; padding: 0.8rem 0 0.68rem; font-size: 0.86rem; font-weight: 700; color: var(--color-muted);
+    position: relative; background: none; border: 0; }
+  .wl-ftab.on { color: var(--color-fg); font-weight: 800; }
+  .wl-ftab.on::after { content: ""; position: absolute; bottom: 0; inset-inline: 0; margin: auto; width: 2.8rem; height: 3px;
+    border-radius: 3px; background: var(--acc); }
+
+  /* compose */
+  .wl-compose { display: flex; gap: 0.7rem; padding: 0.8rem 0.9rem; border-bottom: 7px solid var(--color-surface); align-items: center;
+    background: none; border-inline: 0; border-top: 0; width: 100%; text-align: start; }
+  .wl-me { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; background: linear-gradient(150deg, var(--acc2), var(--acc)); }
+  .wl-ph { flex: 1; color: var(--color-dim); font-size: 0.95rem; text-align: start; background: none; border: 0; padding: 0; }
+  .wl-post-btn { border: 0; font: inherit; font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 0.4rem 0.9rem;
+    background: linear-gradient(150deg, var(--acc2), var(--acc)); color: var(--acc-on); }
+
+  /* a post */
+  .wl-post { display: flex; gap: 0.7rem; padding: 0.8rem 0.9rem; border-bottom: 1px solid var(--color-line); }
+  .wl-av { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; border: 1px solid var(--color-line);
+    background: linear-gradient(150deg, var(--color-surface-3), var(--color-surface)); object-fit: cover; }
+  .wl-post.official .wl-av { background: linear-gradient(150deg, var(--acc2), var(--acc)); border: 0; }
+  .wl-body { flex: 1; min-width: 0; }
+  .wl-meta { display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; flex-wrap: wrap; }
+  .wl-meta b { font-weight: 800; }
+  .wl-tick { color: var(--acc-text); }
+  .wl-at, .wl-meta time { color: var(--color-dim); font-weight: 500; }
+  .wl-official-tag { font-size: 0.62rem; color: var(--acc-on); background: var(--acc); border-radius: 999px; padding: 0.05rem 0.4rem; font-weight: 800; }
+  .wl-more { margin-inline-start: auto; color: var(--color-dim); background: none; border: 0; padding: 0.1rem; }
+  .wl-title-txt { font-weight: 800; margin: 0.15rem 0 0; font-size: 0.95rem; }
+  .wl-txt { font-size: 0.95rem; color: var(--color-fg); margin: 0.15rem 0 0; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+  .wl-media { margin-top: 0.6rem; border-radius: 1rem; border: 1px solid var(--color-line); max-width: 100%; display: block; }
+  .wl-acts2 { display: flex; justify-content: space-between; max-width: 18rem; margin-top: 0.6rem; color: var(--color-dim); font-size: 0.8rem; }
+
+  /* floating compose + empty */
+  .wl-fab { position: sticky; bottom: calc(var(--tabbar-space) + 0.5rem); margin-inline-start: auto; margin-inline-end: 0.3rem;
+    width: 3.2rem; height: 3.2rem; border-radius: 1.1rem; display: grid; place-items: center; font-size: 1.4rem;
+    background: linear-gradient(150deg, var(--acc2), var(--acc)); color: var(--acc-on);
+    box-shadow: 0 12px 30px -8px rgb(var(--t-rgb, 0 102 255) / 0.5); border: 0; }
+  .wl-empty { padding: 3rem 1rem; text-align: center; color: var(--color-muted); }
+}
