@@ -137,11 +137,11 @@ export function WallFeed({
               </span>
             </div>
             <div className="wl-acts">
-              <Link href="/stand/activity" className="wl-ico" aria-label="התראות">
+              <Link href="/activity" className="wl-ico" aria-label="התראות">
                 <Bell className="size-4" aria-hidden="true" />
                 {unread && <span className="wl-badge" aria-label="חדש">•</span>}
               </Link>
-              <Link href="/me/settings" className="wl-ico" aria-label="הגדרות">
+              <Link href="/settings" className="wl-ico" aria-label="הגדרות">
                 <Settings className="size-4" aria-hidden="true" />
               </Link>
             </div>
