@@ -255,14 +255,14 @@ isOneToOne: false
                   ]
                 },"channel_posts": {
                   Row: {
-                    "author_id": string,"body": string,"comments_count": number,"created_at": string,"edited_at": string | null,"id": string,"media_kind": string | null,"media_path": string | null,"reactions": NonNullable<Json>,"team_id": string,"title": string | null,"views_count": number
+                    "author_id": string,"body": string,"comments_count": number,"created_at": string,"edited_at": string | null,"id": string,"media_kind": string | null,"media_path": string | null,"official": boolean,"reactions": NonNullable<Json>,"team_id": string,"title": string | null,"views_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "author_id"?: string,"body": string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
+                    "author_id"?: string,"body": string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"official"?: boolean,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
                   }
                   Update: {
-                    "author_id"?: string,"body"?: string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
+                    "author_id"?: string,"body"?: string,"comments_count"?: number,"created_at"?: string,"edited_at"?: string | null,"id"?: string,"media_kind"?: string | null,"media_path"?: string | null,"official"?: boolean,"reactions"?: NonNullable<Json>,"team_id"?: string,"title"?: string | null,"views_count"?: number
                   }
                   Relationships: [
                     {

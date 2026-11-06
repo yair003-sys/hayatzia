@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PAGE_SIZE, type Cursor, type NewsComment, type NewsPost } from '../schema'
 
 const POST_COLUMNS =
-  'id,author_id,title,body,media_path,media_kind,views_count,reactions,comments_count,created_at,edited_at'
+  'id,author_id,title,body,media_path,media_kind,views_count,reactions,comments_count,created_at,edited_at,official'
 
 type PostRow = {
   id: string
@@ -17,6 +17,7 @@ type PostRow = {
   comments_count: number
   created_at: string
   edited_at: string | null
+  official: boolean
 }
 
 type Client = NonNullable<Awaited<ReturnType<typeof createClient>>>
@@ -49,6 +50,7 @@ async function decoratePosts(supabase: Client, rows: PostRow[]): Promise<NewsPos
     comments: r.comments_count,
     createdAt: r.created_at,
     editedAt: r.edited_at,
+    official: r.official ?? false,
   }))
 }
 

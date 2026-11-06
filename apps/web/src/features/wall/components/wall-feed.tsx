@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Bell, MessageCircle, Settings, BarChart3, PenLine } from 'lucide-react'
+import { Bell, LayoutGrid, MessageCircle, Settings, BarChart3, PenLine } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { openChannel } from '@/lib/supabase/channel'
@@ -29,7 +29,6 @@ type Tab = 'new' | 'hot'
 export function WallFeed({
   teamId,
   meId,
-  isAdmin,
   clubName,
   clubShort,
   initial,
@@ -37,7 +36,6 @@ export function WallFeed({
 }: {
   teamId: string
   meId: string
-  isAdmin: boolean
   clubName: string
   clubShort: string
   initial: NewsPost[]
@@ -137,6 +135,9 @@ export function WallFeed({
               </span>
             </div>
             <div className="wl-acts">
+              <Link href="/stand/hub" className="wl-ico" aria-label="לוח היציע">
+                <LayoutGrid className="size-4" aria-hidden="true" />
+              </Link>
               <Link href="/activity" className="wl-ico" aria-label="התראות">
                 <Bell className="size-4" aria-hidden="true" />
                 {unread && <span className="wl-badge" aria-label="חדש">•</span>}
@@ -156,35 +157,27 @@ export function WallFeed({
           </div>
         </header>
 
-        {/* compose: admins publish to the channel; fans speak in the club chat */}
-        {isAdmin ? (
-          composing ? (
-            <div className="border-b-[7px] border-surface px-3.5 py-3">
-              <PostComposer meId={meId} onPublished={onPublished} />
-              <button type="button" className="mt-2 text-sm text-muted" onClick={() => setComposing(false)}>
-                ביטול
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="wl-compose w-full" onClick={() => setComposing(true)}>
-              <span className="wl-me" aria-hidden="true" />
-              <span className="wl-ph">מה חדש ביציע?</span>
-              <span className="wl-post-btn">פרסם</span>
+        {/* compose: every fan may post to the wall (a channel admin's post is marked official) */}
+        {composing ? (
+          <div className="border-b-[7px] border-surface px-3.5 py-3">
+            <PostComposer meId={meId} onPublished={onPublished} />
+            <button type="button" className="mt-2 text-sm text-muted" onClick={() => setComposing(false)}>
+              ביטול
             </button>
-          )
+          </div>
         ) : (
-          <Link href="/stand/chat" className="wl-compose">
+          <button type="button" className="wl-compose" onClick={() => setComposing(true)}>
             <span className="wl-me" aria-hidden="true" />
-            <span className="wl-ph">מה קורה ביציע? דברו בצ׳אט</span>
-            <span className="wl-post-btn">לצ׳אט</span>
-          </Link>
+            <span className="wl-ph">מה קורה ביציע?</span>
+            <span className="wl-post-btn">פרסם</span>
+          </button>
         )}
 
         {shown.length === 0 ? (
           <p className="wl-empty">עוד אין פוסטים בקיר. כאן יופיעו העדכונים של {clubShort}.</p>
         ) : (
           shown.map((p) => (
-            <WallPost key={p.id} post={p} clubName={clubName} clubShort={clubShort} onReact={onReact} onOpenComments={setOpenPost} />
+            <WallPost key={p.id} post={p} clubName={clubName} onReact={onReact} onOpenComments={setOpenPost} />
           ))
         )}
 
@@ -195,28 +188,25 @@ export function WallFeed({
         )}
       </div>
 
-      {isAdmin && (
-        <button type="button" className="wl-fab" aria-label="פוסט חדש" onClick={() => setComposing(true)}>
-          <PenLine className="size-5" aria-hidden="true" />
-        </button>
-      )}
+      <button type="button" className="wl-fab" aria-label="פוסט חדש" onClick={() => setComposing(true)}>
+        <PenLine className="size-5" aria-hidden="true" />
+      </button>
 
       {openPost && <PostComments postId={openPost} onClose={() => setOpenPost(null)} />}
     </div>
   )
 }
 
-/** One wall post in the X-style. Every channel post is an official club post today, so it wears the crest + tick. */
+/** One wall post in the X-style. An official post (by a channel admin) wears the club crest + tick; a fan's post
+ *  shows the fan's name. */
 function WallPost({
   post,
   clubName,
-  clubShort,
   onReact,
   onOpenComments,
 }: {
   post: NewsPost
   clubName: string
-  clubShort: string
   onReact: (postId: string, emoji: string | null) => void
   onOpenComments: (postId: string) => void
 }) {
@@ -240,13 +230,19 @@ function WallPost({
   const time = new Date(post.createdAt).toLocaleString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
   return (
-    <article ref={ref} className="wl-post official">
+    <article ref={ref} className={`wl-post${post.official ? ' official' : ''}`}>
       <span className="wl-av" aria-hidden="true" />
       <div className="wl-body">
         <div className="wl-meta">
-          <b>{clubName}</b>
-          <span className="wl-tick" aria-label="רשמי">✔</span>
-          <span className="wl-official-tag">רשמי</span>
+          {post.official ? (
+            <>
+              <b>{clubName}</b>
+              <span className="wl-tick" aria-label="רשמי">✔</span>
+              <span className="wl-official-tag">רשמי</span>
+            </>
+          ) : (
+            <b>{post.authorNick || 'אוהד'}</b>
+          )}
           <span className="wl-at">·</span>
           <time dateTime={post.createdAt}>{time}</time>
         </div>

@@ -1,248 +1,46 @@
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
-import Link from 'next/link'
 import { Suspense } from 'react'
-import { CalendarDays, Car, ChevronLeft, HeartHandshake, Music, Shirt, Trophy } from 'lucide-react'
-import {
-  ActivityTiles,
-  ChatSection,
-  FanFavoritesSection,
-  FansOfWeekSection,
-  HomeHeader,
-  HotSection,
-  LiveNow,
-  MatchExtras,
-  MatchNightHero,
-  MiniTableSection,
-  PlayersSection,
-  Skel,
-  StoriesSection,
-  StoriesSkeleton,
-} from '@/features/home/components/sections'
-import { anyLiveFixture, liveClubFixture, nextClubFixture } from '@/features/home/schema'
-import { displayTeam } from '@/features/matches/api-teams'
-import { LiveCard } from '@/features/matches/components/live-card'
-import { kickoffDay, kickoffTime } from '@/features/matches/format'
-import { liveNow } from '@/features/matches/live'
-import { getLeague } from '@/features/matches/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
-import { MatchTicket } from '@/features/stand-home/components/match-ticket'
-import { isTicketLive, pickTicket, teamAccent } from '@/features/stand-home/schema'
-import { clubApiIds, getStandHome } from '@/features/stand-home/server/queries'
-import { CheckinButton } from '@/features/stage4/components/checkin-button'
-import { LoadError } from '@/components/load-error'
-import { getCheckedIn } from '@/features/stage4/server/queries'
-import { DONE_STATUSES } from '@/features/matches/schema'
-import { roomState } from '@/features/match-room/schema'
-import { features } from '@/lib/flags'
+import { getChannelUnread, getTeamNews } from '@/features/team-news/server/queries'
+import { WallFeed } from '@/features/wall/components/wall-feed'
 
 export const metadata: Metadata = { title: { absolute: 'onefan' } }
 
+// The home is the wall — the club's X-style feed (redesign phase 3). The rich stand dashboard moved to /stand/hub,
+// one tap away from the wall header.
 export default function Page() {
   return (
-    <Suspense fallback={<HomeSkeleton />}>
-      <Home />
+    <Suspense fallback={<WallSkeleton />}>
+      <Wall />
     </Suspense>
   )
 }
 
-function HomeSkeleton() {
+function WallSkeleton() {
   return (
-    <div className="hm space-y-4" aria-hidden="true">
-      <div className="skeleton h-12 rounded-2xl" />
-      <StoriesSkeleton />
-      <div className="skeleton h-[66px] rounded-[18px]" />
-      <div className="skeleton h-40 rounded-[22px]" />
+    <div className="wl" aria-hidden="true">
+      <div className="wl-in space-y-3 pt-2">
+        <div className="skeleton h-12 rounded-2xl" />
+        <div className="skeleton h-16 rounded-2xl" />
+        <div className="skeleton h-28 rounded-2xl" />
+        <div className="skeleton h-28 rounded-2xl" />
+      </div>
     </div>
   )
 }
 
-/**
- * The home (redesign 2026-10-14, owner's sketch): header, stories, live tiles, next match, players in the fans' eyes,
- * hot in the Square, the club chat, a mini table and the fans of the week. Each section streams in its own <Suspense>
- * and always shows, in the sketch's order, with an empty state when there is no data yet (owner); only the next-match
- * card and the mini table are left out without a match or a table. The earlier home's other sections follow below.
- */
-async function Home() {
+async function Wall() {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return <h1 className="t-page">onefan</h1>
-  const { team, userId } = s
-  const acc = teamAccent(team.bar)
-  const theme = { '--t-acc': acc.accent, '--t-acc2': acc.accent2, '--t-rgb': acc.rgb, '--t-text': acc.text, '--t-on': acc.on } as CSSProperties
+  const [news, unread] = await Promise.all([getTeamNews(), getChannelUnread()])
   return (
-    <div className="sh hm space-y-4" style={theme}>
-      <HomeHeader team={team} userId={userId} />
-      <Suspense fallback={null}>
-        <LiveNow team={team} />
-      </Suspense>
-      <Suspense fallback={<StoriesSkeleton />}>
-        <StoriesSection team={team} userId={userId} nick={s.nick} />
-      </Suspense>
-      <ActivityTiles team={team} />
-      <Suspense fallback={<Skel h="h-[280px]" />}>
-        <MatchNightHero team={team} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[120px]" />}>
-        <MatchExtras team={team} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[300px]" />}>
-        <PlayersSection team={team} userId={userId} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[150px]" />}>
-        <FanFavoritesSection team={team} userId={userId} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[210px]" />}>
-        <HotSection team={team} userId={userId} nick={s.nick} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[220px]" />}>
-        <ChatSection team={team} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[160px]" />}>
-        <MiniTableSection team={team} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-[150px]" />}>
-        <FansOfWeekSection team={team} />
-      </Suspense>
-      <Suspense fallback={<Skel h="h-44" />}>
-        <StandHome />
-      </Suspense>
-    </div>
-  )
-}
-
-const clock = () => Date.now()
-
-/** A count whose read failed shows a dash (and the home offers "נסה שוב"), never a made-up 0. */
-const shownCount = (n: number | null) => (n === null ? '—' : n)
-
-/** The earlier home's sections that the sketch does not replace (live games, match day, trips, links, sample XI). */
-async function StandHome() {
-  const s = await getSessionProfile()
-  if (s.status !== 'ready') return null
-  const team = s.team
-  // One round trip, not two: the counts and the squad start with the league; only the trips count and the check-in
-  // wait for it (they need the next match / the ticket).
-  const plan = getLeague().then((league) => {
-    const ids = clubApiIds(league, team.id)
-    const now = clock()
-    const ticket = league ? pickTicket(league.fixtures, ids, now) : null
-    const next = league ? nextClubFixture(league.fixtures, ids, now) : null
-    // The next match has its own card at the top; the ticket stays for a live or just-finished match.
-    const active = ticket ? ['open', 'closing'].includes(roomState(ticket.t, now)) : false
-    return { league, ids, now, ticket, next, active }
-  })
-  const [{ league, ids, now, ticket, next, active }, data, checked] = await Promise.all([
-    plan,
-    getStandHome(
-      team.id,
-      s.userId,
-      plan.then((p) => p.next?.id ?? null),
-    ),
-    plan.then((p) => (p.ticket && p.active ? getCheckedIn(p.ticket.id) : false)),
-  ])
-  // The live match featured at the very top of the home (LiveNow) is shown there only — leave it out here, so it never
-  // appears two or three times on the same screen (owner 2026-10-19).
-  const featuredLive = league ? (liveClubFixture(league.fixtures, ids, now) ?? anyLiveFixture(league.fixtures, now)) : null
-  const showTicket = (!ticket || ticket.id !== next?.id || active) && ticket?.id !== featuredLive?.id
-  const nameOf = (apiId: number) => displayTeam(apiId, league?.teams[String(apiId)]?.name)
-  const live = (league ? liveNow(league.fixtures, now) : []).filter((f) => f.id !== featuredLive?.id)
-
-  return (
-    <div className="space-y-4">
-      {live.length > 0 && (
-        <section aria-labelledby="live-title" className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="live-title" className="sh-sec flex-1">
-              <i className="sh-live-dot" aria-hidden="true" />
-              משחקים חיים
-            </h2>
-            <Link href="/matches" className="mt-2 shrink-0 rounded-full border border-line bg-white/4 px-3.5 py-1.5 text-[13px] font-bold">
-              הכול
-            </Link>
-          </div>
-          {live.map((f) => (
-            <LiveCard key={f.id} fixture={f} home={nameOf(f.h)} away={nameOf(f.a)} />
-          ))}
-        </section>
-      )}
-
-      {showTicket && (
-        <>
-          <h2 className="sh-sec">
-            {ticket && isTicketLive(ticket, now) && <i className="sh-live-dot" aria-hidden="true" />}
-            יום משחק
-          </h2>
-          {ticket ? (
-            <>
-              <MatchTicket fixture={ticket} home={nameOf(ticket.h)} away={nameOf(ticket.a)} />
-              {active && <CheckinButton fixtureId={ticket.id} done={checked} label={team.short} />}
-              {active && DONE_STATUSES.has(ticket.st) && (
-                <Link href={`/matches/${ticket.id}?tab=room#motm`} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface font-bold">
-                  <Trophy className="size-4 text-warn" aria-hidden="true" />
-                  שחקן המשחק · דרג את השחקנים
-                </Link>
-              )}
-            </>
-          ) : (
-            <p className="sh-card text-sm text-muted">אין כרגע משחקים בלוח.</p>
-          )}
-        </>
-      )}
-
-      {features.rides && (
-        <Link href="/stand/trips" className="sh-card">
-          <span className="sh-card-h">
-            <Car className="size-5" aria-hidden="true" />
-            <b>נוסעים למשחק</b>
-            <span className="sh-chip open">{shownCount(data.trips)} נסיעות</span>
-            <ChevronLeft className="size-4 text-dim" aria-hidden="true" />
-          </span>
-          {next ? (
-            <span className="sh-pv">
-              <b>המשחק הבא:</b> {ids.includes(next.h) ? 'בבית' : 'בחוץ'} מול {nameOf(ids.includes(next.h) ? next.a : next.h).short} ·{' '}
-              {kickoffDay(next.t)} {kickoffTime(next.t)}
-            </span>
-          ) : (
-            <span className="sh-pv">אין משחק קרוב</span>
-          )}
-          <span className="sh-pv">מוצאים פרטנרים לנסיעה, ומתאמים בשיחה פרטית</span>
-        </Link>
-      )}
-
-      <nav className="sh-tiles" aria-label="עוד">
-        {features.events && (
-          <Link href="/stand/events" className="sh-tile">
-            <i aria-hidden="true"><CalendarDays className="size-5" strokeWidth={1.75} /></i>
-            <b>אירועים</b>
-            <span>{shownCount(data.events)} קרובים</span>
-          </Link>
-        )}
-        {features.market && (
-          <Link href="/stand/market" className="sh-tile">
-            <i aria-hidden="true"><Shirt className="size-5" strokeWidth={1.75} /></i>
-            <b>שוק אוהדים</b>
-            <span>{shownCount(data.market)} מודעות</span>
-          </Link>
-        )}
-        <Link href="/stand/chants" className="sh-tile">
-          <i aria-hidden="true"><Music className="size-5" strokeWidth={1.75} /></i>
-          <b>שירי הקהל</b>
-          <span>{shownCount(data.chants)} שירים</span>
-        </Link>
-        {features.campaigns && (
-          <Link href="/campaigns" className="sh-tile">
-            <i aria-hidden="true"><HeartHandshake className="size-5" strokeWidth={1.75} /></i>
-            <b>קמפיינים</b>
-            <span>תרומות למטרה</span>
-          </Link>
-        )}
-      </nav>
-      {[
-        ...(features.rides ? [data.trips] : []),
-        ...(features.events ? [data.events] : []),
-        ...(features.market ? [data.market] : []),
-        data.chants,
-      ].includes(null) && <LoadError compact />}
-    </div>
+    <WallFeed
+      teamId={s.team.id}
+      meId={s.userId}
+      clubName={s.team.name}
+      clubShort={s.team.short}
+      initial={news ?? []}
+      unread={unread}
+    />
   )
 }
