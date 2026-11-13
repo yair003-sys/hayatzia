@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { LiveNow, MatchNightHero } from '@/features/home/components/sections'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getChannelUnread, getTeamNews } from '@/features/team-news/server/queries'
 import { WallFeed } from '@/features/wall/components/wall-feed'
 
 export const metadata: Metadata = { title: { absolute: 'onefan' } }
 
-// The home is the wall — the club's X-style feed (redesign phase 3). The rich stand dashboard moved to /stand/hub,
-// one tap away from the wall header.
+// The home is the wall — the club's X-style feed (redesign phase 3). The live/next match is pinned at the very top
+// (restored 2026-11-13, owner), so a fan sees the match first; the rest of the dashboard lives at /stand/hub.
 export default function Page() {
   return (
     <Suspense fallback={<WallSkeleton />}>
@@ -33,14 +34,28 @@ async function Wall() {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return <h1 className="t-page">onefan</h1>
   const [news, unread] = await Promise.all([getTeamNews(), getChannelUnread()])
+  const { team } = s
+  // Live match leads when one is on; otherwise the next fixture. Each returns null when there's nothing, so the
+  // anchor simply vanishes on a quiet day and the feed sits at the top.
+  const matchSlot = (
+    <>
+      <Suspense fallback={null}>
+        <LiveNow team={team} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MatchNightHero team={team} />
+      </Suspense>
+    </>
+  )
   return (
     <WallFeed
-      teamId={s.team.id}
+      teamId={team.id}
       meId={s.userId}
-      clubName={s.team.name}
-      clubShort={s.team.short}
+      clubName={team.name}
+      clubShort={team.short}
       initial={news ?? []}
       unread={unread}
+      matchSlot={matchSlot}
     />
   )
 }

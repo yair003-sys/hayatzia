@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Bell, LayoutGrid, MessageCircle, Settings, BarChart3, PenLine } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -33,6 +33,7 @@ export function WallFeed({
   clubShort,
   initial,
   unread,
+  matchSlot,
 }: {
   teamId: string
   meId: string
@@ -40,6 +41,8 @@ export function WallFeed({
   clubShort: string
   initial: NewsPost[]
   unread: boolean
+  /** The live/next-match anchor, pinned at the very top of the feed (rendered on the server, passed in). */
+  matchSlot?: ReactNode
 }) {
   const [posts, setPosts] = useState<NewsPost[]>(initial)
   const [tab, setTab] = useState<Tab>('new')
@@ -156,6 +159,9 @@ export function WallFeed({
             </button>
           </div>
         </header>
+
+        {/* the live/next match, pinned at the top of the wall — the first thing a fan sees when they open */}
+        {matchSlot && <div className="wl-pin">{matchSlot}</div>}
 
         {/* compose: every fan may post to the wall (a channel admin's post is marked official) */}
         {composing ? (
