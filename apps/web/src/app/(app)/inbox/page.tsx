@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { Lock, QrCode } from 'lucide-react'
+import { ChevronLeft, Lock, QrCode, Users } from 'lucide-react'
 import { LoadError } from '@/components/load-error'
 import { InboxList } from '@/features/dm/components/inbox-list'
 import { InboxLive } from '@/features/dm/components/inbox-live'
 import { getInbox } from '@/features/dm/server/queries'
 import { getSessionProfile } from '@/features/profile/server/queries'
+import { TeamScarf } from '@/features/teams/components/team-scarf'
+import type { Team } from '@/features/teams/data'
 
 export const metadata: Metadata = { title: 'הודעות' }
 
@@ -43,6 +45,7 @@ async function Inbox() {
       <>
         {/* Still live: a new message refreshes the screen, which tries the read again. */}
         <InboxLive meId={s.userId} />
+        <ClubChatRow team={s.team} />
         <LoadError />
       </>
     )
@@ -51,7 +54,33 @@ async function Inbox() {
   return (
     <>
       <InboxLive meId={s.userId} />
+      <ClubChatRow team={s.team} />
       <InboxList meId={s.userId} rows={rows} invites={invites} />
     </>
+  )
+}
+
+/** The club group chat, pinned at the top of the inbox so group and private chats live in one column (2026-11-14). */
+function ClubChatRow({ team }: { team: Team }) {
+  return (
+    <Link
+      href="/stand/chat"
+      className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 active:scale-[0.99]"
+    >
+      <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-elev">
+        <TeamScarf team={team} className="h-7 w-2.5" />
+        <span
+          className="absolute -bottom-0.5 -end-0.5 grid size-5 place-items-center rounded-full border-2 border-surface"
+          style={{ background: 'var(--acc, var(--color-accent))', color: 'var(--acc-on, #fff)' }}
+        >
+          <Users className="size-2.5" aria-hidden="true" />
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <b className="block">צ׳אט {team.short}</b>
+        <span className="text-xs text-muted">הצ׳אט הקבוצתי · כל אוהדי {team.short}</span>
+      </span>
+      <ChevronLeft className="size-5 shrink-0 text-muted" aria-hidden="true" />
+    </Link>
   )
 }

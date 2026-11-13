@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Suspense } from 'react'
-import { Car, Clapperboard, IdCard, Mail, MessagesSquare, type LucideIcon } from 'lucide-react'
+import { Car, Clapperboard, IdCard, Mail, type LucideIcon } from 'lucide-react'
 import type { Route } from 'next'
 
 type Tab = { href: Route; labelKey: string; icon: LucideIcon }
@@ -13,7 +13,6 @@ type Tab = { href: Route; labelKey: string; icon: LucideIcon }
  *  Labels come from the `nav` message catalogue (Hebrew by default), so the bar is ready for other languages. */
 export const TABS: readonly Tab[] = [
   { href: '/stand/trips', labelKey: 'rides', icon: Car },
-  { href: '/stand/chat', labelKey: 'chat', icon: MessagesSquare },
   { href: '/square', labelKey: 'square', icon: Clapperboard },
   { href: '/inbox', labelKey: 'inbox', icon: Mail },
   { href: '/me', labelKey: 'me', icon: IdCard },
