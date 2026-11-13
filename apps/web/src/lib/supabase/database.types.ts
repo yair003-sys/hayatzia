@@ -405,6 +405,42 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"songs": {
+                  Row: {
+                    "id": string,"user_id": string,"team_id": string,"nick": string,"title": string,"lyrics": string,"likes_count": number,"adopts_count": number,"created_at": string,"audio_path": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id"?: string,"team_id"?: string,"nick"?: string,"title"?: string,"lyrics"?: string,"likes_count"?: number,"adopts_count"?: number,"created_at"?: string,"audio_path": string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"team_id"?: string,"nick"?: string,"title"?: string,"lyrics"?: string,"likes_count"?: number,"adopts_count"?: number,"created_at"?: string,"audio_path"?: string
+                  }
+                  Relationships: []
+                },"song_likes": {
+                  Row: {
+                    "song_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "song_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "song_id"?: string,"user_id"?: string
+                  }
+                  Relationships: []
+                },"song_adopts": {
+                  Row: {
+                    "song_id": string,"user_id": string,"adopted_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "song_id": string,"user_id"?: string,"adopted_at"?: string
+                  }
+                  Update: {
+                    "song_id"?: string,"user_id"?: string,"adopted_at"?: string
+                  }
+                  Relationships: []
                 },"clip_likes": {
                   Row: {
                     "clip_id": string,"user_id": string
