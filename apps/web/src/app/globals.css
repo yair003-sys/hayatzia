@@ -1641,6 +1641,12 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .wl-ftab.on::after { content: ""; position: absolute; bottom: 0; inset-inline: 0; margin: auto; width: 2.8rem; height: 3px;
     border-radius: 3px; background: var(--acc); }
 
+  /* the pinned live/next-match anchor at the top of the feed */
+  .wl-pin { padding: 0.8rem 0.9rem; border-bottom: 7px solid var(--color-surface); }
+  .wl-pin > * + * { margin-top: 0.7rem; }
+  /* on a quiet day both match components render nothing — hide the whole anchor so there's no empty bar */
+  .wl-pin:not(:has(*)) { display: none; }
+
   /* compose */
   .wl-compose { display: flex; gap: 0.7rem; padding: 0.8rem 0.9rem; border-bottom: 7px solid var(--color-surface); align-items: center;
     background: none; border-inline: 0; border-top: 0; width: 100%; text-align: start; }
