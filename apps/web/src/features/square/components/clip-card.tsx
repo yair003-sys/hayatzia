@@ -154,7 +154,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       if (!story && end && (v.currentTime < start - 0.05 || v.currentTime >= end)) v.currentTime = start
       if (!story) {
         const from = start
-        const to = clip.trim_end ?? v.duration || 1
+        const to = clip.trim_end ?? (v.duration || 1)
         setProg(Math.min(1, Math.max(0, (v.currentTime - from) / Math.max(0.1, to - from))))
       }
     }
