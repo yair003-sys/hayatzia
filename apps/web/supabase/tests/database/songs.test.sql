@@ -31,17 +31,18 @@ select throws_ok(
   $$ insert into public.songs (audio_path, title, lyrics)
      values ('00000000-0000-0000-0000-0000000000d3/steal.webm', 'x', 'y') $$,
   '42501', null, 'cannot post audio from another fan''s folder');
+-- stash the song id so the rival can try to adopt a song they are not allowed to see
+select set_config('test.song_id', (select id::text from public.songs where user_id = '00000000-0000-0000-0000-0000000000d1'::uuid), false);
 reset role;
 
 -- ===== a rival club cannot see the song; a club-mate can =====
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000d3","role":"authenticated"}', true);
 set local role authenticated;
 select is((select count(*) from public.songs)::int, 0, 'a rival club does not see the greenhouse song');
--- a rival cannot adopt it either (its RLS hides it, so the check fails)
+-- a rival cannot adopt it either (its RLS hides it, so the WITH CHECK fails)
 select throws_ok(
-  $$ insert into public.song_adopts (song_id)
-     select id from public.songs limit 1 $$,
-  null, null, 'a rival cannot adopt a song they cannot see');
+  $$ insert into public.song_adopts (song_id) values (current_setting('test.song_id')::uuid) $$,
+  null, null, 'a rival cannot adopt a song from another club');
 reset role;
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}', true);
