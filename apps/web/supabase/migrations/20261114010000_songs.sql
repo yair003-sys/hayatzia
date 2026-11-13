@@ -82,6 +82,11 @@ end $$;
 create trigger song_likes_count after insert or delete on public.song_likes for each row execute function public.song_counter();
 create trigger song_adopts_count after insert or delete on public.song_adopts for each row execute function public.song_counter();
 
+-- Trigger functions fire as their owner regardless of grants, so close them to everyone (a new function otherwise
+-- keeps its default PUBLIC execute, which would widen what logged-out visitors can run).
+revoke all on function public.songs_stamp() from public, anon, authenticated;
+revoke all on function public.song_counter() from public, anon, authenticated;
+
 -- lyrics and title pass the shared moderation trigger
 create trigger zz_moderate before insert or update on public.songs
   for each row execute function private.moderate_row('title:text', 'lyrics:text');
