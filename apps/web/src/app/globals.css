@@ -546,6 +546,19 @@
   .sq-scroller { height: 100%; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none; }
   .sq-top { position: absolute; inset: 0 0 auto; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 1rem; padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.5rem; pointer-events: none; }
   .sq-top > * { pointer-events: auto; }
+  /* double-tap heart burst (TikTok-style) */
+  .sq-burst { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; pointer-events: none;
+    animation: sq-burst 0.7s ease-out forwards; filter: drop-shadow(0 6px 16px rgb(0 0 0 / 0.5)); }
+  @keyframes sq-burst {
+    0% { opacity: 0; transform: scale(0.3); }
+    15% { opacity: 1; transform: scale(1.15); }
+    35% { transform: scale(0.95); }
+    70% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.1); }
+  }
+  /* playback progress bar */
+  .sq-prog { position: absolute; inset-inline: 0; bottom: 0; z-index: 16; height: 3px; background: rgb(255 255 255 / 0.18); pointer-events: none; }
+  .sq-prog-fill { display: block; height: 100%; width: 100%; transform-origin: left; background: rgb(255 255 255 / 0.9); transition: transform 0.15s linear; }
   .sq-tabs { display: flex; gap: 1.4rem; }
   .sq-tabs a { position: relative; padding-block: 0.35rem; color: rgb(255 255 255 / 0.6); font-size: 1rem; font-weight: 500; text-shadow: 0 1px 6px rgb(0 0 0 / 0.6); transition: color 0.2s; }
   .sq-tabs a[aria-current='page'] { color: #fff; font-weight: 600; }
