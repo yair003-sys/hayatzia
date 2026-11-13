@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { Eye, Flag, Heart, MessageCircle, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Eye, Flag, Heart, MessageCircle, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
 import { ReportBlock, ReportForm } from '@/features/safety/components/report-block'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
@@ -50,6 +50,11 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const [note, setNote] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const [now] = useState(() => Date.now())
+  // TikTok-style: double-tap to like with a heart burst, and a playback progress bar.
+  const [burst, setBurst] = useState(0)
+  const [prog, setProg] = useState(0)
+  const lastTap = useRef(0)
+  const singleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const toggle = (kind: 'like' | 'respect') => {
     const on = kind === 'like' ? !liked : !respected
@@ -93,6 +98,44 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
       }
     } else setSoundOn(false)
   }
+
+  // A like from a double-tap only ever likes (never unlikes) and always shows the heart burst.
+  const likeBurst = () => {
+    if (!liked) toggle('like')
+    setBurst((b) => b + 1)
+  }
+  // One tap toggles sound (on a video); two taps like. We wait ~280ms to tell them apart.
+  const onTap = () => {
+    const t0 = Date.now()
+    if (t0 - lastTap.current < 300) {
+      clearTimeout(singleTimer.current)
+      lastTap.current = 0
+      likeBurst()
+    } else {
+      lastTap.current = t0
+      clearTimeout(singleTimer.current)
+      singleTimer.current = setTimeout(() => {
+        if (clip.kind === 'video') toggleSound()
+      }, 280)
+    }
+  }
+  useEffect(() => () => clearTimeout(singleTimer.current), [])
+
+  // Share spreads the Square (and the app) — native share sheet where the phone offers one, otherwise copy the link.
+  const share = async () => {
+    const link = `${window.location.origin}/square?c=${clip.id}`
+    const text = clip.caption ? `${clip.caption} — onefan` : 'onefan'
+    try {
+      if (navigator.share) await navigator.share({ title: 'onefan', text, url: link })
+      else {
+        await navigator.clipboard.writeText(link)
+        setNote('הקישור הועתק')
+      }
+    } catch {
+      /* the fan dismissed the share sheet — nothing to do */
+    }
+  }
+
   const card = useRef<HTMLElement>(null)
   // A reel plays while it fills most of the screen and pauses when swiped away.
   useEffect(() => {
@@ -109,6 +152,11 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     const onTime = () => {
       const end = clip.trim_end ?? v.duration
       if (!story && end && (v.currentTime < start - 0.05 || v.currentTime >= end)) v.currentTime = start
+      if (!story) {
+        const from = start
+        const to = clip.trim_end ?? v.duration || 1
+        setProg(Math.min(1, Math.max(0, (v.currentTime - from) / Math.max(0.1, to - from))))
+      }
     }
     v.addEventListener('loadedmetadata', onMeta)
     v.addEventListener('timeupdate', onTime)
@@ -145,7 +193,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
     <article ref={card} className="relative h-full snap-start snap-always overflow-hidden bg-black" aria-label={t('postOf', { nick: clip.nick })}>
       {url ? (
         clip.kind === 'video' ? (
-          <button type="button" onClick={toggleSound} className="absolute inset-0" aria-label={muted ? t('soundOn') : t('mute')}>
+          <button type="button" onClick={onTap} className="absolute inset-0" aria-label={muted ? t('soundOn') : t('mute')}>
             <video
               ref={media}
               src={url}
@@ -174,6 +222,7 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
               loading="lazy"
               onLoad={(e) => setLandscape(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight)}
             />
+            <button type="button" onClick={onTap} className="absolute inset-0" aria-label={t('likeSr')} />
           </>
         )
       ) : (
@@ -210,6 +259,20 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
 
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+
+      {/* double-tap heart burst */}
+      {burst > 0 && (
+        <span key={burst} className="sq-burst" aria-hidden="true">
+          <Heart className="size-28 fill-live text-live" />
+        </span>
+      )}
+
+      {/* playback progress */}
+      {clip.kind === 'video' && url && !clip.uploading && (
+        <span className="sq-prog" aria-hidden="true">
+          <span className="sq-prog-fill" style={{ transform: `scaleX(${prog})` }} />
+        </span>
+      )}
 
       <header className="absolute inset-x-3 top-16 flex items-center gap-2 text-white">
         <Link href={`/fans/${clip.user_id}`} className="flex items-center gap-2" aria-label={`צפייה בפרופיל של ${clip.nick}`}>
@@ -263,6 +326,12 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           </span>
           <span className="sr-only">{t('comments')}</span>
           {shortCount(commentCount)}
+        </button>
+        <button type="button" aria-label="שתף" onClick={() => void share()} className="flex flex-col items-center gap-0.5 text-xs font-bold">
+          <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">
+            <Share2 className="size-6" aria-hidden="true" />
+          </span>
+          <span className="sr-only">שתף</span>
         </button>
         {mine && (
           <button
