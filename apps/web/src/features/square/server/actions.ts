@@ -4,6 +4,7 @@ import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { ClipRef } from '@/features/dm/clip-ref'
+import { notifyFollowersNewClip } from '@/features/follows/server/notify'
 import { chatErrorHe } from '@/features/chat/schema'
 import { moderationHe } from '@/lib/moderation'
 import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, followingCursorSchema, toggleSchema } from '../schema'
@@ -46,7 +47,10 @@ export const createClipAction = actionClient.inputSchema(createClipSchema).actio
     }
   }
   // The poster's feed adds the post itself (no page reload); other fans see it on their next load.
-  return { ok: true as const, clip: await getClip(row.id) }
+  const clip = await getClip(row.id)
+  // Tell the poster's followers a new moment is up (no-op until push is configured; never blocks the post).
+  if (clip) await notifyFollowersNewClip(clip.user_id, clip.nick)
+  return { ok: true as const, clip }
 })
 
 export const toggleLikeAction = actionClient.inputSchema(toggleSchema).action(async ({ parsedInput: { clipId, on } }) => {
