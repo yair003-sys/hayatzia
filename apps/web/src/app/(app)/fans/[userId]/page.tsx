@@ -4,15 +4,15 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
-import { getFanProfile } from '@/features/fans/server/queries'
-import { getFanCard } from '@/features/me/server/queries'
+import { getPublicFanCard } from '@/features/fans/server/queries'
 import { teamAccent } from '@/features/stand-home/schema'
 import { SendMessage } from '@/features/fans/components/send-message'
+import { FollowBar } from '@/features/fans/components/follow-bar'
 
 export const metadata: Metadata = { title: 'פרופיל אוהד' }
 
-// The public card of another fan (owner, 2026-10-31): the same look as "הכרטיס שלי", read-only, with a "שלח הודעה"
-// button that opens the private conversation with them. Only club-mates are visible (RLS).
+// The public card of another fan (owner, 2026-10-31; opened across clubs 2026-11-14): the same look as "הכרטיס שלי",
+// read-only, with "שלח הודעה" and a follow button. Any fan — club-mate or rival — is visible through fan_card.
 export default function Page({ params }: PageProps<'/fans/[userId]'>) {
   return (
     <section className="space-y-6">
@@ -29,14 +29,13 @@ async function FanCard({ userId }: { userId: string }) {
   const me = await getSessionProfile()
   if (me.status === 'ready' && me.userId === userId) redirect('/me')
 
-  const fan = await getFanProfile(userId)
-  if (!fan) {
-    return <p className="rounded-2xl bg-surface p-4 text-muted">הפרופיל לא זמין. אפשר לראות רק אוהדים של הקבוצה שלך.</p>
-  }
-
   const league = await getLeague()
   const season = league?.league.season ?? null
-  const card = await getFanCard(userId, fan.team.id, season)
+  const fan = await getPublicFanCard(userId, season)
+  if (!fan) {
+    return <p className="rounded-2xl bg-surface p-4 text-muted">הפרופיל לא נמצא.</p>
+  }
+  const card = fan.card
 
   const a = teamAccent(fan.team.bar)
   const colours = { '--club': fan.team.bg, '--club2': fan.team.ring, '--club-rgb': a.rgb, '--club-on': a.on } as CSSProperties
@@ -101,6 +100,10 @@ async function FanCard({ userId }: { userId: string }) {
               </span>
               {fan.team.name}
             </span>
+          </div>
+
+          <div className="mt-4">
+            <FollowBar followeeId={userId} initialFollowing={fan.iFollow} followers={fan.followers} following={fan.following} />
           </div>
 
           {card && (
