@@ -22,10 +22,8 @@ export function SearchScreen() {
 
   useEffect(() => {
     const term = q.trim()
-    if (term.length < SEARCH_MIN) {
-      setRes(EMPTY)
-      return
-    }
+    // Nothing to search yet; the render already shows the prompt (results are gated on `searched`).
+    if (term.length < SEARCH_MIN) return
     const mine = ++seq.current
     const t = setTimeout(() => {
       start(async () => {
