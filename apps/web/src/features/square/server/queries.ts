@@ -219,8 +219,12 @@ export async function getFollowingFeed(offset = 0): Promise<Clip[] | null> {
   const admin = createAdminClient()
   const urls = new Map<string, string>()
   if (admin) {
-    const { data: signed } = await admin.storage.from('clips').createSignedUrls(rows.map((r) => r.media_path), URL_TTL)
-    for (const s of signed ?? []) if (s.path) urls.set(s.path, s.signedUrl)
+    const paths = rows.map((r) => r.media_path).filter((p): p is string => !!p)
+    const { data: signed } = await admin.storage.from('clips').createSignedUrls(paths, URL_TTL)
+    for (const s of signed ?? []) {
+      const p = s.path
+      if (p) urls.set(p, s.signedUrl)
+    }
   }
   return rows.map(({ media_path, i_liked, i_respected, ...r }) => ({
     ...r,
