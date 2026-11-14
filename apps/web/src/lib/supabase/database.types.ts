@@ -5,6 +5,32 @@ export type Database = {
   
   "public": {
           Tables: {
+            "territory": {
+                  Row: {
+                    "h3": string,"team_id": string,"user_id": string,"nick": string,"captured_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "h3": string,"team_id": string,"user_id": string,"nick": string,"captured_at"?: string
+                  }
+                  Update: {
+                    "h3"?: string,"team_id"?: string,"user_id"?: string,"nick"?: string,"captured_at"?: string
+                  }
+                  Relationships: []
+                }
+            "territory_log": {
+                  Row: {
+                    "id": number,"user_id": string,"h3": string,"lat": number,"lng": number,"captured_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "user_id": string,"h3": string,"lat": number,"lng": number,"captured_at"?: string
+                  }
+                  Update: {
+                    "user_id"?: string,"h3"?: string,"lat"?: number,"lng"?: number,"captured_at"?: string
+                  }
+                  Relationships: []
+                }
             "activity": {
                   Row: {
                     "actor_count": number,"actor_id": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"requester_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
