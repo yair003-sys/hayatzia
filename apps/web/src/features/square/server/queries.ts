@@ -222,8 +222,7 @@ export async function getFollowingFeed(offset = 0): Promise<Clip[] | null> {
     const paths = rows.map((r) => r.media_path).filter((p): p is string => !!p)
     const { data: signed } = await admin.storage.from('clips').createSignedUrls(paths, URL_TTL)
     for (const s of signed ?? []) {
-      const p = s.path
-      if (p) urls.set(p, s.signedUrl)
+      if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl)
     }
   }
   return rows.map(({ media_path, i_liked, i_respected, ...r }) => ({
