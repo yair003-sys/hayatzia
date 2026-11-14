@@ -1702,6 +1702,21 @@ isOneToOne: false
               "id": string,"user_id": string,"team_id": string,"nick": string,"media_path": string,"kind": string,"caption": string,"captions": NonNullable<Json>,"filter": string,"speed": number,"trim_start": number,"trim_end": number | null,"tags": string,"once": boolean,"likes_count": number,"respects_count": number,"comments_count": number,"views_count": number,"created_at": string,"expires_at": string,"audience": string,"i_liked": boolean,"i_respected": boolean
             }[]
                            },
+"search_fans":
+{ Args: { "q": string,"p_limit"?: number }; Returns: {
+              "user_id": string,"nick": string,"team_id": string,"avatar_path": string | null,"followers_count": number,"score": number
+            }[]
+                           },
+"search_posts":
+{ Args: { "q": string,"p_limit"?: number }; Returns: {
+              "id": string,"team_id": string,"author_id": string,"author_nick": string,"title": string | null,"body": string,"official": boolean,"created_at": string,"score": number
+            }[]
+                           },
+"search_clips":
+{ Args: { "q": string,"p_limit"?: number }; Returns: {
+              "id": string,"user_id": string,"team_id": string,"nick": string,"media_path": string,"kind": string,"caption": string,"captions": NonNullable<Json>,"filter": string,"speed": number,"trim_start": number,"trim_end": number | null,"tags": string,"once": boolean,"likes_count": number,"respects_count": number,"comments_count": number,"views_count": number,"created_at": string,"expires_at": string,"audience": string,"i_liked": boolean,"i_respected": boolean
+            }[]
+                           },
 "accept_dm_thread":
 { Args: { "p_thread": string }; Returns: undefined
                            },

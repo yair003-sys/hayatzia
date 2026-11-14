@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Bell, LayoutGrid, MessageCircle, Settings, BarChart3, PenLine } from 'lucide-react'
+import { Bell, LayoutGrid, MessageCircle, Search, Settings, BarChart3, PenLine } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { openChannel } from '@/lib/supabase/channel'
@@ -138,6 +138,9 @@ export function WallFeed({
               </span>
             </div>
             <div className="wl-acts">
+              <Link href="/search" className="wl-ico" aria-label="חיפוש">
+                <Search className="size-4" aria-hidden="true" />
+              </Link>
               <Link href="/stand/hub" className="wl-ico" aria-label="לוח היציע">
                 <LayoutGrid className="size-4" aria-hidden="true" />
               </Link>

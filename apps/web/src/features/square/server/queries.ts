@@ -213,9 +213,23 @@ export async function getFollowingFeed(offset = 0): Promise<Clip[] | null> {
   if (!claims?.claims.sub) return null
   const { data, error } = await supabase.rpc('following_clips', { p_limit: FEED_SIZE, p_offset: offset })
   if (error) return null
-  const rows = data ?? []
+  return signDefinerClips(data ?? [])
+}
+
+/** The clip shape returned by the cross-club SECURITY DEFINER functions (following feed, search): raw columns + my state. */
+export type DefinerClipRow = {
+  id: string; user_id: string; team_id: string; nick: string; media_path: string; kind: string
+  caption: string; captions: unknown; filter: string; speed: number; trim_start: number; trim_end: number | null
+  tags: string; once: boolean; likes_count: number; respects_count: number; comments_count: number; views_count: number
+  created_at: string; expires_at: string; audience: string; i_liked: boolean; i_respected: boolean
+}
+
+/**
+ * Turn rows from a cross-club clip function into display clips: the media lives in a club-scoped bucket, so it is signed
+ * here with the service role, and my own like/respect state (baked into the rows) is carried through.
+ */
+export async function signDefinerClips(rows: DefinerClipRow[]): Promise<Clip[]> {
   if (rows.length === 0) return []
-  // Cross-club media is signed with the service role (the clip bucket is club-scoped like the rows).
   const admin = createAdminClient()
   const urls = new Map<string, string>()
   if (admin) {
