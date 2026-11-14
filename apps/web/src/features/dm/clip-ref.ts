@@ -17,7 +17,7 @@ export const clipToken = (clipId: string): string => CLIP_PREFIX + clipId
 export function parseClipToken(text: string | null | undefined): string | null {
   if (!text) return null
   const m = CLIP_RE.exec(text.trim())
-  return m ? m[1] : null
+  return m?.[1] ?? null
 }
 
 /** What the receiving device shows for a shared clip: only what a preview needs, signed and scoped like the Square. */
