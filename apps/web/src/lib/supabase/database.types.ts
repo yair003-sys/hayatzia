@@ -5,6 +5,19 @@ export type Database = {
   
   "public": {
           Tables: {
+            "follows": {
+                  Row: {
+                    "created_at": string,"followee_id": string,"follower_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"followee_id": string,"follower_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"followee_id"?: string,"follower_id"?: string
+                  }
+                  Relationships: []
+                }
             "activity": {
                   Row: {
                     "actor_count": number,"actor_id": string | null,"clip_id": string | null,"created_at": string,"id": number,"kind": string,"photo_id": string | null,"requester_id": string | null,"subject": string | null,"trip_id": string | null,"updated_at": string,"user_id": string
@@ -1679,7 +1692,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "accept_dm_thread":
+            "fan_card":
+{ Args: { "p_user": string,"p_season"?: number }; Returns: {
+              "nick": string,"team_id": string,"avatar_path": string | null,"cover_path": string | null,"created_at": string,"clips_posted": number,"join_number": number,"games": number,"away": number,"points": number,"exact": number,"rank": number | null,"rated": number,"followers_count": number,"following_count": number,"i_follow": boolean
+            }[]
+                           },
+"accept_dm_thread":
 { Args: { "p_thread": string }; Returns: undefined
                            },
 "activity_broadcast":
