@@ -87,6 +87,9 @@ export const feedCursorSchema = z.object({
   audience: audience.default('all'),
 })
 
+// The "following" feed paginates by a simple offset (no audience — it is cross-club by definition).
+export const followingCursorSchema = z.object({ offset: z.number().int().min(0).max(5000) })
+
 const EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',

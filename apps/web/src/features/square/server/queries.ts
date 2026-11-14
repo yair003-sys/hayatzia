@@ -1,5 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getBlockedIdsOrNull } from '@/features/safety/server/queries'
 import { CLIP_FILTERS, FEED_SIZE, type Audience, type Clip, type ClipComment, type ClipFilter } from '../schema'
 import { hotScore, type KindAffinity } from '../ranking'
@@ -198,4 +199,37 @@ export async function getClipComments(clipId: string): Promise<ClipComment[]> {
     .order('id')
     .limit(100)
   return data ?? []
+}
+
+/**
+ * The "following" feed: live clips from everyone the viewer follows, newest first, across clubs. The `following_clips`
+ * database function (SECURITY DEFINER) crosses the club-scoped RLS on clips and bakes in my own like/respect state; the
+ * media file lives in a club-scoped bucket, so it is signed here with the service role. View-once clips never appear.
+ */
+export async function getFollowingFeed(offset = 0): Promise<Clip[] | null> {
+  const supabase = await createClient()
+  if (!supabase) return null
+  const { data: claims } = await supabase.auth.getClaims()
+  if (!claims?.claims.sub) return null
+  const { data, error } = await supabase.rpc('following_clips', { p_limit: FEED_SIZE, p_offset: offset })
+  if (error) return null
+  const rows = data ?? []
+  if (rows.length === 0) return []
+  // Cross-club media is signed with the service role (the clip bucket is club-scoped like the rows).
+  const admin = createAdminClient()
+  const urls = new Map<string, string>()
+  if (admin) {
+    const { data: signed } = await admin.storage.from('clips').createSignedUrls(rows.map((r) => r.media_path), URL_TTL)
+    for (const s of signed ?? []) if (s.path) urls.set(s.path, s.signedUrl)
+  }
+  return rows.map(({ media_path, i_liked, i_respected, ...r }) => ({
+    ...r,
+    kind: r.kind === 'video' ? 'video' : 'image',
+    audience: r.audience === 'team' ? 'team' : r.audience === 'both' ? 'both' : 'all',
+    captions: Array.isArray(r.captions) ? (r.captions as Clip['captions']) : [],
+    filter: (CLIP_FILTERS as readonly string[]).includes(r.filter) ? (r.filter as ClipFilter) : 'none',
+    url: urls.get(media_path) ?? null,
+    liked: i_liked,
+    respected: i_respected,
+  }))
 }

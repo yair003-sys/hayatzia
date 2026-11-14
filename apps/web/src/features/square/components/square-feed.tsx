@@ -6,15 +6,15 @@ import { useTranslations } from 'next-intl'
 import { ImagePlus } from 'lucide-react'
 import { LoadError } from '@/components/load-error'
 import { FEED_SIZE, type Audience, type Clip } from '../schema'
-import { loadMoreSquareAction } from '../server/actions'
+import { loadMoreFollowingAction, loadMoreSquareAction } from '../server/actions'
 import { ClipCard } from './clip-card'
 import { UploadClip } from './upload-clip'
 
 /** `initial` null = the first page could not be read: "could not load" with a retry, never "the Square is empty". */
-type Props = { initial: Clip[] | null; focus?: Clip | null; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode }
+type Props = { initial: Clip[] | null; focus?: Clip | null; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode; following?: boolean }
 
 /** Reels: one post per screen, swipe up for the next; the next page loads as the last post comes into view. */
-export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
+export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, audience, empty, tabs, following = false }: Props) {
   const t = useTranslations('square')
   // A clip linked from a private chat (`focus`) opens at the very top, prepended if the feed does not already hold it.
   const [clips, setClips] = useState(() => {
@@ -62,7 +62,9 @@ export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, 
 
   const loadMore = () =>
     start(async () => {
-      const r = await loadMoreSquareAction({ offset: loaded, audience }).catch(() => null)
+      const r = following
+        ? await loadMoreFollowingAction({ offset: loaded }).catch(() => null)
+        : await loadMoreSquareAction({ offset: loaded, audience }).catch(() => null)
       const more = r?.data?.clips
       if (!more) {
         setMoreFailed(true)
@@ -85,13 +87,13 @@ export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, 
     return () => io.disconnect()
     // `loadMore` is recreated every render; the values above decide when to observe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMore, last, audience, pending, moreFailed])
+  }, [hasMore, last, audience, following, pending, moreFailed])
 
   return (
     <div className="sq-root">
       <div className="sq-top">
         {tabs}
-        {upload}
+        {!following && upload}
       </div>
       {initial === null && clips.length === 0 ? (
         <div className="sq-empty">
@@ -103,10 +105,12 @@ export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, 
             <ImagePlus className="size-7" strokeWidth={1.5} />
           </span>
           <p className="text-lg font-semibold">{empty}</p>
-          <p className="text-sm text-muted">{t('clipsExpire')}</p>
-          <button type="button" className="su-btn su-btn-green mt-3 max-w-64" onClick={() => setChoosing(true)}>
-            {t('uploadFirstMoment')}
-          </button>
+          {!following && <p className="text-sm text-muted">{t('clipsExpire')}</p>}
+          {!following && (
+            <button type="button" className="su-btn su-btn-green mt-3 max-w-64" onClick={() => setChoosing(true)}>
+              {t('uploadFirstMoment')}
+            </button>
+          )}
         </div>
       ) : (
         <div ref={scroller} className="sq-scroller" aria-label={t('reelsAria')}>

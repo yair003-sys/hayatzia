@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { ClipRef } from '@/features/dm/clip-ref'
 import { chatErrorHe } from '@/features/chat/schema'
 import { moderationHe } from '@/lib/moderation'
-import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, toggleSchema } from '../schema'
-import { getClip, getClipComments, getSquareFeed } from './queries'
+import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, followingCursorSchema, toggleSchema } from '../schema'
+import { getClip, getClipComments, getFollowingFeed, getSquareFeed } from './queries'
 
 const ONCE_URL_TTL = 120 // seconds: enough to watch, not to share
 
@@ -110,6 +110,11 @@ export const loadMoreSquareAction = actionClient
   .inputSchema(feedCursorSchema)
   // clips null = the read failed (the feed shows "could not load" and keeps trying), not "no more posts".
   .action(async ({ parsedInput: { audience, offset } }) => ({ clips: await getSquareFeed({ audience, offset }) }))
+
+export const loadMoreFollowingAction = actionClient
+  .inputSchema(followingCursorSchema)
+  // clips null = the read failed; the feed shows "could not load" and keeps trying.
+  .action(async ({ parsedInput: { offset } }) => ({ clips: await getFollowingFeed(offset) }))
 
 /**
  * One clip, for the preview of a clip shared into a private chat. Row-level security applies as in the Square, so a

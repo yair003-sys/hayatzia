@@ -1697,6 +1697,11 @@ isOneToOne: false
               "nick": string,"team_id": string,"avatar_path": string | null,"cover_path": string | null,"created_at": string,"clips_posted": number,"join_number": number,"games": number,"away": number,"points": number,"exact": number,"rank": number | null,"rated": number,"followers_count": number,"following_count": number,"i_follow": boolean
             }[]
                            },
+"following_clips":
+{ Args: { "p_limit"?: number,"p_offset"?: number }; Returns: {
+              "id": string,"user_id": string,"team_id": string,"nick": string,"media_path": string,"kind": string,"caption": string,"captions": NonNullable<Json>,"filter": string,"speed": number,"trim_start": number,"trim_end": number | null,"tags": string,"once": boolean,"likes_count": number,"respects_count": number,"comments_count": number,"views_count": number,"created_at": string,"expires_at": string,"audience": string,"i_liked": boolean,"i_respected": boolean
+            }[]
+                           },
 "accept_dm_thread":
 { Args: { "p_thread": string }; Returns: undefined
                            },
