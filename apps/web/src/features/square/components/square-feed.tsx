@@ -11,12 +11,16 @@ import { ClipCard } from './clip-card'
 import { UploadClip } from './upload-clip'
 
 /** `initial` null = the first page could not be read: "could not load" with a retry, never "the Square is empty". */
-type Props = { initial: Clip[] | null; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode }
+type Props = { initial: Clip[] | null; focus?: Clip | null; meId: string; myTeamId: string; myNick: string; teamShort: string; audience: Audience; empty: string; tabs: ReactNode }
 
 /** Reels: one post per screen, swipe up for the next; the next page loads as the last post comes into view. */
-export function SquareFeed({ initial, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
+export function SquareFeed({ initial, focus, meId, myTeamId, myNick, teamShort, audience, empty, tabs }: Props) {
   const t = useTranslations('square')
-  const [clips, setClips] = useState(initial ?? [])
+  // A clip linked from a private chat (`focus`) opens at the very top, prepended if the feed does not already hold it.
+  const [clips, setClips] = useState(() => {
+    const base = initial ?? []
+    return focus && !base.some((c) => c.id === focus.id) ? [focus, ...base] : base
+  })
   // Ranked feed → offset pagination: how many posts the server has already returned for this tab.
   const [loaded, setLoaded] = useState(initial?.length ?? 0)
   const [hasMore, setHasMore] = useState((initial?.length ?? 0) >= FEED_SIZE)

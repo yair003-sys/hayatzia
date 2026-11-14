@@ -7,6 +7,8 @@ import { MessageMeta, MessageRow, Quote, ReplyBar } from '@/features/chat/compon
 import { isLocalId, sendState } from '@/features/chat/essentials'
 import { cn } from '@/lib/utils'
 import { DM_MAX } from '../schema'
+import { parseClipToken } from '../clip-ref'
+import { ClipRefBubble } from './clip-ref-bubble'
 
 /** A quoted message as the device found it: decrypted from the loaded messages, or a fallback label when not loaded. */
 export type ShownQuote = { nick: string; text: string; /** The original's id when it is loaded (tap to jump). */ to?: string }
@@ -46,21 +48,27 @@ export function Bubble({
   const t = useTranslations('dm')
   const local = isLocalId(id)
   const state = mine ? sendState({ id, failed }) : undefined
+  // A whole message that is just a Square-clip reference shows as a clip card, not as its raw token text.
+  const clipId = parseClipToken(text)
   return (
     <MessageRow id={id} at={local ? undefined : createdAt} mine={mine} active={active} onActive={onActive} onReply={local ? undefined : onReply}>
-      <div className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2')}>
-        {sender && (
-          <b className="mb-0.5 block text-xs font-semibold" style={{ color: `hsl(${sender.hue} 75% 68%)` }}>
-            {sender.nick}
-          </b>
-        )}
-        {quote && <Quote mine={mine} nick={quote.nick} text={quote.text} onJump={quote.to && onJump ? () => onJump(quote.to as string) : undefined} />}
-        {text ?? (
-          <span className="inline-flex items-center gap-1 text-xs italic opacity-70">
-            <Lock className="size-3" aria-hidden="true" /> {locked ?? t('lockedBefore')}
-          </span>
-        )}
-      </div>
+      {clipId ? (
+        <ClipRefBubble clipId={clipId} mine={mine} />
+      ) : (
+        <div className={cn('chat-bubble', mine ? 'bg-accent text-white' : 'border border-line-soft bg-surface-2')}>
+          {sender && (
+            <b className="mb-0.5 block text-xs font-semibold" style={{ color: `hsl(${sender.hue} 75% 68%)` }}>
+              {sender.nick}
+            </b>
+          )}
+          {quote && <Quote mine={mine} nick={quote.nick} text={quote.text} onJump={quote.to && onJump ? () => onJump(quote.to as string) : undefined} />}
+          {text ?? (
+            <span className="inline-flex items-center gap-1 text-xs italic opacity-70">
+              <Lock className="size-3" aria-hidden="true" /> {locked ?? t('lockedBefore')}
+            </span>
+          )}
+        </div>
+      )}
       <MessageMeta at={createdAt} state={state} onRetry={state === 'failed' ? onRetry : undefined} onDiscard={state === 'failed' ? onDiscard : undefined} />
     </MessageRow>
   )

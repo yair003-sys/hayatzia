@@ -3,6 +3,7 @@
 import { actionClient } from '@/lib/safe-action'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import type { ClipRef } from '@/features/dm/clip-ref'
 import { chatErrorHe } from '@/features/chat/schema'
 import { moderationHe } from '@/lib/moderation'
 import { clipIdSchema, commentSchema, createClipSchema, feedCursorSchema, toggleSchema } from '../schema'
@@ -109,3 +110,14 @@ export const loadMoreSquareAction = actionClient
   .inputSchema(feedCursorSchema)
   // clips null = the read failed (the feed shows "could not load" and keeps trying), not "no more posts".
   .action(async ({ parsedInput: { audience, offset } }) => ({ clips: await getSquareFeed({ audience, offset }) }))
+
+/**
+ * One clip, for the preview of a clip shared into a private chat. Row-level security applies as in the Square, so a
+ * clip out of this fan's reach (another club, or expired) simply comes back null and the chat shows "unavailable".
+ */
+export const getClipRefAction = actionClient.inputSchema(clipIdSchema).action(async ({ parsedInput: { clipId } }) => {
+  const clip = await getClip(clipId)
+  if (!clip) return { ref: null }
+  const ref: ClipRef = { id: clip.id, nick: clip.nick, teamId: clip.team_id, kind: clip.kind, caption: clip.caption, url: clip.url }
+  return { ref }
+})

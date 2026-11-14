@@ -12,7 +12,7 @@ import { teamById } from '@/features/teams/data'
 
 export const metadata: Metadata = { title: 'שיחה פרטית' }
 
-export default function Page({ params }: PageProps<'/inbox/[id]'>) {
+export default function Page({ params, searchParams }: PageProps<'/inbox/[id]'>) {
   return (
     <section className="space-y-3">
       <Link href="/inbox" className="inline-flex items-center gap-1 text-sm text-muted">
@@ -20,15 +20,16 @@ export default function Page({ params }: PageProps<'/inbox/[id]'>) {
         כל השיחות
       </Link>
       <Suspense fallback={<div className="skeleton h-64 rounded-lg" aria-hidden="true" />}>
-        {params.then(({ id }) => (
-          <Thread id={id} />
-        ))}
+        {Promise.all([params, searchParams]).then(([{ id }, sp]) => {
+          const clip = typeof sp.clip === 'string' && /^[0-9a-f-]{36}$/.test(sp.clip) ? sp.clip : undefined
+          return <Thread id={id} shareClip={clip} />
+        })}
       </Suspense>
     </section>
   )
 }
 
-async function Thread({ id }: { id: string }) {
+async function Thread({ id, shareClip }: { id: string; shareClip?: string }) {
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound()
   const s = await getSessionProfile()
   if (s.status !== 'ready') return null
@@ -53,7 +54,7 @@ async function Thread({ id }: { id: string }) {
         {/* A request offers block only (owner, 2026-10-16: no report of message content); an accepted chat keeps both. */}
         {t.request !== 'incoming' && <ReportBlock kind="dm_thread" refId={t.id} userId={t.otherId} userNick={t.otherNick} />}
       </header>
-      <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} request={t.request} />
+      <DmThread threadId={t.id} meId={s.userId} otherId={t.otherId} otherNick={t.otherNick} request={t.request} shareClip={shareClip} />
     </>
   )
 }

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
+import type { Route } from 'next'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Eye, Flag, Heart, MessageCircle, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Eye, Flag, Heart, MessageCircle, Send, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { teamById } from '@/features/teams/data'
 import { ReportBlock, ReportForm } from '@/features/safety/components/report-block'
 import { TeamScarf } from '@/features/teams/components/team-scarf'
@@ -31,6 +33,7 @@ type Props = {
 
 export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
   const t = useTranslations('square')
+  const router = useRouter()
   const team = teamById(clip.team_id)
   const mine = clip.user_id === meId
   const rival = clip.team_id !== myTeamId
@@ -326,6 +329,17 @@ export function ClipCard({ clip, meId, myTeamId, onRemoved, story }: Props) {
           </span>
           <span className="sr-only">{t('comments')}</span>
           {shortCount(commentCount)}
+        </button>
+        <button
+          type="button"
+          aria-label="שליחה לחבר בפרטי"
+          onClick={() => router.push(`/inbox?clip=${clip.id}` as Route)}
+          className="flex flex-col items-center gap-0.5 text-xs font-bold"
+        >
+          <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">
+            <Send className="size-6 -translate-x-px" aria-hidden="true" />
+          </span>
+          <span className="sr-only">שליחה לחבר</span>
         </button>
         <button type="button" aria-label="שתף" onClick={() => void share()} className="flex flex-col items-center gap-0.5 text-xs font-bold">
           <span className="grid size-11 place-items-center rounded-full bg-black/35 backdrop-blur-sm transition-transform active:scale-90">

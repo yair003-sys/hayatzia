@@ -1,10 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ShieldCheck } from 'lucide-react'
+import { Clapperboard, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { encryptMessage, safetyCode } from '@/lib/e2e/crypto'
+import { clipToken } from '../clip-ref'
 import { notifyDmAction } from '@/features/push/server/actions'
 import { DayDivider, JumpButton, jumpToMessage, UnreadDivider, useNowMinute } from '@/features/chat/components/chat-parts'
 import { useFollowEnd, useReadPosition } from '@/features/chat/components/use-read-position'
@@ -36,6 +38,7 @@ export function DmThread({
   otherId,
   otherNick,
   request: initialRequest = null,
+  shareClip,
 }: {
   threadId: string
   meId: string
@@ -43,8 +46,11 @@ export function DmThread({
   otherNick: string
   /** A message request (2026-10-16): incoming → accept or block; outgoing → one message, then wait. */
   request?: RequestSide
+  /** A Square clip id arriving via `?clip=` — staged for sending into this chat (2026-11-14). */
+  shareClip?: string
 }) {
   const t = useTranslations('dm')
+  const router = useRouter()
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
   const { key, status: keyStatus, devicesOf, reveal } = useDeviceKey(meId)
@@ -59,6 +65,8 @@ export function DmThread({
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const [draft, setDraft] = useState('')
+  // A Square clip waiting to be sent into this chat (arrived via `?clip=`); cleared once sent or dismissed.
+  const [staged, setStaged] = useState<string | null>(shareClip ?? null)
   const draftRef = useRef('')
   useEffect(() => {
     draftRef.current = draft
@@ -313,6 +321,37 @@ export function DmThread({
         }
       />
       <WaitingNote state={reqState} />
+      {reqState === 'open' && staged && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm">
+          <Clapperboard className="size-4 shrink-0 text-accent-text" aria-hidden="true" />
+          <span className="flex-1">סרטון מהכיכר מוכן לשליחה</span>
+          <button
+            type="button"
+            disabled={!key}
+            onClick={() =>
+              void (async () => {
+                if (await send(clipToken(staged))) {
+                  setStaged(null)
+                  router.replace(`/inbox/${threadId}`)
+                }
+              })()
+            }
+            className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-white disabled:opacity-40"
+          >
+            שלח
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStaged(null)
+              router.replace(`/inbox/${threadId}`)
+            }}
+            className="px-1 text-muted"
+          >
+            ביטול
+          </button>
+        </div>
+      )}
       {reqState === 'open' && (
       <Composer
         ready={!!key}

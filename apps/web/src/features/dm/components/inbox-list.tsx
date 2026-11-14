@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { BellOff, ChevronDown, Inbox as InboxIcon, MessagesSquare, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { chatTime } from '@/features/chat/schema'
@@ -20,7 +21,7 @@ const rowKey = (r: { kind: string; id: string }) => `${r.kind}:${r.id}`
  * The inbox list: private chats and groups mixed, newest first. Last-message previews are fetched as
  * ciphertext (one query per kind) and decrypted here on the device; the server never sees them.
  */
-export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRow[]; invites: Invite[] }) {
+export function InboxList({ meId, rows, invites, shareClip }: { meId: string; rows: InboxRow[]; invites: Invite[]; shareClip?: string }) {
   const t = useTranslations('dm')
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
@@ -77,9 +78,12 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
   }, [rows, key, status, reveal, meId])
 
   // Message requests (2026-10-16) sit in their own section above the chats.
-  const { requests, rows: chats } = splitRequests(rows)
+  const { requests, rows: allChats } = splitRequests(rows)
+  // Sharing a Square clip (2026-11-14): only private chats are offered, and tapping one carries the clip id along.
+  const sharing = !!shareClip
+  const chats = sharing ? allChats.filter((r) => r.kind === 'dm') : allChats
   const shown = filterInbox(chats, q)
-  const empty = rows.length === 0 && invites.length === 0
+  const empty = !sharing && rows.length === 0 && invites.length === 0
 
   return (
     <>
@@ -99,7 +103,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
         </div>
       ) : (
         <div className="space-y-3 pb-20">
-          {requests.length > 0 && (
+          {!sharing && requests.length > 0 && (
             <section aria-label={t('requestsAria')} className="space-y-2">
               <button
                 type="button"
@@ -121,7 +125,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
                 <ul id="ib-requests" className="ib-list" aria-label={t('requestsShort')}>
                   {requests.map((r) => (
                     <li key={rowKey(r)}>
-                      <Row row={r} preview={previewOf(r, previews, t)} />
+                      <Row row={r} preview={previewOf(r, previews, t)} shareClip={shareClip} />
                     </li>
                   ))}
                 </ul>
@@ -135,7 +139,7 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('searchPlaceholder')} type="search" />
             </label>
           )}
-          {invites.length > 0 && (
+          {!sharing && invites.length > 0 && (
             <ul className="space-y-2" aria-label={t('invitesAria')}>
               {invites.map((i) => (
                 <InviteCard key={i.groupId} invite={i} />
@@ -145,18 +149,25 @@ export function InboxList({ meId, rows, invites }: { meId: string; rows: InboxRo
           <ul className="ib-list" aria-label={t('chatsAria')}>
             {shown.map((r) => (
               <li key={rowKey(r)}>
-                <Row row={r} preview={previewOf(r, previews, t)} />
+                <Row row={r} preview={previewOf(r, previews, t)} shareClip={shareClip} />
               </li>
             ))}
             {chats.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">{t('noChats')}</li>}
+            {sharing && chats.length === 0 && (
+              <li className="py-10 text-center text-sm text-muted">אין עדיין שיחות פרטיות. התחילו שיחה עם חבר כדי לשלוח לו סרטונים.</li>
+            )}
           </ul>
         </div>
       )}
 
-      <button type="button" className="ib-fab" aria-label={t('newFabAria')} onClick={() => setSheet('menu')}>
-        <Plus className="size-6" strokeWidth={2.2} aria-hidden="true" />
-      </button>
-      <NewSheet mode={sheet} onMode={setSheet} />
+      {!sharing && (
+        <>
+          <button type="button" className="ib-fab" aria-label={t('newFabAria')} onClick={() => setSheet('menu')}>
+            <Plus className="size-6" strokeWidth={2.2} aria-hidden="true" />
+          </button>
+          <NewSheet mode={sheet} onMode={setSheet} />
+        </>
+      )}
     </>
   )
 }
@@ -169,13 +180,15 @@ function previewOf(r: InboxRow, previews: Map<string, string>, t: T): string | n
   return previews.get(rowKey(r)) ?? null // null while decrypting
 }
 
-function Row({ row, preview }: { row: InboxRow; preview: string | null }) {
+function Row({ row, preview, shareClip }: { row: InboxRow; preview: string | null; shareClip?: string }) {
   const t = useTranslations('dm')
   const badge = unreadLabel(row.unread)
   // A request shows the sender's club colours (they may be of another club).
   const club = row.request === 'incoming' && row.otherTeam ? teamById(row.otherTeam) : undefined
+  // Sharing a clip: the row carries the clip id into the chat, where it is staged for sending.
+  const href = row.kind === 'group' ? `/inbox/g/${row.id}` : shareClip ? `/inbox/${row.id}?clip=${shareClip}` : `/inbox/${row.id}`
   return (
-    <Link href={row.kind === 'group' ? `/inbox/g/${row.id}` : `/inbox/${row.id}`} className="ib-row" data-unread={badge ? 'true' : undefined}>
+    <Link href={href as Route} className="ib-row" data-unread={badge ? 'true' : undefined}>
       <Avatar id={row.kind === 'group' ? row.id : (row.otherId ?? row.id)} name={row.name} group={row.kind === 'group'} />
       <div className="ib-body">
         <div className="flex items-baseline gap-2">

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { getSessionProfile } from '@/features/profile/server/queries'
 import { SquareFeed } from '@/features/square/components/square-feed'
-import { getSquareFeed } from '@/features/square/server/queries'
+import { getClip, getSquareFeed } from '@/features/square/server/queries'
 
 export const metadata: Metadata = { title: 'הכיכר' }
 
@@ -12,27 +12,32 @@ export default function Page({ searchParams }: PageProps<'/square'>) {
     <section>
       <Suspense fallback={<FeedSkeleton />}>
         {searchParams.then((sp) => (
-          <SquareScreen team={sp.f === 'team' || sp.f === 'mine'} />
+          <SquareScreen
+            team={sp.f === 'team' || sp.f === 'mine'}
+            focusId={typeof sp.c === 'string' && /^[0-9a-f-]{36}$/.test(sp.c) ? sp.c : undefined}
+          />
         ))}
       </Suspense>
     </section>
   )
 }
 
-async function SquareScreen({ team }: { team: boolean }) {
+async function SquareScreen({ team, focusId }: { team: boolean; focusId?: string }) {
   const s = await getSessionProfile()
   if (s.status === 'disabled') {
     return <p className="text-muted">הכיכר פועלת רק כשהשרת מחובר (לא בסביבה הזאת).</p>
   }
   if (s.status !== 'ready') return <FeedSkeleton />
   const audience = team ? 'team' : 'all'
-  const clips = await getSquareFeed({ audience })
+  // A clip opened from a private-chat link is shown first, even if it would sit deeper in (or outside) this tab's feed.
+  const [clips, focus] = await Promise.all([getSquareFeed({ audience }), focusId ? getClip(focusId) : Promise.resolve(null)])
   return (
     <>
       <h1 className="sr-only">הכיכר</h1>
       <SquareFeed
-        key={`${audience}:${clips?.[0]?.id ?? (clips ? '' : 'failed')}`}
+        key={`${audience}:${focus?.id ?? clips?.[0]?.id ?? (clips ? '' : 'failed')}`}
         initial={clips}
+        focus={focus}
         meId={s.userId}
         myTeamId={s.team.id}
         myNick={s.nick}
