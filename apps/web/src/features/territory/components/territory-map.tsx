@@ -117,7 +117,7 @@ export function TerritoryMap({ initial, myTeamId }: { initial: Cell[]; myTeamId:
         setBusy(false)
         const res = r?.data
         if (res?.ok) {
-          setNote('כבשתם את האזור! 🎉')
+          setNote(res.anonymous ? 'כבשתם את האזור — בעילום שם, להגנתכם 🛡️' : 'כבשתם את האזור! 🎉')
           const map = mapRef.current
           if (map) map.setView([lat, lng], Math.max(map.getZoom(), 15))
         } else {

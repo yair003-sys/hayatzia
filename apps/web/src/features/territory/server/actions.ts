@@ -4,7 +4,8 @@ import { latLngToCell } from 'h3-js'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { captureSchema, COOLDOWN_MS, H3_RES, MAX_ACCURACY_M, MAX_SPEED_KMH, type CaptureResult } from '../schema'
+import { rideAge } from '@/features/team-life/ride-safety'
+import { captureSchema, COOLDOWN_MS, H3_RES, MAX_ACCURACY_M, MAX_SPEED_KMH, MINOR_LABEL, type CaptureResult } from '../schema'
 
 /** Great-circle distance in metres. */
 function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -39,6 +40,13 @@ export const captureTerritoryAction = actionClient.inputSchema(captureSchema).ac
   const admin = createAdminClient()
   if (!admin) return { ok: false, reason: 'error', message: 'הכיבוש לא זמין בסביבה הזאת.' }
 
+  // Child safety (owner 2026-11-16): a minor — or anyone whose age we don't know — captures ANONYMOUSLY. The cell takes
+  // their club's colour, but their identity is never attached to a place on the public map, so no one can track a minor
+  // across the board. The precise coordinates are never public anyway (only the ~0.5 km hex, logged server-side).
+  const { data: priv } = await admin.from('profiles').select('birth_date').eq('user_id', uid).maybeSingle()
+  const anonymous = rideAge(priv?.birth_date ?? null) !== 'adult'
+  const publicNick = anonymous ? MINOR_LABEL : me.nick
+
   const h3 = latLngToCell(lat, lng, H3_RES)
 
   // Teleport check: compare with my most recent capture.
@@ -69,9 +77,9 @@ export const captureTerritoryAction = actionClient.inputSchema(captureSchema).ac
   }
 
   const capturedAt = new Date().toISOString()
-  const { error: upErr } = await admin.from('territory').upsert({ h3, team_id: me.team_id, user_id: uid, nick: me.nick, captured_at: capturedAt })
+  const { error: upErr } = await admin.from('territory').upsert({ h3, team_id: me.team_id, user_id: uid, nick: publicNick, captured_at: capturedAt })
   if (upErr) return { ok: false, reason: 'error', message: 'לא הצלחנו לכבוש כרגע.' }
   await admin.from('territory_log').insert({ user_id: uid, h3, lat, lng, captured_at: capturedAt })
 
-  return { ok: true, cell: { h3, teamId: me.team_id, nick: me.nick, capturedAt } }
+  return { ok: true, cell: { h3, teamId: me.team_id, nick: publicNick, capturedAt }, anonymous }
 })
