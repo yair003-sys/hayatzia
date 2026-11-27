@@ -42,7 +42,7 @@ async function Home() {
         </Suspense>
         <QuickActions />
         <Suspense fallback={<div className="skeleton h-40 rounded-2xl" aria-hidden="true" />}>
-          <WallPreview teamId={team.id} clubShort={team.short} />
+          <WallPreview clubShort={team.short} />
         </Suspense>
         <Suspense fallback={<div className="skeleton h-44 rounded-2xl" aria-hidden="true" />}>
           <TrendingSquare meId={s.userId} teamId={team.id} />

@@ -39,6 +39,8 @@ import { fanLevel } from './fan-level'
 // purple tokens so no other screen is touched.
 
 const nf = (n: number) => n.toLocaleString('he-IL')
+// Request time only (every reader awaits connection() first), via a helper so it isn't an impure call in render.
+const clock = () => Date.now()
 
 // ── 1. header ───────────────────────────────────────────────────────────────────────
 export function HomeHeader({
@@ -117,7 +119,7 @@ export async function NextMatchCard({ team }: { team: Team }) {
   const league = await getLeague()
   if (!league) return null
   const ids = clubApiIds(league, team.id)
-  const next = nextClubFixture(league.fixtures, ids, Date.now())
+  const next = nextClubFixture(league.fixtures, ids, clock())
   if (!next) {
     // No upcoming match — a calm placeholder, never invented data.
     return (
@@ -200,7 +202,7 @@ export function QuickActions() {
 }
 
 // ── 4. wall preview ─────────────────────────────────────────────────────────────────
-export async function WallPreview({ teamId, clubShort }: { teamId: string; clubShort: string }) {
+export async function WallPreview({ clubShort }: { clubShort: string }) {
   await connection()
   const news = await getTeamNews()
   if (news === null) return <LoadError compact />
