@@ -84,8 +84,7 @@ async function Inbox({ shareClip }: { shareClip?: string }) {
     <>
       {sharing ? <ShareHeader /> : <InboxHeader />}
       <InboxLive meId={s.userId} />
-      {!sharing && <ClubChatRow team={s.team} />}
-      <InboxList meId={s.userId} rows={rows} invites={invites} shareClip={shareClip} />
+      <InboxList meId={s.userId} rows={rows} invites={invites} shareClip={shareClip} team={sharing ? undefined : s.team} />
     </>
   )
 }

@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { BellOff, ChevronDown, Inbox as InboxIcon, MessagesSquare, Plus, Search } from 'lucide-react'
+import { BellOff, ChevronDown, Inbox as InboxIcon, MessagesSquare, Pin, Plus, Search, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { chatTime } from '@/features/chat/schema'
-import { teamById } from '@/features/teams/data'
+import { teamById, type Team } from '@/features/teams/data'
+import { TeamScarf } from '@/features/teams/components/team-scarf'
 import { filterInbox, membersLabel, previewText, splitRequests, unreadLabel, type InboxRow, type Invite } from '../schema'
 import { useDeviceKey, type EncryptedRow } from '../use-device-key'
 import { Avatar } from './avatar'
@@ -21,7 +22,19 @@ const rowKey = (r: { kind: string; id: string }) => `${r.kind}:${r.id}`
  * The inbox list: private chats and groups mixed, newest first. Last-message previews are fetched as
  * ciphertext (one query per kind) and decrypted here on the device; the server never sees them.
  */
-export function InboxList({ meId, rows, invites, shareClip }: { meId: string; rows: InboxRow[]; invites: Invite[]; shareClip?: string }) {
+export function InboxList({
+  meId,
+  rows,
+  invites,
+  shareClip,
+  team,
+}: {
+  meId: string
+  rows: InboxRow[]
+  invites: Invite[]
+  shareClip?: string
+  team?: Team
+}) {
   const t = useTranslations('dm')
   // The browser Supabase client is taken inside effects and handlers, never while rendering on the server (load test
   // 2026-10-17, finding 7).
@@ -83,7 +96,8 @@ export function InboxList({ meId, rows, invites, shareClip }: { meId: string; ro
   const sharing = !!shareClip
   const chats = sharing ? allChats.filter((r) => r.kind === 'dm') : allChats
   const shown = filterInbox(chats, q)
-  const empty = !sharing && rows.length === 0 && invites.length === 0
+  // The club group chat is always pinned to the top, so the inbox is never truly "empty" when it is shown.
+  const empty = !sharing && rows.length === 0 && invites.length === 0 && !team
 
   return (
     <>
@@ -147,11 +161,20 @@ export function InboxList({ meId, rows, invites, shareClip }: { meId: string; ro
             </ul>
           )}
           <ul className="ib-list" aria-label={t('chatsAria')}>
+            {/* The club group chat: always the first row, pinned above the private chats (Telegram-style). */}
+            {team && !sharing && !q && (
+              <li>
+                <ClubRow team={team} />
+              </li>
+            )}
             {shown.map((r) => (
               <li key={rowKey(r)}>
                 <Row row={r} preview={previewOf(r, previews, t)} shareClip={shareClip} />
               </li>
             ))}
+            {team && !sharing && !q && chats.length === 0 && (
+              <li className="py-8 text-center text-sm text-muted">אין עדיין צ׳אטים פרטיים — התחילו שיחה חדשה בכפתור ה־＋</li>
+            )}
             {chats.length > 0 && shown.length === 0 && <li className="py-8 text-center text-sm text-muted">{t('noChats')}</li>}
             {sharing && chats.length === 0 && (
               <li className="py-10 text-center text-sm text-muted">אין עדיין שיחות פרטיות. התחילו שיחה עם חבר כדי לשלוח לו סרטונים.</li>
@@ -212,6 +235,28 @@ function Row({ row, preview, shareClip }: { row: InboxRow; preview: string | nul
             </span>
           )}
         </div>
+      </div>
+    </Link>
+  )
+}
+
+/** The club group chat, pinned as the first row of the inbox list (Telegram-style), always above the private chats. */
+function ClubRow({ team }: { team: Team }) {
+  return (
+    <Link href="/stand/chat" className="ib-row">
+      <span className="ib-avatar" style={{ background: 'var(--color-elev)' }} aria-hidden="true">
+        <TeamScarf team={team} className="h-7 w-2.5" />
+      </span>
+      <div className="ib-body">
+        <div className="flex items-baseline gap-2">
+          <b className="ib-name">צ׳אט {team.short}</b>
+          <Pin className="size-3 shrink-0 self-center text-accent-text" aria-label="נעוץ" />
+          <span className="ib-time inline-flex items-center gap-1">
+            <Users className="size-3" aria-hidden="true" />
+            קבוצתי
+          </span>
+        </div>
+        <p className="ib-preview">הצ׳אט הקבוצתי · כל אוהדי {team.short}</p>
       </div>
     </Link>
   )
