@@ -297,7 +297,7 @@ export function CommunityFeatures() {
 }
 
 // ── shared ──────────────────────────────────────────────────────────────────────────
-function SectionHead({ title, icon, href, more }: { title: string; icon?: ReactNode; href?: string; more?: string }) {
+function SectionHead({ title, icon, href, more }: { title: string; icon?: ReactNode; href?: Route; more?: string }) {
   return (
     <div className="h2-sechead">
       <h2>
