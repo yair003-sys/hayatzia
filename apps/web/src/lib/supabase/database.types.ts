@@ -1509,14 +1509,14 @@ isOneToOne: false
                   ]
                 },"team_messages": {
                   Row: {
-                    "body": string,"created_at": string,"hidden_at": string | null,"id": string,"nick": string,"reactions": NonNullable<Json>,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string
+                    "body": string,"created_at": string,"hidden_at": string | null,"id": string,"nick": string,"reactions": NonNullable<Json>,"reply_body": string | null,"reply_nick": string | null,"reply_to": string | null,"reply_user": string | null,"team_id": string,"user_id": string,"official": boolean,"media_path": string | null,"media_kind": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reactions"?: NonNullable<Json>,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "body": string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reactions"?: NonNullable<Json>,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string,"official"?: boolean,"media_path"?: string | null,"media_kind"?: string | null
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reactions"?: NonNullable<Json>,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string
+                    "body"?: string,"created_at"?: string,"hidden_at"?: string | null,"id"?: string,"nick"?: string,"reactions"?: NonNullable<Json>,"reply_body"?: string | null,"reply_nick"?: string | null,"reply_to"?: string | null,"reply_user"?: string | null,"team_id"?: string,"user_id"?: string,"official"?: boolean,"media_path"?: string | null,"media_kind"?: string | null
                   }
                   Relationships: [
                     {
@@ -1837,6 +1837,9 @@ isOneToOne: false
                            },
 "channel_can_post":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"team_member_count":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "channel_mark_seen":
 { Args: Record<PropertyKey, never>; Returns: undefined

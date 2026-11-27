@@ -30,8 +30,17 @@ export type ChatMessage = {
   /** Team chat: per-emoji reaction counts ({emoji: count}) and my own reaction emoji (null/undefined = none). */
   reactions?: Record<string, number>
   myReaction?: string | null
+  /** Team chat: a management ("official") message, and optional media (public CDN url + its kind). */
+  official?: boolean
+  media_url?: string | null
+  media_kind?: 'image' | 'video' | null
   /** This device only: a message that could not be sent (its id is a local one). */
   failed?: boolean
+}
+
+/** The public CDN url of a chat-media storage path (the 'chat' bucket is public). */
+export function chatMediaUrl(path: string): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/chat/${path}`
 }
 
 /** A live reaction update from the "REACTION" broadcast ({message_id, reactions}), or null when the shape is off. */
@@ -63,6 +72,8 @@ export function totalReactions(reactions?: Record<string, number> | null): numbe
 
 /** Columns every chat read and write returns. */
 export const MESSAGE_COLUMNS = 'id,user_id,nick,body,created_at,reply_to,reply_user,reply_nick,reply_body'
+/** Team chat selects three extra columns the match/DM rooms don't have, so it keeps its own list. */
+export const TEAM_MESSAGE_COLUMNS = `${MESSAGE_COLUMNS},official,media_path,media_kind`
 
 export type Cursor = z.infer<typeof cursorSchema>
 /**
@@ -124,12 +135,18 @@ export function countAfter(messages: readonly { id: string }[], seenId: string |
 
 /** Realtime broadcast payload → message, or null when the shape is unexpected. */
 export function messageFromBroadcast(payload: unknown): ChatMessage | null {
-  const record = (payload as { record?: Partial<ChatMessage> } | null)?.record
+  const record = (payload as { record?: Partial<ChatMessage> & { media_path?: string | null } } | null)?.record
   if (!record) return null
   const { id, user_id, nick, body, created_at, side, reply_to, reply_user, reply_nick, reply_body } = record
   if (![id, user_id, nick, body, created_at].every((v) => typeof v === 'string')) return null
   const m = { id, user_id, nick, body, created_at } as ChatMessage
   if (side === 'h' || side === 'a') m.side = side
+  // Team chat extras (absent on match/DM rooms): a management flag and optional media.
+  if (record.official === true) m.official = true
+  if (typeof record.media_path === 'string' && (record.media_kind === 'image' || record.media_kind === 'video')) {
+    m.media_url = chatMediaUrl(record.media_path)
+    m.media_kind = record.media_kind
+  }
   if (typeof reply_to === 'string') {
     m.reply_to = reply_to
     m.reply_user = typeof reply_user === 'string' ? reply_user : null

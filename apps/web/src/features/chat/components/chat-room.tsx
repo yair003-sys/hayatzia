@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Flag, Plus, SendHorizontal, SmilePlus, X } from 'lucide-react'
+import { Crown, Flag, Play, Plus, SendHorizontal, SmilePlus, X } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { openChannel } from '@/lib/supabase/channel'
 import { createClient } from '@/lib/supabase/client'
@@ -591,9 +591,13 @@ const MessageItem = memo(function MessageItem({
       {!mine && (
         <span className="chat-author-row">
           <MessageAuthor mine={false} userId={m.user_id} nick={m.nick} onFan={onFan ? () => onFan(m) : undefined} />
-          <span className="mb-0.5 px-1 text-xs font-semibold text-accent-text" style={color ? { color } : undefined}>
+          <span
+            className={cn('mb-0.5 px-1 text-xs font-semibold', m.official ? 'chat-official' : 'text-accent-text')}
+            style={!m.official && color ? { color } : undefined}
+          >
             {m.nick}
           </span>
+          {m.official && <Crown className="chat-official-crown size-3.5" aria-label="הנהלה" />}
         </span>
       )}
       <div
@@ -610,7 +614,20 @@ const MessageItem = memo(function MessageItem({
             onJump={quoteLoaded && !quoteHidden && m.reply_to ? () => onJump(m.reply_to as string) : undefined}
           />
         )}
-        {m.body}
+        {m.media_url && (
+          <span className="chat-media">
+            {m.media_kind === 'video' ? (
+              <>
+                <video src={`${m.media_url}#t=0.1`} muted playsInline preload="metadata" className="chat-media-el" />
+                <span className="chat-media-play" aria-hidden="true"><Play className="size-6 fill-current" /></span>
+              </>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.media_url} alt="" className="chat-media-el" loading="lazy" />
+            )}
+          </span>
+        )}
+        {m.body && <span className="chat-text">{m.body}</span>}
       </div>
       {onReact && !m.id.startsWith(LOCAL_ID) && (
         <div className="chat-react">

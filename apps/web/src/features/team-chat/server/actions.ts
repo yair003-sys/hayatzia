@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
-import { chatErrorHe, chatErrorKind, cursorSchema, MESSAGE_COLUMNS, sendMessageSchema, type SendResult } from '@/features/chat/schema'
+import { chatErrorHe, chatErrorKind, chatMediaUrl, cursorSchema, sendMessageSchema, TEAM_MESSAGE_COLUMNS, type SendResult } from '@/features/chat/schema'
 import { getTeamMessages } from './queries'
 
 const reactSchema = z.object({ messageId: z.uuid(), emoji: z.string().min(1).max(32).nullable() })
@@ -20,10 +20,18 @@ export const sendTeamMessageAction = actionClient
     const { data, error } = await supabase
       .from('team_messages')
       .insert({ body: parsedInput.body, reply_to: parsedInput.replyTo ?? null })
-      .select(MESSAGE_COLUMNS)
+      .select(TEAM_MESSAGE_COLUMNS)
       .single()
     if (error) return { error: chatErrorHe(error.message), kind: chatErrorKind(error.message) }
-    return { message: data }
+    const { media_path, media_kind, ...rest } = data
+    return {
+      message: {
+        ...rest,
+        official: rest.official ?? false,
+        media_url: media_path ? chatMediaUrl(media_path) : null,
+        media_kind: (media_kind as 'image' | 'video' | null) ?? null,
+      },
+    }
   })
 
 export const loadOlderTeamMessagesAction = actionClient

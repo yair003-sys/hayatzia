@@ -1823,3 +1823,44 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .home2 .h2-camp-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--h2-gold), #f6d06b); }
   .home2 .h2-camp-nums { font-size: 0.8rem; color: var(--h2-mut); }
   .home2 .h2-camp-nums b { color: var(--h2-fg); font-weight: 800; }
+
+/* ===== onefan team-chat redesign (owner 2026-11-28): premium purple, scoped to .teamchat so match/DM rooms are untouched ===== */
+.teamchat {
+  /* retheme the shared chat tokens to the onefan purple, only inside this screen */
+  --color-accent: #9333ea; --color-accent-2: #a855f7; --color-accent-text: #c084fc; --color-accent-soft: rgb(147 51 234 / 0.2);
+  --color-surface-2: #1b1430; --color-elev: #140f1e; --color-muted: #a9a1b2;
+  --color-line: rgb(192 132 252 / 0.2); --color-line-soft: rgb(192 132 252 / 0.1);
+  --tc-brand: #9333ea; --tc-brand2: #c084fc; --tc-card: #17121f; --tc-bg: #08070b;
+  color: #fff;
+  margin-inline: -1rem; /* the shell pads 1rem each side; go edge-to-edge and pad our own parts */
+  background: radial-gradient(130% 55% at 50% -8%, #1b1030 0%, transparent 55%), var(--tc-bg);
+  min-height: 100%;
+}
+.teamchat a { color: inherit; }
+
+/* header */
+.teamchat .tc-head { display: flex; align-items: center; gap: 0.6rem; padding: calc(0.6rem + env(safe-area-inset-top, 0px)) 14px 0.6rem; border-bottom: 1px solid var(--color-line-soft); background: rgb(16 13 22 / 0.7); backdrop-filter: blur(8px); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.teamchat .tc-icon { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 50%; color: #fff; }
+.teamchat .tc-icon:active { background: rgb(255 255 255 / 0.06); }
+.teamchat .tc-crest { flex: none; display: grid; place-items: center; }
+.teamchat .tc-crest > * { border-radius: 50%; box-shadow: 0 0 0 2px var(--tc-brand); }
+.teamchat .tc-id { min-width: 0; flex: 1; line-height: 1.25; text-align: center; }
+.teamchat .tc-id b { display: inline-flex; align-items: center; gap: 4px; font-size: 1rem; font-weight: 800; }
+.teamchat .tc-id span { display: block; font-size: 0.74rem; color: var(--color-muted); }
+
+/* official-group pill */
+.teamchat .tc-official-row { display: flex; justify-content: center; padding: 0.6rem 14px 0.2rem; }
+.teamchat .tc-official-pill { display: inline-flex; align-items: center; gap: 5px; background: rgb(147 51 234 / 0.18); border: 1px solid #5a3a8c; color: var(--tc-brand2); font-size: 0.68rem; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
+
+.teamchat .tc-body { padding: 0.5rem 14px; }
+.teamchat .tc-pinned { margin-bottom: 0.6rem; border-inline-start: 3px solid var(--tc-brand); background: var(--tc-card); border-radius: 12px; overflow: hidden; }
+
+/* management ("official") messages */
+.teamchat .chat-official { color: var(--tc-brand2) !important; }
+.teamchat .chat-official-crown { color: #e9b64b; }
+
+/* media bubbles */
+.teamchat .chat-media { position: relative; display: block; margin: -2px 0 6px; border-radius: 14px; overflow: hidden; max-width: 260px; background: #000; }
+.teamchat .chat-media-el { display: block; width: 100%; max-height: 320px; object-fit: cover; }
+.teamchat .chat-media-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; filter: drop-shadow(0 1px 4px #000); }
+.teamchat .chat-text { display: block; }
