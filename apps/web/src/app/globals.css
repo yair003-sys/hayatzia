@@ -1663,7 +1663,7 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   /* compose */
   .wl-compose { display: flex; gap: 0.7rem; padding: 0.8rem 0.9rem; border-bottom: 7px solid var(--color-surface); align-items: center;
     background: none; border-inline: 0; border-top: 0; width: 100%; text-align: start; }
-  .wl-me { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; background: linear-gradient(150deg, var(--acc2), var(--acc)); }
+  .wl-me { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; background: linear-gradient(150deg, var(--acc2), var(--acc)); display: grid; place-items: center; color: var(--acc-on); font-weight: 800; font-size: 0.82rem; }
   .wl-ph { flex: 1; color: var(--color-dim); font-size: 0.95rem; text-align: start; background: none; border: 0; padding: 0; }
   .wl-post-btn { border: 0; font: inherit; font-weight: 800; font-size: 0.8rem; border-radius: 999px; padding: 0.4rem 0.9rem;
     background: linear-gradient(150deg, var(--acc2), var(--acc)); color: var(--acc-on); }
@@ -1671,8 +1671,9 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   /* a post */
   .wl-post { display: flex; gap: 0.7rem; padding: 0.8rem 0.9rem; border-bottom: 1px solid var(--color-line); }
   .wl-av { width: 2.5rem; height: 2.5rem; flex: none; border-radius: 50%; border: 1px solid var(--color-line);
-    background: linear-gradient(150deg, var(--color-surface-3), var(--color-surface)); object-fit: cover; }
-  .wl-post.official .wl-av { background: linear-gradient(150deg, var(--acc2), var(--acc)); border: 0; }
+    background: linear-gradient(150deg, var(--color-surface-3), var(--color-surface)); object-fit: cover;
+    display: grid; place-items: center; color: var(--color-muted); font-weight: 800; font-size: 0.82rem; }
+  .wl-post.official .wl-av { background: linear-gradient(150deg, var(--acc2), var(--acc)); border: 0; color: var(--acc-on); }
   .wl-body { flex: 1; min-width: 0; }
   .wl-meta { display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; flex-wrap: wrap; }
   .wl-meta b { font-weight: 800; }

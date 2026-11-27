@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LiveNow, MatchNightHero } from '@/features/home/components/sections'
 import { getSessionProfile } from '@/features/profile/server/queries'
-import { getChannelUnread, getTeamNews } from '@/features/team-news/server/queries'
+import { amIChannelAdmin, getChannelUnread, getTeamNews } from '@/features/team-news/server/queries'
 import { WallFeed } from '@/features/wall/components/wall-feed'
 
 export const metadata: Metadata = { title: { absolute: 'onefan' } }
@@ -33,7 +33,7 @@ function WallSkeleton() {
 async function Wall() {
   const s = await getSessionProfile()
   if (s.status !== 'ready') return <h1 className="t-page">onefan</h1>
-  const [news, unread] = await Promise.all([getTeamNews(), getChannelUnread()])
+  const [news, unread, canPost] = await Promise.all([getTeamNews(), getChannelUnread(), amIChannelAdmin()])
   const { team } = s
   // Live match leads when one is on; otherwise the next fixture. Each returns null when there's nothing, so the
   // anchor simply vanishes on a quiet day and the feed sits at the top.
@@ -55,6 +55,7 @@ async function Wall() {
       clubShort={team.short}
       initial={news ?? []}
       unread={unread}
+      canPost={canPost}
       matchSlot={matchSlot}
     />
   )
