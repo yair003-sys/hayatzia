@@ -1731,7 +1731,7 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
   .home2 .h2-match { position: relative; overflow: hidden; border-radius: 22px; border: 1px solid #4a2d78; padding: 1rem; box-shadow: 0 18px 44px -24px #000, 0 0 36px -22px var(--h2-brand); }
   .home2 .h2-match-bg { position: absolute; inset: 0; pointer-events: none; background-image: url('/home/stadium.webp'); background-size: cover; background-position: center; }
   .home2 .h2-match-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(13 10 22 / 0.55) 0%, rgb(13 10 22 / 0.78) 60%, rgb(13 10 22 / 0.92) 100%); }
-  .home2 .h2-match > * { position: relative; }
+  .home2 .h2-match > :not(.h2-match-bg):not(.h2-match-shade) { position: relative; }
   .home2 .h2-match-top { display: flex; align-items: center; justify-content: space-between; }
   .home2 .h2-match-pill { display: inline-flex; align-items: center; gap: 5px; background: rgb(147 51 234 / 0.3); border: 1px solid #6b47a3; color: #fff; font-size: 0.68rem; font-weight: 800; padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(4px); }
   .home2 .h2-match-league { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: #e7defb; font-weight: 700; }
