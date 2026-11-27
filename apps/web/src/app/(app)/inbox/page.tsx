@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Clapperboard, Lock, QrCode, Users } from 'lucide-react'
+import { Clapperboard, Lock, QrCode, Users } from 'lucide-react'
 import { LoadError } from '@/components/load-error'
 import { InboxList } from '@/features/dm/components/inbox-list'
 import { InboxLive } from '@/features/dm/components/inbox-live'
@@ -90,27 +90,26 @@ async function Inbox({ shareClip }: { shareClip?: string }) {
   )
 }
 
-/** The club group chat, pinned at the top of the inbox so group and private chats live in one column (2026-11-14). */
+/** The club group chat, pinned at the top of the inbox as a flat row (Telegram-style), so it sits in one clean
+ *  column with the private chats instead of a framed card (2026-11-27). */
 function ClubChatRow({ team }: { team: Team }) {
   return (
-    <Link
-      href="/stand/chat"
-      className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 active:scale-[0.99]"
-    >
-      <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-elev">
-        <TeamScarf team={team} className="h-7 w-2.5" />
-        <span
-          className="absolute -bottom-0.5 -end-0.5 grid size-5 place-items-center rounded-full border-2 border-surface"
-          style={{ background: 'var(--acc, var(--color-accent))', color: 'var(--acc-on, #fff)' }}
-        >
-          <Users className="size-2.5" aria-hidden="true" />
+    <div className="ib-list">
+      <Link href="/stand/chat" className="ib-row">
+        <span className="ib-avatar" style={{ background: 'var(--color-elev)' }} aria-hidden="true">
+          <TeamScarf team={team} className="h-7 w-2.5" />
         </span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <b className="block">צ׳אט {team.short}</b>
-        <span className="text-xs text-muted">הצ׳אט הקבוצתי · כל אוהדי {team.short}</span>
-      </span>
-      <ChevronLeft className="size-5 shrink-0 text-muted" aria-hidden="true" />
-    </Link>
+        <div className="ib-body">
+          <div className="flex items-baseline gap-2">
+            <b className="ib-name">צ׳אט {team.short}</b>
+            <span className="ib-time inline-flex items-center gap-1">
+              <Users className="size-3" aria-hidden="true" />
+              קבוצתי
+            </span>
+          </div>
+          <p className="ib-preview">הצ׳אט הקבוצתי · כל אוהדי {team.short}</p>
+        </div>
+      </Link>
+    </div>
   )
 }
