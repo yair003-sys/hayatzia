@@ -13,7 +13,9 @@
     "square": "La Place",
     "inbox": "Messages",
     "me": "Ma carte",
-    "rides": "Trajets"
+    "rides": "Trajets",
+    "home": "Accueil",
+    "community": "Communauté"
   },
   "account": {
     "signOut": "Se déconnecter",

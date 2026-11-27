@@ -13,7 +13,9 @@
     "square": "La Plaza",
     "inbox": "Mensajes",
     "me": "Mi tarjeta",
-    "rides": "Viajes"
+    "rides": "Viajes",
+    "home": "Inicio",
+    "community": "Comunidad"
   },
   "account": {
     "signOut": "Cerrar sesión",

@@ -1702,11 +1702,13 @@ body:has(.chat-dock) .app-main, .app-main :has(.chat-dock) { display: flex; flex
     --h2-green: #2bd07a; --h2-gold: #e9b64b; --warn: #ff5a6a;
     min-height: 100%; color: var(--h2-fg);
     background: radial-gradient(135% 65% at 50% -6%, #180f2c 0%, transparent 55%), var(--h2-bg);
+    /* the app shell already pads 1rem each side; cancel it so the home controls its own 16px gutter edge-to-edge */
+    margin-inline: -1rem;
   }
   .home2 a { color: inherit; }
 
   /* header: onefan (start/right) · profile · bell (end/left) */
-  .home2 .h2-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 16px; }
+  .home2 .h2-head { display: flex; align-items: center; gap: 0.75rem; padding: calc(0.7rem + env(safe-area-inset-top, 0px)) 16px 0.7rem; }
   .home2 .h2-logo { display: inline-flex; align-items: center; gap: 2px; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
   .home2 .h2-logo b span { color: var(--h2-brand); }
   .home2 .h2-crown { color: var(--h2-brand); margin-top: -10px; }

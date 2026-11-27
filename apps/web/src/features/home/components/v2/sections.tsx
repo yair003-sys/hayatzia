@@ -271,11 +271,11 @@ export async function WallPreview({ clubShort }: { clubShort: string }) {
   const post = news[0]
   return (
     <section aria-label="מה קורה ביציע">
-      <SectionHead title="מה קורה ביציע" icon={<MessageCircle className="size-4" aria-hidden="true" />} href="/stand" more="לכל העדכונים" />
+      <SectionHead title="מה קורה ביציע" icon={<MessageCircle className="size-4" aria-hidden="true" />} href="/stand/wall" more="לכל העדכונים" />
       {!post ? (
         <p className="h2-empty">עדיין אין עדכונים בקיר של {clubShort}.</p>
       ) : (
-        <Link href="/stand" className="h2-feat">
+        <Link href={'/stand/wall' as Route} className="h2-feat">
           {post.mediaUrl && (
             <span className="h2-feat-media" aria-hidden="true">
               {post.mediaKind === 'video' ? (

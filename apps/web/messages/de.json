@@ -13,7 +13,9 @@
     "square": "Square",
     "inbox": "Postfach",
     "me": "Meine Karte",
-    "rides": "Fahrten"
+    "rides": "Fahrten",
+    "home": "Start",
+    "community": "Community"
   },
   "account": {
     "signOut": "Abmelden",

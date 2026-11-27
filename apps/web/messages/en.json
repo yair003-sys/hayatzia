@@ -13,7 +13,9 @@
     "square": "Square",
     "inbox": "Inbox",
     "me": "My Card",
-    "rides": "Rides"
+    "rides": "Rides",
+    "home": "Home",
+    "community": "Community"
   },
   "account": {
     "signOut": "Sign out",

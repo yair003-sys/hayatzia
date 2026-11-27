@@ -14,7 +14,7 @@ import { whileVisible } from '@/lib/while-visible'
 import { ACTIVITY_SEEN_EVENT, badgeLabel, bellLabel } from '../activity'
 
 /** Screens that place the bell in their own header (the home), so the floating one stays away: one bell per screen. */
-export const OWN_BELL_PATHS = new Set(['/stand'])
+export const OWN_BELL_PATHS = new Set(['/stand', '/stand/wall'])
 
 /** Full-screen reels keep their own top row (tabs and "+"), so there the bell floats alone in the corner. */
 const IMMERSIVE = (pathname: string) => pathname === '/square' || pathname.startsWith('/square/')

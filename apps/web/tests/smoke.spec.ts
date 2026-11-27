@@ -38,7 +38,7 @@ test('first visit shows the intro once; skipping it remembers', async ({ page })
 
 test('a tab URL loads directly and stays selected after refresh', async ({ page }) => {
   await page.goto('/square')
-  const current = page.getByRole('link', { name: 'הכיכר' })
+  const current = page.getByRole('link', { name: 'כיכר' })
   await expect(current).toHaveAttribute('aria-current', 'page')
   await page.reload()
   await expect(current).toHaveAttribute('aria-current', 'page')
