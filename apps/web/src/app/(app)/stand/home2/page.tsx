@@ -4,11 +4,13 @@ import { getSessionProfile } from '@/features/profile/server/queries'
 import { getLeague } from '@/features/matches/server/queries'
 import { getFanCard, getMyPhotos } from '@/features/me/server/queries'
 import {
-  CommunityFeatures,
+  CampaignTeaser,
   HomeHeader,
   NextMatchCard,
   QuickActions,
+  RatingsAndSongs,
   TrendingSquare,
+  TripsTeaser,
   WallPreview,
 } from '@/features/home/components/v2/sections'
 
@@ -47,7 +49,15 @@ async function Home() {
         <Suspense fallback={<div className="skeleton h-44 rounded-2xl" aria-hidden="true" />}>
           <TrendingSquare meId={s.userId} teamId={team.id} />
         </Suspense>
-        <CommunityFeatures />
+        <Suspense fallback={<div className="skeleton h-24 rounded-2xl" aria-hidden="true" />}>
+          <TripsTeaser team={team} userId={s.userId} />
+        </Suspense>
+        <Suspense fallback={<div className="skeleton h-28 rounded-2xl" aria-hidden="true" />}>
+          <RatingsAndSongs team={team} userId={s.userId} />
+        </Suspense>
+        <Suspense fallback={<div className="skeleton h-28 rounded-2xl" aria-hidden="true" />}>
+          <CampaignTeaser />
+        </Suspense>
       </main>
     </>
   )
